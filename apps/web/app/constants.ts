@@ -131,6 +131,7 @@ export const STORY_CONTENT = {
 
 export const DETAILS_CONTENT = {
   title: "Wedding Details",
+  date: "Thursday, July 30, 2026",
   ceremony: {
     icon: "⛪️",
     title: "Ceremony",
