@@ -6,6 +6,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Switch } from "@workspace/ui/components/switch";
 import { useToast } from "@workspace/ui/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import type { Database } from "@/lib/supabase/types";
 import { type RSVPFormData, rsvpFormSchema } from "@/lib/validations/rsvp";
@@ -27,15 +28,9 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
   const existingPlusOne = guests.find((g) => g.is_plus_one);
   const hasRSVPd = primaryGuest && primaryGuest.rsvp_status !== "pending";
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { isSubmitting, errors },
-  } = useForm<RSVPFormData>({
-    resolver: zodResolver(rsvpFormSchema),
-    defaultValues: {
+  // Memoize initial values from DB to compare against current form values
+  const initialValues = useMemo(
+    (): RSVPFormData => ({
       attending: primaryGuest?.rsvp_status !== "no",
       plusOneAttending: existingPlusOne
         ? existingPlusOne.rsvp_status === "yes"
@@ -46,19 +41,73 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       plusOnePhoneNumber: existingPlusOne?.phone_number || "",
       plusOneWhatsapp: existingPlusOne?.whatsapp || "",
       plusOnePreferredContactMethod:
-        existingPlusOne?.preferred_contact_method || "",
+        (existingPlusOne?.preferred_contact_method as RSVPFormData["plusOnePreferredContactMethod"]) ||
+        "",
       plusOneDietaryRestrictions: existingPlusOne?.dietary_restrictions || "",
       dietaryRestrictions: primaryGuest?.dietary_restrictions || "",
       mailingAddress: primaryGuest?.mailing_address || "",
       phoneNumber: primaryGuest?.phone_number || "",
       whatsapp: primaryGuest?.whatsapp || "",
-      preferredContactMethod: primaryGuest?.preferred_contact_method || "",
-    },
+      preferredContactMethod:
+        (primaryGuest?.preferred_contact_method as RSVPFormData["preferredContactMethod"]) ||
+        "",
+    }),
+    [primaryGuest, existingPlusOne],
+  );
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { isSubmitting, errors },
+  } = useForm<RSVPFormData>({
+    resolver: zodResolver(rsvpFormSchema),
+    defaultValues: initialValues,
   });
 
   const attending = watch("attending");
   const plusOneAttending = watch("plusOneAttending");
   const hasPlusOne = primaryGuest?.plus_one_allowed || false;
+
+  // Watch all form values to detect changes
+  const formValues = watch();
+
+  // Check if form has changed from initial DB values
+  const hasFormChanged = useMemo(() => {
+    // For new RSVPs, always allow submission
+    if (!hasRSVPd) return true;
+
+    // Compare each field
+    const fieldsToCompare: (keyof RSVPFormData)[] = [
+      "attending",
+      "dietaryRestrictions",
+      "mailingAddress",
+      "phoneNumber",
+      "whatsapp",
+      "preferredContactMethod",
+    ];
+
+    // Add plus-one fields if applicable
+    if (hasPlusOne) {
+      fieldsToCompare.push(
+        "plusOneAttending",
+        "plusOneFirstName",
+        "plusOneLastName",
+        "plusOneEmail",
+        "plusOnePhoneNumber",
+        "plusOneWhatsapp",
+        "plusOnePreferredContactMethod",
+        "plusOneDietaryRestrictions",
+      );
+    }
+
+    return fieldsToCompare.some((field) => {
+      const initial = initialValues[field] ?? "";
+      const current = formValues[field] ?? "";
+      return initial !== current;
+    });
+  }, [formValues, initialValues, hasRSVPd, hasPlusOne]);
 
   async function onSubmit(data: RSVPFormData) {
     const result = await submitRSVP({
@@ -458,7 +507,11 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
         >
           Back
         </Button>
-        <Button type="submit" disabled={isSubmitting} className="flex-1">
+        <Button
+          type="submit"
+          disabled={isSubmitting || !hasFormChanged}
+          className="flex-1"
+        >
           {isSubmitting
             ? "Submitting..."
             : hasRSVPd

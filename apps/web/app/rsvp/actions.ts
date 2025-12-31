@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Resend } from "resend";
+import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getRsvpNotificationEmail } from "@/lib/email/templates/rsvp-notification";
 import type { Database } from "@/lib/supabase/types";
 
 type Guest = Database["public"]["Tables"]["guests"]["Row"];
@@ -200,6 +203,45 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
             .execute();
         }
         // Scenario 2c: Plus-one status unknown - keep existing plus-one unchanged
+      }
+    }
+
+    // Send notification email to admin
+    if (env.RESEND_API_KEY && env.RSVP_EMAIL) {
+      try {
+        // Fetch updated guests for the notification email
+        const updatedGuests = await db
+          .selectFrom("guests")
+          .select(["first_name", "last_name", "email"])
+          .where("invite_code", "=", inviteCode.toUpperCase())
+          .execute();
+
+        const resend = new Resend(env.RESEND_API_KEY);
+        const emailHtml = getRsvpNotificationEmail({
+          guests: updatedGuests.map((g) => ({
+            firstName: g.first_name,
+            lastName: g.last_name,
+            email: g.email,
+          })),
+          inviteCode: inviteCode.toUpperCase(),
+          attending,
+          dietaryRestrictions,
+          submittedAt: new Date().toLocaleString("en-US", {
+            dateStyle: "full",
+            timeStyle: "short",
+            timeZone: "America/Los_Angeles",
+          }),
+        });
+
+        await resend.emails.send({
+          from: "Wedding RSVP <onboarding@resend.dev>",
+          to: env.RSVP_EMAIL,
+          subject: `${attending ? "✅" : "❌"} RSVP: ${updatedGuests.map((g) => g.first_name).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,
+          html: emailHtml,
+        });
+      } catch (emailError) {
+        // Log but don't fail the RSVP submission if email fails
+        console.error("Error sending RSVP notification email:", emailError);
       }
     }
 
