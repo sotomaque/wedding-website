@@ -20,6 +20,16 @@ export const HERO_PHOTOS = [
     description: "Adventures in Mexico City",
   },
   {
+    src: "/our-photos/cdmx-2.jpeg",
+    alt: "Mexico City",
+    description: "Family time in Mexico City",
+  },
+  {
+    src: "/our-photos/cdmx-3.jpeg",
+    alt: "Mexico City",
+    description: "More family time in Mexico City",
+  },
+  {
     src: "/our-photos/getty.jpeg",
     alt: "Getty Museum",
     description: "Art and culture at the Getty",
@@ -113,6 +123,66 @@ export const HERO_PHOTOS = [
     src: "/our-photos/vegas.jpeg",
     alt: "Las Vegas",
     description: "Bright lights in Las Vegas",
+  },
+  {
+    src: "/our-photos/vegas-2.jpeg",
+    alt: "Las Vegas",
+    description: "More fun in Las Vegas",
+  },
+  {
+    src: "/our-photos/halloween.jpeg",
+    alt: "Halloween",
+    description: "Spooky vibes on Halloween",
+  },
+  {
+    src: "/our-photos/christmas.jpeg",
+    alt: "Christmas 2021",
+    description: "Holiday cheer in Christmas 2021",
+  },
+  {
+    src: "/our-photos/engagement-party.jpeg",
+    alt: "Engagement Party",
+    description: "Celebrating our engagement with loved ones",
+  },
+  {
+    src: "/our-photos/mt-soledad.jpeg",
+    alt: "Mount Soledad",
+    description: "Views from Mount Soledad",
+  },
+  {
+    src: "/our-photos/immaculata.jpeg",
+    alt: "The Immaculata",
+    description: "Beautiful architecture of The Immaculata",
+  },
+  {
+    src: "/our-photos/engagement-bbq.jpeg",
+    alt: "Engagement BBQ",
+    description: "Celebrating our engagement with a BBQ",
+  },
+  {
+    src: "/our-photos/yautepec.jpeg",
+    alt: "Yautepec",
+    description: "Exploring Yautepec together",
+  },
+  {
+    src: "/our-photos/cdmx-4.jpeg",
+    alt: "Mexico City",
+    description: "City lights in Mexico City",
+  },
+  {
+    src: "/our-photos/hawaii-2.jpeg",
+    alt: "Hawaii",
+    description: "Sunset views in Hawaii",
+  },
+  {
+    src: "/our-photos/steamboat-springs-2.jpeg",
+    alt: "Steamboat Springs",
+    description: "Another beautiful view in Steamboat Springs",
+  },
+  {
+    src: "/our-photos/fremont.jpeg",
+    alt: "Fremont",
+    description: "Exploring the vibrant Fremont neighborhood",
   },
 ] as const;
 
