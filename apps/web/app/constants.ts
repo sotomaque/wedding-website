@@ -272,7 +272,7 @@ export const SCHEDULE_CONTENT = {
 
 export const RSVP_CONTENT = {
   title: "RSVP",
-  deadline: "Please respond by April 30th, 2025",
+  deadline: "Please respond by March 1st, 2026",
   image: {
     src: "/rsvp.png",
     alt: "RSVP",
