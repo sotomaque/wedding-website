@@ -23,7 +23,8 @@ import {
 } from "@workspace/ui/components/sheet";
 import { Switch } from "@workspace/ui/components/switch";
 import { useToast } from "@workspace/ui/hooks/use-toast";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import type { Database } from "@/lib/supabase/types";
 import {
@@ -33,32 +34,24 @@ import {
 
 type Guest = Database["public"]["Tables"]["guests"]["Row"];
 
-interface EditGuestFormProps {
+interface EditGuestSheetProps {
   guest: Guest;
-  open: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  onDelete: () => void;
+  plusOne: Guest | null;
 }
 
-export function EditGuestForm({
-  guest,
-  open,
-  onClose,
-  onSuccess,
-  onDelete,
-}: EditGuestFormProps) {
+export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const {
     register,
     handleSubmit,
     watch,
     setValue,
-    reset,
     formState: { errors, isSubmitting },
   } = useForm<EditGuestFormData>({
     resolver: zodResolver(editGuestSchema),
@@ -69,8 +62,8 @@ export function EditGuestForm({
       side: (guest.side || "bride") as "bride" | "groom" | "both",
       list: guest.list as "a" | "b" | "c",
       plusOneAllowed: guest.plus_one_allowed || false,
-      plusOneFirstName: "",
-      plusOneLastName: "",
+      plusOneFirstName: plusOne?.first_name || "",
+      plusOneLastName: plusOne?.last_name || "",
       mailingAddress: guest.mailing_address || "",
       physicalInviteSent: guest.physical_invite_sent || false,
       phoneNumber: guest.phone_number || "",
@@ -90,49 +83,11 @@ export function EditGuestForm({
   const physicalInviteSent = watch("physicalInviteSent");
   const family = watch("family");
 
-  // Fetch plus-one data when the form opens
-  useEffect(() => {
-    async function fetchPlusOne() {
-      if (!open || guest.is_plus_one) {
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/admin/guests/${guest.id}`);
-        if (response.ok) {
-          const data = await response.json();
-
-          // Reset form with all values including plus-one data
-          reset({
-            firstName: guest.first_name,
-            lastName: guest.last_name || "",
-            email: guest.email || "",
-            side: (guest.side || "bride") as "bride" | "groom" | "both",
-            list: guest.list as "a" | "b" | "c",
-            plusOneAllowed: guest.plus_one_allowed || false,
-            plusOneFirstName: data.plusOne?.first_name || "",
-            plusOneLastName: data.plusOne?.last_name || "",
-            mailingAddress: guest.mailing_address || "",
-            physicalInviteSent: guest.physical_invite_sent || false,
-            phoneNumber: guest.phone_number || "",
-            whatsapp: guest.whatsapp || "",
-            preferredContactMethod: (guest.preferred_contact_method || "") as
-              | "email"
-              | "text"
-              | "whatsapp"
-              | "phone_call"
-              | "",
-            family: guest.family || false,
-            notes: guest.notes || "",
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching plus-one:", error);
-      }
-    }
-
-    fetchPlusOne();
-  }, [open, guest, reset]);
+  function closeSheet() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("edit");
+    router.push(`/admin/guests?${params.toString()}`, { scroll: false });
+  }
 
   async function onSubmit(data: EditGuestFormData) {
     try {
@@ -148,7 +103,8 @@ export function EditGuestForm({
           description:
             `${data.firstName} ${data.lastName || ""} has been updated`.trim(),
         });
-        onSuccess();
+        closeSheet();
+        router.refresh();
       } else {
         toast({
           variant: "destructive",
@@ -213,7 +169,8 @@ export function EditGuestForm({
             `${guest.first_name} ${guest.last_name || ""} has been removed`.trim(),
         });
         setShowDeleteDialog(false);
-        onDelete();
+        closeSheet();
+        router.refresh();
       } else {
         toast({
           variant: "destructive",
@@ -234,7 +191,7 @@ export function EditGuestForm({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
+    <Sheet open onOpenChange={closeSheet}>
       <SheetContent className="sm:max-w-2xl w-full overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="text-2xl font-serif">Edit Guest</SheetTitle>
@@ -529,7 +486,7 @@ export function EditGuestForm({
               <Button
                 type="button"
                 variant="outline"
-                onClick={onClose}
+                onClick={closeSheet}
                 disabled={isSubmitting}
               >
                 Cancel

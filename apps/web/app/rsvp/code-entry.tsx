@@ -4,14 +4,11 @@ import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { useToast } from "@workspace/ui/hooks/use-toast";
 import { useState } from "react";
-import type { Database } from "@/lib/supabase/types";
 import { verifyInviteCode } from "./actions";
-
-type Guest = Database["public"]["Tables"]["guests"]["Row"];
 
 interface CodeEntryProps {
   initialCode?: string;
-  onSuccess: (code: string, guests: Guest[]) => void;
+  onSuccess: (code: string) => void;
 }
 
 export function CodeEntry({ initialCode = "", onSuccess }: CodeEntryProps) {
@@ -34,7 +31,7 @@ export function CodeEntry({ initialCode = "", onSuccess }: CodeEntryProps) {
       const result = await verifyInviteCode(inviteCode);
 
       if (result.success && result.guests) {
-        onSuccess(inviteCode, result.guests);
+        onSuccess(inviteCode);
       } else {
         toast({
           variant: "destructive",

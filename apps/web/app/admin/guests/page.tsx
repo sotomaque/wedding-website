@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { getGuests } from "./actions";
+import { getGuests, getGuestWithPlusOne } from "./actions";
+import { EditGuestSheet } from "./edit-guest-sheet";
 import { GuestsTable } from "./guests-table";
 import { GuestsTableSkeleton } from "./guests-table-skeleton";
 
@@ -20,6 +21,7 @@ interface PageProps {
       | "created_at";
     sortOrder?: "asc" | "desc";
     page?: string;
+    edit?: string;
   }>;
 }
 
@@ -34,7 +36,20 @@ async function GuestsContent({
   return <GuestsTable initialGuests={guests} />;
 }
 
+async function EditGuestContent({ guestId }: { guestId: string }) {
+  const { guest, plusOne } = await getGuestWithPlusOne(guestId);
+
+  if (!guest) {
+    return null;
+  }
+
+  return <EditGuestSheet guest={guest} plusOne={plusOne} />;
+}
+
 export default async function AdminGuestsPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const editGuestId = params.edit;
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-7xl mx-auto">
@@ -44,6 +59,12 @@ export default async function AdminGuestsPage({ searchParams }: PageProps) {
           </Suspense>
         </div>
       </div>
+
+      {editGuestId && (
+        <Suspense fallback={null}>
+          <EditGuestContent guestId={editGuestId} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -26,7 +26,6 @@ import { useState } from "react";
 import type { Database } from "@/lib/supabase/types";
 import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
-import { EditGuestForm } from "./edit-guest-form";
 import { GuestsFilters } from "./guests-filters";
 
 type Guest = Database["public"]["Tables"]["guests"]["Row"];
@@ -36,6 +35,7 @@ type SortableColumn =
   | "side"
   | "list"
   | "rsvp_status"
+  | "plus_one_allowed"
   | "family"
   | "notes";
 
@@ -47,7 +47,6 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -183,9 +182,15 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
     }
   }
 
+  function handleEditGuest(guestId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("edit", guestId);
+    router.push(`/admin/guests?${params.toString()}`, { scroll: false });
+  }
+
   const columns = createColumns({
     toast,
-    setEditingGuest,
+    onEditGuest: handleEditGuest,
     currentSortBy,
     currentSortOrder,
     onSort: handleSort,
@@ -362,23 +367,6 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
           refreshGuests();
         }}
       />
-
-      {/* Edit Guest Form Sheet */}
-      {editingGuest && (
-        <EditGuestForm
-          guest={editingGuest}
-          open={!!editingGuest}
-          onClose={() => setEditingGuest(null)}
-          onSuccess={() => {
-            setEditingGuest(null);
-            refreshGuests();
-          }}
-          onDelete={() => {
-            setEditingGuest(null);
-            refreshGuests();
-          }}
-        />
-      )}
     </>
   );
 }

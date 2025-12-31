@@ -14,6 +14,7 @@ type SortableColumn =
   | "side"
   | "list"
   | "rsvp_status"
+  | "plus_one_allowed"
   | "family"
   | "notes";
 
@@ -23,7 +24,7 @@ interface ColumnsConfig {
     description?: string;
     variant?: "default" | "destructive";
   }) => void;
-  setEditingGuest: (guest: Guest) => void;
+  onEditGuest: (guestId: string) => void;
   currentSortBy?: string;
   currentSortOrder?: "asc" | "desc";
   onSort: (column: SortableColumn) => void;
@@ -395,7 +396,7 @@ function EditableFamilyCell({
 
 export function createColumns({
   toast,
-  setEditingGuest,
+  onEditGuest,
   currentSortBy,
   currentSortOrder,
   onSort,
@@ -552,7 +553,17 @@ export function createColumns({
     },
     {
       accessorKey: "plus_one_allowed",
-      header: "Plus One",
+      header: () => {
+        return (
+          <button
+            type="button"
+            className="flex items-center hover:text-foreground"
+            onClick={() => onSort("plus_one_allowed")}
+          >
+            Plus One{getSortIcon("plus_one_allowed")}
+          </button>
+        );
+      },
       cell: ({ row }) => {
         const allowed = row.original.plus_one_allowed;
 
@@ -617,7 +628,7 @@ export function createColumns({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setEditingGuest(row.original)}
+          onClick={() => onEditGuest(row.original.id)}
         >
           Edit
         </Button>

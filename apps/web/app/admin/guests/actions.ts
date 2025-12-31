@@ -95,3 +95,31 @@ export async function resendInviteEmail(guestId: string) {
     return { success: false, error: "Failed to resend email" };
   }
 }
+
+export async function getGuestWithPlusOne(guestId: string) {
+  try {
+    const guest = await db
+      .selectFrom("guests")
+      .selectAll()
+      .where("id", "=", guestId)
+      .executeTakeFirst();
+
+    if (!guest) {
+      return { guest: null, plusOne: null };
+    }
+
+    // Fetch plus-one if exists
+    const plusOne = await db
+      .selectFrom("guests")
+      .selectAll()
+      .where("primary_guest_id", "=", guestId)
+      .where("is_plus_one", "=", true)
+      .executeTakeFirst();
+
+    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
+    return { guest: guest as any, plusOne: (plusOne || null) as any };
+  } catch (error) {
+    console.error("Error fetching guest with plus-one:", error);
+    return { guest: null, plusOne: null };
+  }
+}
