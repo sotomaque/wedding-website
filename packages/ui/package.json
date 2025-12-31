@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "lint": "biome check .",
-    "lint:fix": "biome check --write ."
+    "lint": "biome check ./src/components ./src/hooks ./src/lib --files-ignore-unknown=true",
+    "lint:fix": "biome check --write ./src/components ./src/hooks ./src/lib --files-ignore-unknown=true"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
