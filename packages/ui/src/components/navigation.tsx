@@ -81,7 +81,7 @@ function Navigation({
               <summary className="list-none text-2xl font-medium tracking-tight font-serif uppercase focus:outline-none text-neutral-900 cursor-pointer">
                 Menu
               </summary>
-              <div className="absolute top-full left-0 right-0 bg-neutral-50 md:mt-4 group-open:block hidden">
+              <div className="absolute top-full left-0 right-0 bg-neutral-50 md:mt-4 overflow-hidden transition-all duration-900 ease-in-out group-open:opacity-100 group-open:max-h-[600px] opacity-0 max-h-0">
                 <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-4 flex flex-col gap-4">
                   {leftLinks.map((link) => {
                     const isActive = link.href === `#${activeSection}`;
@@ -89,6 +89,14 @@ function Navigation({
                       <a
                         key={link.href}
                         href={link.href}
+                        onClick={(e) => {
+                          const details = (e.target as HTMLElement).closest(
+                            "details",
+                          );
+                          if (details) {
+                            details.removeAttribute("open");
+                          }
+                        }}
                         className={cn(
                           "text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-neutral-900",
                           isActive && "font-bold",
@@ -104,6 +112,14 @@ function Navigation({
                       <a
                         key={link.href}
                         href={link.href}
+                        onClick={(e) => {
+                          const details = (e.target as HTMLElement).closest(
+                            "details",
+                          );
+                          if (details) {
+                            details.removeAttribute("open");
+                          }
+                        }}
                         className={cn(
                           "text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-neutral-900",
                           isActive && "font-bold",
