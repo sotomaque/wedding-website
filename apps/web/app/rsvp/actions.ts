@@ -234,7 +234,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
         });
 
         await resend.emails.send({
-          from: "Wedding RSVP <onboarding@resend.dev>",
+          from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
           to: env.RSVP_EMAIL,
           subject: `${attending ? "✅" : "❌"} RSVP: ${updatedGuests.map((g) => g.first_name).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,
           html: emailHtml,

@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
         });
 
         await resend.emails.send({
-          from: "Wedding Invitation <onboarding@resend.dev>",
+          from: "Wedding Invitation <rsvp@helen-and-enrique.com>",
           to: email,
           subject: "You're Invited to Our Wedding! 💕",
           html: emailHtml,
