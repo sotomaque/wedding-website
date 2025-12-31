@@ -53,7 +53,9 @@ export async function verifyInviteCode(code: string): Promise<{
       return { success: false, error: "Invalid invite code" };
     }
 
-    return { success: true, guests };
+    // Kysely returns Date objects which get serialized to strings when sent to client
+    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
+    return { success: true, guests: guests as any };
   } catch (error) {
     console.error("Error verifying invite code:", error);
     return { success: false, error: "Internal server error" };

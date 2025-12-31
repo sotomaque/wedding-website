@@ -51,7 +51,9 @@ export async function getGuests(
     query = query.orderBy(sortBy, sortOrder);
 
     const guests = await query.execute();
-    return guests;
+    // Kysely returns Date objects which get serialized to strings when sent to client
+    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
+    return guests as any;
   } catch (error) {
     console.error("Error fetching guests:", error);
     return [];
