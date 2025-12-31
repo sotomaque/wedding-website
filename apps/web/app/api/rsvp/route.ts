@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { env } from "@/env";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
   try {
@@ -27,10 +28,21 @@ export async function POST(request: Request) {
 
     const isAttending = attending === "Joyfully accepts";
 
+    // Check if email credentials are configured
+    if (!env.RESEND_API_KEY || !env.RSVP_EMAIL) {
+      console.warn(
+        "RESEND_API_KEY or RSVP_EMAIL not configured - skipping email notification",
+      );
+      return NextResponse.json({
+        success: true,
+        message: "RSVP submitted successfully (email notification disabled)",
+      });
+    }
+
     // Send email notification
     const { data, error } = await resend.emails.send({
       from: "RSVP Notifications <onboarding@resend.dev>", // Update this to your verified domain
-      to: process.env.RSVP_EMAIL || "your-email@example.com",
+      to: env.RSVP_EMAIL,
       subject: `${isAttending ? "✅" : "❌"} RSVP ${isAttending ? "Accepted" : "Declined"}: ${firstName} ${lastName}`,
       html: `
         <!DOCTYPE html>

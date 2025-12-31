@@ -6,7 +6,10 @@ export const env = createEnv({
    * Specify your server-side environment variables schema here. This way you can ensure the app
    * isn't built with invalid env vars.
    */
-  server: {},
+  server: {
+    RESEND_API_KEY: z.string().optional(),
+    RSVP_EMAIL: z.string().email().optional(),
+  },
 
   /**
    * Specify your client-side environment variables schema here. This way you can ensure the app
@@ -15,6 +18,7 @@ export const env = createEnv({
    */
   client: {
     NEXT_PUBLIC_MAPBOX_TOKEN: z.string().min(1),
+    NEXT_PUBLIC_RSVP_EMAIL: z.string().email().optional(),
   },
 
   /**
@@ -22,7 +26,10 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RSVP_EMAIL: process.env.RSVP_EMAIL,
     NEXT_PUBLIC_MAPBOX_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_TOKEN,
+    NEXT_PUBLIC_RSVP_EMAIL: process.env.NEXT_PUBLIC_RSVP_EMAIL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

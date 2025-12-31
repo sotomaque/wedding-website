@@ -49,17 +49,30 @@ bun install
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-Add your Mapbox API key to `apps/web/.env.local`:
+Edit `apps/web/.env.local` and add your environment variables:
 ```env
+# Required for map functionality
 NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token_here
+
+# Required for RSVP email notifications
+RESEND_API_KEY=your_resend_api_key_here
+RSVP_EMAIL=your-email@example.com
+
+# Required for displaying contact email in footer
+NEXT_PUBLIC_RSVP_EMAIL=your-email@example.com
 ```
+
+**Getting API Keys:**
+- **Mapbox Token**: Get your token at [https://account.mapbox.com/access-tokens/](https://account.mapbox.com/access-tokens/)
+- **Resend API Key**: Get your API key at [https://resend.com/api-keys](https://resend.com/api-keys)
 
 4. Update site configuration:
 Edit `apps/web/app/site-config.ts` to update:
-- Wedding email
 - Wedding date
 - RSVP deadline
 - Couple names
+
+Note: The wedding email is now configured via the `NEXT_PUBLIC_RSVP_EMAIL` environment variable.
 
 5. Update content:
 Edit `apps/web/app/constants.ts` to customize:
