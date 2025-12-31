@@ -1,8 +1,12 @@
+"use client";
+
 import { Button } from "@workspace/ui/components/button";
 import { Navigation } from "@workspace/ui/components/navigation";
+import { useActiveSection } from "@workspace/ui/hooks/use-active-section";
 import Image from "next/image";
 
 export default function Page() {
+  const activeSection = useActiveSection();
   return (
     <div className="flex flex-col min-h-screen bg-neutral-50">
       {/* Navigation */}
@@ -13,7 +17,11 @@ export default function Page() {
           { href: "#details", label: "Details" },
           { href: "#schedule", label: "Schedule" },
         ]}
-        rightLinks={[{ href: "#rsvp", label: "RSVP" }]}
+        rightLinks={[
+          { href: "/things-to-do", label: "Things To Do in San Diego" },
+          { href: "#rsvp", label: "RSVP" },
+        ]}
+        activeSection={activeSection}
       />
 
       <main className="grow">
@@ -124,9 +132,9 @@ export default function Page() {
                   </h3>
                   <div className="text-neutral-600 space-y-2">
                     <p className="font-medium">4:00 PM</p>
-                    <p>Vineyard Gardens</p>
-                    <p className="text-sm">123 Wine Country Road</p>
-                    <p className="text-sm">Napa Valley, CA 94558</p>
+                    <p>The Immaculata Church</p>
+                    <p className="text-sm">University of San Diego</p>
+                    <p className="text-sm">San Diego, CA 92110</p>
                   </div>
                 </div>
               </div>
@@ -156,8 +164,8 @@ export default function Page() {
                   </h3>
                   <div className="text-neutral-600 space-y-2">
                     <p className="font-medium">6:00 PM</p>
-                    <p>Estate Ballroom</p>
-                    <p className="text-sm">Same Location</p>
+                    <p>The Immaculata</p>
+                    <p className="text-sm">University of San Diego</p>
                     <p className="text-sm">Dinner, Dancing & Celebration</p>
                   </div>
                 </div>
