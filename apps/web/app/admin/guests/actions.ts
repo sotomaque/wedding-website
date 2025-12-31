@@ -10,6 +10,7 @@ type Guest = Database["public"]["Tables"]["guests"]["Row"];
 interface GetGuestsParams {
   side?: "bride" | "groom";
   rsvpStatus?: "pending" | "yes" | "no";
+  list?: "a" | "b" | "c";
   family?: "true" | "false";
   isPlusOne?: "true" | "false";
   sortBy?:
@@ -35,6 +36,10 @@ export async function getGuests(
 
     if (params.rsvpStatus) {
       query = query.where("rsvp_status", "=", params.rsvpStatus);
+    }
+
+    if (params.list) {
+      query = query.where("list", "=", params.list as "a" | "b");
     }
 
     if (params.family !== undefined) {

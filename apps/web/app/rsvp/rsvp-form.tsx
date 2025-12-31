@@ -36,7 +36,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
   } = useForm<RSVPFormData>({
     resolver: zodResolver(rsvpFormSchema),
     defaultValues: {
-      attending: primaryGuest?.rsvp_status === "yes",
+      attending: primaryGuest?.rsvp_status !== "no",
       plusOneAttending: existingPlusOne
         ? existingPlusOne.rsvp_status === "yes"
         : undefined,

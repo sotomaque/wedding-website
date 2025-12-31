@@ -10,6 +10,7 @@ interface PageProps {
   searchParams: Promise<{
     side?: "bride" | "groom";
     rsvpStatus?: "pending" | "yes" | "no";
+    list?: "a" | "b" | "c";
     family?: "true" | "false";
     isPlusOne?: "true" | "false";
     sortBy?:

@@ -21,6 +21,7 @@ export function GuestsFilters() {
     | "yes"
     | "no"
     | null;
+  const currentList = searchParams.get("list") as "a" | "b" | "c" | null;
   const currentFamily = searchParams.get("family") as "true" | "false" | null;
   const currentIsPlusOne = searchParams.get("isPlusOne") as
     | "true"
@@ -48,10 +49,15 @@ export function GuestsFilters() {
   }
 
   const hasActiveFilters =
-    currentSide || currentStatus || currentFamily || currentIsPlusOne;
+    currentSide ||
+    currentStatus ||
+    currentList ||
+    currentFamily ||
+    currentIsPlusOne;
   const filterCount = [
     currentSide,
     currentStatus,
+    currentList,
     currentFamily,
     currentIsPlusOne,
   ].filter(Boolean).length;
@@ -145,6 +151,45 @@ export function GuestsFilters() {
                   className="w-full"
                 >
                   Declined
+                </Button>
+              </div>
+            </div>
+
+            {/* List Filter */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium">List</span>
+              <div className="grid grid-cols-4 gap-2">
+                <Button
+                  variant={currentList === null ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("list", null)}
+                  className="w-full"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={currentList === "a" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("list", "a")}
+                  className="w-full"
+                >
+                  A
+                </Button>
+                <Button
+                  variant={currentList === "b" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("list", "b")}
+                  className="w-full"
+                >
+                  B
+                </Button>
+                <Button
+                  variant={currentList === "c" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("list", "c")}
+                  className="w-full"
+                >
+                  C
                 </Button>
               </div>
             </div>
@@ -253,6 +298,18 @@ export function GuestsFilters() {
               <button
                 type="button"
                 onClick={() => updateFilter("rsvpStatus", null)}
+                className="hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {currentList && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+              List: {currentList.toUpperCase()}
+              <button
+                type="button"
+                onClick={() => updateFilter("list", null)}
                 className="hover:text-foreground"
               >
                 <X className="h-3 w-3" />
