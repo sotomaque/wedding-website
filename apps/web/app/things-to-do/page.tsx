@@ -5,6 +5,7 @@ import { Navigation } from "@workspace/ui/components/navigation";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { NAVIGATION_CONFIG } from "@/app/navigation-config";
+import { SITE_CONFIG } from "@/app/site-config";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { HEADQUARTERS, IMMACULATA, LOCATIONS } from "./constants";
 import { SanDiegoMap } from "./san-diego-map";
@@ -319,7 +320,7 @@ export default function ThingsToDoPage() {
         </section>
       </main>
 
-      <Footer />
+      <Footer email={SITE_CONFIG.email} coupleName={SITE_CONFIG.couple.name} />
     </div>
   );
 }

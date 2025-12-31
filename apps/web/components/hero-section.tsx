@@ -9,16 +9,19 @@ import {
   CarouselPrevious,
 } from "@workspace/ui/components/carousel";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HERO_CONTENT, HERO_PHOTOS } from "../app/constants";
 import { shuffleArray } from "../app/utils";
 
 export function HeroSection() {
   const [api, setApi] = useState<CarouselApi>();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [shuffledPhotos, setShuffledPhotos] = useState([...HERO_PHOTOS]);
 
-  // Randomize photos once on mount
-  const shuffledPhotos = useMemo(() => shuffleArray([...HERO_PHOTOS]), []);
+  // Randomize photos once on mount (client-side only to avoid hydration mismatch)
+  useEffect(() => {
+    setShuffledPhotos(shuffleArray([...HERO_PHOTOS]));
+  }, []);
 
   // Function to start/restart the auto-scroll timer
   const startAutoScroll = useCallback(() => {

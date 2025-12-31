@@ -9,6 +9,7 @@ import { RSVPSection } from "../components/rsvp-section";
 import { ScheduleSection } from "../components/schedule-section";
 import { StorySection } from "../components/story-section";
 import { NAVIGATION_CONFIG } from "./navigation-config";
+import { SITE_CONFIG } from "./site-config";
 
 export default function Page() {
   const activeSection = useActiveSection();
@@ -30,7 +31,7 @@ export default function Page() {
         <RSVPSection />
       </main>
 
-      <Footer />
+      <Footer email={SITE_CONFIG.email} coupleName={SITE_CONFIG.couple.name} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 export const SITE_CONFIG = {
-  email: "wedding@example.com", // TODO: Update with actual email
+  email: process.env.NEXT_PUBLIC_RSVP_EMAIL || "wedding@example.com",
   weddingDate: "2026-07-30",
   rsvpDeadline: "March 30th, 2026",
   couple: {
@@ -9,4 +9,4 @@ export const SITE_CONFIG = {
       person2: "Enrique",
     },
   },
-} as const;
+};

@@ -223,11 +223,15 @@ export const RSVP_CONTENT = {
       label: "Will you be attending?",
       options: ["Joyfully accepts", "Regretfully declines"],
     },
-    guestCount: {
-      label: "Number of Guests",
-      placeholder: "1",
-      min: 1,
-      max: 5,
+    plusOne: {
+      label: "Will you be bringing a plus one?",
+    },
+    travel: {
+      label: "Where will you be traveling from?",
+      placeholder: "City, State/Country (optional)",
+    },
+    needsAccommodation: {
+      label: "Would you like hotel accommodation recommendations?",
     },
     dietary: {
       label: "Dietary Restrictions",
