@@ -77,6 +77,15 @@ export async function POST(request: NextRequest) {
         html: emailHtml,
       });
 
+      // Increment number_of_resends
+      await db
+        .updateTable("guests")
+        .set({
+          number_of_resends: (guest.number_of_resends || 0) + 1,
+        })
+        .where("id", "=", guestId)
+        .execute();
+
       return NextResponse.json({
         success: true,
         message: "Email sent successfully",

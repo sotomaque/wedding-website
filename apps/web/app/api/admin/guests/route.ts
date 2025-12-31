@@ -209,6 +209,13 @@ export async function POST(request: NextRequest) {
           subject: "You're Invited to Our Wedding! 💕",
           html: emailHtml,
         });
+
+        // Update number_of_resends to 1 after successful email send
+        await db
+          .updateTable("guests")
+          .set({ number_of_resends: 1 })
+          .where("id", "=", guest.id)
+          .execute();
       } catch (emailError) {
         console.error("Error sending email:", emailError);
         // Don't fail the request if email fails

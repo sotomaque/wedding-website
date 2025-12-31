@@ -136,6 +136,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
           title: "Email sent!",
           description: `Invitation email resent to ${guest.email}`,
         });
+        router.refresh();
       } else {
         toast({
           variant: "destructive",
@@ -428,6 +429,24 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
             <div className="border-t pt-4 mt-2 space-y-4">
               <h3 className="text-sm font-semibold">Admin Information</h3>
 
+              {/* Email Status Display */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Email Status</span>
+                {guest.number_of_resends === 0 ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                    No email sent
+                  </span>
+                ) : guest.number_of_resends === 1 ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    Email sent
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    Sent {guest.number_of_resends} times
+                  </span>
+                )}
+              </div>
+
               <div className="flex items-center justify-between">
                 <label htmlFor="family" className="text-sm font-medium">
                   Family Member
@@ -468,7 +487,11 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
                 disabled={isResending || isSubmitting}
                 className="flex-1"
               >
-                {isResending ? "Sending..." : "Resend Email"}
+                {isResending
+                  ? "Sending..."
+                  : guest.number_of_resends === 0
+                    ? "Send Email"
+                    : "Resend Email"}
               </Button>
               <Button
                 type="button"
