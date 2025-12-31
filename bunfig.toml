@@ -1,0 +1,3 @@
+[install]
+# Auto install peer dependencies
+auto = true
