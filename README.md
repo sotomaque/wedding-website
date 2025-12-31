@@ -1,31 +1,175 @@
-# shadcn/ui monorepo template
+# Helen & Enrique's Wedding Website
 
-This template is for creating a monorepo with shadcn/ui.
+A beautiful, modern wedding website built with Next.js 16, React 19, and Tailwind CSS. Features an interactive photo carousel, randomized galleries, an interactive map of San Diego recommendations, and elegant animations.
 
-## Usage
+## Features
 
+- **Hero Carousel**: Auto-scrolling photo carousel with manual navigation and timer reset
+- **Randomized Photos**: Photos are shuffled on each visit for a fresh experience
+- **Interactive Map**: Explore our favorite San Diego spots with an interactive Mapbox-powered map
+- **Responsive Design**: Fully responsive across all devices
+- **Dark/Light Mode**: Theme switching support
+- **Elegant Animations**: Smooth hover effects and transitions throughout
+- **SEO Optimized**: Complete meta tags, Open Graph, and Twitter Card support
+
+## Tech Stack
+
+- **Framework**: [Next.js 16](https://nextjs.org/) with App Router
+- **UI Library**: [React 19](https://react.dev/)
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+- **Components**: Custom component library with [shadcn/ui](https://ui.shadcn.com/)
+- **Carousel**: [Embla Carousel](https://www.embla-carousel.com/)
+- **Maps**: [Mapbox GL JS](https://www.mapbox.com/) with [deck.gl](https://deck.gl/)
+- **Monorepo**: [Turborepo](https://turbo.build/)
+- **Package Manager**: [Bun](https://bun.sh/)
+- **Linting**: [Biome](https://biomejs.dev/)
+- **Type Checking**: [TypeScript 5](https://www.typescriptlang.org/)
+
+## Prerequisites
+
+- [Bun](https://bun.sh/) 1.3.5 or higher
+- Node.js 20 or higher
+
+## Installation
+
+1. Clone the repository:
 ```bash
-pnpm dlx shadcn@latest init
+git clone <repository-url>
+cd wedding-website
 ```
 
-## Adding components
-
-To add components to your app, run the following command at the root of your `web` app:
-
+2. Install dependencies:
 ```bash
-pnpm dlx shadcn@latest add button -c apps/web
+bun install
 ```
 
-This will place the ui components in the `packages/ui/src/components` directory.
+3. Set up environment variables:
+```bash
+# Create a .env.local file in apps/web
+cp apps/web/.env.example apps/web/.env.local
+```
 
-## Tailwind
+Add your Mapbox API key to `apps/web/.env.local`:
+```env
+NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token_here
+```
 
-Your `tailwind.config.ts` and `globals.css` are already set up to use the components from the `ui` package.
+4. Update site configuration:
+Edit `apps/web/app/site-config.ts` to update:
+- Wedding email
+- Wedding date
+- RSVP deadline
+- Couple names
 
-## Using components
+5. Update content:
+Edit `apps/web/app/constants.ts` to customize:
+- Hero photos and descriptions
+- Story content
+- Wedding details
+- Schedule
+- RSVP form fields
 
-To use the components in your app, import them from the `ui` package.
+## Development
+
+Start the development server:
+```bash
+bun dev
+```
+
+The app will be available at [http://localhost:3000](http://localhost:3000)
+
+## Build
+
+Build the project for production:
+```bash
+bun run build
+```
+
+## Linting & Type Checking
+
+```bash
+# Run linter
+bun run lint
+
+# Fix linting issues
+bun --filter=web lint:fix
+
+# Type checking
+bun --filter=web lint:types
+```
+
+## Project Structure
+
+```
+wedding-website/
+├── apps/
+│   └── web/              # Next.js app
+│       ├── app/          # App router pages and layouts
+│       ├── components/   # Page-specific components
+│       └── public/       # Static assets
+├── packages/
+│   └── ui/               # Shared UI component library
+│       ├── src/
+│       │   ├── components/  # Reusable UI components
+│       │   ├── hooks/       # Custom React hooks
+│       │   └── lib/         # Utility functions
+│       └── package.json
+└── package.json          # Root package.json
+```
+
+## Adding shadcn/ui Components
+
+To add new shadcn/ui components:
+
+```bash
+bunx shadcn@latest add button -c apps/web
+```
+
+This will place the UI components in the `packages/ui/src/components` directory.
+
+## Using Components
+
+Import components from the UI package:
 
 ```tsx
 import { Button } from "@workspace/ui/components/button"
+import { Navigation } from "@workspace/ui/components/navigation"
 ```
+
+## Customization
+
+### Colors and Theme
+
+Edit `packages/ui/src/styles/globals.css` to customize the color scheme.
+
+### Navigation
+
+Update `apps/web/app/navigation-config.ts` to modify navigation links and branding.
+
+### Photos
+
+Place your wedding photos in `apps/web/public/our-photos/` and update the `HERO_PHOTOS` array in `apps/web/app/constants.ts`.
+
+## Deployment
+
+This project is ready to deploy to:
+
+- [Vercel](https://vercel.com/) (recommended for Next.js)
+- [Netlify](https://www.netlify.com/)
+- Any platform that supports Next.js
+
+### Deploy to Vercel
+
+```bash
+# Install Vercel CLI
+bun add -g vercel
+
+# Deploy
+vercel
+```
+
+Remember to add your environment variables in your deployment platform's settings.
+
+## License
+
+Private - All rights reserved

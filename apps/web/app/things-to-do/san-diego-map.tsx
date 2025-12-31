@@ -108,6 +108,7 @@ export function SanDiegoMap({
   // Update view when active location changes
   useEffect(() => {
     if (activeLocation) {
+      // Check locations first
       const location = LOCATIONS.find((loc) => loc.id === activeLocation);
       if (location) {
         setViewState((prev) => ({
@@ -115,6 +116,29 @@ export function SanDiegoMap({
           longitude: location.coordinates[0],
           latitude: location.coordinates[1],
           zoom: 13,
+          transitionDuration: 1000,
+        }));
+        return;
+      }
+
+      // Check venues
+      if (activeLocation === IMMACULATA.id) {
+        setViewState((prev) => ({
+          ...prev,
+          longitude: IMMACULATA.coordinates[0],
+          latitude: IMMACULATA.coordinates[1],
+          zoom: 14,
+          transitionDuration: 1000,
+        }));
+        return;
+      }
+
+      if (activeLocation === HEADQUARTERS.id) {
+        setViewState((prev) => ({
+          ...prev,
+          longitude: HEADQUARTERS.coordinates[0],
+          latitude: HEADQUARTERS.coordinates[1],
+          zoom: 14,
           transitionDuration: 1000,
         }));
       }
@@ -201,17 +225,22 @@ export function SanDiegoMap({
           // Reduce opacity to 50% (127 out of 255)
           return [color[0], color[1], color[2], 127];
         },
-        getRadius: 250,
+        getRadius: (d) => (d.id === activeLocation ? 280 : 250),
         radiusMinPixels: 22,
         radiusMaxPixels: 40,
         pickable: true,
-        onClick: () => {
-          // Venues are not selectable, they're just markers
-          // Only location markers should trigger selection
+        onClick: (info) => {
+          if (info.object && onLocationClick) {
+            onLocationClick(info.object.id);
+          }
+        },
+        transitions: {
+          getRadius: 300,
         },
         extensions: [collisionFilterExtension],
         collisionEnabled: true,
-        getCollisionPriority: 2, // Higher priority than locations
+        getCollisionPriority: (d: { id: string | undefined }) =>
+          d.id === activeLocation ? 3 : 2, // Higher priority when selected
       }),
 
       // Venue emojis
@@ -223,15 +252,21 @@ export function SanDiegoMap({
           const iconData = emojiIconMapping[d.emoji];
           return iconData || { url: "", width: 64, height: 64 };
         },
-        getSize: 32,
+        getSize: (d) => (d.id === activeLocation ? 36 : 32),
         sizeUnits: "pixels",
         pickable: true,
-        onClick: () => {
-          // Venues are not selectable, they're just markers
+        onClick: (info) => {
+          if (info.object && onLocationClick) {
+            onLocationClick(info.object.id);
+          }
+        },
+        transitions: {
+          getSize: 300,
         },
         extensions: [collisionFilterExtension],
         collisionEnabled: true,
-        getCollisionPriority: 2, // Higher priority than locations
+        getCollisionPriority: (d: { id: string | undefined }) =>
+          d.id === activeLocation ? 3 : 2, // Higher priority when selected
       }),
 
       // Venue labels
@@ -240,7 +275,7 @@ export function SanDiegoMap({
         data: [IMMACULATA, HEADQUARTERS],
         getPosition: (d) => d.coordinates,
         getText: (d) => d.name,
-        getSize: 12,
+        getSize: (d) => (d.id === activeLocation ? 13 : 12),
         getColor: (d) => d.color,
         getAngle: 0,
         getTextAnchor: "middle",
@@ -251,9 +286,13 @@ export function SanDiegoMap({
         background: true,
         getBackgroundColor: [255, 255, 255, 200],
         backgroundPadding: [4, 2],
+        transitions: {
+          getSize: 300,
+        },
         extensions: [collisionFilterExtension],
         collisionEnabled: true,
-        getCollisionPriority: 2, // Higher priority than locations
+        getCollisionPriority: (d: { id: string | undefined }) =>
+          d.id === activeLocation ? 3 : 2, // Higher priority when selected
       }),
 
       // Location labels
@@ -284,7 +323,13 @@ export function SanDiegoMap({
           d.id === activeLocation ? 1 : 0,
       }),
     ];
-  }, [iconsReady, emojiIconMapping, activeLocation, onLocationClick, collisionFilterExtension]);
+  }, [
+    iconsReady,
+    emojiIconMapping,
+    activeLocation,
+    onLocationClick,
+    collisionFilterExtension,
+  ]);
 
   // Don't render the map until component is mounted and icons are ready
   if (!mounted || !iconsReady) {

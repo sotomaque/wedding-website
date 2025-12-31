@@ -1,4 +1,12 @@
-export function Footer() {
+interface FooterProps {
+  email?: string;
+  coupleName?: string;
+}
+
+export function Footer({
+  email = "wedding@example.com",
+  coupleName = "Helen & Enrique",
+}: FooterProps) {
   return (
     <footer className="py-12 px-6 bg-card border-t border-border">
       <div className="max-w-4xl mx-auto text-center space-y-4">
@@ -8,13 +16,15 @@ export function Footer() {
         <p className="text-muted-foreground text-sm">
           For questions, please contact us at{" "}
           <a
-            href="mailto:wedding@example.com"
+            href={`mailto:${email}`}
             className="underline hover:text-accent transition-colors"
           >
-            wedding@example.com
+            {email}
           </a>
         </p>
-        <p className="text-muted-foreground text-xs pt-4">© 2025 Helen & Enrique</p>
+        <p className="text-muted-foreground text-xs pt-4">
+          © {new Date().getFullYear()} {coupleName}
+        </p>
       </div>
     </footer>
   );

@@ -6,7 +6,13 @@ export interface NavLink {
 }
 
 export interface NavigationProps {
-  brandText: string;
+  brandText?: string;
+  brandImage?: {
+    src: string;
+    alt: string;
+    width?: number;
+    height?: number;
+  };
   leftLinks?: NavLink[];
   rightLinks?: NavLink[];
   className?: string;
@@ -15,6 +21,7 @@ export interface NavigationProps {
 
 function Navigation({
   brandText,
+  brandImage,
   leftLinks = [],
   rightLinks = [],
   className,
@@ -49,11 +56,21 @@ function Navigation({
           </div>
 
           {/* Brand/Logo */}
-          <a href="/" className="lg:text-center lg:justify-center">
+          <a href="/" className="lg:text-center lg:justify-center flex justify-start lg:justify-center">
             <span className="sr-only">Go home</span>
-            <span className="text-2xl lg:text-6xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground">
-              {brandText}
-            </span>
+            {brandImage ? (
+              <img
+                src={brandImage.src}
+                alt={brandImage.alt}
+                width={brandImage.width}
+                height={brandImage.height}
+                className="h-8 lg:h-16 w-auto object-contain"
+              />
+            ) : (
+              <span className="text-2xl lg:text-6xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground">
+                {brandText}
+              </span>
+            )}
           </a>
 
           {/* Right Navigation Links */}

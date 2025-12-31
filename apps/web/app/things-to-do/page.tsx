@@ -4,6 +4,8 @@ import { Footer } from "@workspace/ui/components/footer";
 import { Navigation } from "@workspace/ui/components/navigation";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { NAVIGATION_CONFIG } from "@/app/navigation-config";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { HEADQUARTERS, IMMACULATA, LOCATIONS } from "./constants";
 import { SanDiegoMap } from "./san-diego-map";
 
@@ -63,16 +65,9 @@ export default function ThingsToDoPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navigation
-        brandText="H & E"
-        leftLinks={[
-          { href: "/#story", label: "Our Story" },
-          { href: "/#details", label: "Details" },
-          { href: "/#schedule", label: "Schedule" },
-        ]}
-        rightLinks={[
-          { href: "/things-to-do", label: "Things To Do" },
-          { href: "/#rsvp", label: "RSVP" },
-        ]}
+        brandImage={NAVIGATION_CONFIG.brandImage}
+        leftLinks={NAVIGATION_CONFIG.leftLinks}
+        rightLinks={NAVIGATION_CONFIG.rightLinks}
       />
 
       <main className="grow">
@@ -208,10 +203,26 @@ export default function ThingsToDoPage() {
 
             {/* Right: Fixed Map */}
             <div className="hidden lg:block lg:w-1/2 lg:h-screen lg:sticky lg:top-0">
-              <SanDiegoMap
-                activeLocation={activeLocation}
-                onLocationClick={handleLocationClick}
-              />
+              <ErrorBoundary
+                fallback={
+                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                    <div className="text-center space-y-4 p-8">
+                      <p className="text-lg font-semibold text-foreground">
+                        Unable to load map
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Please check your internet connection and try refreshing
+                        the page.
+                      </p>
+                    </div>
+                  </div>
+                }
+              >
+                <SanDiegoMap
+                  activeLocation={activeLocation}
+                  onLocationClick={handleLocationClick}
+                />
+              </ErrorBoundary>
             </div>
           </div>
         </section>
