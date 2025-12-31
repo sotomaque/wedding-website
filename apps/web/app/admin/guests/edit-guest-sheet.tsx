@@ -24,7 +24,7 @@ import {
 import { Switch } from "@workspace/ui/components/switch";
 import { useToast } from "@workspace/ui/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { Database } from "@/lib/supabase/types";
 import {
@@ -47,15 +47,9 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<EditGuestFormData>({
-    resolver: zodResolver(editGuestSchema),
-    defaultValues: {
+  // Memoize initial values from DB to compare against current form values
+  const initialValues = useMemo(
+    (): EditGuestFormData => ({
       firstName: guest.first_name,
       lastName: guest.last_name || "",
       email: guest.email || "",
@@ -76,12 +70,54 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
         | "",
       family: guest.family || false,
       notes: guest.notes || "",
-    },
+    }),
+    [guest, plusOne],
+  );
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<EditGuestFormData>({
+    resolver: zodResolver(editGuestSchema),
+    defaultValues: initialValues,
   });
 
   const plusOneAllowed = watch("plusOneAllowed");
   const physicalInviteSent = watch("physicalInviteSent");
   const family = watch("family");
+
+  // Watch all form values to detect changes
+  const formValues = watch();
+
+  // Check if form has changed from initial DB values
+  const hasFormChanged = useMemo(() => {
+    const fieldsToCompare: (keyof EditGuestFormData)[] = [
+      "firstName",
+      "lastName",
+      "email",
+      "side",
+      "list",
+      "plusOneAllowed",
+      "plusOneFirstName",
+      "plusOneLastName",
+      "mailingAddress",
+      "physicalInviteSent",
+      "phoneNumber",
+      "whatsapp",
+      "preferredContactMethod",
+      "family",
+      "notes",
+    ];
+
+    return fieldsToCompare.some((field) => {
+      const initial = initialValues[field] ?? "";
+      const current = formValues[field] ?? "";
+      return initial !== current;
+    });
+  }, [formValues, initialValues]);
 
   function closeSheet() {
     const params = new URLSearchParams(searchParams.toString());
@@ -514,7 +550,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || !hasFormChanged}>
                 {isSubmitting ? "Updating..." : "Update Guest"}
               </Button>
             </SheetFooter>
