@@ -27,6 +27,11 @@ export function GuestsFilters() {
     | "true"
     | "false"
     | null;
+  const currentEmailStatus = searchParams.get("emailStatus") as
+    | "not_sent"
+    | "sent"
+    | "resent"
+    | null;
 
   function updateFilter(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
@@ -53,13 +58,15 @@ export function GuestsFilters() {
     currentStatus ||
     currentList ||
     currentFamily ||
-    currentIsPlusOne;
+    currentIsPlusOne ||
+    currentEmailStatus;
   const filterCount = [
     currentSide,
     currentStatus,
     currentList,
     currentFamily,
     currentIsPlusOne,
+    currentEmailStatus,
   ].filter(Boolean).length;
 
   return (
@@ -256,6 +263,51 @@ export function GuestsFilters() {
               </div>
             </div>
 
+            {/* Email Status Filter */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Email Status</span>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant={currentEmailStatus === null ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("emailStatus", null)}
+                  className="w-full"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={
+                    currentEmailStatus === "not_sent" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("emailStatus", "not_sent")}
+                  className="w-full"
+                >
+                  Not Sent
+                </Button>
+                <Button
+                  variant={
+                    currentEmailStatus === "sent" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("emailStatus", "sent")}
+                  className="w-full"
+                >
+                  Sent
+                </Button>
+                <Button
+                  variant={
+                    currentEmailStatus === "resent" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("emailStatus", "resent")}
+                  className="w-full"
+                >
+                  Resent
+                </Button>
+              </div>
+            </div>
+
             {/* Clear Filters Button */}
             {hasActiveFilters && (
               <Button
@@ -334,6 +386,23 @@ export function GuestsFilters() {
               <button
                 type="button"
                 onClick={() => updateFilter("isPlusOne", null)}
+                className="hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {currentEmailStatus && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+              Email:{" "}
+              {currentEmailStatus === "not_sent"
+                ? "Not Sent"
+                : currentEmailStatus === "sent"
+                  ? "Sent"
+                  : "Resent"}
+              <button
+                type="button"
+                onClick={() => updateFilter("emailStatus", null)}
                 className="hover:text-foreground"
               >
                 <X className="h-3 w-3" />

@@ -13,12 +13,14 @@ interface GetGuestsParams {
   list?: "a" | "b" | "c";
   family?: "true" | "false";
   isPlusOne?: "true" | "false";
+  emailStatus?: "not_sent" | "sent" | "resent";
   sortBy?:
     | "first_name"
     | "email"
     | "side"
     | "list"
     | "rsvp_status"
+    | "number_of_resends"
     | "created_at";
   sortOrder?: "asc" | "desc";
 }
@@ -48,6 +50,16 @@ export async function getGuests(
 
     if (params.isPlusOne !== undefined) {
       query = query.where("is_plus_one", "=", params.isPlusOne === "true");
+    }
+
+    if (params.emailStatus) {
+      if (params.emailStatus === "not_sent") {
+        query = query.where("number_of_resends", "=", 0);
+      } else if (params.emailStatus === "sent") {
+        query = query.where("number_of_resends", "=", 1);
+      } else if (params.emailStatus === "resent") {
+        query = query.where("number_of_resends", ">", 1);
+      }
     }
 
     // Apply sorting

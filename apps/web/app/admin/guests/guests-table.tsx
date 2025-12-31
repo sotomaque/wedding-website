@@ -35,6 +35,7 @@ type SortableColumn =
   | "side"
   | "list"
   | "rsvp_status"
+  | "number_of_resends"
   | "plus_one_allowed"
   | "family"
   | "notes";

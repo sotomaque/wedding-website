@@ -13,12 +13,14 @@ interface PageProps {
     list?: "a" | "b" | "c";
     family?: "true" | "false";
     isPlusOne?: "true" | "false";
+    emailStatus?: "not_sent" | "sent" | "resent";
     sortBy?:
       | "first_name"
       | "email"
       | "side"
       | "list"
       | "rsvp_status"
+      | "number_of_resends"
       | "created_at";
     sortOrder?: "asc" | "desc";
     page?: string;
