@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getWeddingInvitationEmail } from "@/lib/email/templates/wedding-invitation";
 import { generateInviteCode } from "@/lib/utils/invite-code";
 
 /**
@@ -190,84 +191,23 @@ export async function POST(request: NextRequest) {
     // Send email if requested
     if (sendEmail && env.RESEND_API_KEY && env.RSVP_EMAIL) {
       const resend = new Resend(env.RESEND_API_KEY);
-      const rsvpUrl = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/rsvp?code=${inviteCode}`;
+      const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const rsvpUrl = `${appUrl}/rsvp?code=${inviteCode}`;
 
       try {
+        const emailHtml = getWeddingInvitationEmail({
+          firstName,
+          lastName,
+          inviteCode,
+          rsvpUrl,
+          appUrl,
+        });
+
         await resend.emails.send({
           from: "Wedding Invitation <onboarding@resend.dev>",
           to: email,
           subject: "You're Invited to Our Wedding! 💕",
-          html: `
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Wedding Invitation</title>
-              </head>
-              <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-                <div style="max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                  <!-- Header -->
-                  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 60px 30px; text-align: center;">
-                    <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 600; letter-spacing: -0.5px;">
-                      You're Invited!
-                    </h1>
-                    <p style="margin: 15px 0 0; color: rgba(255,255,255,0.95); font-size: 18px; font-weight: 300;">
-                      Join us in celebrating our special day
-                    </p>
-                  </div>
-
-                  <!-- Content -->
-                  <div style="padding: 50px 40px;">
-                    <p style="margin: 0 0 25px; color: #1a1a1a; font-size: 16px; line-height: 1.6;">
-                      Dear ${firstName}${lastName ? ` ${lastName}` : ""},
-                    </p>
-
-                    <p style="margin: 0 0 30px; color: #1a1a1a; font-size: 16px; line-height: 1.6;">
-                      We're thrilled to invite you to our wedding celebration! Your presence would mean the world to us as we begin this new chapter together.
-                    </p>
-
-                    <!-- RSVP Box -->
-                    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-left: 4px solid #667eea; padding: 25px; margin: 30px 0; border-radius: 4px;">
-                      <p style="margin: 0 0 12px; color: #495057; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Your Invitation Code
-                      </p>
-                      <p style="margin: 0 0 20px;">
-                        <span style="display: inline-block; background: #ffffff; padding: 12px 20px; border-radius: 6px; font-size: 24px; font-weight: 700; color: #667eea; letter-spacing: 2px; font-family: 'Courier New', monospace; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                          ${inviteCode}
-                        </span>
-                      </p>
-                      <p style="margin: 0; color: #6c757d; font-size: 14px; line-height: 1.5;">
-                        Use this code to RSVP and let us know if you'll be joining us.
-                      </p>
-                    </div>
-
-                    <!-- RSVP Button -->
-                    <div style="text-align: center; margin: 40px 0;">
-                      <a href="${rsvpUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">
-                        RSVP Now
-                      </a>
-                    </div>
-
-                    <p style="margin: 30px 0 0; color: #6c757d; font-size: 14px; line-height: 1.6; text-align: center;">
-                      Can't click the button? Copy and paste this link into your browser:<br>
-                      <a href="${rsvpUrl}" style="color: #667eea; text-decoration: none; word-break: break-all;">${rsvpUrl}</a>
-                    </p>
-                  </div>
-
-                  <!-- Footer -->
-                  <div style="background-color: #f8f9fa; padding: 30px 40px; text-align: center; border-top: 1px solid #e9ecef;">
-                    <p style="margin: 0 0 10px; color: #1a1a1a; font-size: 16px; font-weight: 500;">
-                      We can't wait to celebrate with you! 💕
-                    </p>
-                    <p style="margin: 0; color: #6c757d; font-size: 13px;">
-                      If you have any questions, please don't hesitate to reach out.
-                    </p>
-                  </div>
-                </div>
-              </body>
-            </html>
-          `,
+          html: emailHtml,
         });
       } catch (emailError) {
         console.error("Error sending email:", emailError);

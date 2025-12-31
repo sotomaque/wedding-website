@@ -1,10 +1,12 @@
 "use client";
 
 import { Navigation } from "@workspace/ui/components/navigation";
+import { useToast } from "@workspace/ui/hooks/use-toast";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Database } from "@/lib/supabase/types";
 import { NAVIGATION_CONFIG } from "../navigation-config";
+import { verifyInviteCode } from "./actions";
 import { CodeEntry } from "./code-entry";
 import { RSVPForm } from "./rsvp-form";
 
@@ -41,12 +43,12 @@ const PHOTO_PATHS = [
 ];
 
 export function RSVPClient({ initialCode }: RSVPClientProps) {
-  const [step, setStep] = useState<"code" | "form">(
-    initialCode ? "form" : "code",
-  );
+  const [step, setStep] = useState<"code" | "form">("code");
   const [inviteCode, setInviteCode] = useState<string>(initialCode || "");
   const [guests, setGuests] = useState<Guest[]>([]);
   const [backgroundImage, setBackgroundImage] = useState("");
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Select a random photo on mount
@@ -56,6 +58,42 @@ export function RSVPClient({ initialCode }: RSVPClientProps) {
       setBackgroundImage(randomPhoto);
     }
   }, []);
+
+  // Auto-verify code if provided in URL
+  useEffect(() => {
+    async function autoVerifyCode() {
+      if (initialCode && initialCode.length >= 8 && guests.length === 0) {
+        setIsVerifyingCode(true);
+        try {
+          const result = await verifyInviteCode(initialCode);
+          if (result.success && result.guests) {
+            setGuests(result.guests);
+            setStep("form");
+          } else {
+            // Invalid code - show code entry form
+            setStep("code");
+            toast({
+              variant: "destructive",
+              title: "Invalid Code",
+              description:
+                result.error || "The invite code in the URL is not valid.",
+            });
+          }
+        } catch (error) {
+          console.error("Error auto-verifying code:", error);
+          setStep("code");
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to verify invite code",
+          });
+        } finally {
+          setIsVerifyingCode(false);
+        }
+      }
+    }
+    autoVerifyCode();
+  }, [initialCode, guests.length, toast]);
 
   function handleCodeSuccess(code: string, guestList: Guest[]) {
     setInviteCode(code);
@@ -122,8 +160,18 @@ export function RSVPClient({ initialCode }: RSVPClientProps) {
               </div>
             )}
 
+            {/* Loading State */}
+            {isVerifyingCode && (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-foreground" />
+                <p className="mt-4 text-muted-foreground">
+                  Verifying your invite code...
+                </p>
+              </div>
+            )}
+
             {/* Step 1: Enter Invite Code */}
-            {step === "code" && (
+            {step === "code" && !isVerifyingCode && (
               <CodeEntry
                 initialCode={initialCode}
                 onSuccess={handleCodeSuccess}
@@ -131,7 +179,7 @@ export function RSVPClient({ initialCode }: RSVPClientProps) {
             )}
 
             {/* Step 2: RSVP Form */}
-            {step === "form" && guests.length > 0 && (
+            {step === "form" && guests.length > 0 && !isVerifyingCode && (
               <RSVPForm
                 guests={guests}
                 inviteCode={inviteCode}
