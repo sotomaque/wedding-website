@@ -31,7 +31,9 @@
     "@deck.gl/core": "^9.2.5",
     "@deck.gl/layers": "^9.2.5",
     "@deck.gl/react": "^9.2.5",
+    "@t3-oss/env-nextjs": "^0.13.10",
     "mapbox-gl": "^3.17.0",
-    "react-map-gl": "^8.1.0"
+    "react-map-gl": "^8.1.0",
+    "zod": "^4.3.2"
   }
 }

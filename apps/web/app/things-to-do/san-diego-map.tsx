@@ -6,6 +6,7 @@ import DeckGL from "@deck.gl/react";
 import { useEffect, useState } from "react";
 import MapGL from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { env } from "@/env";
 import { HEADQUARTERS, IMMACULATA, LOCATIONS } from "./constants";
 
 interface SanDiegoMapProps {
@@ -153,10 +154,7 @@ export function SanDiegoMap({
       >
         <MapGL
           mapStyle="mapbox://styles/mapbox/light-v11"
-          mapboxAccessToken={
-            process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
-            "pk.eyJ1Ijoic290b21hcXVlIiwiYSI6ImNtanRsZ3o4ZjQyNnAzZXE2anJkaG0wOTIifQ.A4SxeBA4SJvmjkceZx25ZQ"
-          }
+          mapboxAccessToken={env.NEXT_PUBLIC_MAPBOX_TOKEN}
         />
       </DeckGL>
 
