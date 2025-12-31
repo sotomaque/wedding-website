@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@workspace/ui/lib/utils";
 
 export interface NavLink {
@@ -56,7 +58,10 @@ function Navigation({
           </div>
 
           {/* Brand/Logo */}
-          <a href="/" className="lg:text-center lg:justify-center flex justify-start lg:justify-center">
+          <a
+            href="/"
+            className="lg:text-center lg:justify-center flex justify-start lg:justify-center"
+          >
             <span className="sr-only">Go home</span>
             {brandImage ? (
               <img

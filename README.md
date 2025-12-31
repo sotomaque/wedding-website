@@ -60,11 +60,22 @@ RSVP_EMAIL=your-email@example.com
 
 # Required for displaying contact email in footer
 NEXT_PUBLIC_RSVP_EMAIL=your-email@example.com
+
+# Required for admin authentication (optional - only needed for /admin access)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+ADMIN_EMAILS=your-email@example.com,partner-email@example.com
 ```
 
 **Getting API Keys:**
 - **Mapbox Token**: Get your token at [https://account.mapbox.com/access-tokens/](https://account.mapbox.com/access-tokens/)
 - **Resend API Key**: Get your API key at [https://resend.com/api-keys](https://resend.com/api-keys)
+- **Clerk Keys** (Optional):
+  1. Create a free account at [https://clerk.com](https://clerk.com)
+  2. Create a new application
+  3. Enable Email and Google OAuth as sign-in methods
+  4. Copy your Publishable and Secret keys from the dashboard
+  5. Add your admin emails to `ADMIN_EMAILS` (comma-separated)
 
 4. Update site configuration:
 Edit `apps/web/app/site-config.ts` to update:
@@ -162,6 +173,35 @@ Update `apps/web/app/navigation-config.ts` to modify navigation links and brandi
 ### Photos
 
 Place your wedding photos in `apps/web/public/our-photos/` and update the `HERO_PHOTOS` array in `apps/web/app/constants.ts`.
+
+## Admin Dashboard
+
+The website includes a protected admin area at `/admin` for managing wedding-related tasks.
+
+### Features:
+- **Clerk Authentication**: Secure sign-in with email magic link and Google OAuth
+- **Email-based Authorization**: Only specified admin emails can access the dashboard
+- **Persistent Sessions**: Stay signed in across browser sessions
+- **Protected Routes**: Middleware automatically protects all `/admin/*` routes
+
+### Accessing the Admin Dashboard:
+1. Navigate to `/admin` in your browser
+2. Sign in using email magic link or Google OAuth
+3. Only emails listed in `ADMIN_EMAILS` environment variable will be granted access
+4. Unauthorized users will see an access denied message
+
+### Setting Up Clerk:
+1. Create a free account at [Clerk.com](https://clerk.com)
+2. Create a new application in the Clerk dashboard
+3. Enable the following authentication methods:
+   - Email (magic link)
+   - Google OAuth
+4. Copy your API keys and add them to `.env.local`:
+   ```env
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+   CLERK_SECRET_KEY=sk_test_...
+   ADMIN_EMAILS=your-email@example.com,partner-email@example.com
+   ```
 
 ## Deployment
 
