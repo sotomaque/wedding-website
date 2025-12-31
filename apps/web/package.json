@@ -17,6 +17,7 @@
     "@deck.gl/layers": "^9.2.5",
     "@deck.gl/react": "^9.2.5",
     "@workspace/ui": "workspace:*",
+    "embla-carousel-react": "^8.6.0",
     "lucide-react": "^0.475.0",
     "mapbox-gl": "^3.17.0",
     "next": "16.0.10",

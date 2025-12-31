@@ -47,8 +47,16 @@ export function SanDiegoMap({
   const [emojiIconMapping, setEmojiIconMapping] = useState<
     Record<string, { url: string; width: number; height: number }>
   >({});
+  const [iconsReady, setIconsReady] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     // Generate emoji icons only on client side where document is available
     const mapping: Record<
       string,
@@ -57,32 +65,44 @@ export function SanDiegoMap({
 
     // Location emojis
     for (const location of LOCATIONS) {
-      mapping[location.emoji] = {
-        url: createEmojiIcon(location.emoji, 64),
+      const url = createEmojiIcon(location.emoji, 64);
+      if (url) {
+        mapping[location.emoji] = {
+          url,
+          width: 64,
+          height: 64,
+        };
+      }
+    }
+
+    // Venue emojis
+    const immaculataUrl = createEmojiIcon(IMMACULATA.emoji, 64);
+    if (immaculataUrl) {
+      mapping[IMMACULATA.emoji] = {
+        url: immaculataUrl,
         width: 64,
         height: 64,
       };
     }
 
-    // Venue emojis
-    mapping[IMMACULATA.emoji] = {
-      url: createEmojiIcon(IMMACULATA.emoji, 64),
-      width: 64,
-      height: 64,
-    };
-    mapping[HEADQUARTERS.emoji] = {
-      url: createEmojiIcon(HEADQUARTERS.emoji, 64),
-      width: 64,
-      height: 64,
-    };
+    const headquartersUrl = createEmojiIcon(HEADQUARTERS.emoji, 64);
+    if (headquartersUrl) {
+      mapping[HEADQUARTERS.emoji] = {
+        url: headquartersUrl,
+        width: 64,
+        height: 64,
+      };
+    }
 
     setEmojiIconMapping(mapping);
-  }, []);
+    // Set icons ready after ensuring they're generated
+    setIconsReady(true);
+  }, [mounted]);
 
   // Create stable collision filter extension instance
   const collisionFilterExtension = useMemo(
     () => new CollisionFilterExtension(),
-    []
+    [],
   );
 
   // Update view when active location changes
@@ -110,155 +130,170 @@ export function SanDiegoMap({
     }
   }, [activeLocation]);
 
-  const layers = [
-    // Location circles (rendered before venues so venues appear on top)
-    new ScatterplotLayer({
-      id: "location-circles",
-      data: LOCATIONS,
-      getPosition: (d) => d.coordinates,
-      getFillColor: (d) => {
-        const color = d.color;
-        // Reduce opacity to 50% (127 out of 255)
-        return [color[0], color[1], color[2], 127];
-      },
-      getRadius: (d) => (d.id === activeLocation ? 250 : 200),
-      radiusMinPixels: 20,
-      radiusMaxPixels: 35,
-      pickable: true,
-      onClick: (info) => {
-        if (info.object && onLocationClick) {
-          onLocationClick(info.object.id);
-        }
-      },
-      transitions: {
-        getRadius: 300,
-      },
-      extensions: [collisionFilterExtension],
-      collisionEnabled: true,
-      getCollisionPriority: (d: { id: string | undefined }) =>
-        d.id === activeLocation ? 1 : 0,
-    }),
+  // Create layers only when icons are ready
+  const layers = useMemo(() => {
+    if (!iconsReady || Object.keys(emojiIconMapping).length === 0) {
+      return [];
+    }
 
-    // Location emojis
-    new IconLayer({
-      id: "location-emojis",
-      data: LOCATIONS,
-      getPosition: (d) => d.coordinates,
-      getIcon: (d) => ({
-        url: emojiIconMapping[d.emoji]?.url || "",
-        width: 64,
-        height: 64,
+    return [
+      // Location circles (rendered before venues so venues appear on top)
+      new ScatterplotLayer({
+        id: "location-circles",
+        data: LOCATIONS,
+        getPosition: (d) => d.coordinates,
+        getFillColor: (d) => {
+          const color = d.color;
+          // Reduce opacity to 50% (127 out of 255)
+          return [color[0], color[1], color[2], 127];
+        },
+        getRadius: (d) => (d.id === activeLocation ? 250 : 200),
+        radiusMinPixels: 20,
+        radiusMaxPixels: 35,
+        pickable: true,
+        onClick: (info) => {
+          if (info.object && onLocationClick) {
+            onLocationClick(info.object.id);
+          }
+        },
+        transitions: {
+          getRadius: 300,
+        },
+        extensions: [collisionFilterExtension],
+        collisionEnabled: true,
+        getCollisionPriority: (d: { id: string | undefined }) =>
+          d.id === activeLocation ? 1 : 0,
       }),
-      getSize: (d) => (d.id === activeLocation ? 32 : 28),
-      sizeUnits: "pixels",
-      pickable: true,
-      onClick: (info) => {
-        if (info.object && onLocationClick) {
-          onLocationClick(info.object.id);
-        }
-      },
-      transitions: {
-        getSize: 300,
-      },
-      extensions: [collisionFilterExtension],
-      collisionEnabled: true,
-      getCollisionPriority: (d: { id: string | undefined }) =>
-        d.id === activeLocation ? 1 : 0,
-    }),
 
-    // Venue circles
-    new ScatterplotLayer({
-      id: "venue-circles",
-      data: [IMMACULATA, HEADQUARTERS],
-      getPosition: (d) => d.coordinates,
-      getFillColor: (d) => {
-        const color = d.color;
-        // Reduce opacity to 50% (127 out of 255)
-        return [color[0], color[1], color[2], 127];
-      },
-      getRadius: 250,
-      radiusMinPixels: 22,
-      radiusMaxPixels: 40,
-      pickable: true,
-      onClick: () => {
-        // Venues are not selectable, they're just markers
-        // Only location markers should trigger selection
-      },
-      extensions: [collisionFilterExtension],
-      collisionEnabled: true,
-      getCollisionPriority: 2, // Higher priority than locations
-    }),
-
-    // Venue emojis
-    new IconLayer({
-      id: "venue-emojis",
-      data: [IMMACULATA, HEADQUARTERS],
-      getPosition: (d) => d.coordinates,
-      getIcon: (d) => ({
-        url: emojiIconMapping[d.emoji]?.url || "",
-        width: 64,
-        height: 64,
+      // Location emojis
+      new IconLayer({
+        id: "location-emojis",
+        data: LOCATIONS,
+        getPosition: (d) => d.coordinates,
+        getIcon: (d) => {
+          const iconData = emojiIconMapping[d.emoji];
+          return iconData || { url: "", width: 64, height: 64 };
+        },
+        getSize: (d) => (d.id === activeLocation ? 32 : 28),
+        sizeUnits: "pixels",
+        pickable: true,
+        onClick: (info) => {
+          if (info.object && onLocationClick) {
+            onLocationClick(info.object.id);
+          }
+        },
+        transitions: {
+          getSize: 300,
+        },
+        extensions: [collisionFilterExtension],
+        collisionEnabled: true,
+        getCollisionPriority: (d: { id: string | undefined }) =>
+          d.id === activeLocation ? 1 : 0,
       }),
-      getSize: 32,
-      sizeUnits: "pixels",
-      pickable: true,
-      onClick: () => {
-        // Venues are not selectable, they're just markers
-      },
-      extensions: [collisionFilterExtension],
-      collisionEnabled: true,
-      getCollisionPriority: 2, // Higher priority than locations
-    }),
 
-    // Venue labels
-    new TextLayer({
-      id: "venue-labels",
-      data: [IMMACULATA, HEADQUARTERS],
-      getPosition: (d) => d.coordinates,
-      getText: (d) => d.name,
-      getSize: 12,
-      getColor: (d) => d.color,
-      getAngle: 0,
-      getTextAnchor: "middle",
-      getAlignmentBaseline: "top",
-      getPixelOffset: [0, 25],
-      fontFamily: "system-ui, -apple-system, sans-serif",
-      fontWeight: 600,
-      background: true,
-      getBackgroundColor: [255, 255, 255, 200],
-      backgroundPadding: [4, 2],
-      extensions: [collisionFilterExtension],
-      collisionEnabled: true,
-      getCollisionPriority: 2, // Higher priority than locations
-    }),
+      // Venue circles
+      new ScatterplotLayer({
+        id: "venue-circles",
+        data: [IMMACULATA, HEADQUARTERS],
+        getPosition: (d) => d.coordinates,
+        getFillColor: (d) => {
+          const color = d.color;
+          // Reduce opacity to 50% (127 out of 255)
+          return [color[0], color[1], color[2], 127];
+        },
+        getRadius: 250,
+        radiusMinPixels: 22,
+        radiusMaxPixels: 40,
+        pickable: true,
+        onClick: () => {
+          // Venues are not selectable, they're just markers
+          // Only location markers should trigger selection
+        },
+        extensions: [collisionFilterExtension],
+        collisionEnabled: true,
+        getCollisionPriority: 2, // Higher priority than locations
+      }),
 
-    // Location labels
-    new TextLayer({
-      id: "location-labels",
-      data: LOCATIONS,
-      getPosition: (d) => d.coordinates,
-      getText: (d) => d.name,
-      getSize: (d) => (d.id === activeLocation ? 13 : 11),
-      getColor: (d) => (d.id === activeLocation ? d.color : [64, 64, 64, 255]),
-      getAngle: 0,
-      getTextAnchor: "middle",
-      getAlignmentBaseline: "top",
-      getPixelOffset: [0, 10],
-      fontFamily: "system-ui, -apple-system, sans-serif",
-      fontWeight: 600,
-      background: true,
-      getBackgroundColor: [255, 255, 255, 220],
-      backgroundPadding: [4, 2],
-      transitions: {
-        getSize: 300,
-        getColor: 300,
-      },
-      extensions: [collisionFilterExtension],
-      collisionEnabled: true,
-      getCollisionPriority: (d: { id: string | undefined }) =>
-        d.id === activeLocation ? 1 : 0,
-    }),
-  ];
+      // Venue emojis
+      new IconLayer({
+        id: "venue-emojis",
+        data: [IMMACULATA, HEADQUARTERS],
+        getPosition: (d) => d.coordinates,
+        getIcon: (d) => {
+          const iconData = emojiIconMapping[d.emoji];
+          return iconData || { url: "", width: 64, height: 64 };
+        },
+        getSize: 32,
+        sizeUnits: "pixels",
+        pickable: true,
+        onClick: () => {
+          // Venues are not selectable, they're just markers
+        },
+        extensions: [collisionFilterExtension],
+        collisionEnabled: true,
+        getCollisionPriority: 2, // Higher priority than locations
+      }),
+
+      // Venue labels
+      new TextLayer({
+        id: "venue-labels",
+        data: [IMMACULATA, HEADQUARTERS],
+        getPosition: (d) => d.coordinates,
+        getText: (d) => d.name,
+        getSize: 12,
+        getColor: (d) => d.color,
+        getAngle: 0,
+        getTextAnchor: "middle",
+        getAlignmentBaseline: "top",
+        getPixelOffset: [0, 25],
+        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontWeight: 600,
+        background: true,
+        getBackgroundColor: [255, 255, 255, 200],
+        backgroundPadding: [4, 2],
+        extensions: [collisionFilterExtension],
+        collisionEnabled: true,
+        getCollisionPriority: 2, // Higher priority than locations
+      }),
+
+      // Location labels
+      new TextLayer({
+        id: "location-labels",
+        data: LOCATIONS,
+        getPosition: (d) => d.coordinates,
+        getText: (d) => d.name,
+        getSize: (d) => (d.id === activeLocation ? 13 : 11),
+        getColor: (d) =>
+          d.id === activeLocation ? d.color : [64, 64, 64, 255],
+        getAngle: 0,
+        getTextAnchor: "middle",
+        getAlignmentBaseline: "top",
+        getPixelOffset: [0, 10],
+        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontWeight: 600,
+        background: true,
+        getBackgroundColor: [255, 255, 255, 220],
+        backgroundPadding: [4, 2],
+        transitions: {
+          getSize: 300,
+          getColor: 300,
+        },
+        extensions: [collisionFilterExtension],
+        collisionEnabled: true,
+        getCollisionPriority: (d: { id: string | undefined }) =>
+          d.id === activeLocation ? 1 : 0,
+      }),
+    ];
+  }, [iconsReady, emojiIconMapping, activeLocation, onLocationClick, collisionFilterExtension]);
+
+  // Don't render the map until component is mounted and icons are ready
+  if (!mounted || !iconsReady) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-muted">
+        <p className="text-muted-foreground">Loading map...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full">
@@ -278,12 +313,12 @@ export function SanDiegoMap({
       </DeckGL>
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-white p-4 rounded-lg shadow-md border border-neutral-200 max-h-[calc(100vh-2rem)] overflow-y-auto">
-        <h4 className="font-semibold text-sm mb-3 text-neutral-900">Legend</h4>
+      <div className="absolute bottom-4 left-4 bg-card p-4 rounded-lg shadow-md border border-border max-h-[calc(100vh-2rem)] overflow-y-auto">
+        <h4 className="font-semibold text-sm mb-3 text-foreground">Legend</h4>
         <div className="space-y-3">
           {/* Venues Section */}
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-neutral-700 mb-1">
+            <p className="text-xs font-medium text-foreground mb-1">
               Wedding Venues
             </p>
             <div className="flex items-center gap-2">
@@ -295,7 +330,7 @@ export function SanDiegoMap({
               >
                 {IMMACULATA.emoji}
               </div>
-              <span className="text-xs text-neutral-700">
+              <span className="text-xs text-muted-foreground">
                 {IMMACULATA.name} (Ceremony)
               </span>
             </div>
@@ -308,18 +343,18 @@ export function SanDiegoMap({
               >
                 {HEADQUARTERS.emoji}
               </div>
-              <span className="text-xs text-neutral-700">
+              <span className="text-xs text-muted-foreground">
                 {HEADQUARTERS.name} (Reception)
               </span>
             </div>
           </div>
 
           {/* Divider */}
-          <div className="border-t border-neutral-200" />
+          <div className="border-t border-border" />
 
           {/* Things to Do Section */}
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-neutral-700 mb-1">
+            <p className="text-xs font-medium text-foreground mb-1">
               Things to Do
             </p>
             {LOCATIONS.map((location) => (
@@ -327,7 +362,7 @@ export function SanDiegoMap({
                 type="button"
                 key={location.id}
                 onClick={() => onLocationClick?.(location.id)}
-                className="flex items-center gap-2 w-full hover:bg-neutral-50 rounded px-1 py-0.5 transition-colors cursor-pointer"
+                className="flex items-center gap-2 w-full hover:bg-muted rounded px-1 py-0.5 transition-colors cursor-pointer"
               >
                 <div
                   className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs"
@@ -341,7 +376,7 @@ export function SanDiegoMap({
                   className={`text-xs ${
                     location.id === activeLocation
                       ? "font-semibold"
-                      : "text-neutral-700"
+                      : "text-muted-foreground"
                   }`}
                   style={
                     location.id === activeLocation

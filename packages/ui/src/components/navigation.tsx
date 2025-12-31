@@ -23,12 +23,12 @@ function Navigation({
   return (
     <header
       className={cn(
-        "sticky top-0 w-full z-50 bg-neutral-50 py-4 lg:py-8",
+        "sticky top-0 w-full z-50 bg-background border-b border-border py-4 lg:py-8",
         className,
       )}
     >
       <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full">
-        <nav className="grid grid-cols-2 lg:grid-cols-3 items-center text-neutral-900">
+        <nav className="grid grid-cols-2 lg:grid-cols-3 items-center text-foreground">
           {/* Left Navigation Links */}
           <div className="hidden lg:flex items-center gap-6 mr-auto">
             {leftLinks.map((link) => {
@@ -38,8 +38,8 @@ function Navigation({
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "text-sm uppercase transition-colors hover:text-neutral-600",
-                    isActive && "font-bold",
+                    "text-sm uppercase transition-colors hover:text-accent",
+                    isActive && "font-bold text-accent",
                   )}
                 >
                   {link.label}
@@ -51,7 +51,7 @@ function Navigation({
           {/* Brand/Logo */}
           <a href="/" className="lg:text-center lg:justify-center">
             <span className="sr-only">Go home</span>
-            <span className="text-2xl lg:text-6xl font-medium tracking-tight font-serif uppercase focus:outline-none text-neutral-900">
+            <span className="text-2xl lg:text-6xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground">
               {brandText}
             </span>
           </a>
@@ -65,8 +65,8 @@ function Navigation({
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "text-sm uppercase transition-colors hover:text-neutral-600",
-                    isActive && "font-bold",
+                    "text-sm uppercase transition-colors hover:text-accent",
+                    isActive && "font-bold text-accent",
                   )}
                 >
                   {link.label}
@@ -78,10 +78,10 @@ function Navigation({
           {/* Mobile Menu */}
           <div className="lg:hidden ml-auto">
             <details className="group">
-              <summary className="list-none text-2xl font-medium tracking-tight font-serif uppercase focus:outline-none text-neutral-900 cursor-pointer">
+              <summary className="list-none text-2xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground cursor-pointer">
                 Menu
               </summary>
-              <div className="absolute top-full left-0 right-0 bg-neutral-50 md:mt-4 overflow-hidden transition-all duration-900 ease-in-out group-open:opacity-100 group-open:max-h-[600px] opacity-0 max-h-0">
+              <div className="absolute top-full left-0 right-0 bg-background border-b border-border md:mt-4 overflow-hidden transition-all duration-900 ease-in-out group-open:opacity-100 group-open:max-h-[600px] opacity-0 max-h-0">
                 <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-4 flex flex-col gap-4">
                   {leftLinks.map((link) => {
                     const isActive = link.href === `#${activeSection}`;
@@ -98,8 +98,8 @@ function Navigation({
                           }
                         }}
                         className={cn(
-                          "text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-neutral-900",
-                          isActive && "font-bold",
+                          "text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground",
+                          isActive && "font-bold text-accent",
                         )}
                       >
                         {link.label}
@@ -121,8 +121,8 @@ function Navigation({
                           }
                         }}
                         className={cn(
-                          "text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-neutral-900",
-                          isActive && "font-bold",
+                          "text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground",
+                          isActive && "font-bold text-accent",
                         )}
                       >
                         {link.label}
