@@ -29,6 +29,13 @@ function Navigation({
   className,
   activeSection = "",
 }: NavigationProps) {
+  // Helper to check if link is active (handles both /#section and #section formats)
+  const isLinkActive = (href: string) => {
+    if (!activeSection) return false;
+    const hash = href.includes('#') ? href.split('#')[1] : '';
+    return hash === activeSection;
+  };
+
   return (
     <header
       className={cn(
@@ -41,7 +48,7 @@ function Navigation({
           {/* Left Navigation Links */}
           <div className="hidden lg:flex items-center gap-6 mr-auto">
             {leftLinks.map((link) => {
-              const isActive = link.href === `#${activeSection}`;
+              const isActive = isLinkActive(link.href);
               return (
                 <a
                   key={link.href}
@@ -81,7 +88,7 @@ function Navigation({
           {/* Right Navigation Links */}
           <div className="hidden lg:flex items-center gap-6 ml-auto">
             {rightLinks.map((link) => {
-              const isActive = link.href === `#${activeSection}`;
+              const isActive = isLinkActive(link.href);
               return (
                 <a
                   key={link.href}
@@ -106,7 +113,7 @@ function Navigation({
               <div className="absolute top-full left-0 right-0 bg-background border-b border-border md:mt-4 overflow-hidden transition-all duration-900 ease-in-out group-open:opacity-100 group-open:max-h-[600px] opacity-0 max-h-0">
                 <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-4 flex flex-col gap-4">
                   {leftLinks.map((link) => {
-                    const isActive = link.href === `#${activeSection}`;
+                    const isActive = isLinkActive(link.href);
                     return (
                       <a
                         key={link.href}
@@ -129,7 +136,7 @@ function Navigation({
                     );
                   })}
                   {rightLinks.map((link) => {
-                    const isActive = link.href === `#${activeSection}`;
+                    const isActive = isLinkActive(link.href);
                     return (
                       <a
                         key={link.href}
