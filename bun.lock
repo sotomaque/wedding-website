@@ -27,6 +27,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@deck.gl/core": "^9.2.5",
+        "@deck.gl/extensions": "^9.2.5",
         "@deck.gl/layers": "^9.2.5",
         "@deck.gl/react": "^9.2.5",
         "@workspace/ui": "workspace:*",
@@ -127,6 +128,8 @@
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 
     "@deck.gl/core": ["@deck.gl/core@9.2.5", "", { "dependencies": { "@loaders.gl/core": "^4.2.0", "@loaders.gl/images": "^4.2.0", "@luma.gl/constants": "^9.2.4", "@luma.gl/core": "^9.2.4", "@luma.gl/engine": "^9.2.4", "@luma.gl/shadertools": "^9.2.4", "@luma.gl/webgl": "^9.2.4", "@math.gl/core": "^4.1.0", "@math.gl/sun": "^4.1.0", "@math.gl/types": "^4.1.0", "@math.gl/web-mercator": "^4.1.0", "@probe.gl/env": "^4.1.0", "@probe.gl/log": "^4.1.0", "@probe.gl/stats": "^4.1.0", "@types/offscreencanvas": "^2019.6.4", "gl-matrix": "^3.0.0", "mjolnir.js": "^3.0.0" } }, "sha512-/PGNX4Wd7rEahYi6ivC4WExJ3U6Hqgl42R83guNzTL6gM2+02PUQRoQG9QdFagj5d6kWYVN0LVJME2a5WQmzOg=="],
+
+    "@deck.gl/extensions": ["@deck.gl/extensions@9.2.5", "", { "dependencies": { "@luma.gl/constants": "^9.2.4", "@luma.gl/shadertools": "^9.2.4", "@math.gl/core": "^4.1.0" }, "peerDependencies": { "@deck.gl/core": "~9.2.0", "@luma.gl/core": "~9.2.4", "@luma.gl/engine": "~9.2.4" } }, "sha512-GJRPmG+GD1tdblpplQlb4jlNywRb8aQYPEowPLKxglXSGRzgpOrqJYI1PcJhCowdL7/S8bCY1ay8nkXE3gRsgw=="],
 
     "@deck.gl/layers": ["@deck.gl/layers@9.2.5", "", { "dependencies": { "@loaders.gl/images": "^4.2.0", "@loaders.gl/schema": "^4.2.0", "@luma.gl/shadertools": "^9.2.4", "@mapbox/tiny-sdf": "^2.0.5", "@math.gl/core": "^4.1.0", "@math.gl/polygon": "^4.1.0", "@math.gl/web-mercator": "^4.1.0", "earcut": "^2.2.4" }, "peerDependencies": { "@deck.gl/core": "~9.2.0", "@loaders.gl/core": "^4.2.0", "@luma.gl/core": "~9.2.4", "@luma.gl/engine": "~9.2.4" } }, "sha512-a48zWxeHknSX67ZeIzWeLXuOVJkEnQjnLIC27Uv3zHjKlvaoraWPOgScUNyteB0UIIzhzE+D8lF+ViHeIdkNSA=="],
 

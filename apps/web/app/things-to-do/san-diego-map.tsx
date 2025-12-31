@@ -1,13 +1,30 @@
 "use client";
 
 import type { MapViewState } from "@deck.gl/core";
-import { ScatterplotLayer, TextLayer } from "@deck.gl/layers";
+import { CollisionFilterExtension } from "@deck.gl/extensions";
+import { IconLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import DeckGL from "@deck.gl/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import MapGL from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { env } from "@/env";
 import { HEADQUARTERS, IMMACULATA, LOCATIONS } from "./constants";
+
+// Helper function to create emoji icon as data URL
+function createEmojiIcon(emoji: string, size = 64): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  ctx.font = `${size * 0.75}px Arial`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(emoji, size / 2, size / 2);
+
+  return canvas.toDataURL();
+}
 
 interface SanDiegoMapProps {
   activeLocation?: string;
@@ -25,6 +42,48 @@ export function SanDiegoMap({
     pitch: 0,
     bearing: 0,
   });
+
+  // Generate emoji icons as data URLs (only on client side)
+  const [emojiIconMapping, setEmojiIconMapping] = useState<
+    Record<string, { url: string; width: number; height: number }>
+  >({});
+
+  useEffect(() => {
+    // Generate emoji icons only on client side where document is available
+    const mapping: Record<
+      string,
+      { url: string; width: number; height: number }
+    > = {};
+
+    // Location emojis
+    for (const location of LOCATIONS) {
+      mapping[location.emoji] = {
+        url: createEmojiIcon(location.emoji, 64),
+        width: 64,
+        height: 64,
+      };
+    }
+
+    // Venue emojis
+    mapping[IMMACULATA.emoji] = {
+      url: createEmojiIcon(IMMACULATA.emoji, 64),
+      width: 64,
+      height: 64,
+    };
+    mapping[HEADQUARTERS.emoji] = {
+      url: createEmojiIcon(HEADQUARTERS.emoji, 64),
+      width: 64,
+      height: 64,
+    };
+
+    setEmojiIconMapping(mapping);
+  }, []);
+
+  // Create stable collision filter extension instance
+  const collisionFilterExtension = useMemo(
+    () => new CollisionFilterExtension(),
+    []
+  );
 
   // Update view when active location changes
   useEffect(() => {
@@ -52,22 +111,19 @@ export function SanDiegoMap({
   }, [activeLocation]);
 
   const layers = [
-    // Location markers (rendered before venues so venues appear on top)
+    // Location circles (rendered before venues so venues appear on top)
     new ScatterplotLayer({
-      id: "locations",
+      id: "location-circles",
       data: LOCATIONS,
       getPosition: (d) => d.coordinates,
       getFillColor: (d) => {
-        if (d.id === activeLocation) {
-          // Active: use brighter version of the color
-          return d.color;
-        }
-        // Inactive: use dimmed version of the color
-        return [d.color[0], d.color[1], d.color[2], 200];
+        const color = d.color;
+        // Reduce opacity to 50% (127 out of 255)
+        return [color[0], color[1], color[2], 127];
       },
-      getRadius: 200,
-      radiusMinPixels: 10,
-      radiusMaxPixels: 25,
+      getRadius: (d) => (d.id === activeLocation ? 250 : 200),
+      radiusMinPixels: 20,
+      radiusMaxPixels: 35,
       pickable: true,
       onClick: (info) => {
         if (info.object && onLocationClick) {
@@ -75,26 +131,83 @@ export function SanDiegoMap({
         }
       },
       transitions: {
-        getFillColor: 300,
         getRadius: 300,
       },
+      extensions: [collisionFilterExtension],
+      collisionEnabled: true,
+      getCollisionPriority: (d: { id: string | undefined }) =>
+        d.id === activeLocation ? 1 : 0,
     }),
 
-    // Venues (ceremony & reception) - rendered on top
+    // Location emojis
+    new IconLayer({
+      id: "location-emojis",
+      data: LOCATIONS,
+      getPosition: (d) => d.coordinates,
+      getIcon: (d) => ({
+        url: emojiIconMapping[d.emoji]?.url || "",
+        width: 64,
+        height: 64,
+      }),
+      getSize: (d) => (d.id === activeLocation ? 32 : 28),
+      sizeUnits: "pixels",
+      pickable: true,
+      onClick: (info) => {
+        if (info.object && onLocationClick) {
+          onLocationClick(info.object.id);
+        }
+      },
+      transitions: {
+        getSize: 300,
+      },
+      extensions: [collisionFilterExtension],
+      collisionEnabled: true,
+      getCollisionPriority: (d: { id: string | undefined }) =>
+        d.id === activeLocation ? 1 : 0,
+    }),
+
+    // Venue circles
     new ScatterplotLayer({
-      id: "venues",
+      id: "venue-circles",
       data: [IMMACULATA, HEADQUARTERS],
       getPosition: (d) => d.coordinates,
-      getFillColor: (d) =>
-        d.type === "ceremony" ? [147, 51, 234, 255] : [59, 130, 246, 255],
-      getRadius: 200,
-      radiusMinPixels: 10,
-      radiusMaxPixels: 25,
+      getFillColor: (d) => {
+        const color = d.color;
+        // Reduce opacity to 50% (127 out of 255)
+        return [color[0], color[1], color[2], 127];
+      },
+      getRadius: 250,
+      radiusMinPixels: 22,
+      radiusMaxPixels: 40,
       pickable: true,
       onClick: () => {
         // Venues are not selectable, they're just markers
         // Only location markers should trigger selection
       },
+      extensions: [collisionFilterExtension],
+      collisionEnabled: true,
+      getCollisionPriority: 2, // Higher priority than locations
+    }),
+
+    // Venue emojis
+    new IconLayer({
+      id: "venue-emojis",
+      data: [IMMACULATA, HEADQUARTERS],
+      getPosition: (d) => d.coordinates,
+      getIcon: (d) => ({
+        url: emojiIconMapping[d.emoji]?.url || "",
+        width: 64,
+        height: 64,
+      }),
+      getSize: 32,
+      sizeUnits: "pixels",
+      pickable: true,
+      onClick: () => {
+        // Venues are not selectable, they're just markers
+      },
+      extensions: [collisionFilterExtension],
+      collisionEnabled: true,
+      getCollisionPriority: 2, // Higher priority than locations
     }),
 
     // Venue labels
@@ -104,17 +217,19 @@ export function SanDiegoMap({
       getPosition: (d) => d.coordinates,
       getText: (d) => d.name,
       getSize: 12,
-      getColor: (d) =>
-        d.type === "ceremony" ? [147, 51, 234, 255] : [59, 130, 246, 255],
+      getColor: (d) => d.color,
       getAngle: 0,
       getTextAnchor: "middle",
       getAlignmentBaseline: "top",
-      getPixelOffset: [0, 12],
+      getPixelOffset: [0, 25],
       fontFamily: "system-ui, -apple-system, sans-serif",
       fontWeight: 600,
       background: true,
       getBackgroundColor: [255, 255, 255, 200],
       backgroundPadding: [4, 2],
+      extensions: [collisionFilterExtension],
+      collisionEnabled: true,
+      getCollisionPriority: 2, // Higher priority than locations
     }),
 
     // Location labels
@@ -138,6 +253,10 @@ export function SanDiegoMap({
         getSize: 300,
         getColor: 300,
       },
+      extensions: [collisionFilterExtension],
+      collisionEnabled: true,
+      getCollisionPriority: (d: { id: string | undefined }) =>
+        d.id === activeLocation ? 1 : 0,
     }),
   ];
 
@@ -168,15 +287,29 @@ export function SanDiegoMap({
               Wedding Venues
             </p>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-purple-600 flex-shrink-0" />
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs"
+                style={{
+                  backgroundColor: `rgba(${IMMACULATA.color[0]}, ${IMMACULATA.color[1]}, ${IMMACULATA.color[2]}, ${IMMACULATA.color[3] / 255})`,
+                }}
+              >
+                {IMMACULATA.emoji}
+              </div>
               <span className="text-xs text-neutral-700">
-                The Immaculata (Ceremony)
+                {IMMACULATA.name} (Ceremony)
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" />
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs"
+                style={{
+                  backgroundColor: `rgba(${HEADQUARTERS.color[0]}, ${HEADQUARTERS.color[1]}, ${HEADQUARTERS.color[2]}, ${HEADQUARTERS.color[3] / 255})`,
+                }}
+              >
+                {HEADQUARTERS.emoji}
+              </div>
               <span className="text-xs text-neutral-700">
-                Headquarters (Reception)
+                {HEADQUARTERS.name} (Reception)
               </span>
             </div>
           </div>
@@ -190,13 +323,20 @@ export function SanDiegoMap({
               Things to Do
             </p>
             {LOCATIONS.map((location) => (
-              <div key={location.id} className="flex items-center gap-2">
+              <button
+                type="button"
+                key={location.id}
+                onClick={() => onLocationClick?.(location.id)}
+                className="flex items-center gap-2 w-full hover:bg-neutral-50 rounded px-1 py-0.5 transition-colors cursor-pointer"
+              >
                 <div
-                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs"
                   style={{
                     backgroundColor: `rgba(${location.color[0]}, ${location.color[1]}, ${location.color[2]}, ${location.id === activeLocation ? 1 : 0.7})`,
                   }}
-                />
+                >
+                  {location.emoji}
+                </div>
                 <span
                   className={`text-xs ${
                     location.id === activeLocation
@@ -213,7 +353,7 @@ export function SanDiegoMap({
                 >
                   {location.name}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
