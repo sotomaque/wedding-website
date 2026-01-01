@@ -11,9 +11,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@workspace/ui/components/alert-dialog";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
 import { PhoneInput } from "@workspace/ui/components/phone-input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select";
 import {
   Sheet,
   SheetContent,
@@ -22,10 +31,11 @@ import {
   SheetTitle,
 } from "@workspace/ui/components/sheet";
 import { Switch } from "@workspace/ui/components/switch";
-import { useToast } from "@workspace/ui/hooks/use-toast";
+import { Textarea } from "@workspace/ui/components/textarea";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
 import {
   type EditGuestFormData,
@@ -41,9 +51,9 @@ interface EditGuestSheetProps {
 
 export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBListEmailDialog, setShowBListEmailDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -134,37 +144,42 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
       });
 
       if (response.ok) {
-        toast({
-          title: "Guest updated!",
+        toast.success("Guest updated!", {
           description:
             `${data.firstName} ${data.lastName || ""} has been updated`.trim(),
         });
         closeSheet();
         router.refresh();
       } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to update guest",
-        });
+        toast.error("Failed to update guest");
       }
     } catch (error) {
       console.error("Error updating guest:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update guest",
-      });
+      toast.error("Failed to update guest");
     }
   }
 
-  // Get current email from form to check if send button should be enabled
+  // Get current email and list from form to check if send button should be enabled
   const currentEmail = watch("email");
+  const currentList = watch("list");
   const hasValidEmail = currentEmail?.includes("@");
+  const isBListOrLower = currentList === "b" || currentList === "c";
+
+  function handleEmailButtonClick() {
+    if (!hasValidEmail) return;
+
+    // Show confirmation dialog for B-list or C-list guests
+    if (isBListOrLower) {
+      setShowBListEmailDialog(true);
+    } else {
+      handleResendEmail();
+    }
+  }
 
   async function handleResendEmail() {
     if (!hasValidEmail) return;
 
+    setShowBListEmailDialog(false);
     setIsResending(true);
     try {
       const response = await fetch("/api/admin/guests/resend-email", {
@@ -176,25 +191,16 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
       const data = await response.json();
 
       if (response.ok) {
-        toast({
-          title: "Email sent!",
+        toast.success("Email sent!", {
           description: `Invitation email sent to ${data.email || currentEmail}`,
         });
         router.refresh();
       } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: data.error || "Failed to send email",
-        });
+        toast.error(data.error || "Failed to send email");
       }
     } catch (error) {
       console.error("Error sending email:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to send email",
-      });
+      toast.error("Failed to send email");
     } finally {
       setIsResending(false);
     }
@@ -208,8 +214,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
       });
 
       if (response.ok) {
-        toast({
-          title: "Guest deleted",
+        toast.success("Guest deleted", {
           description:
             `${guest.first_name} ${guest.last_name || ""} has been removed`.trim(),
         });
@@ -217,19 +222,11 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
         closeSheet();
         router.refresh();
       } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to delete guest",
-        });
+        toast.error("Failed to delete guest");
       }
     } catch (error) {
       console.error("Error deleting guest:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete guest",
-      });
+      toast.error("Failed to delete guest");
     } finally {
       setIsDeleting(false);
     }
@@ -237,92 +234,85 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
 
   return (
     <Sheet open onOpenChange={closeSheet}>
-      <SheetContent className="sm:max-w-2xl w-full overflow-y-auto">
-        <SheetHeader>
+      <SheetContent className="sm:max-w-2xl w-full flex flex-col h-full">
+        <SheetHeader className="flex-shrink-0">
           <SheetTitle className="text-2xl font-serif">Edit Guest</SheetTitle>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6">
-          <div className="space-y-4">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="mt-6 flex flex-col flex-1 min-h-0"
+        >
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1 min-h-0">
             {/* Basic Information */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="firstName"
-                  className="block text-sm font-medium mb-1"
-                >
-                  First Name *
-                </label>
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name *</Label>
                 <Input id="firstName" {...register("firstName")} />
                 {errors.firstName && (
-                  <p className="text-sm text-red-600 mt-1">
+                  <p className="text-sm text-destructive">
                     {errors.firstName.message}
                   </p>
                 )}
               </div>
-              <div>
-                <label
-                  htmlFor="lastName"
-                  className="block text-sm font-medium mb-1"
-                >
-                  Last Name
-                </label>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
                 <Input id="lastName" {...register("lastName")} />
                 {errors.lastName && (
-                  <p className="text-sm text-red-600 mt-1">
+                  <p className="text-sm text-destructive">
                     {errors.lastName.message}
                   </p>
                 )}
               </div>
             </div>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-1">
-                Email *
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
               <Input id="email" type="email" {...register("email")} />
               {errors.email && (
-                <p className="text-sm text-red-600 mt-1">
+                <p className="text-sm text-destructive">
                   {errors.email.message}
                 </p>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="side"
-                  className="block text-sm font-medium mb-1"
+              <div className="space-y-2">
+                <Label>Side</Label>
+                <Select
+                  value={watch("side")}
+                  onValueChange={(value: "bride" | "groom" | "both") =>
+                    setValue("side", value)
+                  }
                 >
-                  Side
-                </label>
-                <select
-                  id="side"
-                  {...register("side")}
-                  className="w-full border rounded px-3 py-2 bg-background"
-                >
-                  <option value="bride">Bride</option>
-                  <option value="groom">Groom</option>
-                  <option value="both">Both</option>
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bride">Bride</SelectItem>
+                    <SelectItem value="groom">Groom</SelectItem>
+                    <SelectItem value="both">Both</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div>
-                <label
-                  htmlFor="list"
-                  className="block text-sm font-medium mb-1"
+              <div className="space-y-2">
+                <Label>List</Label>
+                <Select
+                  value={watch("list")}
+                  onValueChange={(value: "a" | "b" | "c") =>
+                    setValue("list", value)
+                  }
                 >
-                  List
-                </label>
-                <select
-                  id="list"
-                  {...register("list")}
-                  className="w-full border rounded px-3 py-2 bg-background"
-                >
-                  <option value="a">A List</option>
-                  <option value="b">B List</option>
-                  <option value="c">C List</option>
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="a">A List</SelectItem>
+                    <SelectItem value="b">B List</SelectItem>
+                    <SelectItem value="c">C List</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -330,12 +320,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
             {!guest.is_plus_one && (
               <div className="border-t pt-4 mt-2">
                 <div className="flex items-center justify-between mb-3">
-                  <label
-                    htmlFor="plusOneAllowed"
-                    className="text-sm font-medium"
-                  >
-                    Allow Plus One
-                  </label>
+                  <Label htmlFor="plusOneAllowed">Allow Plus One</Label>
                   <Switch
                     id="plusOneAllowed"
                     checked={plusOneAllowed}
@@ -350,26 +335,16 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
                 </div>
                 {plusOneAllowed && (
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        htmlFor="plusOneFirstName"
-                        className="block text-sm font-medium mb-1"
-                      >
-                        First Name
-                      </label>
+                    <div className="space-y-2">
+                      <Label htmlFor="plusOneFirstName">First Name</Label>
                       <Input
                         id="plusOneFirstName"
                         {...register("plusOneFirstName")}
                         placeholder="Leave blank if unknown"
                       />
                     </div>
-                    <div>
-                      <label
-                        htmlFor="plusOneLastName"
-                        className="block text-sm font-medium mb-1"
-                      >
-                        Last Name
-                      </label>
+                    <div className="space-y-2">
+                      <Label htmlFor="plusOneLastName">Last Name</Label>
                       <Input
                         id="plusOneLastName"
                         {...register("plusOneLastName")}
@@ -385,13 +360,8 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
             <div className="border-t pt-4 mt-2 space-y-4">
               <h3 className="text-sm font-semibold">Contact Information</h3>
 
-              <div>
-                <label
-                  htmlFor="mailingAddress"
-                  className="block text-sm font-medium mb-1"
-                >
-                  Mailing Address
-                </label>
+              <div className="space-y-2">
+                <Label htmlFor="mailingAddress">Mailing Address</Label>
                 <Input
                   id="mailingAddress"
                   {...register("mailingAddress")}
@@ -400,13 +370,8 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="phoneNumber"
-                    className="block text-sm font-medium mb-1"
-                  >
-                    Phone Number
-                  </label>
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
                   <PhoneInput
                     id="phoneNumber"
                     value={watch("phoneNumber")}
@@ -415,13 +380,8 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
                   />
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="whatsapp"
-                    className="block text-sm font-medium mb-1"
-                  >
-                    WhatsApp
-                  </label>
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp">WhatsApp</Label>
                   <PhoneInput
                     id="whatsapp"
                     value={watch("whatsapp")}
@@ -432,33 +392,39 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
                 </div>
               </div>
 
-              <div>
-                <label
-                  htmlFor="preferredContactMethod"
-                  className="block text-sm font-medium mb-1"
+              <div className="space-y-2">
+                <Label>Preferred Contact Method</Label>
+                <Select
+                  value={watch("preferredContactMethod") || "none"}
+                  onValueChange={(
+                    value:
+                      | "none"
+                      | "email"
+                      | "text"
+                      | "whatsapp"
+                      | "phone_call",
+                  ) =>
+                    setValue(
+                      "preferredContactMethod",
+                      value === "none" ? "" : value,
+                    )
+                  }
                 >
-                  Preferred Contact Method
-                </label>
-                <select
-                  id="preferredContactMethod"
-                  {...register("preferredContactMethod")}
-                  className="w-full border rounded px-3 py-2 bg-background"
-                >
-                  <option value="">Not specified</option>
-                  <option value="email">Email</option>
-                  <option value="text">Text Message</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="phone_call">Phone Call</option>
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Not specified" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not specified</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="text">Text Message</SelectItem>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                    <SelectItem value="phone_call">Phone Call</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center justify-between">
-                <label
-                  htmlFor="physicalInviteSent"
-                  className="text-sm font-medium"
-                >
-                  Physical Invite Sent
-                </label>
+                <Label htmlFor="physicalInviteSent">Physical Invite Sent</Label>
                 <Switch
                   id="physicalInviteSent"
                   checked={physicalInviteSent}
@@ -475,26 +441,20 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
 
               {/* Email Status Display */}
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Email Status</span>
+                <Label>Email Status</Label>
                 {guest.number_of_resends === 0 ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                    No email sent
-                  </span>
+                  <Badge variant="secondary">No email sent</Badge>
                 ) : guest.number_of_resends === 1 ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    Email sent
-                  </span>
+                  <Badge variant="default">Email sent</Badge>
                 ) : (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  <Badge variant="outline">
                     Sent {guest.number_of_resends} times
-                  </span>
+                  </Badge>
                 )}
               </div>
 
               <div className="flex items-center justify-between">
-                <label htmlFor="family" className="text-sm font-medium">
-                  Family Member
-                </label>
+                <Label htmlFor="family">Family Member</Label>
                 <Switch
                   id="family"
                   checked={family}
@@ -502,32 +462,26 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="notes"
-                  className="block text-sm font-medium mb-1"
-                >
-                  Notes
-                </label>
-                <textarea
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
                   id="notes"
                   {...register("notes")}
                   placeholder="Internal notes about this guest..."
                   rows={3}
-                  className="w-full border rounded px-3 py-2 bg-background resize-none"
                 />
               </div>
             </div>
           </div>
 
-          {/* Footer with buttons */}
-          <div className="space-y-4 pt-4 border-t">
+          {/* Footer with buttons - sticky on mobile */}
+          <div className="flex-shrink-0 space-y-4 pt-4 border-t bg-background">
             {/* Action Buttons */}
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleResendEmail}
+                onClick={handleEmailButtonClick}
                 disabled={isResending || isSubmitting || !hasValidEmail}
                 className="flex-1"
               >
@@ -587,6 +541,33 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* B-List Email Confirmation Dialog */}
+      <AlertDialog
+        open={showBListEmailDialog}
+        onOpenChange={setShowBListEmailDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Send email to {currentList.toUpperCase()}-List guest?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>
+                {guest.first_name} {guest.last_name || ""}
+              </strong>{" "}
+              is on the {currentList.toUpperCase()}-List. Are you sure you want
+              to send them an invitation email?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResendEmail}>
+              Yes, Send Email
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -70,14 +70,17 @@ export function GuestsFilters() {
   ].filter(Boolean).length;
 
   return (
-    <div className="flex items-center gap-2 mb-4">
+    <div className="flex items-center gap-2 mb-4 min-w-0">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button
+            variant="outline"
+            className="relative flex-shrink-0 h-9 w-9 p-0 md:w-auto md:px-3 md:gap-2"
+          >
             <Filter className="h-4 w-4" />
-            Filters
+            <span className="hidden md:inline">Filters</span>
             {filterCount > 0 && (
-              <span className="ml-1 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+              <span className="absolute -top-1 -right-1 md:static md:ml-1 rounded-full bg-primary px-1.5 md:px-2 py-0.5 text-[10px] md:text-xs text-primary-foreground">
                 {filterCount}
               </span>
             )}
@@ -326,10 +329,10 @@ export function GuestsFilters() {
 
       {/* Active Filters Display */}
       {hasActiveFilters && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Active:</span>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0 overflow-x-auto">
+          <span className="flex-shrink-0 hidden sm:inline">Active:</span>
           {currentSide && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
               {currentSide === "bride" ? "Bride" : "Groom"}
               <button
                 type="button"
@@ -341,7 +344,7 @@ export function GuestsFilters() {
             </span>
           )}
           {currentStatus && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
               {currentStatus === "pending"
                 ? "Pending"
                 : currentStatus === "yes"
@@ -357,7 +360,7 @@ export function GuestsFilters() {
             </span>
           )}
           {currentList && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
               List: {currentList.toUpperCase()}
               <button
                 type="button"
@@ -369,7 +372,7 @@ export function GuestsFilters() {
             </span>
           )}
           {currentFamily && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
               Family: {currentFamily === "true" ? "Yes" : "No"}
               <button
                 type="button"
@@ -381,7 +384,7 @@ export function GuestsFilters() {
             </span>
           )}
           {currentIsPlusOne && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
               {currentIsPlusOne === "true" ? "Plus One" : "Primary Guest"}
               <button
                 type="button"
@@ -393,7 +396,7 @@ export function GuestsFilters() {
             </span>
           )}
           {currentEmailStatus && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
               Email:{" "}
               {currentEmailStatus === "not_sent"
                 ? "Not Sent"

@@ -1,11 +1,11 @@
 "use client";
 
 import { Navigation } from "@workspace/ui/components/navigation";
-import { useToast } from "@workspace/ui/hooks/use-toast";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { toast } from "sonner";
 import { DETAILS_CONTENT, RSVP_CONTENT } from "../constants";
 import { NAVIGATION_CONFIG } from "../navigation-config";
 import { CodeEntry } from "./code-entry";
@@ -15,19 +15,16 @@ interface RSVPCodeEntryProps {
 }
 
 export function RSVPCodeEntry({ invalidCode }: RSVPCodeEntryProps) {
-  const { toast } = useToast();
   const router = useRouter();
 
   // Show error toast if an invalid code was provided
   useEffect(() => {
     if (invalidCode) {
-      toast({
-        variant: "destructive",
-        title: "Invalid Code",
+      toast.error("Invalid Code", {
         description: "The invite code in the URL is not valid.",
       });
     }
-  }, [invalidCode, toast]);
+  }, [invalidCode]);
 
   function handleCodeSuccess(code: string) {
     // Navigate to the same page with the code as a query param

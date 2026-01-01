@@ -21,9 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table";
-import { useToast } from "@workspace/ui/hooks/use-toast";
+import { Plus, RefreshCw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
 import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
@@ -51,7 +52,6 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [isBulkSending, setIsBulkSending] = useState(false);
-  const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -193,7 +193,6 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
   }
 
   const columns = createColumns({
-    toast,
     onEditGuest: handleEditGuest,
     currentSortBy,
     currentSortOrder,
@@ -280,24 +279,19 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
       const data = await response.json();
 
       if (response.ok) {
-        toast({
-          title: "Emails sent!",
+        toast.success("Emails sent!", {
           description: `Successfully sent invitations to ${data.sentCount} guest(s)`,
         });
         setRowSelection({});
         router.refresh();
       } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
+        toast.error("Error", {
           description: data.error || "Failed to send emails",
         });
       }
     } catch (error) {
       console.error("Error sending bulk emails:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to send emails",
       });
     } finally {
@@ -322,10 +316,34 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={refreshGuests}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={refreshGuests}
+            className="md:hidden"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={refreshGuests}
+            className="hidden md:flex"
+          >
             Refresh
           </Button>
-          <Button onClick={() => setShowAddForm(true)}>Add Guest</Button>
+          <Button
+            size="icon"
+            onClick={() => setShowAddForm(true)}
+            className="md:hidden"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button
+            onClick={() => setShowAddForm(true)}
+            className="hidden md:flex"
+          >
+            Add Guest
+          </Button>
         </div>
       </div>
 
@@ -386,7 +404,7 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
       )}
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="-mx-2 sm:-mx-4 md:mx-0 md:rounded-md md:border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

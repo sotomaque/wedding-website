@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const rsvpFormSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().optional(),
   attending: z.boolean(),
   plusOneAttending: z.boolean().optional(),
   plusOneFirstName: z.string().optional(),

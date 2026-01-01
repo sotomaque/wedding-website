@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
 
         await resend.emails.send({
           from: "Wedding Invitation <rsvp@helen-and-enrique.com>",
-          to: guest.email!,
+          to: guest.email as string,
           subject: "You're Invited to Our Wedding! 💕",
           html: emailHtml,
         });

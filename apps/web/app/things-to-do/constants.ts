@@ -1,8 +1,8 @@
 // Types
-export type RGBAColor = [number, number, number, number];
-export type Coordinates = [number, number];
+type RGBAColor = [number, number, number, number];
+type Coordinates = [number, number];
 
-export interface Location {
+interface Location {
   id: string;
   name: string;
   emoji: string;
@@ -13,7 +13,7 @@ export interface Location {
   color: RGBAColor;
 }
 
-export interface Venue {
+interface Venue {
   id: string;
   name: string;
   emoji: string;

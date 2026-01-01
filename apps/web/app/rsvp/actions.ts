@@ -11,6 +11,8 @@ type Guest = Database["public"]["Tables"]["guests"]["Row"];
 
 interface RSVPSubmitData {
   inviteCode: string;
+  firstName: string;
+  lastName?: string;
   attending: boolean;
   plusOneAttending?: boolean;
   plusOneFirstName?: string;
@@ -75,6 +77,8 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
   try {
     const {
       inviteCode,
+      firstName,
+      lastName,
       attending,
       plusOneAttending,
       plusOneFirstName,
@@ -118,6 +122,8 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
     await db
       .updateTable("guests")
       .set({
+        first_name: firstName,
+        last_name: lastName || null,
         rsvp_status: attending ? "yes" : "no",
         dietary_restrictions: attending ? dietaryRestrictions || null : null,
         mailing_address: mailingAddress || null,
