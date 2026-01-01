@@ -158,34 +158,42 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
     }
   }
 
+  // Get current email from form to check if send button should be enabled
+  const currentEmail = watch("email");
+  const hasValidEmail = currentEmail?.includes("@");
+
   async function handleResendEmail() {
+    if (!hasValidEmail) return;
+
     setIsResending(true);
     try {
       const response = await fetch("/api/admin/guests/resend-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guestId: guest.id }),
+        body: JSON.stringify({ guestId: guest.id, email: currentEmail }),
       });
+
+      const data = await response.json();
 
       if (response.ok) {
         toast({
           title: "Email sent!",
-          description: `Invitation email resent to ${guest.email}`,
+          description: `Invitation email sent to ${data.email || currentEmail}`,
         });
         router.refresh();
       } else {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to resend email",
+          description: data.error || "Failed to send email",
         });
       }
     } catch (error) {
-      console.error("Error resending email:", error);
+      console.error("Error sending email:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to resend email",
+        description: "Failed to send email",
       });
     } finally {
       setIsResending(false);
@@ -520,7 +528,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
                 type="button"
                 variant="outline"
                 onClick={handleResendEmail}
-                disabled={isResending || isSubmitting}
+                disabled={isResending || isSubmitting || !hasValidEmail}
                 className="flex-1"
               >
                 {isResending
