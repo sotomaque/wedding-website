@@ -15,10 +15,3 @@ export function generateInviteCode(): string {
 
   return code;
 }
-
-/**
- * Validate invite code format
- */
-export function isValidInviteCode(code: string): boolean {
-  return /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code);
-}

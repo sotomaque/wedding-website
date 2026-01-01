@@ -2,8 +2,8 @@
 
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { useToast } from "@workspace/ui/hooks/use-toast";
 import { useState } from "react";
+import { toast } from "sonner";
 import { verifyInviteCode } from "./actions";
 
 interface CodeEntryProps {
@@ -14,13 +14,10 @@ interface CodeEntryProps {
 export function CodeEntry({ initialCode = "", onSuccess }: CodeEntryProps) {
   const [inviteCode, setInviteCode] = useState(initialCode);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
   async function handleVerify() {
     if (inviteCode.length < 8) {
-      toast({
-        variant: "destructive",
-        title: "Invalid Code",
+      toast.error("Invalid Code", {
         description: "Please enter a valid invite code",
       });
       return;
@@ -33,18 +30,14 @@ export function CodeEntry({ initialCode = "", onSuccess }: CodeEntryProps) {
       if (result.success && result.guests) {
         onSuccess(inviteCode);
       } else {
-        toast({
-          variant: "destructive",
-          title: "Invalid Code",
+        toast.error("Invalid Code", {
           description:
             result.error || "The invite code you entered is not valid.",
         });
       }
     } catch (error) {
       console.error("Error verifying code:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to verify invite code",
       });
     } finally {

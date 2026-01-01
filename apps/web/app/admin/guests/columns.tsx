@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@workspace/ui/components/button";
 import { Check, X } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
 
 type Guest = Database["public"]["Tables"]["guests"]["Row"];
@@ -20,11 +21,6 @@ type SortableColumn =
   | "notes";
 
 interface ColumnsConfig {
-  toast: (props: {
-    title: string;
-    description?: string;
-    variant?: "default" | "destructive";
-  }) => void;
   onEditGuest: (guestId: string) => void;
   currentSortBy?: string;
   currentSortOrder?: "asc" | "desc";
@@ -41,11 +37,9 @@ interface ColumnsConfig {
 function EditableNotesCell({
   guest,
   onSave,
-  toast,
 }: {
   guest: Guest;
   onSave: (guestId: string, notes: string) => Promise<void>;
-  toast: ColumnsConfig["toast"];
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(guest.notes || "");
@@ -56,15 +50,12 @@ function EditableNotesCell({
     try {
       await onSave(guest.id, value);
       setIsEditing(false);
-      toast({
-        title: "Notes updated",
+      toast.success("Notes updated", {
         description: "Guest notes have been saved",
       });
     } catch {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update notes",
-        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -134,11 +125,9 @@ function EditableNotesCell({
 function EditableSideCell({
   guest,
   onSave,
-  toast,
 }: {
   guest: Guest;
   onSave: (guestId: string, side: "bride" | "groom" | "both") => Promise<void>;
-  toast: ColumnsConfig["toast"];
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState<"bride" | "groom" | "both">(
@@ -151,15 +140,12 @@ function EditableSideCell({
     try {
       await onSave(guest.id, value);
       setIsEditing(false);
-      toast({
-        title: "Side updated",
+      toast.success("Side updated", {
         description: "Guest side has been updated",
       });
     } catch {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update side",
-        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -225,11 +211,9 @@ function EditableSideCell({
 function EditableListCell({
   guest,
   onSave,
-  toast,
 }: {
   guest: Guest;
   onSave: (guestId: string, list: "a" | "b" | "c") => Promise<void>;
-  toast: ColumnsConfig["toast"];
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState<"a" | "b" | "c">(guest.list);
@@ -240,15 +224,12 @@ function EditableListCell({
     try {
       await onSave(guest.id, value);
       setIsEditing(false);
-      toast({
-        title: "List updated",
+      toast.success("List updated", {
         description: "Guest list has been updated",
       });
     } catch {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update list",
-        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -312,11 +293,9 @@ function EditableListCell({
 function EditableFamilyCell({
   guest,
   onSave,
-  toast,
 }: {
   guest: Guest;
   onSave: (guestId: string, family: boolean) => Promise<void>;
-  toast: ColumnsConfig["toast"];
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState<boolean>(guest.family);
@@ -327,15 +306,12 @@ function EditableFamilyCell({
     try {
       await onSave(guest.id, value);
       setIsEditing(false);
-      toast({
-        title: "Family status updated",
+      toast.success("Family status updated", {
         description: "Guest family status has been updated",
       });
     } catch {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update family status",
-        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -396,7 +372,6 @@ function EditableFamilyCell({
 }
 
 export function createColumns({
-  toast,
   onEditGuest,
   currentSortBy,
   currentSortOrder,
@@ -414,6 +389,29 @@ export function createColumns({
   };
 
   return [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+          checked={table.getIsAllPageRowsSelected()}
+          onChange={(e) => table.toggleAllPageRowsSelected(e.target.checked)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+          checked={row.getIsSelected()}
+          onChange={(e) => row.toggleSelected(e.target.checked)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       id: "name",
       accessorFn: (row) => `${row.first_name} ${row.last_name || ""}`.trim(),
@@ -465,8 +463,7 @@ export function createColumns({
           onClick={() => {
             const code = row.original.invite_code;
             navigator.clipboard.writeText(code);
-            toast({
-              title: "Copied!",
+            toast.success("Copied!", {
               description: "Invite code copied to clipboard",
             });
           }}
@@ -490,11 +487,7 @@ export function createColumns({
         );
       },
       cell: ({ row }) => (
-        <EditableSideCell
-          guest={row.original}
-          onSave={onUpdateSide}
-          toast={toast}
-        />
+        <EditableSideCell guest={row.original} onSave={onUpdateSide} />
       ),
     },
     {
@@ -511,11 +504,7 @@ export function createColumns({
         );
       },
       cell: ({ row }) => (
-        <EditableListCell
-          guest={row.original}
-          onSave={onUpdateList}
-          toast={toast}
-        />
+        <EditableListCell guest={row.original} onSave={onUpdateList} />
       ),
     },
     {
@@ -630,11 +619,7 @@ export function createColumns({
         );
       },
       cell: ({ row }) => (
-        <EditableFamilyCell
-          guest={row.original}
-          onSave={onUpdateFamily}
-          toast={toast}
-        />
+        <EditableFamilyCell guest={row.original} onSave={onUpdateFamily} />
       ),
     },
     {
@@ -651,11 +636,7 @@ export function createColumns({
         );
       },
       cell: ({ row }) => (
-        <EditableNotesCell
-          guest={row.original}
-          onSave={onUpdateNotes}
-          toast={toast}
-        />
+        <EditableNotesCell guest={row.original} onSave={onUpdateNotes} />
       ),
     },
     {

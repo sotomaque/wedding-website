@@ -32,7 +32,7 @@ function Navigation({
   // Helper to check if link is active (handles both /#section and #section formats)
   const isLinkActive = (href: string) => {
     if (!activeSection) return false;
-    const hash = href.includes('#') ? href.split('#')[1] : '';
+    const hash = href.includes("#") ? href.split("#")[1] : "";
     return hash === activeSection;
   };
 

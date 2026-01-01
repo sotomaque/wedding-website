@@ -16,7 +16,7 @@ export function ImageSkeleton({ className }: ImageSkeletonProps) {
         "before:animate-[shimmer_2s_infinite]",
         className,
       )}
-      aria-label="Loading image..."
+      aria-hidden="true"
     />
   );
 }

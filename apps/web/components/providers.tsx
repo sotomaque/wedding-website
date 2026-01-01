@@ -1,6 +1,6 @@
 "use client";
 
-import { Toaster } from "@workspace/ui/components/toaster";
+import { Toaster } from "@workspace/ui/components/sonner";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import type * as React from "react";
 

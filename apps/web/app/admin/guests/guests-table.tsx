@@ -7,6 +7,7 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  type RowSelectionState,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
@@ -20,9 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table";
-import { useToast } from "@workspace/ui/hooks/use-toast";
+import { Plus, RefreshCw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
 import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
@@ -47,8 +49,9 @@ interface GuestsTableProps {
 export function GuestsTable({ initialGuests }: GuestsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showAddForm, setShowAddForm] = useState(false);
-  const { toast } = useToast();
+  const [isBulkSending, setIsBulkSending] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -190,7 +193,6 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
   }
 
   const columns = createColumns({
-    toast,
     onEditGuest: handleEditGuest,
     currentSortBy,
     currentSortOrder,
@@ -216,9 +218,11 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
         handlePageChange(0);
       }
     },
+    onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       columnFilters,
+      rowSelection,
       pagination: {
         pageIndex: currentPage,
         pageSize: 10,
@@ -226,6 +230,74 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
     },
     manualPagination: false,
   });
+
+  // Get selected guests for bulk actions
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+  const selectedGuests = selectedRows.map((row) => row.original);
+
+  // Validation for bulk send email
+  const allHaveEmail = selectedGuests.every((guest) =>
+    guest.email?.includes("@"),
+  );
+  const noneHaveRsvpdYes = selectedGuests.every(
+    (guest) => guest.rsvp_status !== "yes",
+  );
+  const canBulkSendEmail =
+    selectedGuests.length > 0 && allHaveEmail && noneHaveRsvpdYes;
+
+  // Get validation messages for tooltip
+  function getBulkEmailValidationMessage(): string | null {
+    if (selectedGuests.length === 0) return null;
+    if (!allHaveEmail) {
+      const guestsWithoutEmail = selectedGuests.filter(
+        (g) => !g.email?.includes("@"),
+      );
+      return `${guestsWithoutEmail.length} selected guest(s) don't have a valid email`;
+    }
+    if (!noneHaveRsvpdYes) {
+      const guestsAlreadyRsvpd = selectedGuests.filter(
+        (g) => g.rsvp_status === "yes",
+      );
+      return `${guestsAlreadyRsvpd.length} selected guest(s) have already RSVP'd yes`;
+    }
+    return null;
+  }
+
+  async function handleBulkSendEmail() {
+    if (!canBulkSendEmail) return;
+
+    setIsBulkSending(true);
+    try {
+      const response = await fetch("/api/admin/guests/bulk-send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guestIds: selectedGuests.map((g) => g.id),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Emails sent!", {
+          description: `Successfully sent invitations to ${data.sentCount} guest(s)`,
+        });
+        setRowSelection({});
+        router.refresh();
+      } else {
+        toast.error("Error", {
+          description: data.error || "Failed to send emails",
+        });
+      }
+    } catch (error) {
+      console.error("Error sending bulk emails:", error);
+      toast.error("Error", {
+        description: "Failed to send emails",
+      });
+    } finally {
+      setIsBulkSending(false);
+    }
+  }
 
   async function refreshGuests() {
     // This will trigger a router refresh which will re-fetch server data
@@ -244,10 +316,34 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={refreshGuests}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={refreshGuests}
+            className="md:hidden"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={refreshGuests}
+            className="hidden md:flex"
+          >
             Refresh
           </Button>
-          <Button onClick={() => setShowAddForm(true)}>Add Guest</Button>
+          <Button
+            size="icon"
+            onClick={() => setShowAddForm(true)}
+            className="md:hidden"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button
+            onClick={() => setShowAddForm(true)}
+            className="hidden md:flex"
+          >
+            Add Guest
+          </Button>
         </div>
       </div>
 
@@ -275,8 +371,40 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
         <GuestsFilters />
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedGuests.length > 0 && (
+        <div className="flex items-center gap-4 p-3 mb-4 bg-secondary/50 rounded-lg border">
+          <span className="text-sm font-medium">
+            {selectedGuests.length} guest(s) selected
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={handleBulkSendEmail}
+              disabled={!canBulkSendEmail || isBulkSending}
+              title={getBulkEmailValidationMessage() || undefined}
+            >
+              {isBulkSending ? "Sending..." : "Send Email"}
+            </Button>
+            {getBulkEmailValidationMessage() && (
+              <span className="text-xs text-destructive">
+                {getBulkEmailValidationMessage()}
+              </span>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setRowSelection({})}
+            className="ml-auto"
+          >
+            Clear selection
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="-mx-2 sm:-mx-4 md:mx-0 md:rounded-md md:border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

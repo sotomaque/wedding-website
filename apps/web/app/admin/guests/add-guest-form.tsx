@@ -12,8 +12,8 @@ import {
   SheetTitle,
 } from "@workspace/ui/components/sheet";
 import { Switch } from "@workspace/ui/components/switch";
-import { useToast } from "@workspace/ui/hooks/use-toast";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { type AddGuestFormData, addGuestSchema } from "@/lib/validations/guest";
 
 interface AddGuestFormProps {
@@ -23,7 +23,6 @@ interface AddGuestFormProps {
 }
 
 export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
-  const { toast } = useToast();
   const {
     register,
     handleSubmit,
@@ -65,24 +64,19 @@ export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
       });
 
       if (response.ok) {
-        toast({
-          title: "Guest created!",
+        toast.success("Guest created!", {
           description:
             `${data.firstName} ${data.lastName || ""} has been added to the guest list`.trim(),
         });
         onSuccess();
       } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to create guest",
         });
       }
     } catch (error) {
       console.error("Error creating guest:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to create guest",
       });
     }

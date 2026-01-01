@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { guestId } = body;
+    const { guestId, email: emailOverride } = body;
 
     if (!guestId) {
       return NextResponse.json(
@@ -46,6 +46,21 @@ export async function POST(request: NextRequest) {
 
     if (!guest) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
+    }
+
+    // Determine the email to send to (prefer override, fallback to DB value)
+    const recipientEmail = emailOverride || guest.email;
+
+    // Validate that we have a valid email address
+    if (
+      !recipientEmail ||
+      typeof recipientEmail !== "string" ||
+      !recipientEmail.includes("@")
+    ) {
+      return NextResponse.json(
+        { error: "No valid email address provided" },
+        { status: 400 },
+      );
     }
 
     // Check if email is configured
@@ -72,7 +87,7 @@ export async function POST(request: NextRequest) {
 
       await resend.emails.send({
         from: "Wedding Invitation <rsvp@helen-and-enrique.com>",
-        to: guest.email || "",
+        to: recipientEmail,
         subject: "You're Invited to Our Wedding! 💕",
         html: emailHtml,
       });
@@ -89,6 +104,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Email sent successfully",
+        email: recipientEmail,
       });
     } catch (emailError) {
       console.error("Error sending email:", emailError);

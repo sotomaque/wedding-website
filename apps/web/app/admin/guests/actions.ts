@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { env } from "@/env";
 import { db } from "@/lib/db";
 import type { Database } from "@/lib/supabase/types";
 
@@ -74,42 +72,6 @@ export async function getGuests(
   } catch (error) {
     console.error("Error fetching guests:", error);
     return [];
-  }
-}
-
-export async function deleteGuest(guestId: string) {
-  try {
-    await db.deleteFrom("guests").where("id", "=", guestId).execute();
-
-    revalidatePath("/admin/guests");
-    return { success: true };
-  } catch (error) {
-    console.error("Error deleting guest:", error);
-    return { success: false, error: "Failed to delete guest" };
-  }
-}
-
-export async function resendInviteEmail(guestId: string) {
-  try {
-    // This will call the existing API route
-    const response = await fetch(
-      `${env.NEXT_PUBLIC_APP_URL}/api/admin/guests/resend-email`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guestId }),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to resend email");
-    }
-
-    revalidatePath("/admin/guests");
-    return { success: true };
-  } catch (error) {
-    console.error("Error resending email:", error);
-    return { success: false, error: "Failed to resend email" };
   }
 }
 

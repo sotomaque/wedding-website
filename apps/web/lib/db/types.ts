@@ -60,16 +60,28 @@ export interface Database {
   guest_activity_interests: GuestActivityInterestsTable;
 }
 
-// Helper types for CRUD operations
-export type Guest = Selectable<GuestsTable>;
-export type NewGuest = Insertable<GuestsTable>;
-export type GuestUpdate = Updateable<GuestsTable>;
+// Helper types for CRUD operations (available for future use)
+type Guest = Selectable<GuestsTable>;
+type NewGuest = Insertable<GuestsTable>;
+type GuestUpdate = Updateable<GuestsTable>;
 
-export type Activity = Selectable<ActivitiesTable>;
-export type NewActivity = Insertable<ActivitiesTable>;
-export type ActivityUpdate = Updateable<ActivitiesTable>;
+type Activity = Selectable<ActivitiesTable>;
+type NewActivity = Insertable<ActivitiesTable>;
+type ActivityUpdate = Updateable<ActivitiesTable>;
 
-export type GuestActivityInterest = Selectable<GuestActivityInterestsTable>;
-export type NewGuestActivityInterest = Insertable<GuestActivityInterestsTable>;
-export type GuestActivityInterestUpdate =
-  Updateable<GuestActivityInterestsTable>;
+type GuestActivityInterest = Selectable<GuestActivityInterestsTable>;
+type NewGuestActivityInterest = Insertable<GuestActivityInterestsTable>;
+type GuestActivityInterestUpdate = Updateable<GuestActivityInterestsTable>;
+
+// Suppress unused type warnings - these are intentionally defined for future use
+export type {
+  Activity,
+  ActivityUpdate,
+  Guest,
+  GuestActivityInterest,
+  GuestActivityInterestUpdate,
+  GuestUpdate,
+  NewActivity,
+  NewGuest,
+  NewGuestActivityInterest,
+};

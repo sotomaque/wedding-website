@@ -1,3 +1,31 @@
+// Wedding Date Constants
+export const WEDDING_DATE = new Date("2026-07-30T16:00:00-07:00");
+export const RSVP_DEADLINE = new Date("2026-03-01T23:59:59-08:00");
+
+// Helper function to format date for display
+export function formatWeddingDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/Los_Angeles",
+  });
+}
+
+export function formatRsvpDeadline(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "America/Los_Angeles",
+  });
+}
+
+// Pre-computed formatted strings for static use
+export const WEDDING_DATE_FORMATTED = "Thursday, July 30, 2026";
+export const RSVP_DEADLINE_FORMATTED = "March 1, 2026";
+
 export const HERO_PHOTOS = [
   {
     src: "/our-photos/basilica.jpeg",
@@ -184,6 +212,21 @@ export const HERO_PHOTOS = [
     alt: "Fremont",
     description: "Exploring the vibrant Fremont neighborhood",
   },
+  {
+    src: "/our-photos/engagement-party-3.heic",
+    alt: "Engagement Party",
+    description: "Even more fun at our engagement party",
+  },
+  {
+    src: "/our-photos/snowflake-lane.heic",
+    alt: "Snowflake Lane",
+    description: "Holiday magic at Snowflake Lane",
+  },
+  {
+    src: "/our-photos/skiing.heic",
+    alt: "Skiing",
+    description: "Skiing adventures together",
+  },
 ] as const;
 
 export const HERO_CONTENT = {
@@ -201,7 +244,7 @@ export const STORY_CONTENT = {
 
 export const DETAILS_CONTENT = {
   title: "Wedding Details",
-  date: "Thursday, July 30, 2026",
+  date: WEDDING_DATE_FORMATTED,
   ceremony: {
     icon: "⛪️",
     title: "Ceremony",
@@ -272,7 +315,7 @@ export const SCHEDULE_CONTENT = {
 
 export const RSVP_CONTENT = {
   title: "RSVP",
-  deadline: "Please respond by March 1st, 2026",
+  deadline: `Please respond by ${RSVP_DEADLINE_FORMATTED}`,
   image: {
     src: "/rsvp.png",
     alt: "RSVP",

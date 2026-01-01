@@ -19,11 +19,9 @@
     "@deck.gl/layers": "^9.2.5",
     "@deck.gl/react": "^9.2.5",
     "@hookform/resolvers": "^5.2.2",
-    "@supabase/supabase-js": "^2.89.0",
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tanstack/react-table": "^8.21.3",
     "@workspace/ui": "workspace:*",
-    "embla-carousel-react": "^8.6.0",
     "kysely": "^0.28.9",
     "lucide-react": "^0.475.0",
     "mapbox-gl": "^3.17.0",
@@ -35,6 +33,7 @@
     "react-hook-form": "^7.69.0",
     "react-map-gl": "^8.1.0",
     "resend": "^6.6.0",
+    "sonner": "^2.0.7",
     "zod": "^4.3.2"
   },
   "devDependencies": {

@@ -3,7 +3,8 @@
 import { cn } from "@workspace/ui/lib/utils";
 import * as React from "react";
 
-interface PhoneInputProps extends Omit<React.ComponentProps<"input">, "onChange"> {
+interface PhoneInputProps
+  extends Omit<React.ComponentProps<"input">, "onChange"> {
   value?: string;
   onChange?: (value: string) => void;
   international?: boolean;
@@ -24,19 +25,24 @@ function formatPhoneNumber(value: string, international: boolean): string {
     if (isMexico) {
       // Mexico format: +52 XX XXXX XXXX (12 digits total)
       if (digits.length <= 2) return `+${digits}`;
-      if (digits.length <= 4) return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
-      if (digits.length <= 8) return `+${digits.slice(0, 2)} ${digits.slice(2, 4)} ${digits.slice(4)}`;
+      if (digits.length <= 4)
+        return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+      if (digits.length <= 8)
+        return `+${digits.slice(0, 2)} ${digits.slice(2, 4)} ${digits.slice(4)}`;
       return `+${digits.slice(0, 2)} ${digits.slice(2, 4)} ${digits.slice(4, 8)} ${digits.slice(8, 12)}`;
     } else if (isUS) {
       // US format: +1 (XXX) XXX-XXXX (11 digits total)
       if (digits.length <= 1) return `+${digits}`;
-      if (digits.length <= 4) return `+${digits.slice(0, 1)} (${digits.slice(1)}`;
-      if (digits.length <= 7) return `+${digits.slice(0, 1)} (${digits.slice(1, 4)}) ${digits.slice(4)}`;
+      if (digits.length <= 4)
+        return `+${digits.slice(0, 1)} (${digits.slice(1)}`;
+      if (digits.length <= 7)
+        return `+${digits.slice(0, 1)} (${digits.slice(1, 4)}) ${digits.slice(4)}`;
       return `+${digits.slice(0, 1)} (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 11)}`;
     } else {
       // Generic international format: +XX XXXX XXXX
       if (digits.length <= 2) return `+${digits}`;
-      if (digits.length <= 6) return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+      if (digits.length <= 6)
+        return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
       return `+${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6, 10)}`;
     }
   } else {
@@ -51,7 +57,7 @@ function formatPhoneNumber(value: string, international: boolean): string {
 const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
   ({ className, value, onChange, international = false, ...props }, ref) => {
     const [displayValue, setDisplayValue] = React.useState(
-      value ? formatPhoneNumber(value, international) : ""
+      value ? formatPhoneNumber(value, international) : "",
     );
 
     React.useEffect(() => {
@@ -102,7 +108,7 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
         {...props}
       />
     );
-  }
+  },
 );
 
 PhoneInput.displayName = "PhoneInput";

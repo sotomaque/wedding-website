@@ -54,9 +54,9 @@ export default async function AdminGuestsPage({ searchParams }: PageProps) {
   const editGuestId = params.edit;
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="min-h-screen bg-background px-2 py-4 sm:px-4 md:px-8 md:py-8">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-card rounded-lg shadow-lg p-8 border border-border">
+        <div className="bg-card rounded-lg shadow-lg px-2 py-4 sm:px-4 md:px-8 md:py-8 border border-border">
           <Suspense fallback={<GuestsTableSkeleton />}>
             <GuestsContent searchParams={searchParams} />
           </Suspense>

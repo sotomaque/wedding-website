@@ -36,14 +36,3 @@ export const db = new Kysely<Database>({
     pool: createPool(),
   }),
 });
-
-// Export types for convenience
-export type {
-  Activity,
-  ActivityUpdate,
-  Database,
-  Guest,
-  GuestUpdate,
-  NewActivity,
-  NewGuest,
-} from "./types";
