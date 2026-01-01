@@ -17,6 +17,12 @@
       "formatter": {
         "enabled": false
       }
+    },
+    {
+      "includes": ["**/__tests__/**/*"],
+      "linter": {
+        "enabled": false
+      }
     }
   ],
   "formatter": {
