@@ -8,10 +8,11 @@ export const env = createEnv({
    */
   server: {
     RESEND_API_KEY: z.string().optional(),
-    RSVP_EMAIL: z.string().email().optional(),
+    RSVP_EMAIL: z.string().optional(), // Comma-separated list of emails
     CLERK_SECRET_KEY: z.string().optional(),
     ADMIN_EMAILS: z.string().optional(),
     DATABASE_URL: z.string().optional(),
+    UPLOADTHING_TOKEN: z.string().optional(),
   },
 
   /**
@@ -39,6 +40,7 @@ export const env = createEnv({
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     ADMIN_EMAILS: process.env.ADMIN_EMAILS,
     DATABASE_URL: process.env.DATABASE_URL,
+    UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
     NEXT_PUBLIC_MAPBOX_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_TOKEN,
     NEXT_PUBLIC_RSVP_EMAIL: process.env.NEXT_PUBLIC_RSVP_EMAIL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 // Mock email sending - must be a proper class
-const mockSendEmail = vi.fn().mockResolvedValue({ id: "email-123" });
+const mockSendEmail = mock(() => Promise.resolve({ id: "email-123" }));
 
 class MockResend {
   emails = {
@@ -9,12 +9,12 @@ class MockResend {
   };
 }
 
-vi.mock("resend", () => ({
+mock.module("resend", () => ({
   Resend: MockResend,
 }));
 
 // Mock env
-vi.mock("@/env", () => ({
+mock.module("@/env", () => ({
   env: {
     ADMIN_EMAILS: "admin@example.com",
     RESEND_API_KEY: "test-resend-key",
@@ -24,47 +24,48 @@ vi.mock("@/env", () => ({
 }));
 
 // Mock Clerk
-vi.mock("@clerk/nextjs/server", () => ({
-  currentUser: vi.fn().mockResolvedValue({
-    id: "admin-123",
-    emailAddresses: [{ emailAddress: "admin@example.com" }],
-  }),
+mock.module("@clerk/nextjs/server", () => ({
+  currentUser: () =>
+    Promise.resolve({
+      id: "admin-123",
+      emailAddresses: [{ emailAddress: "admin@example.com" }],
+    }),
 }));
 
 // Mock db
-const mockExecuteTakeFirst = vi.fn();
-const mockExecute = vi.fn().mockResolvedValue([]);
+const mockExecuteTakeFirst = mock(() => Promise.resolve(null));
+const mockExecute = mock(() => Promise.resolve([]));
 
-vi.mock("@/lib/db", () => ({
+mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: vi.fn(() => ({
-      selectAll: vi.fn(() => ({
-        where: vi.fn(() => ({
+    selectFrom: () => ({
+      selectAll: () => ({
+        where: () => ({
           executeTakeFirst: mockExecuteTakeFirst,
           execute: mockExecute,
-        })),
-      })),
-    })),
-    updateTable: vi.fn(() => ({
-      set: vi.fn(() => ({
-        where: vi.fn(() => ({
+        }),
+      }),
+    }),
+    updateTable: () => ({
+      set: () => ({
+        where: () => ({
           execute: mockExecute,
-        })),
-      })),
-    })),
+        }),
+      }),
+    }),
   },
 }));
 
 // Mock email template
-vi.mock("@/lib/email/templates/wedding-invitation", () => ({
-  getWeddingInvitationEmail: vi
-    .fn()
-    .mockReturnValue("<html>Wedding Invitation</html>"),
+mock.module("@/lib/email/templates/wedding-invitation", () => ({
+  getWeddingInvitationEmail: () => "<html>Wedding Invitation</html>",
 }));
 
 describe("Email Sending - Resend Email", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockSendEmail.mockClear();
+    mockExecuteTakeFirst.mockClear();
+    mockExecute.mockClear();
   });
 
   it("should send email to guest with valid email", async () => {
@@ -219,7 +220,9 @@ describe("Email Sending - B/C List Warning", () => {
   // tracks the list assignment which triggers the warning.
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockSendEmail.mockClear();
+    mockExecuteTakeFirst.mockClear();
+    mockExecute.mockClear();
   });
 
   it("guest list B should be stored correctly", async () => {

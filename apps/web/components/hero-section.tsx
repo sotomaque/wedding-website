@@ -10,18 +10,16 @@ import {
 } from "@workspace/ui/components/carousel";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HERO_CONTENT, HERO_PHOTOS } from "../app/constants";
-import { shuffleArray } from "../app/utils";
 
-export function HeroSection() {
+import { HERO_CONTENT, type HeroPhoto } from "../app/constants";
+
+interface HeroSectionProps {
+  photos: HeroPhoto[];
+}
+
+export function HeroSection({ photos }: HeroSectionProps) {
   const [api, setApi] = useState<CarouselApi>();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [shuffledPhotos, setShuffledPhotos] = useState([...HERO_PHOTOS]);
-
-  // Randomize photos once on mount (client-side only to avoid hydration mismatch)
-  useEffect(() => {
-    setShuffledPhotos(shuffleArray([...HERO_PHOTOS]));
-  }, []);
 
   // Function to start/restart the auto-scroll timer
   const startAutoScroll = useCallback(() => {
@@ -61,6 +59,10 @@ export function HeroSection() {
     };
   }, [api, startAutoScroll]);
 
+  if (photos.length === 0) {
+    return null;
+  }
+
   return (
     <section className="relative overflow-hidden">
       <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full">
@@ -74,7 +76,7 @@ export function HeroSection() {
             className="w-full h-full"
           >
             <CarouselContent className="h-[calc(100dvh-8rem)]">
-              {shuffledPhotos.map((photo, index) => (
+              {photos.map((photo, index) => (
                 <CarouselItem key={photo.src} className="h-full">
                   <div className="relative h-full w-full">
                     <Image

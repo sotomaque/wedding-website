@@ -146,6 +146,35 @@ export interface Database {
           created_at?: string;
         };
       };
+      photos: {
+        Row: {
+          id: string;
+          url: string;
+          alt: string;
+          description: string | null;
+          display_order: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          url: string;
+          alt: string;
+          description?: string | null;
+          display_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          url?: string;
+          alt?: string;
+          description?: string | null;
+          display_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

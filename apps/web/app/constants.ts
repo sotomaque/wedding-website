@@ -2,31 +2,18 @@
 export const WEDDING_DATE = new Date("2026-07-30T16:00:00-07:00");
 export const RSVP_DEADLINE = new Date("2026-03-01T23:59:59-08:00");
 
-// Helper function to format date for display
-export function formatWeddingDate(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "America/Los_Angeles",
-  });
-}
-
-export function formatRsvpDeadline(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "America/Los_Angeles",
-  });
-}
-
 // Pre-computed formatted strings for static use
 export const WEDDING_DATE_FORMATTED = "Thursday, July 30, 2026";
 export const RSVP_DEADLINE_FORMATTED = "March 1, 2026";
 
-export const HERO_PHOTOS = [
+// Photo type for gallery images
+export interface HeroPhoto {
+  src: string;
+  alt: string;
+  description: string;
+}
+
+export const HERO_PHOTOS: HeroPhoto[] = [
   {
     src: "/our-photos/basilica.jpeg",
     alt: "Basilica",
@@ -227,7 +214,7 @@ export const HERO_PHOTOS = [
     alt: "Skiing",
     description: "Skiing adventures together",
   },
-] as const;
+];
 
 export const HERO_CONTENT = {
   title: "Helen & Enrique",

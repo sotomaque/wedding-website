@@ -1,7 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+
+// Mock currentUser from Clerk
+const mockCurrentUser = mock(() => Promise.resolve(null));
+
+mock.module("@clerk/nextjs/server", () => ({
+  currentUser: mockCurrentUser,
+}));
 
 // Mock the env module
-vi.mock("@/env", () => ({
+mock.module("@/env", () => ({
   env: {
     ADMIN_EMAILS: "admin@example.com,admin2@example.com",
     RESEND_API_KEY: "test-key",
@@ -11,60 +18,58 @@ vi.mock("@/env", () => ({
 }));
 
 // Mock the db module
-vi.mock("@/lib/db", () => ({
+mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: vi.fn(() => ({
-      selectAll: vi.fn(() => ({
-        orderBy: vi.fn(() => ({
-          execute: vi.fn().mockResolvedValue([]),
-        })),
-        where: vi.fn(() => ({
-          execute: vi.fn().mockResolvedValue([]),
-          executeTakeFirst: vi.fn().mockResolvedValue(null),
-        })),
-      })),
-      select: vi.fn(() => ({
-        where: vi.fn(() => ({
-          executeTakeFirst: vi.fn().mockResolvedValue(null),
-        })),
-      })),
-    })),
-    insertInto: vi.fn(() => ({
-      values: vi.fn(() => ({
-        returningAll: vi.fn(() => ({
-          executeTakeFirstOrThrow: vi.fn().mockResolvedValue({ id: "test-id" }),
-          executeTakeFirst: vi.fn().mockResolvedValue({ id: "test-id" }),
-        })),
-      })),
-    })),
-    updateTable: vi.fn(() => ({
-      set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          execute: vi.fn().mockResolvedValue([]),
-          returningAll: vi.fn(() => ({
-            executeTakeFirst: vi.fn().mockResolvedValue({ id: "test-id" }),
-          })),
-        })),
-      })),
-    })),
-    deleteFrom: vi.fn(() => ({
-      where: vi.fn(() => ({
-        execute: vi.fn().mockResolvedValue([]),
-      })),
-    })),
+    selectFrom: () => ({
+      selectAll: () => ({
+        orderBy: () => ({
+          execute: () => Promise.resolve([]),
+        }),
+        where: () => ({
+          execute: () => Promise.resolve([]),
+          executeTakeFirst: () => Promise.resolve(null),
+        }),
+      }),
+      select: () => ({
+        where: () => ({
+          executeTakeFirst: () => Promise.resolve(null),
+        }),
+      }),
+    }),
+    insertInto: () => ({
+      values: () => ({
+        returningAll: () => ({
+          executeTakeFirstOrThrow: () => Promise.resolve({ id: "test-id" }),
+          executeTakeFirst: () => Promise.resolve({ id: "test-id" }),
+        }),
+      }),
+    }),
+    updateTable: () => ({
+      set: () => ({
+        where: () => ({
+          execute: () => Promise.resolve([]),
+          returningAll: () => ({
+            executeTakeFirst: () => Promise.resolve({ id: "test-id" }),
+          }),
+        }),
+      }),
+    }),
+    deleteFrom: () => ({
+      where: () => ({
+        execute: () => Promise.resolve([]),
+      }),
+    }),
   },
 }));
 
-import { currentUser } from "@clerk/nextjs/server";
-
 describe("Admin API Authentication", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockCurrentUser.mockClear();
   });
 
   describe("Unauthorized access (no user)", () => {
     it("should return 401 when no user is authenticated", async () => {
-      vi.mocked(currentUser).mockResolvedValue(null);
+      mockCurrentUser.mockResolvedValue(null);
 
       const { GET } = await import("@/app/api/admin/guests/route");
 
@@ -78,10 +83,10 @@ describe("Admin API Authentication", () => {
 
   describe("Forbidden access (non-admin user)", () => {
     it("should return 403 when user is not an admin", async () => {
-      vi.mocked(currentUser).mockResolvedValue({
+      mockCurrentUser.mockResolvedValue({
         id: "user-123",
         emailAddresses: [{ emailAddress: "notadmin@example.com" }],
-      } as ReturnType<typeof currentUser> extends Promise<infer T> ? T : never);
+      });
 
       const { GET } = await import("@/app/api/admin/guests/route");
 
@@ -95,10 +100,10 @@ describe("Admin API Authentication", () => {
 
   describe("Authorized access (admin user)", () => {
     it("should allow access when user is an admin", async () => {
-      vi.mocked(currentUser).mockResolvedValue({
+      mockCurrentUser.mockResolvedValue({
         id: "admin-123",
         emailAddresses: [{ emailAddress: "admin@example.com" }],
-      } as ReturnType<typeof currentUser> extends Promise<infer T> ? T : never);
+      });
 
       const { GET } = await import("@/app/api/admin/guests/route");
 
@@ -108,10 +113,10 @@ describe("Admin API Authentication", () => {
     });
 
     it("should be case-insensitive for admin email check", async () => {
-      vi.mocked(currentUser).mockResolvedValue({
+      mockCurrentUser.mockResolvedValue({
         id: "admin-123",
         emailAddresses: [{ emailAddress: "ADMIN@EXAMPLE.COM" }],
-      } as ReturnType<typeof currentUser> extends Promise<infer T> ? T : never);
+      });
 
       const { GET } = await import("@/app/api/admin/guests/route");
 
@@ -123,22 +128,26 @@ describe("Admin API Authentication", () => {
 });
 
 describe("Admin Email Whitelist", () => {
+  beforeEach(() => {
+    mockCurrentUser.mockClear();
+  });
+
   it("should support multiple admin emails", async () => {
     // First admin
-    vi.mocked(currentUser).mockResolvedValue({
+    mockCurrentUser.mockResolvedValue({
       id: "admin-1",
       emailAddresses: [{ emailAddress: "admin@example.com" }],
-    } as ReturnType<typeof currentUser> extends Promise<infer T> ? T : never);
+    });
 
     const { GET: GET1 } = await import("@/app/api/admin/guests/route");
     const response1 = await GET1();
     expect(response1.status).toBe(200);
 
     // Second admin
-    vi.mocked(currentUser).mockResolvedValue({
+    mockCurrentUser.mockResolvedValue({
       id: "admin-2",
       emailAddresses: [{ emailAddress: "admin2@example.com" }],
-    } as ReturnType<typeof currentUser> extends Promise<infer T> ? T : never);
+    });
 
     const { GET: GET2 } = await import("@/app/api/admin/guests/route");
     const response2 = await GET2();

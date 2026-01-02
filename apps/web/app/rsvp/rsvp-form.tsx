@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select";
 import { Switch } from "@workspace/ui/components/switch";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -27,15 +28,9 @@ interface RSVPFormProps {
   guests: Guest[];
   inviteCode: string;
   onBack: () => void;
-  isMobile?: boolean;
 }
 
-export function RSVPForm({
-  guests,
-  inviteCode,
-  onBack,
-  isMobile,
-}: RSVPFormProps) {
+export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
   const router = useRouter();
 
   const primaryGuest = guests.find((g) => !g.is_plus_one);
@@ -169,13 +164,22 @@ export function RSVPForm({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className={isMobile ? "flex flex-col flex-1 min-h-0" : "space-y-6"}
+      className="flex flex-col flex-1 min-h-0 md:block md:space-y-6"
     >
-      <div
-        className={
-          isMobile ? "flex-1 overflow-y-auto px-4 py-4 space-y-6" : "space-y-6"
-        }
-      >
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-6 md:flex-none md:overflow-visible md:overscroll-auto md:px-0 md:py-0">
+        {/* Things to Do Link - mobile only */}
+        <div className="p-3 bg-accent/10 border border-accent/30 rounded-lg md:hidden">
+          <p className="text-xs text-center text-foreground">
+            Planning your trip to San Diego?{" "}
+            <Link
+              href="/things-to-do"
+              className="font-semibold underline hover:text-accent transition-colors"
+            >
+              Check out Things to Do
+            </Link>
+          </p>
+        </div>
+
         {/* RSVP Status Banner - only show if previously submitted (not pending) */}
         {hasRSVPd && (
           <div
@@ -603,13 +607,7 @@ export function RSVPForm({
       </div>
 
       {/* Submit Buttons */}
-      <div
-        className={
-          isMobile
-            ? "flex-shrink-0 flex gap-3 p-4 border-t border-border bg-background"
-            : "flex gap-3 pt-4"
-        }
-      >
+      <div className="flex-shrink-0 flex gap-3 p-4 border-t border-border bg-background md:border-t-0 md:p-0 md:pt-4 md:bg-transparent">
         <Button
           type="button"
           variant="outline"

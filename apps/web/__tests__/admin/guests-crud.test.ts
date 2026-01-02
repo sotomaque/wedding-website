@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 // Mock env
-vi.mock("@/env", () => ({
+mock.module("@/env", () => ({
   env: {
     ADMIN_EMAILS: "admin@example.com",
     RESEND_API_KEY: "test-key",
@@ -11,89 +11,96 @@ vi.mock("@/env", () => ({
 }));
 
 // Mock Clerk
-vi.mock("@clerk/nextjs/server", () => ({
-  currentUser: vi.fn().mockResolvedValue({
-    id: "admin-123",
-    emailAddresses: [{ emailAddress: "admin@example.com" }],
-  }),
+mock.module("@clerk/nextjs/server", () => ({
+  currentUser: () =>
+    Promise.resolve({
+      id: "admin-123",
+      emailAddresses: [{ emailAddress: "admin@example.com" }],
+    }),
 }));
 
 // Create db mock with tracking
-const mockExecute = vi.fn().mockResolvedValue([]);
-const mockExecuteTakeFirst = vi.fn().mockResolvedValue(null);
-const mockExecuteTakeFirstOrThrow = vi.fn();
-const mockInsertValues = vi.fn();
-const mockUpdateSet = vi.fn();
-const mockDeleteWhere = vi.fn();
+const mockExecute = mock(() => Promise.resolve([]));
+const mockExecuteTakeFirst = mock(() => Promise.resolve(null));
+const mockExecuteTakeFirstOrThrow = mock(() => Promise.resolve({}));
+const mockInsertValues = mock(() => {});
+const mockUpdateSet = mock(() => {});
+const mockDeleteWhere = mock(() => {});
 
-vi.mock("@/lib/db", () => ({
+mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: vi.fn(() => ({
-      selectAll: vi.fn(() => ({
-        orderBy: vi.fn(() => ({
+    selectFrom: () => ({
+      selectAll: () => ({
+        orderBy: () => ({
           execute: mockExecute,
-        })),
-        where: vi.fn(() => ({
+        }),
+        where: () => ({
           execute: mockExecute,
           executeTakeFirst: mockExecuteTakeFirst,
-          where: vi.fn(() => ({
+          where: () => ({
             executeTakeFirst: mockExecuteTakeFirst,
-          })),
-        })),
-      })),
-      select: vi.fn(() => ({
-        where: vi.fn(() => ({
+          }),
+        }),
+      }),
+      select: () => ({
+        where: () => ({
           executeTakeFirst: mockExecuteTakeFirst,
-        })),
-      })),
-    })),
-    insertInto: vi.fn(() => ({
-      values: vi.fn((data) => {
+        }),
+      }),
+    }),
+    insertInto: () => ({
+      values: (data: unknown) => {
         mockInsertValues(data);
         return {
-          returningAll: vi.fn(() => ({
+          returningAll: () => ({
             executeTakeFirstOrThrow: mockExecuteTakeFirstOrThrow,
             executeTakeFirst: mockExecuteTakeFirst,
-          })),
+          }),
           execute: mockExecute,
         };
-      }),
-    })),
-    updateTable: vi.fn(() => ({
-      set: vi.fn((data) => {
+      },
+    }),
+    updateTable: () => ({
+      set: (data: unknown) => {
         mockUpdateSet(data);
         return {
-          where: vi.fn(() => ({
+          where: () => ({
             execute: mockExecute,
-            returningAll: vi.fn(() => ({
+            returningAll: () => ({
               executeTakeFirst: mockExecuteTakeFirst,
-            })),
-          })),
+            }),
+          }),
         };
-      }),
-    })),
-    deleteFrom: vi.fn(() => ({
-      where: vi.fn((field, op, value) => {
+      },
+    }),
+    deleteFrom: () => ({
+      where: (field: string, op: string, value: string) => {
         mockDeleteWhere(field, op, value);
         return {
           execute: mockExecute,
-          where: vi.fn(() => ({
+          where: () => ({
             execute: mockExecute,
-          })),
+          }),
         };
-      }),
-    })),
+      },
+    }),
   },
 }));
 
 // Mock email template
-vi.mock("@/lib/email/templates/wedding-invitation", () => ({
-  getWeddingInvitationEmail: vi.fn().mockReturnValue("<html>Mock email</html>"),
+mock.module("@/lib/email/templates/wedding-invitation", () => ({
+  getWeddingInvitationEmail: () => "<html>Mock email</html>",
 }));
 
 describe("Guest CRUD - Create User", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockExecute.mockClear();
+    mockExecuteTakeFirst.mockClear();
+    mockExecuteTakeFirstOrThrow.mockClear();
+    mockInsertValues.mockClear();
+    mockUpdateSet.mockClear();
+    mockDeleteWhere.mockClear();
+
     mockExecuteTakeFirstOrThrow.mockResolvedValue({
       id: "guest-123",
       first_name: "John",
@@ -193,7 +200,13 @@ describe("Guest CRUD - Create User", () => {
 
 describe("Guest CRUD - Edit User", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockExecute.mockClear();
+    mockExecuteTakeFirst.mockClear();
+    mockExecuteTakeFirstOrThrow.mockClear();
+    mockInsertValues.mockClear();
+    mockUpdateSet.mockClear();
+    mockDeleteWhere.mockClear();
+
     mockExecuteTakeFirst.mockResolvedValue({
       id: "guest-123",
       first_name: "John",
@@ -342,7 +355,12 @@ describe("Guest CRUD - Edit User", () => {
 
 describe("Guest CRUD - Delete User", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockExecute.mockClear();
+    mockExecuteTakeFirst.mockClear();
+    mockExecuteTakeFirstOrThrow.mockClear();
+    mockInsertValues.mockClear();
+    mockUpdateSet.mockClear();
+    mockDeleteWhere.mockClear();
   });
 
   it("should delete a guest", async () => {
@@ -380,7 +398,13 @@ describe("Guest CRUD - Delete User", () => {
 
 describe("Guest CRUD - List Assignment (A/B/C)", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockExecute.mockClear();
+    mockExecuteTakeFirst.mockClear();
+    mockExecuteTakeFirstOrThrow.mockClear();
+    mockInsertValues.mockClear();
+    mockUpdateSet.mockClear();
+    mockDeleteWhere.mockClear();
+
     mockExecuteTakeFirst.mockResolvedValue({
       id: "guest-123",
       first_name: "John",

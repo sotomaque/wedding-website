@@ -59,9 +59,10 @@ export async function POST(request: NextRequest) {
           }),
         });
 
+        const recipients = env.RSVP_EMAIL.split(",").map((e) => e.trim());
         await resend.emails.send({
           from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
-          to: env.RSVP_EMAIL,
+          to: recipients,
           subject: `${attending ? "✅" : "❌"} RSVP: ${guests.map((g) => g.first_name).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,
           html: emailHtml,
         });

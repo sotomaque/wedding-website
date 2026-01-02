@@ -1,23 +1,23 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 // Mock db
-const mockExecute = vi.fn();
+const mockExecute = mock(() => Promise.resolve([]));
 
-vi.mock("@/lib/db", () => ({
+mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: vi.fn(() => ({
-      selectAll: vi.fn(() => ({
-        where: vi.fn(() => ({
+    selectFrom: () => ({
+      selectAll: () => ({
+        where: () => ({
           execute: mockExecute,
-        })),
-      })),
-    })),
+        }),
+      }),
+    }),
   },
 }));
 
 describe("RSVP - Verify Invite Code", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockExecute.mockClear();
   });
 
   it("should verify a valid invite code", async () => {
@@ -109,7 +109,7 @@ describe("RSVP - Verify Invite Code", () => {
 
 describe("RSVP - Deeplink", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockExecute.mockClear();
   });
 
   it("should accept code from query parameter", async () => {
