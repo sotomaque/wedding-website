@@ -270,6 +270,10 @@ export function RSVPForm({
               <p className="font-semibold">✗ Regretfully Decline</p>
             </button>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Children 3 and under are welcome to attend and do not need to be
+            listed.
+          </p>
         </div>
 
         {/* Plus-One Section (only if attending and has plus-one allowed) */}
