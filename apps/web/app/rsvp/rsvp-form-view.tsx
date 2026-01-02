@@ -26,7 +26,7 @@ export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
   return (
     <>
       {/* Mobile: Full-screen form layout */}
-      <div className="md:hidden h-full flex flex-col bg-background overflow-hidden">
+      <div className="md:hidden h-dvh fixed inset-0 flex flex-col bg-background overflow-hidden overscroll-none">
         {/* Navigation */}
         <div className="flex-shrink-0">
           <Navigation

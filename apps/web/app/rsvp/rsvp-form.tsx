@@ -166,7 +166,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       onSubmit={handleSubmit(onSubmit)}
       className="flex flex-col flex-1 min-h-0 md:block md:space-y-6"
     >
-      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-6 md:flex-none md:overflow-visible md:overscroll-auto md:px-0 md:py-0">
+      <div className="flex-1 overflow-y-auto overscroll-none px-4 py-4 space-y-6 md:flex-none md:overflow-visible md:overscroll-auto md:px-0 md:py-0">
         {/* Things to Do Link - mobile only */}
         <div className="p-3 bg-accent/10 border border-accent/30 rounded-lg md:hidden">
           <p className="text-xs text-center text-foreground">
