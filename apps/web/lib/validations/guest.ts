@@ -19,6 +19,7 @@ export const editGuestSchema = z
       .optional()
       .or(z.literal("")),
     family: z.boolean(),
+    under21: z.boolean(),
     notes: z.string().optional(),
   })
   .refine(
@@ -56,6 +57,7 @@ export const addGuestSchema = z
       .optional()
       .or(z.literal("")),
     family: z.boolean(),
+    under21: z.boolean(),
     notes: z.string().optional(),
   })
   .refine(

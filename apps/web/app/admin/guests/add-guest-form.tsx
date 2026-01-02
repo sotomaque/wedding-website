@@ -46,6 +46,7 @@ export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
       whatsapp: "",
       preferredContactMethod: "",
       family: false,
+      under21: false,
       notes: "",
     },
   });
@@ -54,6 +55,7 @@ export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
   const plusOneFirstName = watch("plusOneFirstName");
   const email = watch("email");
   const family = watch("family");
+  const under21 = watch("under21");
 
   async function onSubmit(data: AddGuestFormData) {
     try {
@@ -308,6 +310,17 @@ export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
                   id="family"
                   checked={family}
                   onCheckedChange={(checked) => setValue("family", checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label htmlFor="under21" className="text-sm font-medium">
+                  Under 21
+                </label>
+                <Switch
+                  id="under21"
+                  checked={under21}
+                  onCheckedChange={(checked) => setValue("under21", checked)}
                 />
               </div>
 

@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
       whatsapp,
       preferredContactMethod,
       family,
+      under21,
       notes,
     } = body;
 
@@ -139,6 +140,7 @@ export async function POST(request: NextRequest) {
         whatsapp: whatsapp || null,
         preferred_contact_method: preferredContactMethod || null,
         family: family || false,
+        under_21: under21 || false,
         notes: notes || null,
       })
       .returningAll()
@@ -178,6 +180,7 @@ export async function POST(request: NextRequest) {
             whatsapp: null,
             preferred_contact_method: null,
             family: family || false, // Inherit family status from primary guest
+            under_21: under21 || false, // Inherit under_21 status from primary guest
             notes: null,
           })
           .returningAll()

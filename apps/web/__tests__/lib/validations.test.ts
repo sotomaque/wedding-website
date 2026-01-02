@@ -11,6 +11,7 @@ describe("addGuestSchema", () => {
       plusOneAllowed: false,
       sendEmail: false,
       family: false,
+      under21: false,
     });
     expect(result.success).toBe(true);
   });
@@ -22,6 +23,7 @@ describe("addGuestSchema", () => {
       plusOneAllowed: false,
       sendEmail: false,
       family: false,
+      under21: false,
     });
     expect(result.success).toBe(false);
   });
@@ -35,6 +37,7 @@ describe("addGuestSchema", () => {
       plusOneAllowed: false,
       sendEmail: false,
       family: false,
+      under21: false,
     });
     expect(result.success).toBe(false);
   });
@@ -48,6 +51,7 @@ describe("addGuestSchema", () => {
       plusOneAllowed: false,
       sendEmail: false,
       family: false,
+      under21: false,
     });
     expect(result.success).toBe(true);
   });
@@ -61,6 +65,7 @@ describe("addGuestSchema", () => {
         plusOneAllowed: false,
         sendEmail: false,
         family: false,
+        under21: false,
       });
       expect(result.success).toBe(true);
     }
@@ -75,6 +80,7 @@ describe("addGuestSchema", () => {
         plusOneAllowed: false,
         sendEmail: false,
         family: false,
+        under21: false,
       });
       expect(result.success).toBe(true);
     }
@@ -90,6 +96,7 @@ describe("addGuestSchema", () => {
       plusOneLastName: "Doe",
       sendEmail: false,
       family: false,
+      under21: false,
     });
     expect(result.success).toBe(true);
   });
@@ -104,6 +111,7 @@ describe("editGuestSchema", () => {
       plusOneAllowed: false,
       physicalInviteSent: false,
       family: true,
+      under21: false,
     });
     expect(result.success).toBe(true);
   });
@@ -117,6 +125,7 @@ describe("editGuestSchema", () => {
         plusOneAllowed: false,
         physicalInviteSent: false,
         family: false,
+        under21: false,
       });
       expect(result.success).toBe(true);
     }
@@ -131,6 +140,7 @@ describe("editGuestSchema", () => {
         plusOneAllowed: false,
         physicalInviteSent: false,
         family: false,
+        under21: false,
         preferredContactMethod: method,
       });
       expect(result.success).toBe(true);

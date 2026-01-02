@@ -12,6 +12,7 @@ interface GetGuestsParams {
   family?: "true" | "false";
   isPlusOne?: "true" | "false";
   emailStatus?: "not_sent" | "sent" | "resent";
+  under21?: "true" | "false";
   sortBy?:
     | "first_name"
     | "email"
@@ -58,6 +59,10 @@ export async function getGuests(
       } else if (params.emailStatus === "resent") {
         query = query.where("number_of_resends", ">", 1);
       }
+    }
+
+    if (params.under21 !== undefined) {
+      query = query.where("under_21", "=", params.under21 === "true");
     }
 
     // Apply sorting

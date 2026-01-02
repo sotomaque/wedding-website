@@ -101,6 +101,7 @@ export async function PATCH(
       whatsapp,
       preferredContactMethod,
       family,
+      under21,
       notes,
     } = body;
 
@@ -145,6 +146,7 @@ export async function PATCH(
             ? preferredContactMethod || null
             : currentGuest.preferred_contact_method,
         family: family !== undefined ? family : currentGuest.family,
+        under_21: under21 !== undefined ? under21 : currentGuest.under_21,
         notes: notes !== undefined ? notes || null : currentGuest.notes,
       })
       .where("id", "=", id)
@@ -205,6 +207,7 @@ export async function PATCH(
             number_of_resends: 0,
             physical_invite_sent: false,
             family: family !== undefined ? family : currentGuest.family,
+            under_21: under21 !== undefined ? under21 : currentGuest.under_21,
           })
           .execute();
       }
