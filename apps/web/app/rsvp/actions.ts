@@ -28,6 +28,8 @@ interface RSVPSubmitData {
     | null;
   plusOneDietaryRestrictions?: string;
   dietaryRestrictions?: string;
+  under21?: boolean;
+  plusOneUnder21?: boolean;
   mailingAddress?: string;
   phoneNumber?: string;
   whatsapp?: string;
@@ -89,6 +91,8 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       plusOnePreferredContactMethod,
       plusOneDietaryRestrictions,
       dietaryRestrictions,
+      under21,
+      plusOneUnder21,
       mailingAddress,
       phoneNumber,
       whatsapp,
@@ -126,6 +130,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
         last_name: lastName || null,
         rsvp_status: attending ? "yes" : "no",
         dietary_restrictions: attending ? dietaryRestrictions || null : null,
+        under_21: under21 ?? primaryGuest.under_21,
         mailing_address: mailingAddress || null,
         phone_number: phoneNumber || null,
         whatsapp: whatsapp || null,
@@ -163,6 +168,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                 email: plusOneEmail || existingPlusOne.email,
                 rsvp_status: "yes",
                 dietary_restrictions: plusOneDietaryRestrictions || null,
+                under_21: plusOneUnder21 ?? existingPlusOne.under_21,
                 phone_number: plusOnePhoneNumber || null,
                 whatsapp: plusOneWhatsapp || null,
                 preferred_contact_method: plusOnePreferredContactMethod || null,
@@ -185,6 +191,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                 primary_guest_id: primaryGuest.id,
                 rsvp_status: "yes",
                 dietary_restrictions: plusOneDietaryRestrictions || null,
+                under_21: plusOneUnder21 ?? false,
                 mailing_address: mailingAddress || null,
                 phone_number: plusOnePhoneNumber || null,
                 whatsapp: plusOneWhatsapp || null,

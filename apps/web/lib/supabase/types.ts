@@ -40,6 +40,7 @@ export interface Database {
             | "phone_call"
             | null;
           family: boolean;
+          under_21: boolean;
           notes: string | null;
           created_at: string;
         };
@@ -68,6 +69,7 @@ export interface Database {
             | "phone_call"
             | null;
           family?: boolean;
+          under_21?: boolean;
           notes?: string | null;
           created_at?: string;
         };
@@ -96,6 +98,7 @@ export interface Database {
             | "phone_call"
             | null;
           family?: boolean;
+          under_21?: boolean;
           notes?: string | null;
           created_at?: string;
         };

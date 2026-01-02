@@ -91,6 +91,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
         side: "bride",
         list: "a",
         family: false,
+        under_21: false,
       },
     ]);
   });
@@ -177,6 +178,7 @@ describe("RSVP - Plus One Scenarios", () => {
         plus_one_allowed: true,
         side: "bride",
         list: "a",
+        under_21: false,
       },
       {
         id: "guest-456",
@@ -184,6 +186,7 @@ describe("RSVP - Plus One Scenarios", () => {
         invite_code: "ABCD-1234",
         is_plus_one: true,
         primary_guest_id: "guest-123",
+        under_21: false,
       },
     ]);
 
@@ -218,6 +221,7 @@ describe("RSVP - Plus One Scenarios", () => {
         side: "bride",
         list: "a",
         family: false,
+        under_21: false,
       },
       {
         id: "guest-456",
@@ -226,6 +230,7 @@ describe("RSVP - Plus One Scenarios", () => {
         invite_code: "ABCD-1234",
         is_plus_one: true,
         primary_guest_id: "guest-123",
+        under_21: false,
       },
     ]);
 
@@ -263,6 +268,7 @@ describe("RSVP - Plus One Scenarios", () => {
         plus_one_allowed: true,
         side: "bride",
         list: "a",
+        under_21: false,
       },
       {
         id: "guest-456",
@@ -270,6 +276,7 @@ describe("RSVP - Plus One Scenarios", () => {
         invite_code: "ABCD-1234",
         is_plus_one: true,
         primary_guest_id: "guest-123",
+        under_21: false,
       },
     ]);
 
@@ -304,6 +311,7 @@ describe("RSVP - Plus One Scenarios", () => {
         side: "bride",
         list: "a",
         family: false,
+        under_21: false,
       },
     ]);
 
@@ -344,6 +352,7 @@ describe("RSVP - Contact Information", () => {
         plus_one_allowed: false,
         side: "bride",
         list: "a",
+        under_21: false,
       },
     ]);
   });
@@ -398,6 +407,23 @@ describe("RSVP - Contact Information", () => {
       }),
     );
   });
+
+  it("should save under_21 status", async () => {
+    const { submitRSVP } = await import("@/app/rsvp/actions");
+
+    await submitRSVP({
+      inviteCode: "ABCD-1234",
+      firstName: "John",
+      attending: true,
+      under21: true,
+    });
+
+    expect(mockUpdateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        under_21: true,
+      }),
+    );
+  });
 });
 
 describe("RSVP - Notification Email", () => {
@@ -413,6 +439,7 @@ describe("RSVP - Notification Email", () => {
         plus_one_allowed: false,
         side: "bride",
         list: "a",
+        under_21: false,
       },
     ]);
   });

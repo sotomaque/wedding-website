@@ -21,8 +21,8 @@ export interface GuestsTable {
   rsvp_status: "pending" | "yes" | "no";
   plus_one_allowed: boolean;
   dietary_restrictions: string | null;
-  side: "bride" | "groom" | null;
-  list: "a" | "b";
+  side: "bride" | "groom" | "both" | null;
+  list: "a" | "b" | "c";
   is_plus_one: boolean;
   primary_guest_id: string | null;
   number_of_resends: number;
@@ -32,6 +32,7 @@ export interface GuestsTable {
   whatsapp: string | null;
   preferred_contact_method: "email" | "text" | "whatsapp" | "phone_call" | null;
   family: boolean;
+  under_21: boolean;
   notes: string | null;
   created_at: ColumnType<Date, string | undefined, never>;
 }

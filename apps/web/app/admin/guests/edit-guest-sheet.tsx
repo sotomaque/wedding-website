@@ -79,6 +79,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
         | "phone_call"
         | "",
       family: guest.family || false,
+      under21: guest.under_21 || false,
       notes: guest.notes || "",
     }),
     [guest, plusOne],
@@ -98,6 +99,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
   const plusOneAllowed = watch("plusOneAllowed");
   const physicalInviteSent = watch("physicalInviteSent");
   const family = watch("family");
+  const under21 = watch("under21");
 
   // Watch all form values to detect changes
   const formValues = watch();
@@ -119,6 +121,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
       "whatsapp",
       "preferredContactMethod",
       "family",
+      "under21",
       "notes",
     ];
 
@@ -459,6 +462,15 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
                   id="family"
                   checked={family}
                   onCheckedChange={(checked) => setValue("family", checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="under21">Under 21</Label>
+                <Switch
+                  id="under21"
+                  checked={under21}
+                  onCheckedChange={(checked) => setValue("under21", checked)}
                 />
               </div>
 

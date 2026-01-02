@@ -16,6 +16,8 @@ export const rsvpFormSchema = z.object({
     .or(z.literal("")),
   plusOneDietaryRestrictions: z.string().optional(),
   dietaryRestrictions: z.string().optional(),
+  under21: z.boolean().optional(),
+  plusOneUnder21: z.boolean().optional(),
   mailingAddress: z.string().optional(),
   phoneNumber: z.string().optional(),
   whatsapp: z.string().optional(),

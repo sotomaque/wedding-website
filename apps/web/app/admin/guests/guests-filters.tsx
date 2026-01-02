@@ -23,6 +23,7 @@ export function GuestsFilters() {
     | null;
   const currentList = searchParams.get("list") as "a" | "b" | "c" | null;
   const currentFamily = searchParams.get("family") as "true" | "false" | null;
+  const currentUnder21 = searchParams.get("under21") as "true" | "false" | null;
   const currentIsPlusOne = searchParams.get("isPlusOne") as
     | "true"
     | "false"
@@ -58,6 +59,7 @@ export function GuestsFilters() {
     currentStatus ||
     currentList ||
     currentFamily ||
+    currentUnder21 ||
     currentIsPlusOne ||
     currentEmailStatus;
   const filterCount = [
@@ -65,6 +67,7 @@ export function GuestsFilters() {
     currentStatus,
     currentList,
     currentFamily,
+    currentUnder21,
     currentIsPlusOne,
     currentEmailStatus,
   ].filter(Boolean).length;
@@ -235,6 +238,37 @@ export function GuestsFilters() {
               </div>
             </div>
 
+            {/* Under 21 Filter */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Under 21</span>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={currentUnder21 === null ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("under21", null)}
+                  className="w-full"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={currentUnder21 === "true" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("under21", "true")}
+                  className="w-full"
+                >
+                  Yes
+                </Button>
+                <Button
+                  variant={currentUnder21 === "false" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("under21", "false")}
+                  className="w-full"
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+
             {/* Plus One Filter */}
             <div className="space-y-2">
               <span className="text-sm font-medium">Guest Type</span>
@@ -377,6 +411,18 @@ export function GuestsFilters() {
               <button
                 type="button"
                 onClick={() => updateFilter("family", null)}
+                className="hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {currentUnder21 && (
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+              Under 21: {currentUnder21 === "true" ? "Yes" : "No"}
+              <button
+                type="button"
+                onClick={() => updateFilter("under21", null)}
                 className="hover:text-foreground"
               >
                 <X className="h-3 w-3" />

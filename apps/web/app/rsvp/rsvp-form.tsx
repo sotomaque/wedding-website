@@ -61,6 +61,8 @@ export function RSVPForm({
         "",
       plusOneDietaryRestrictions: existingPlusOne?.dietary_restrictions || "",
       dietaryRestrictions: primaryGuest?.dietary_restrictions || "",
+      under21: primaryGuest?.under_21 || false,
+      plusOneUnder21: existingPlusOne?.under_21 || false,
       mailingAddress: primaryGuest?.mailing_address || "",
       phoneNumber: primaryGuest?.phone_number || "",
       whatsapp: primaryGuest?.whatsapp || "",
@@ -100,6 +102,7 @@ export function RSVPForm({
       "lastName",
       "attending",
       "dietaryRestrictions",
+      "under21",
       "mailingAddress",
       "phoneNumber",
       "whatsapp",
@@ -117,6 +120,7 @@ export function RSVPForm({
         "plusOneWhatsapp",
         "plusOnePreferredContactMethod",
         "plusOneDietaryRestrictions",
+        "plusOneUnder21",
       );
     }
 
@@ -142,6 +146,8 @@ export function RSVPForm({
       plusOnePreferredContactMethod: data.plusOnePreferredContactMethod || null,
       plusOneDietaryRestrictions: data.plusOneDietaryRestrictions,
       dietaryRestrictions: data.dietaryRestrictions,
+      under21: data.under21,
+      plusOneUnder21: data.plusOneUnder21,
       mailingAddress: data.mailingAddress,
       phoneNumber: data.phoneNumber,
       whatsapp: data.whatsapp,
@@ -438,6 +444,25 @@ export function RSVPForm({
                         className="bg-white dark:bg-gray-800"
                       />
                     </div>
+
+                    {/* Plus-One Under 21 Toggle */}
+                    <div className="flex items-center justify-between p-2 rounded-lg border bg-white/50 dark:bg-gray-800/50">
+                      <div>
+                        <label
+                          htmlFor="plus-one-under21"
+                          className="text-xs font-medium"
+                        >
+                          Is your plus-one under 21?
+                        </label>
+                      </div>
+                      <Switch
+                        id="plus-one-under21"
+                        checked={watch("plusOneUnder21") || false}
+                        onCheckedChange={(checked) =>
+                          setValue("plusOneUnder21", checked)
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -447,24 +472,43 @@ export function RSVPForm({
 
         {/* Dietary Restrictions (only if attending) */}
         {attending && (
-          <div>
-            <label
-              htmlFor="dietary-restrictions"
-              className="block text-sm font-medium mb-2"
-            >
-              Your Dietary Restrictions (Optional)
-            </label>
-            <Input
-              id="dietary-restrictions"
-              {...register("dietaryRestrictions")}
-              placeholder="e.g., Vegetarian, Gluten-free, Allergies..."
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              For you (primary guest)
-              {hasPlusOne && plusOneAttending
-                ? ". Plus-one dietary restrictions are in their contact information section above."
-                : ""}
-            </p>
+          <div className="space-y-4">
+            <div>
+              <label
+                htmlFor="dietary-restrictions"
+                className="block text-sm font-medium mb-2"
+              >
+                Your Dietary Restrictions (Optional)
+              </label>
+              <Input
+                id="dietary-restrictions"
+                {...register("dietaryRestrictions")}
+                placeholder="e.g., Vegetarian, Gluten-free, Allergies..."
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                For you (primary guest)
+                {hasPlusOne && plusOneAttending
+                  ? ". Plus-one dietary restrictions are in their contact information section above."
+                  : ""}
+              </p>
+            </div>
+
+            {/* Under 21 Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+              <div>
+                <label htmlFor="under21" className="text-sm font-medium">
+                  Are you under 21?
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  This helps us with beverage planning
+                </p>
+              </div>
+              <Switch
+                id="under21"
+                checked={watch("under21") || false}
+                onCheckedChange={(checked) => setValue("under21", checked)}
+              />
+            </div>
           </div>
         )}
 
