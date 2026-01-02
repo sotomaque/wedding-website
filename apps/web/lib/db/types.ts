@@ -3,13 +3,7 @@
  * These types are derived from the Supabase schema and represent the actual database structure
  */
 
-import type {
-  ColumnType,
-  Generated,
-  Insertable,
-  Selectable,
-  Updateable,
-} from "kysely";
+import type { ColumnType, Generated } from "kysely";
 
 // Guests table
 export interface GuestsTable {
@@ -54,35 +48,21 @@ export interface GuestActivityInterestsTable {
   created_at: ColumnType<Date, string | undefined, never>;
 }
 
+// Photos table
+export interface PhotosTable {
+  id: Generated<string>;
+  url: string;
+  alt: string;
+  description: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: ColumnType<Date, string | undefined, never>;
+}
+
 // Database interface
 export interface Database {
   guests: GuestsTable;
   activities: ActivitiesTable;
   guest_activity_interests: GuestActivityInterestsTable;
+  photos: PhotosTable;
 }
-
-// Helper types for CRUD operations (available for future use)
-type Guest = Selectable<GuestsTable>;
-type NewGuest = Insertable<GuestsTable>;
-type GuestUpdate = Updateable<GuestsTable>;
-
-type Activity = Selectable<ActivitiesTable>;
-type NewActivity = Insertable<ActivitiesTable>;
-type ActivityUpdate = Updateable<ActivitiesTable>;
-
-type GuestActivityInterest = Selectable<GuestActivityInterestsTable>;
-type NewGuestActivityInterest = Insertable<GuestActivityInterestsTable>;
-type GuestActivityInterestUpdate = Updateable<GuestActivityInterestsTable>;
-
-// Suppress unused type warnings - these are intentionally defined for future use
-export type {
-  Activity,
-  ActivityUpdate,
-  Guest,
-  GuestActivityInterest,
-  GuestActivityInterestUpdate,
-  GuestUpdate,
-  NewActivity,
-  NewGuest,
-  NewGuestActivityInterest,
-};

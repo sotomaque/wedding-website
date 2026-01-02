@@ -6,11 +6,7 @@ import { useMemo } from "react";
 import { NAVIGATION_CONFIG } from "@/app/navigation-config";
 import { env } from "@/env";
 
-interface MainNavigationProps {
-  activeSection?: string;
-}
-
-export function MainNavigation({ activeSection }: MainNavigationProps) {
+export function MainNavigation() {
   const { user } = useUser();
 
   // Check if user is admin
@@ -39,7 +35,6 @@ export function MainNavigation({ activeSection }: MainNavigationProps) {
       brandImage={NAVIGATION_CONFIG.brandImage}
       leftLinks={NAVIGATION_CONFIG.leftLinks}
       rightLinks={rightLinks}
-      activeSection={activeSection}
     />
   );
 }

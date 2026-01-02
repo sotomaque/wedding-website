@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
-describe("vitest setup", () => {
+describe("bun test setup", () => {
   it("should work", () => {
     expect(true).toBe(true);
   });

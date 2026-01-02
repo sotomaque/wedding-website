@@ -26,13 +26,15 @@ export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
   return (
     <>
       {/* Mobile: Full-screen form layout */}
-      <div className="md:hidden h-screen flex flex-col bg-background overflow-hidden">
+      <div className="md:hidden h-dvh fixed inset-0 flex flex-col bg-background overflow-hidden overscroll-none">
         {/* Navigation */}
-        <Navigation
-          brandImage={NAVIGATION_CONFIG.brandImage}
-          leftLinks={NAVIGATION_CONFIG.leftLinks}
-          rightLinks={NAVIGATION_CONFIG.rightLinks}
-        />
+        <div className="flex-shrink-0">
+          <Navigation
+            brandImage={NAVIGATION_CONFIG.brandImage}
+            leftLinks={NAVIGATION_CONFIG.leftLinks}
+            rightLinks={NAVIGATION_CONFIG.rightLinks}
+          />
+        </div>
 
         {/* Header */}
         <div className="flex-shrink-0 pt-6 pb-4 px-4 border-b border-border bg-card">
@@ -56,27 +58,11 @@ export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
         </div>
 
         {/* Form Content */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* Things to Do Link */}
-          <div className="flex-shrink-0 px-4 pt-4">
-            <div className="p-3 bg-accent/10 border border-accent/30 rounded-lg">
-              <p className="text-xs text-center text-foreground">
-                Planning your trip to San Diego?{" "}
-                <Link
-                  href="/things-to-do"
-                  className="font-semibold underline hover:text-accent transition-colors"
-                >
-                  Check out Things to Do
-                </Link>
-              </p>
-            </div>
-          </div>
-
+        <div className="flex-1 flex flex-col min-h-0">
           <RSVPForm
             guests={guests}
             inviteCode={inviteCode}
             onBack={handleBack}
-            isMobile
           />
         </div>
       </div>

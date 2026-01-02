@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 // Mock email sending - must be a proper class
-const mockSendEmail = vi.fn().mockResolvedValue({ id: "email-123" });
+const mockSendEmail = mock(() => Promise.resolve({ id: "email-123" }));
 
 class MockResend {
   emails = {
@@ -9,12 +9,12 @@ class MockResend {
   };
 }
 
-vi.mock("resend", () => ({
+mock.module("resend", () => ({
   Resend: MockResend,
 }));
 
 // Mock env
-vi.mock("@/env", () => ({
+mock.module("@/env", () => ({
   env: {
     RESEND_API_KEY: "test-key",
     RSVP_EMAIL: "admin@example.com",
@@ -23,60 +23,61 @@ vi.mock("@/env", () => ({
 }));
 
 // Mock next/cache
-vi.mock("next/cache", () => ({
-  revalidatePath: vi.fn(),
+mock.module("next/cache", () => ({
+  revalidatePath: () => {},
 }));
 
 // Mock email template
-vi.mock("@/lib/email/templates/rsvp-notification", () => ({
-  getRsvpNotificationEmail: vi
-    .fn()
-    .mockReturnValue("<html>RSVP Notification</html>"),
+mock.module("@/lib/email/templates/rsvp-notification", () => ({
+  getRsvpNotificationEmail: () => "<html>RSVP Notification</html>",
 }));
 
 // Mock db
-const mockExecute = vi.fn();
-const mockUpdateSet = vi.fn();
-const mockInsertValues = vi.fn();
+const mockExecute = mock(() => Promise.resolve([]));
+const mockUpdateSet = mock(() => {});
+const mockInsertValues = mock(() => {});
 
-vi.mock("@/lib/db", () => ({
+mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: vi.fn(() => ({
-      selectAll: vi.fn(() => ({
-        where: vi.fn(() => ({
+    selectFrom: () => ({
+      selectAll: () => ({
+        where: () => ({
           execute: mockExecute,
-        })),
-      })),
-      select: vi.fn(() => ({
-        where: vi.fn(() => ({
+        }),
+      }),
+      select: () => ({
+        where: () => ({
           execute: mockExecute,
-        })),
-      })),
-    })),
-    updateTable: vi.fn(() => ({
-      set: vi.fn((data) => {
+        }),
+      }),
+    }),
+    updateTable: () => ({
+      set: (data: unknown) => {
         mockUpdateSet(data);
         return {
-          where: vi.fn(() => ({
-            execute: vi.fn().mockResolvedValue([]),
-          })),
+          where: () => ({
+            execute: () => Promise.resolve([]),
+          }),
         };
-      }),
-    })),
-    insertInto: vi.fn(() => ({
-      values: vi.fn((data) => {
+      },
+    }),
+    insertInto: () => ({
+      values: (data: unknown) => {
         mockInsertValues(data);
         return {
-          execute: vi.fn().mockResolvedValue([]),
+          execute: () => Promise.resolve([]),
         };
-      }),
-    })),
+      },
+    }),
   },
 }));
 
 describe("RSVP - Submit (Manual Entry)", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockSendEmail.mockClear();
+    mockExecute.mockClear();
+    mockUpdateSet.mockClear();
+    mockInsertValues.mockClear();
     // Default mock: primary guest only
     mockExecute.mockResolvedValue([
       {
@@ -165,7 +166,10 @@ describe("RSVP - Submit (Manual Entry)", () => {
 
 describe("RSVP - Plus One Scenarios", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockSendEmail.mockClear();
+    mockExecute.mockClear();
+    mockUpdateSet.mockClear();
+    mockInsertValues.mockClear();
   });
 
   it("Scenario 1: Primary declines - plus one should be marked as no", async () => {
@@ -342,7 +346,10 @@ describe("RSVP - Plus One Scenarios", () => {
 
 describe("RSVP - Contact Information", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockSendEmail.mockClear();
+    mockExecute.mockClear();
+    mockUpdateSet.mockClear();
+    mockInsertValues.mockClear();
     mockExecute.mockResolvedValue([
       {
         id: "guest-123",
@@ -428,7 +435,10 @@ describe("RSVP - Contact Information", () => {
 
 describe("RSVP - Notification Email", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockSendEmail.mockClear();
+    mockExecute.mockClear();
+    mockUpdateSet.mockClear();
+    mockInsertValues.mockClear();
     mockExecute.mockResolvedValue([
       {
         id: "guest-123",
@@ -455,7 +465,7 @@ describe("RSVP - Notification Email", () => {
 
     expect(mockSendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: "admin@example.com",
+        to: ["admin@example.com"],
         subject: expect.stringContaining("RSVP"),
       }),
     );

@@ -1,20 +1,13 @@
-"use client";
-
 import Image from "next/image";
-import { useEffect, useState } from "react";
-import { HERO_PHOTOS, STORY_CONTENT } from "../app/constants";
-import { pickRandomItems } from "../app/utils";
 
-export function StorySection() {
-  const [randomPhotos, setRandomPhotos] = useState(
-    [...HERO_PHOTOS].slice(0, 3),
-  );
-  const [mainPhoto, ...secondaryPhotos] = randomPhotos;
+import { type HeroPhoto, STORY_CONTENT } from "../app/constants";
 
-  // Pick 3 random photos on mount (client-side only to avoid hydration mismatch)
-  useEffect(() => {
-    setRandomPhotos(pickRandomItems([...HERO_PHOTOS], 3));
-  }, []);
+interface StorySectionProps {
+  photos: HeroPhoto[];
+}
+
+export function StorySection({ photos }: StorySectionProps) {
+  const [mainPhoto, ...secondaryPhotos] = photos;
 
   if (!mainPhoto) return null;
 
