@@ -6,7 +6,7 @@ A beautiful, modern wedding website built with Next.js 16, React 19, and Tailwin
 
 - **Hero Carousel**: Auto-scrolling photo carousel with manual navigation and timer reset
 - **Randomized Photos**: Photos are shuffled on each visit for a fresh experience
-- **Interactive Map**: Explore our favorite San Diego spots with an interactive Mapbox-powered map
+- **Things to Do**: Curated recommendations for guests visiting San Diego
 - **Responsive Design**: Fully responsive across all devices
 - **Dark/Light Mode**: Theme switching support
 - **Elegant Animations**: Smooth hover effects and transitions throughout
@@ -19,7 +19,7 @@ A beautiful, modern wedding website built with Next.js 16, React 19, and Tailwin
 - **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
 - **Components**: Custom component library with [shadcn/ui](https://ui.shadcn.com/)
 - **Carousel**: [Embla Carousel](https://www.embla-carousel.com/)
-- **Maps**: [Mapbox GL JS](https://www.mapbox.com/) with [deck.gl](https://deck.gl/)
+- **Database**: PostgreSQL via [Supabase](https://supabase.com/) with [Kysely](https://kysely.dev/)
 - **Monorepo**: [Turborepo](https://turbo.build/)
 - **Package Manager**: [Bun](https://bun.sh/)
 - **Linting**: [Biome](https://biomejs.dev/)
@@ -51,15 +51,15 @@ cp apps/web/.env.example apps/web/.env.local
 
 Edit `apps/web/.env.local` and add your environment variables:
 ```env
-# Required for map functionality
-NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token_here
-
 # Required for RSVP email notifications
 RESEND_API_KEY=your_resend_api_key_here
 RSVP_EMAIL=your-email@example.com
 
 # Required for displaying contact email in footer
 NEXT_PUBLIC_RSVP_EMAIL=your-email@example.com
+
+# Required for database
+DATABASE_URL=postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
 
 # Required for admin authentication (optional - only needed for /admin access)
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
@@ -68,8 +68,8 @@ ADMIN_EMAILS=your-email@example.com,partner-email@example.com
 ```
 
 **Getting API Keys:**
-- **Mapbox Token**: Get your token at [https://account.mapbox.com/access-tokens/](https://account.mapbox.com/access-tokens/)
 - **Resend API Key**: Get your API key at [https://resend.com/api-keys](https://resend.com/api-keys)
+- **Database URL**: Get from your Supabase dashboard under Settings → Database → Connection string (URI)
 - **Clerk Keys** (Optional):
   1. Create a free account at [https://clerk.com](https://clerk.com)
   2. Create a new application

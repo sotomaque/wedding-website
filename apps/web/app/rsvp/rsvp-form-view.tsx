@@ -143,7 +143,7 @@ export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
                   <p className="text-sm text-center text-foreground">
                     Planning your trip to San Diego?{" "}
                     <Link
-                      href={`/things-to-do?code=${inviteCode}`}
+                      href="/things-to-do"
                       className="font-semibold underline hover:text-accent transition-colors"
                     >
                       Check out Things to Do

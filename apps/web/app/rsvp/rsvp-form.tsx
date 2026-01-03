@@ -155,10 +155,10 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
           ? "Your RSVP has been updated successfully."
           : "Thank you for your response. We can't wait to celebrate with you!",
       });
-      // Redirect to things-to-do page with invite code for first-time RSVPs
+      // Redirect to things-to-do page for first-time RSVPs who are attending
       // For updates, just refresh the page
       if (!hasRSVPd && data.attending) {
-        router.push(`/things-to-do?code=${inviteCode}`);
+        router.push("/things-to-do");
       } else {
         router.refresh();
       }
@@ -178,7 +178,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
           <p className="text-xs text-center text-foreground">
             Planning your trip to San Diego?{" "}
             <Link
-              href={`/things-to-do?code=${inviteCode}`}
+              href="/things-to-do"
               className="font-semibold underline hover:text-accent transition-colors"
             >
               Check out Things to Do

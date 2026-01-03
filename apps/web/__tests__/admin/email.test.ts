@@ -280,11 +280,3 @@ describe("Email Sending - B/C List Warning", () => {
     expect(mockSendEmail).toHaveBeenCalled();
   });
 });
-
-describe("Email Template", () => {
-  it("should use Resend template for sending emails", () => {
-    // Email templates are now managed in Resend dashboard
-    // The template_id is passed to resend.emails.send() instead of local HTML
-    expect(true).toBe(true);
-  });
-});
