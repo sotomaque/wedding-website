@@ -14,6 +14,12 @@ interface PageProps {
     family?: "true" | "false";
     isPlusOne?: "true" | "false";
     emailStatus?: "not_sent" | "sent" | "resent";
+    bridalParty?:
+      | "groomsman"
+      | "best_man"
+      | "bridesmaid"
+      | "maid_of_honor"
+      | "any";
     sortBy?:
       | "first_name"
       | "email"

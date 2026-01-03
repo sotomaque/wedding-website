@@ -56,10 +56,7 @@ mock.module("@/lib/db", () => ({
   },
 }));
 
-// Mock email template
-mock.module("@/lib/email/templates/wedding-invitation", () => ({
-  getWeddingInvitationEmail: () => "<html>Wedding Invitation</html>",
-}));
+// Note: Email sending now uses Resend templates directly, no local template mock needed
 
 describe("Email Sending - Resend Email", () => {
   beforeEach(() => {
@@ -281,15 +278,5 @@ describe("Email Sending - B/C List Warning", () => {
 
     expect(response.status).toBe(200);
     expect(mockSendEmail).toHaveBeenCalled();
-  });
-});
-
-describe("Email Template", () => {
-  it("should include RSVP link with invite code", async () => {
-    const { getWeddingInvitationEmail } = await import(
-      "@/lib/email/templates/wedding-invitation"
-    );
-
-    expect(getWeddingInvitationEmail).toBeDefined();
   });
 });

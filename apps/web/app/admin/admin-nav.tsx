@@ -14,6 +14,8 @@ interface AdminNavLink {
 const adminLinks: AdminNavLink[] = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/guests", label: "Guests" },
+  { href: "/admin/events", label: "Events" },
+  { href: "/admin/templates", label: "Templates" },
   { href: "/admin/photos", label: "Photos" },
 ];
 

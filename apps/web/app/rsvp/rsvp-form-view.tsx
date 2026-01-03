@@ -1,12 +1,15 @@
 "use client";
 
+import { useUser } from "@clerk/nextjs";
 import { Navigation } from "@workspace/ui/components/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import type { Database } from "@/lib/supabase/types";
 import { DETAILS_CONTENT, RSVP_CONTENT } from "../constants";
 import { NAVIGATION_CONFIG } from "../navigation-config";
+import { linkClerkUserToGuestAction } from "./actions";
 import { RSVPForm } from "./rsvp-form";
 
 type Guest = Database["public"]["Tables"]["guests"]["Row"];
@@ -18,6 +21,16 @@ interface RSVPFormViewProps {
 
 export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
   const router = useRouter();
+  const { user, isLoaded } = useUser();
+  const hasLinked = useRef(false);
+
+  // Link Clerk user to guest when they arrive at the form (after sign-in redirect)
+  useEffect(() => {
+    if (isLoaded && user && !hasLinked.current) {
+      hasLinked.current = true;
+      linkClerkUserToGuestAction(inviteCode);
+    }
+  }, [isLoaded, user, inviteCode]);
 
   function handleBack() {
     router.push("/rsvp");

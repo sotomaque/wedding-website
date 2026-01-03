@@ -155,7 +155,13 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
           ? "Your RSVP has been updated successfully."
           : "Thank you for your response. We can't wait to celebrate with you!",
       });
-      router.refresh();
+      // Redirect to things-to-do page for first-time RSVPs who are attending
+      // For updates, just refresh the page
+      if (!hasRSVPd && data.attending) {
+        router.push("/things-to-do");
+      } else {
+        router.refresh();
+      }
     } else {
       toast.error(result.error || "Failed to submit RSVP");
     }

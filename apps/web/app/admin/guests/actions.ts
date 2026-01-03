@@ -13,6 +13,12 @@ interface GetGuestsParams {
   isPlusOne?: "true" | "false";
   emailStatus?: "not_sent" | "sent" | "resent";
   under21?: "true" | "false";
+  bridalParty?:
+    | "groomsman"
+    | "best_man"
+    | "bridesmaid"
+    | "maid_of_honor"
+    | "any";
   sortBy?:
     | "first_name"
     | "email"
@@ -63,6 +69,14 @@ export async function getGuests(
 
     if (params.under21 !== undefined) {
       query = query.where("under_21", "=", params.under21 === "true");
+    }
+
+    if (params.bridalParty) {
+      if (params.bridalParty === "any") {
+        query = query.where("bridal_party_role", "is not", null);
+      } else {
+        query = query.where("bridal_party_role", "=", params.bridalParty);
+      }
     }
 
     // Apply sorting

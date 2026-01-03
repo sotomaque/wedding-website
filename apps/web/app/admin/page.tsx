@@ -171,21 +171,29 @@ export default async function AdminPage() {
                   </div>
                 </Link>
 
-                <div className="p-6 bg-card border border-border rounded-lg opacity-50 cursor-not-allowed">
-                  <Calendar className="w-8 h-8 text-muted-foreground mb-3" />
-                  <h3 className="font-semibold text-foreground mb-1">
-                    Event Schedule
-                  </h3>
-                  <p className="text-sm text-muted-foreground">Coming soon</p>
-                </div>
+                <Link href="/admin/events">
+                  <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
+                    <Calendar className="w-8 h-8 text-primary mb-3" />
+                    <h3 className="font-semibold text-foreground mb-1">
+                      Events
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Manage wedding events and invitations
+                    </p>
+                  </div>
+                </Link>
 
-                <div className="p-6 bg-card border border-border rounded-lg opacity-50 cursor-not-allowed">
-                  <Mail className="w-8 h-8 text-muted-foreground mb-3" />
-                  <h3 className="font-semibold text-foreground mb-1">
-                    Email Templates
-                  </h3>
-                  <p className="text-sm text-muted-foreground">Coming soon</p>
-                </div>
+                <Link href="/admin/templates">
+                  <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
+                    <Mail className="w-8 h-8 text-primary mb-3" />
+                    <h3 className="font-semibold text-foreground mb-1">
+                      Email Templates
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Create and manage email templates
+                    </p>
+                  </div>
+                </Link>
               </div>
             </div>
           </div>

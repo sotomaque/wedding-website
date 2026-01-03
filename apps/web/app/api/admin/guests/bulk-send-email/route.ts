@@ -3,11 +3,17 @@ import { type NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { getWeddingInvitationEmail } from "@/lib/email/templates/wedding-invitation";
+import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 
 /**
  * POST /api/admin/guests/bulk-send-email
  * Send invitation emails to multiple guests (admin only)
+ * Uses the "wedding-invitation" Resend template by default
+ *
+ * Body:
+ * - guestIds: string[] - Array of guest IDs to send emails to
+ * - templateId?: string - Optional Resend template ID/alias to override default
+ * - subject?: string - Optional custom subject
  */
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { guestIds } = body;
+    const { guestIds, templateId, subject: customSubject } = body;
 
     if (!guestIds || !Array.isArray(guestIds) || guestIds.length === 0) {
       return NextResponse.json(
@@ -82,6 +88,36 @@ export async function POST(request: NextRequest) {
     const resend = new Resend(env.RESEND_API_KEY);
     const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
+    // Fetch wedding date from the Wedding Ceremony event
+    let weddingDate = "";
+    try {
+      const ceremonyEvent = await db
+        .selectFrom("events")
+        .select(["event_date"])
+        .where("name", "=", "Wedding Ceremony")
+        .executeTakeFirst();
+
+      if (ceremonyEvent?.event_date) {
+        // event_date can be a Date object or string depending on the driver
+        const dateValue = ceremonyEvent.event_date;
+        const dateObj =
+          dateValue instanceof Date
+            ? dateValue
+            : new Date(`${dateValue}T00:00:00`);
+
+        if (!Number.isNaN(dateObj.getTime())) {
+          weddingDate = dateObj.toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+        }
+      }
+    } catch (dateError) {
+      console.error("Error fetching wedding date:", dateError);
+    }
+
     // Send emails to all guests
     let sentCount = 0;
     const errors: { guest: string; error: string }[] = [];
@@ -90,19 +126,24 @@ export async function POST(request: NextRequest) {
       const rsvpUrl = `${appUrl}/rsvp?code=${guest.invite_code}`;
 
       try {
-        const emailHtml = getWeddingInvitationEmail({
-          firstName: guest.first_name,
-          lastName: guest.last_name,
-          inviteCode: guest.invite_code,
-          rsvpUrl,
-          appUrl,
-        });
+        // Use Resend template (default: wedding-invitation template)
+        const templateToUse = templateId || WEDDING_INVITATION_TEMPLATE_ALIAS;
 
         await resend.emails.send({
           from: "Wedding Invitation <rsvp@helen-and-enrique.com>",
           to: guest.email as string,
-          subject: "You're Invited to Our Wedding! 💕",
-          html: emailHtml,
+          subject: customSubject || "You're Invited to Our Wedding!",
+          template: {
+            id: templateToUse,
+            variables: {
+              FIRST_NAME: guest.first_name || "",
+              LAST_NAME: guest.last_name || "",
+              INVITE_CODE: guest.invite_code,
+              RSVP_URL: rsvpUrl,
+              APP_URL: appUrl,
+              WEDDING_DATE: weddingDate,
+            },
+          },
         });
 
         // Increment number_of_resends
