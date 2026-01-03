@@ -21,6 +21,11 @@ export const editGuestSchema = z
     family: z.boolean(),
     under21: z.boolean(),
     notes: z.string().optional(),
+    gender: z.enum(["male", "female"]).optional().or(z.literal("")),
+    bridalPartyRole: z
+      .enum(["groomsman", "best_man", "bridesmaid", "maid_of_honor"])
+      .optional()
+      .or(z.literal("")),
   })
   .refine(
     (data) => {
@@ -33,6 +38,25 @@ export const editGuestSchema = z
     {
       message: "Invalid email address",
       path: ["email"],
+    },
+  )
+  .refine(
+    (data) => {
+      // Validate bridal party role matches gender
+      const role = data.bridalPartyRole;
+      if (!role) return true;
+      if (role === "groomsman" || role === "best_man") {
+        return data.gender === "male";
+      }
+      if (role === "bridesmaid" || role === "maid_of_honor") {
+        return data.gender === "female";
+      }
+      return true;
+    },
+    {
+      message:
+        "Bridal party role must match gender (groomsman/best man for males, bridesmaid/maid of honor for females)",
+      path: ["bridalPartyRole"],
     },
   );
 

@@ -1,42 +1,37 @@
 # Email Templates
 
-This directory contains all email templates for the wedding website.
+This directory contains email templates for admin notifications.
 
-## Structure
+## Template Management
 
-Each template is a TypeScript file that exports a function returning an HTML string. This approach provides:
+**Guest-facing invitation emails** are now managed in the [Resend Dashboard](https://resend.com/templates) using Resend's template system. This allows for:
 
-- **Type safety** - Function parameters are typed
-- **Reusability** - Templates can be shared across multiple routes
-- **Maintainability** - Email design changes are made in one place
-- **Testability** - Templates can be tested independently
+- Easy visual editing without code changes
+- A/B testing capabilities
+- Version history and rollback
+- Template previews before sending
 
-## Available Templates
+The template IDs are referenced in the API routes (e.g., `DEFAULT_TEMPLATE_ID` in `/api/admin/guests/route.ts`).
 
-### `wedding-invitation.tsx`
+## Local Templates (Admin Notifications)
 
-Wedding invitation email with personalized background photo.
+The remaining templates in this directory are for admin notifications (sent to RSVP_EMAIL addresses):
 
-**Features:**
-- Blurred background image (similar to RSVP page design)
-- Personalized greeting with guest name
-- Prominent invitation code display
-- RSVP button with direct link
-- Event details hint
-- Responsive design
+### `rsvp-notification.tsx`
 
-**Usage:**
-```typescript
-import { getWeddingInvitationEmail } from "@/lib/email/templates/wedding-invitation";
+Notification sent to admins when a guest submits their RSVP.
 
-const emailHtml = getWeddingInvitationEmail({
-  firstName: "John",
-  lastName: "Doe",
-  inviteCode: "ABCD-1234",
-  rsvpUrl: "https://example.com/rsvp?code=ABCD-1234",
-  appUrl: "https://example.com",
-});
-```
+### `event-rsvp-notification.tsx`
+
+Notification sent to admins when a guest responds to a custom event invitation.
+
+### `event-invitation.tsx`
+
+Email template for inviting guests to custom events (non-default events like rehearsal dinner).
+
+### `activities-invitation.tsx`
+
+Email for inviting guests to explore San Diego activities.
 
 ## Creating New Templates
 
@@ -47,7 +42,6 @@ When creating a new email template:
 3. Export a function that returns an HTML string
 4. Include proper inline CSS (most email clients strip external styles)
 5. Test across multiple email clients
-6. Document the template in this README
 
 ## Design Guidelines
 
@@ -59,15 +53,17 @@ When creating a new email template:
 - Use web-safe fonts as fallbacks
 - Target max-width of 600px for content
 
-## Testing
+## Template Variables (Resend)
 
-Test templates in major email clients:
-- Gmail (web, iOS, Android)
-- Outlook (web, desktop)
-- Apple Mail
-- Yahoo Mail
+When using Resend templates, variables use triple braces: `{{{VARIABLE_NAME}}}`
 
-Tools for testing:
-- [Litmus](https://www.litmus.com/)
-- [Email on Acid](https://www.emailonacid.com/)
-- Send test emails to yourself across different clients
+**Reserved variables** (auto-populated by Resend):
+- `FIRST_NAME`
+- `LAST_NAME`
+- `EMAIL`
+
+**Custom variables** (defined when creating template):
+- `INVITE_CODE`
+- `RSVP_URL`
+- `APP_URL`
+- `WEDDING_DATE`

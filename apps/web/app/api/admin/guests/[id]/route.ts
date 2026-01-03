@@ -103,6 +103,8 @@ export async function PATCH(
       family,
       under21,
       notes,
+      gender,
+      bridalPartyRole,
     } = body;
 
     // Kysely query - fetch the current guest to check if they have a plus one
@@ -148,6 +150,11 @@ export async function PATCH(
         family: family !== undefined ? family : currentGuest.family,
         under_21: under21 !== undefined ? under21 : currentGuest.under_21,
         notes: notes !== undefined ? notes || null : currentGuest.notes,
+        gender: gender !== undefined ? gender || null : currentGuest.gender,
+        bridal_party_role:
+          bridalPartyRole !== undefined
+            ? bridalPartyRole || null
+            : currentGuest.bridal_party_role,
       })
       .where("id", "=", id)
       .returningAll()

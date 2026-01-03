@@ -54,6 +54,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
   const [showBListEmailDialog, setShowBListEmailDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isSendingActivities, setIsSendingActivities] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -81,6 +82,13 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
       family: guest.family || false,
       under21: guest.under_21 || false,
       notes: guest.notes || "",
+      gender: (guest.gender || "") as "male" | "female" | "",
+      bridalPartyRole: (guest.bridal_party_role || "") as
+        | "groomsman"
+        | "best_man"
+        | "bridesmaid"
+        | "maid_of_honor"
+        | "",
     }),
     [guest, plusOne],
   );
@@ -123,6 +131,8 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
       "family",
       "under21",
       "notes",
+      "gender",
+      "bridalPartyRole",
     ];
 
     return fieldsToCompare.some((field) => {
@@ -206,6 +216,35 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
       toast.error("Failed to send email");
     } finally {
       setIsResending(false);
+    }
+  }
+
+  async function handleSendActivitiesEmail() {
+    if (!hasValidEmail) return;
+
+    setIsSendingActivities(true);
+    try {
+      const response = await fetch("/api/admin/guests/send-activities-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guestId: guest.id, email: currentEmail }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Activities email sent!", {
+          description: `Activities invitation sent to ${data.email || currentEmail}`,
+        });
+        router.refresh();
+      } else {
+        toast.error(data.error || "Failed to send activities email");
+      }
+    } catch (error) {
+      console.error("Error sending activities email:", error);
+      toast.error("Failed to send activities email");
+    } finally {
+      setIsSendingActivities(false);
     }
   }
 
@@ -474,6 +513,85 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
                 />
               </div>
 
+              {/* Bridal Party Section */}
+              <div className="border-t pt-4 mt-2 space-y-4">
+                <h3 className="text-sm font-semibold">Bridal Party</h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Gender</Label>
+                    <Select
+                      value={watch("gender") || "none"}
+                      onValueChange={(value: "none" | "male" | "female") => {
+                        setValue("gender", value === "none" ? "" : value);
+                        // Clear bridal party role if gender changes
+                        if (value !== watch("gender")) {
+                          setValue("bridalPartyRole", "");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Not specified" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Not specified</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Bridal Party Role</Label>
+                    <Select
+                      value={watch("bridalPartyRole") || "none"}
+                      onValueChange={(
+                        value:
+                          | "none"
+                          | "groomsman"
+                          | "best_man"
+                          | "bridesmaid"
+                          | "maid_of_honor",
+                      ) =>
+                        setValue(
+                          "bridalPartyRole",
+                          value === "none" ? "" : value,
+                        )
+                      }
+                      disabled={!watch("gender")}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {watch("gender") === "male" && (
+                          <>
+                            <SelectItem value="groomsman">Groomsman</SelectItem>
+                            <SelectItem value="best_man">Best Man</SelectItem>
+                          </>
+                        )}
+                        {watch("gender") === "female" && (
+                          <>
+                            <SelectItem value="bridesmaid">
+                              Bridesmaid
+                            </SelectItem>
+                            <SelectItem value="maid_of_honor">
+                              Maid of Honor
+                            </SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {errors.bridalPartyRole && (
+                      <p className="text-sm text-destructive">
+                        {errors.bridalPartyRole.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
@@ -513,6 +631,23 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
                 Delete Guest
               </Button>
             </div>
+
+            {/* Activities Email - only show for guests who RSVP'd yes */}
+            {guest.rsvp_status === "yes" && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleSendActivitiesEmail}
+                disabled={isSendingActivities || isSubmitting || !hasValidEmail}
+                className="w-full"
+              >
+                {isSendingActivities
+                  ? "Sending..."
+                  : guest.activities_email_sent
+                    ? "Resend Activities Email"
+                    : "Send Activities Email"}
+              </Button>
+            )}
 
             {/* Form Actions */}
             <SheetFooter className="gap-3 sm:gap-2">

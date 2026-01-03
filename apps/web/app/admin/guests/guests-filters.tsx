@@ -33,6 +33,13 @@ export function GuestsFilters() {
     | "sent"
     | "resent"
     | null;
+  const currentBridalParty = searchParams.get("bridalParty") as
+    | "groomsman"
+    | "best_man"
+    | "bridesmaid"
+    | "maid_of_honor"
+    | "any"
+    | null;
 
   function updateFilter(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
@@ -61,7 +68,8 @@ export function GuestsFilters() {
     currentFamily ||
     currentUnder21 ||
     currentIsPlusOne ||
-    currentEmailStatus;
+    currentEmailStatus ||
+    currentBridalParty;
   const filterCount = [
     currentSide,
     currentStatus,
@@ -70,6 +78,7 @@ export function GuestsFilters() {
     currentUnder21,
     currentIsPlusOne,
     currentEmailStatus,
+    currentBridalParty,
   ].filter(Boolean).length;
 
   return (
@@ -89,7 +98,10 @@ export function GuestsFilters() {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80" align="start">
+        <PopoverContent
+          className="w-80 max-h-[80vh] overflow-y-auto"
+          align="start"
+        >
           <div className="space-y-4">
             <div className="space-y-2">
               <h4 className="font-medium leading-none">Filter Guests</h4>
@@ -345,6 +357,71 @@ export function GuestsFilters() {
               </div>
             </div>
 
+            {/* Bridal Party Filter */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Bridal Party</span>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={currentBridalParty === null ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("bridalParty", null)}
+                  className="w-full"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={currentBridalParty === "any" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("bridalParty", "any")}
+                  className="w-full"
+                >
+                  Any Role
+                </Button>
+                <Button
+                  variant={
+                    currentBridalParty === "best_man" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("bridalParty", "best_man")}
+                  className="w-full"
+                >
+                  Best Man
+                </Button>
+                <Button
+                  variant={
+                    currentBridalParty === "groomsman" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("bridalParty", "groomsman")}
+                  className="w-full"
+                >
+                  Groomsman
+                </Button>
+                <Button
+                  variant={
+                    currentBridalParty === "maid_of_honor"
+                      ? "default"
+                      : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("bridalParty", "maid_of_honor")}
+                  className="w-full"
+                >
+                  Maid of Honor
+                </Button>
+                <Button
+                  variant={
+                    currentBridalParty === "bridesmaid" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("bridalParty", "bridesmaid")}
+                  className="w-full"
+                >
+                  Bridesmaid
+                </Button>
+              </div>
+            </div>
+
             {/* Clear Filters Button */}
             {hasActiveFilters && (
               <Button
@@ -452,6 +529,26 @@ export function GuestsFilters() {
               <button
                 type="button"
                 onClick={() => updateFilter("emailStatus", null)}
+                className="hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {currentBridalParty && (
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+              {currentBridalParty === "any"
+                ? "Bridal Party"
+                : currentBridalParty === "best_man"
+                  ? "Best Man"
+                  : currentBridalParty === "groomsman"
+                    ? "Groomsman"
+                    : currentBridalParty === "maid_of_honor"
+                      ? "Maid of Honor"
+                      : "Bridesmaid"}
+              <button
+                type="button"
+                onClick={() => updateFilter("bridalParty", null)}
                 className="hover:text-foreground"
               >
                 <X className="h-3 w-3" />

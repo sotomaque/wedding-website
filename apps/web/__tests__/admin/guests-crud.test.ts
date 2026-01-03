@@ -87,10 +87,7 @@ mock.module("@/lib/db", () => ({
   },
 }));
 
-// Mock email template
-mock.module("@/lib/email/templates/wedding-invitation", () => ({
-  getWeddingInvitationEmail: () => "<html>Mock email</html>",
-}));
+// Note: Email sending now uses Resend templates directly, no local template mock needed
 
 describe("Guest CRUD - Create User", () => {
   beforeEach(() => {

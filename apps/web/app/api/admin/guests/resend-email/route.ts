@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { getWeddingInvitationEmail } from "@/lib/email/templates/wedding-invitation";
+import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 
 /**
  * POST /api/admin/guests/resend-email
@@ -75,21 +75,53 @@ export async function POST(request: NextRequest) {
     const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const rsvpUrl = `${appUrl}/rsvp?code=${guest.invite_code}`;
 
-    // Send email using shared template
+    // Fetch wedding date from the Wedding Ceremony event
+    let weddingDate = "";
     try {
-      const emailHtml = getWeddingInvitationEmail({
-        firstName: guest.first_name,
-        lastName: guest.last_name,
-        inviteCode: guest.invite_code,
-        rsvpUrl,
-        appUrl,
-      });
+      const ceremonyEvent = await db
+        .selectFrom("events")
+        .select(["event_date"])
+        .where("name", "=", "Wedding Ceremony")
+        .executeTakeFirst();
 
+      if (ceremonyEvent?.event_date) {
+        // event_date can be a Date object or string depending on the driver
+        const dateValue = ceremonyEvent.event_date;
+        const dateObj =
+          dateValue instanceof Date
+            ? dateValue
+            : new Date(`${dateValue}T00:00:00`);
+
+        if (!Number.isNaN(dateObj.getTime())) {
+          weddingDate = dateObj.toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+        }
+      }
+    } catch (dateError) {
+      console.error("Error fetching wedding date:", dateError);
+    }
+
+    // Send email using Resend template
+    try {
       await resend.emails.send({
         from: "Wedding Invitation <rsvp@helen-and-enrique.com>",
         to: recipientEmail,
         subject: "You're Invited to Our Wedding! 💕",
-        html: emailHtml,
+        template: {
+          id: WEDDING_INVITATION_TEMPLATE_ALIAS,
+          variables: {
+            FIRST_NAME: guest.first_name || "",
+            LAST_NAME: guest.last_name || "",
+            INVITE_CODE: guest.invite_code,
+            RSVP_URL: rsvpUrl,
+            APP_URL: appUrl,
+            WEDDING_DATE: weddingDate,
+          },
+        },
       });
 
       // Increment number_of_resends

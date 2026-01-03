@@ -155,7 +155,13 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
           ? "Your RSVP has been updated successfully."
           : "Thank you for your response. We can't wait to celebrate with you!",
       });
-      router.refresh();
+      // Redirect to things-to-do page with invite code for first-time RSVPs
+      // For updates, just refresh the page
+      if (!hasRSVPd && data.attending) {
+        router.push(`/things-to-do?code=${inviteCode}`);
+      } else {
+        router.refresh();
+      }
     } else {
       toast.error(result.error || "Failed to submit RSVP");
     }
@@ -172,7 +178,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
           <p className="text-xs text-center text-foreground">
             Planning your trip to San Diego?{" "}
             <Link
-              href="/things-to-do"
+              href={`/things-to-do?code=${inviteCode}`}
               className="font-semibold underline hover:text-accent transition-colors"
             >
               Check out Things to Do

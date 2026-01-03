@@ -266,3 +266,20 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
     return { success: false, error: "Failed to submit RSVP" };
   }
 }
+
+/**
+ * Link the current Clerk user to a guest record by invite code
+ */
+export async function linkClerkUserToGuestAction(
+  inviteCode: string,
+): Promise<{ success: boolean; error?: string }> {
+  const { linkClerkUserToGuest } = await import("@/lib/auth/guest-session");
+  const { currentUser } = await import("@clerk/nextjs/server");
+
+  const user = await currentUser();
+  if (!user) {
+    return { success: false, error: "Not signed in" };
+  }
+
+  return linkClerkUserToGuest(user.id, inviteCode);
+}
