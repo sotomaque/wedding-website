@@ -16,7 +16,8 @@
         "NEXT_PUBLIC_RSVP_EMAIL",
         "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
         "NEXT_PUBLIC_APP_URL",
-        "NEXT_PUBLIC_ADMIN_EMAILS"
+        "NEXT_PUBLIC_ADMIN_EMAILS",
+        "SKIP_ENV_VALIDATION"
       ]
     },
     "lint": {
