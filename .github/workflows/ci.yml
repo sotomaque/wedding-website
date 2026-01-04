@@ -70,6 +70,22 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Set env vars at job level so they're inherited by all processes
+      CI: true
+      # Clerk
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      # Test admin credentials
+      TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+      TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+      # Admin emails list
+      ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+      NEXT_PUBLIC_ADMIN_EMAILS: ${{ secrets.NEXT_PUBLIC_ADMIN_EMAILS }}
+      # Database
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Resend (for email tests)
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,21 +105,6 @@ jobs:
       - name: Run E2E tests
         run: bun run test:e2e
         working-directory: apps/web
-        env:
-          CI: true
-          # Clerk
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          # Test admin credentials
-          TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
-          TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
-          # Admin emails list
-          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
-          NEXT_PUBLIC_ADMIN_EMAILS: ${{ secrets.NEXT_PUBLIC_ADMIN_EMAILS }}
-          # Database
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # Resend (for email tests)
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
