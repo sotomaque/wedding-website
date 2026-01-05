@@ -1,0 +1,118 @@
+import { Resend } from "resend";
+import { env } from "@/env";
+
+/**
+ * Check if we're in E2E test mode (skip actual email sending)
+ */
+export function isE2ETestMode(): boolean {
+  return process.env.E2E_TEST_MODE === "true";
+}
+
+/**
+ * Mock email response for E2E tests
+ */
+const MOCK_EMAIL_RESPONSE = {
+  data: { id: "mock-email-id-e2e-test" },
+  error: null,
+};
+
+/**
+ * Get the Resend client instance
+ * Returns null if no API key is configured
+ */
+export function getResendClient(): Resend | null {
+  if (!env.RESEND_API_KEY) {
+    return null;
+  }
+  return new Resend(env.RESEND_API_KEY);
+}
+
+// Email parameters type for HTML emails
+type HtmlEmailParams = {
+  from: string;
+  to: string | string[];
+  subject: string;
+  html: string;
+  replyTo?: string;
+};
+
+// Email parameters type for template emails
+type TemplateEmailParams = {
+  from: string;
+  to: string | string[];
+  subject: string;
+  template: {
+    id: string;
+    variables: Record<string, string>;
+  };
+  replyTo?: string;
+};
+
+type EmailParams = HtmlEmailParams | TemplateEmailParams;
+
+/**
+ * Send an email using Resend, with E2E test mode support
+ * In E2E test mode, emails are not actually sent
+ */
+export async function sendEmail(
+  params: EmailParams,
+): Promise<{ data: { id: string } | null; error: Error | null }> {
+  // In E2E test mode, skip actual email sending
+  if (isE2ETestMode()) {
+    const to = Array.isArray(params.to) ? params.to.join(", ") : params.to;
+    console.log(`[E2E Test Mode] Skipping email send to: ${to}`);
+    return MOCK_EMAIL_RESPONSE;
+  }
+
+  const resend = getResendClient();
+  if (!resend) {
+    return {
+      data: null,
+      error: new Error("Resend API key not configured"),
+    };
+  }
+
+  // Type assertion needed because Resend SDK typing is complex
+  return resend.emails.send(params as Parameters<typeof resend.emails.send>[0]);
+}
+
+// Batch email type
+type BatchEmailParams = Array<HtmlEmailParams | TemplateEmailParams>;
+
+/**
+ * Send a batch of emails using Resend, with E2E test mode support
+ * In E2E test mode, emails are not actually sent
+ */
+export async function sendBatchEmails(
+  emails: BatchEmailParams,
+): Promise<{ data: { data: { id: string }[] } | null; error: Error | null }> {
+  // In E2E test mode, skip actual email sending
+  if (isE2ETestMode()) {
+    console.log(
+      `[E2E Test Mode] Skipping batch email send (${emails.length} emails)`,
+    );
+    return {
+      data: {
+        data: emails.map((_, i) => ({ id: `mock-batch-email-id-${i}` })),
+      },
+      error: null,
+    };
+  }
+
+  const resend = getResendClient();
+  if (!resend) {
+    return {
+      data: null,
+      error: new Error("Resend API key not configured"),
+    };
+  }
+
+  // Type assertion needed because Resend SDK typing is complex
+  const result = await resend.batch.send(
+    emails as Parameters<typeof resend.batch.send>[0],
+  );
+  return {
+    data: result.data ? { data: result.data.data } : null,
+    error: result.error ? new Error(result.error.message) : null,
+  };
+}

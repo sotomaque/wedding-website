@@ -123,6 +123,40 @@ export interface GuestEventInvitesTable {
   created_at: ColumnType<Date, string | undefined, never>;
 }
 
+// Seating Charts table
+export interface SeatingChartsTable {
+  id: Generated<string>;
+  name: string;
+  default_seats_per_table: number;
+  is_active: boolean;
+  notes: string | null;
+  created_at: ColumnType<Date, string | undefined, never>;
+  updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+// Seating Tables table
+export interface SeatingTablesTable {
+  id: Generated<string>;
+  seating_chart_id: string;
+  table_number: number;
+  table_name: string | null;
+  capacity_override: number | null;
+  position_x: number;
+  position_y: number;
+  shape: "round" | "rectangle" | "square";
+  notes: string | null;
+  created_at: ColumnType<Date, string | undefined, never>;
+}
+
+// Guest Table Assignments junction table
+export interface GuestTableAssignmentsTable {
+  id: Generated<string>;
+  seating_table_id: string;
+  guest_id: string;
+  seat_number: number | null;
+  created_at: ColumnType<Date, string | undefined, never>;
+}
+
 // Database interface
 export interface Database {
   guests: GuestsTable;
@@ -131,4 +165,7 @@ export interface Database {
   photos: PhotosTable;
   events: EventsTable;
   guest_event_invites: GuestEventInvitesTable;
+  seating_charts: SeatingChartsTable;
+  seating_tables: SeatingTablesTable;
+  guest_table_assignments: GuestTableAssignmentsTable;
 }

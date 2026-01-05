@@ -1,9 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import { env } from "@/env";
-
-const resend = new Resend(env.RESEND_API_KEY);
+import { getResendClient } from "@/lib/email/resend-client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -29,6 +27,14 @@ export async function POST(
     }
 
     const { id } = await params;
+
+    const resend = getResendClient();
+    if (!resend) {
+      return NextResponse.json(
+        { error: "Email not configured" },
+        { status: 500 },
+      );
+    }
 
     const { data, error } = await resend.templates.publish(id);
 

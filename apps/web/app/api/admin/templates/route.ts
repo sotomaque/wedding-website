@@ -1,9 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import { env } from "@/env";
-
-const resend = new Resend(env.RESEND_API_KEY);
+import { getResendClient } from "@/lib/email/resend-client";
 
 // GET /api/admin/templates - List all templates
 export async function GET(): Promise<NextResponse> {
@@ -19,6 +17,14 @@ export async function GET(): Promise<NextResponse> {
     const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
     if (!adminEmails?.includes(userEmail || "")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const resend = getResendClient();
+    if (!resend) {
+      return NextResponse.json(
+        { error: "Email not configured" },
+        { status: 500 },
+      );
     }
 
     const { data, error } = await resend.templates.list();
@@ -64,6 +70,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json(
         { error: "Name and HTML are required" },
         { status: 400 },
+      );
+    }
+
+    const resend = getResendClient();
+    if (!resend) {
+      return NextResponse.json(
+        { error: "Email not configured" },
+        { status: 500 },
       );
     }
 

@@ -86,5 +86,9 @@ export default defineConfig({
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    env: {
+      // Enable E2E test mode to mock email sending
+      E2E_TEST_MODE: "true",
+    },
   },
 });

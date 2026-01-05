@@ -29,7 +29,9 @@
     "biome:check": "biome check .",
     "biome:fix": "biome check --write .",
     "biome:format": "biome format --write .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "bun --filter=web test __tests__",
+    "test:e2e": "bun --filter=web test:e2e"
   },
   "workspaces": [
     "apps/*",

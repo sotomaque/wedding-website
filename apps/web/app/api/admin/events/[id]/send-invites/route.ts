@@ -1,8 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getEventInvitationEmail } from "@/lib/email/templates/event-invitation";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Check if email is configured
-    if (!env.RESEND_API_KEY) {
+    if (!getResendClient()) {
       return NextResponse.json(
         { error: "Email not configured" },
         { status: 500 },
@@ -102,7 +102,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const resend = new Resend(env.RESEND_API_KEY);
     const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     // Format event time if available
@@ -137,28 +136,29 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const rsvpUrl = `${appUrl}/events/rsvp?code=${invite.invite_code}&event=${eventId}`;
 
       try {
+        let result: { error: Error | null };
+
         if (templateId) {
           // Use Resend template with variables
-          await resend.emails.send({
+          result = await sendEmail({
             from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
             to: invite.email as string,
             subject: customSubject || `You're Invited to the ${event.name}!`,
-            react: undefined,
-            html: undefined,
-            // @ts-expect-error - Resend SDK types don't include template support yet
-            template_id: templateId,
-            data: {
-              FIRST_NAME: invite.first_name,
-              LAST_NAME: invite.last_name || "",
-              INVITE_CODE: invite.invite_code,
-              EVENT_NAME: event.name,
-              EVENT_DESCRIPTION: event.description || "",
-              EVENT_DATE: eventDateStr || "",
-              EVENT_TIME: eventTime || "",
-              LOCATION_NAME: event.location_name || "",
-              LOCATION_ADDRESS: event.location_address || "",
-              RSVP_URL: rsvpUrl,
-              APP_URL: appUrl,
+            template: {
+              id: templateId,
+              variables: {
+                FIRST_NAME: invite.first_name,
+                LAST_NAME: invite.last_name || "",
+                INVITE_CODE: invite.invite_code,
+                EVENT_NAME: event.name,
+                EVENT_DESCRIPTION: event.description || "",
+                EVENT_DATE: eventDateStr || "",
+                EVENT_TIME: eventTime || "",
+                LOCATION_NAME: event.location_name || "",
+                LOCATION_ADDRESS: event.location_address || "",
+                RSVP_URL: rsvpUrl,
+                APP_URL: appUrl,
+              },
             },
           });
         } else {
@@ -177,12 +177,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
             appUrl,
           });
 
-          await resend.emails.send({
+          result = await sendEmail({
             from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
             to: invite.email as string,
             subject: `You're Invited to the ${event.name}!`,
             html: emailHtml,
           });
+        }
+
+        if (result.error) {
+          throw result.error;
         }
 
         // Update invite record with email sent status

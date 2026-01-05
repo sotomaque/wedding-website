@@ -57,6 +57,16 @@ export const test = base.extend<{
 export { expect };
 
 /**
+ * Prefixes used for E2E test data - used for cleanup
+ */
+export const E2E_TEST_PREFIXES = {
+  guest: "E2E-",
+  chart: "E2E Test Chart",
+  table: "Table Test",
+  testChart: "Test Chart",
+} as const;
+
+/**
  * Test data constants
  */
 export const TEST_DATA = {
@@ -79,6 +89,7 @@ export const TEST_DATA = {
     adminGuests: "/admin/guests",
     adminEvents: "/admin/events",
     adminTemplates: "/admin/templates",
+    adminSeating: "/admin/seating",
     unauthorized: "/unauthorized",
   },
 } as const;

@@ -1,0 +1,4 @@
+[test]
+# Exclude e2e folder from bun test - those are Playwright tests
+# Run with: npx playwright test
+root = "__tests__"

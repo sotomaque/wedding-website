@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getRsvpNotificationEmail } from "@/lib/email/templates/rsvp-notification";
 
 /**
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       .execute();
 
     // Send notification email to admin
-    if (env.RESEND_API_KEY && env.RSVP_EMAIL) {
+    if (getResendClient() && env.RSVP_EMAIL) {
       try {
         // Fetch guests for the notification email
         const guests = await db
@@ -42,7 +42,6 @@ export async function POST(request: NextRequest) {
           .where("invite_code", "=", normalizedCode)
           .execute();
 
-        const resend = new Resend(env.RESEND_API_KEY);
         const emailHtml = getRsvpNotificationEmail({
           guests: guests.map((g) => ({
             firstName: g.first_name,
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
         });
 
         const recipients = env.RSVP_EMAIL.split(",").map((e) => e.trim());
-        await resend.emails.send({
+        await sendEmail({
           from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
           to: recipients,
           subject: `${attending ? "✅" : "❌"} RSVP: ${guests.map((g) => g.first_name).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,

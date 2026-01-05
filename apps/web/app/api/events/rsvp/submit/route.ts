@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getEventRsvpNotificationEmail } from "@/lib/email/templates/event-rsvp-notification";
 
 /**
@@ -74,8 +74,7 @@ export async function POST(request: NextRequest) {
 
     // Send notification email to admins
     try {
-      if (env.RESEND_API_KEY && env.RSVP_EMAIL) {
-        const resend = new Resend(env.RESEND_API_KEY);
+      if (getResendClient() && env.RSVP_EMAIL) {
         const adminEmails = env.RSVP_EMAIL.split(",").map((e) => e.trim());
 
         const submittedAt = new Date().toLocaleString("en-US", {
@@ -101,7 +100,7 @@ export async function POST(request: NextRequest) {
           submittedAt,
         });
 
-        await resend.emails.send({
+        await sendEmail({
           from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
           to: adminEmails,
           subject: `Event RSVP: ${guest.first_name} ${attending ? "is attending" : "declined"} ${event.name}`,
