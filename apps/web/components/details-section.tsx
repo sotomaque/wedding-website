@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DETAILS_CONTENT } from "../app/constants";
 
 export function DetailsSection() {
@@ -81,9 +82,18 @@ export function DetailsSection() {
                 <h4 className="font-semibold text-foreground mb-2">
                   {info.title}
                 </h4>
-                <p className="text-muted-foreground text-sm">
-                  {info.description}
-                </p>
+                {"href" in info && info.href ? (
+                  <Link
+                    href={info.href}
+                    className="text-accent hover:text-accent/80 hover:underline text-sm font-medium transition-colors"
+                  >
+                    {info.description}
+                  </Link>
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    {info.description}
+                  </p>
+                )}
               </div>
             ))}
           </div>

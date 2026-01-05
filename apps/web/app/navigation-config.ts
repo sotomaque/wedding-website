@@ -12,6 +12,7 @@ export const NAVIGATION_CONFIG = {
   ],
   rightLinks: [
     { href: "/things-to-do", label: "Things To Do" },
+    { href: "/registry", label: "Registry" },
     { href: "/#rsvp", label: "RSVP" },
   ],
 };

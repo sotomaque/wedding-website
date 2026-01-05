@@ -259,7 +259,8 @@ export const DETAILS_CONTENT = {
     },
     {
       title: "Registry",
-      description: "Details to follow",
+      description: "View our gift registry",
+      href: "/registry",
     },
   ],
 } as const;
