@@ -1,105 +1,115 @@
 import * as fs from "node:fs";
-import { expect, test as teardown } from "@playwright/test";
+import { test as teardown } from "@playwright/test";
+import { E2E_TEST_PREFIXES } from "./fixtures";
 
 const testDataFile = "e2e/.auth/test-data.json";
 
 /**
- * Teardown: Clean up test data
+ * Teardown: Clean up all E2E test data
  *
- * This runs after all tests and deletes the test guest that was created during setup.
+ * This runs after all tests and deletes:
+ * - All guests with names starting with "E2E-"
+ * - All seating charts with names starting with "E2E Test Chart", "Table Test", or "Test Chart"
  */
-teardown("delete test guest", async ({ page }) => {
-  // Read test data
-  let testData: { testGuestName?: string } = {};
-  try {
-    const data = fs.readFileSync(testDataFile, "utf-8");
-    testData = JSON.parse(data);
-  } catch {
-    console.log("No test data file found, skipping cleanup");
-    return;
+teardown("clean up all E2E test data", async ({ page }) => {
+  console.log("Starting E2E test data cleanup...");
+
+  // Navigate to admin page first to ensure we have auth context
+  await page.goto("/admin");
+
+  // Use page.evaluate to make fetch calls from within the authenticated browser context
+  const cleanupResult = await page.evaluate(async (prefixes) => {
+    const results = {
+      guestsDeleted: 0,
+      chartsDeleted: 0,
+      errors: [] as string[],
+    };
+
+    // Clean up test guests
+    try {
+      const guestsResponse = await fetch("/api/admin/guests");
+      if (guestsResponse.ok) {
+        const data = await guestsResponse.json();
+        const guests = data.guests || [];
+
+        const e2eGuests = guests.filter((g: { first_name: string }) =>
+          g.first_name?.startsWith(prefixes.guest),
+        );
+
+        for (const guest of e2eGuests) {
+          try {
+            const deleteResponse = await fetch(
+              `/api/admin/guests?id=${guest.id}`,
+              {
+                method: "DELETE",
+              },
+            );
+            if (deleteResponse.ok) {
+              results.guestsDeleted++;
+            }
+          } catch {
+            results.errors.push(`Failed to delete guest ${guest.first_name}`);
+          }
+        }
+      }
+    } catch (err) {
+      results.errors.push(`Error fetching guests: ${err}`);
+    }
+
+    // Clean up test seating charts
+    try {
+      const chartsResponse = await fetch("/api/admin/seating-charts");
+      if (chartsResponse.ok) {
+        const data = await chartsResponse.json();
+        const charts = data.charts || [];
+
+        const e2eCharts = charts.filter(
+          (c: { name: string }) =>
+            c.name?.startsWith(prefixes.chart) ||
+            c.name?.startsWith(prefixes.table) ||
+            c.name?.startsWith(prefixes.testChart),
+        );
+
+        for (const chart of e2eCharts) {
+          try {
+            const deleteResponse = await fetch(
+              `/api/admin/seating-charts/${chart.id}`,
+              {
+                method: "DELETE",
+              },
+            );
+            if (deleteResponse.ok) {
+              results.chartsDeleted++;
+            }
+          } catch {
+            results.errors.push(`Failed to delete chart ${chart.name}`);
+          }
+        }
+      }
+    } catch (err) {
+      results.errors.push(`Error fetching charts: ${err}`);
+    }
+
+    return results;
+  }, E2E_TEST_PREFIXES);
+
+  if (cleanupResult.guestsDeleted > 0) {
+    console.log(`Deleted ${cleanupResult.guestsDeleted} E2E test guests`);
   }
-
-  if (!testData.testGuestName) {
-    console.log("No test guest to clean up");
-    return;
+  if (cleanupResult.chartsDeleted > 0) {
+    console.log(`Deleted ${cleanupResult.chartsDeleted} E2E test charts`);
   }
-
-  const adminEmail = process.env.TEST_ADMIN_EMAIL;
-  const adminPassword = process.env.TEST_ADMIN_PASSWORD;
-
-  if (!adminEmail || !adminPassword) {
-    console.warn("Cannot clean up: admin credentials not set");
-    return;
+  if (cleanupResult.errors.length > 0) {
+    console.warn("Cleanup errors:", cleanupResult.errors);
   }
-
-  // Use stored auth state
-  try {
-    await page.context().storageState({ path: "e2e/.auth/admin.json" });
-  } catch {
-    // Auth state might not exist, need to login
-    await page.goto("/sign-in");
-    await page.waitForSelector('[data-clerk-component="sign-in"]', {
-      timeout: 10000,
-    });
-    await page.getByLabel("Email address").fill(adminEmail);
-    await page.getByRole("button", { name: /continue/i }).click();
-    await page.getByLabel("Password").fill(adminPassword);
-    await page.getByRole("button", { name: /continue/i }).click();
-    await page.waitForURL((url) => !url.pathname.includes("/sign-in"), {
-      timeout: 30000,
-    });
-  }
-
-  // Navigate to guests page
-  await page.goto("/admin/guests");
-
-  // Search for the test guest
-  await page.getByPlaceholder(/filter by name/i).fill(testData.testGuestName);
-
-  // Wait for search results
-  await page.waitForTimeout(500);
-
-  // Check if guest exists
-  const guestRow = page.locator("table tbody tr").first();
-  const rowCount = await page.locator("table tbody tr").count();
-
-  if (
-    rowCount === 0 ||
-    (await page.getByText(/no guests found/i).isVisible())
-  ) {
-    console.log("Test guest already deleted or not found");
-    return;
-  }
-
-  // Click the Edit button in the row
-  const editButton = guestRow.getByRole("button", { name: /edit/i });
-  await editButton.click({ force: true });
-
-  // Wait for edit sheet
-  await expect(page.getByRole("heading", { name: /edit guest/i })).toBeVisible({
-    timeout: 10000,
-  });
-
-  // Click Delete button
-  await page.getByRole("button", { name: /delete guest/i }).click();
-
-  // Confirm deletion
-  await expect(
-    page.getByRole("heading", { name: /are you sure/i }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: /^delete$/i }).click();
-
-  // Wait for deletion to complete
-  await expect(page.getByText(/guest deleted/i)).toBeVisible({
-    timeout: 10000,
-  });
-
-  console.log(`Test guest ${testData.testGuestName} deleted`);
 
   // Clean up test data file
   try {
     fs.unlinkSync(testDataFile);
+    console.log("Cleaned up test data file");
   } catch {
     // File might not exist
   }
+
+  console.log("E2E test data cleanup complete");
 });

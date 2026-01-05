@@ -1,8 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getActivitiesInvitationEmail } from "@/lib/email/templates/activities-invitation";
 
 /**
@@ -76,36 +76,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email is configured
-    if (!env.RESEND_API_KEY || !env.RSVP_EMAIL) {
+    if (!getResendClient() || !env.RSVP_EMAIL) {
       return NextResponse.json(
         { error: "Email not configured" },
         { status: 500 },
       );
     }
 
-    const resend = new Resend(env.RESEND_API_KEY);
     const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const thingsToDoUrl = `${appUrl}/things-to-do?code=${guest.invite_code}`;
 
     try {
+      let result: { error: Error | null };
+
       if (templateId) {
         // Use Resend template with variables
-        await resend.emails.send({
+        result = await sendEmail({
           from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
           to: recipientEmail,
           subject:
             customSubject ||
             "Explore San Diego - Things to Do Before the Wedding!",
-          react: undefined,
-          html: undefined,
-          // @ts-expect-error - Resend SDK types don't include template support yet
-          template_id: templateId,
-          data: {
-            FIRST_NAME: guest.first_name,
-            LAST_NAME: guest.last_name || "",
-            INVITE_CODE: guest.invite_code,
-            THINGS_TO_DO_URL: thingsToDoUrl,
-            APP_URL: appUrl,
+          template: {
+            id: templateId,
+            variables: {
+              FIRST_NAME: guest.first_name,
+              LAST_NAME: guest.last_name || "",
+              INVITE_CODE: guest.invite_code,
+              THINGS_TO_DO_URL: thingsToDoUrl,
+              APP_URL: appUrl,
+            },
           },
         });
       } else {
@@ -118,12 +118,20 @@ export async function POST(request: NextRequest) {
           appUrl,
         });
 
-        await resend.emails.send({
+        result = await sendEmail({
           from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
           to: recipientEmail,
           subject: "Explore San Diego - Things to Do Before the Wedding! 🌴",
           html: emailHtml,
         });
+      }
+
+      if (result.error) {
+        console.error("Error sending activities email:", result.error);
+        return NextResponse.json(
+          { error: "Failed to send activities email" },
+          { status: 500 },
+        );
       }
 
       // Update activities email tracking

@@ -1,9 +1,9 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import { env } from "@/env";
 import { db } from "@/lib/db";
 import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
+import { sendEmail } from "@/lib/email/resend-client";
 import { generateInviteCode } from "@/lib/utils/invite-code";
 
 /**
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       plusOneAllowed,
       plusOneFirstName,
       plusOneLastName,
-      sendEmail,
+      sendEmail: shouldSendEmail,
       mailingAddress,
       phoneNumber,
       whatsapp,
@@ -192,8 +192,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email if requested
-    if (sendEmail && env.RESEND_API_KEY && env.RSVP_EMAIL) {
-      const resend = new Resend(env.RESEND_API_KEY);
+    if (shouldSendEmail && env.RSVP_EMAIL) {
       const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       const rsvpUrl = `${appUrl}/rsvp?code=${inviteCode}`;
 
@@ -228,7 +227,7 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        await resend.emails.send({
+        await sendEmail({
           from: "Wedding Invitation <rsvp@helen-and-enrique.com>",
           to: email,
           subject: "You're Invited to Our Wedding! 💕",

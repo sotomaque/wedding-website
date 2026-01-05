@@ -1,9 +1,9 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import { env } from "@/env";
 import { db } from "@/lib/db";
 import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
+import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
 /**
  * POST /api/admin/guests/resend-email
@@ -64,14 +64,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email is configured
-    if (!env.RESEND_API_KEY || !env.RSVP_EMAIL) {
+    if (!getResendClient() || !env.RSVP_EMAIL) {
       return NextResponse.json(
         { error: "Email not configured" },
         { status: 500 },
       );
     }
 
-    const resend = new Resend(env.RESEND_API_KEY);
     const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const rsvpUrl = `${appUrl}/rsvp?code=${guest.invite_code}`;
 
@@ -107,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     // Send email using Resend template
     try {
-      await resend.emails.send({
+      const result = await sendEmail({
         from: "Wedding Invitation <rsvp@helen-and-enrique.com>",
         to: recipientEmail,
         subject: "You're Invited to Our Wedding! 💕",
@@ -123,6 +122,14 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+
+      if (result.error) {
+        console.error("Error sending email:", result.error);
+        return NextResponse.json(
+          { error: "Failed to send email" },
+          { status: 500 },
+        );
+      }
 
       // Increment number_of_resends
       await db

@@ -1,7 +1,4 @@
-import { Resend } from "resend";
-import { env } from "@/env";
-
-const resend = new Resend(env.RESEND_API_KEY);
+import { getResendClient } from "@/lib/email/resend-client";
 
 export interface Template {
   id: string;
@@ -17,6 +14,12 @@ export interface Template {
  */
 export async function fetchTemplates(): Promise<Template[]> {
   try {
+    const resend = getResendClient();
+    if (!resend) {
+      console.error("Resend client not configured");
+      return [];
+    }
+
     const { data, error } = await resend.templates.list();
 
     if (error) {
@@ -38,6 +41,12 @@ export async function fetchTemplate(
   templateId: string,
 ): Promise<Template | null> {
   try {
+    const resend = getResendClient();
+    if (!resend) {
+      console.error("Resend client not configured");
+      return null;
+    }
+
     const { data, error } = await resend.templates.get(templateId);
 
     if (error) {

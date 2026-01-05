@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Resend } from "resend";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getRsvpNotificationEmail } from "@/lib/email/templates/rsvp-notification";
 import type { Database } from "@/lib/supabase/types";
 
@@ -220,7 +220,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
     }
 
     // Send notification email to admin
-    if (env.RESEND_API_KEY && env.RSVP_EMAIL) {
+    if (getResendClient() && env.RSVP_EMAIL) {
       try {
         // Fetch updated guests for the notification email
         const updatedGuests = await db
@@ -229,7 +229,6 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
           .where("invite_code", "=", inviteCode.toUpperCase())
           .execute();
 
-        const resend = new Resend(env.RESEND_API_KEY);
         const emailHtml = getRsvpNotificationEmail({
           guests: updatedGuests.map((g) => ({
             firstName: g.first_name,
@@ -247,7 +246,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
         });
 
         const recipients = env.RSVP_EMAIL.split(",").map((e) => e.trim());
-        await resend.emails.send({
+        await sendEmail({
           from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
           to: recipients,
           subject: `${attending ? "✅" : "❌"} RSVP: ${updatedGuests.map((g) => g.first_name).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,

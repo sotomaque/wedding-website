@@ -312,6 +312,96 @@ export interface Database {
           created_at?: string;
         };
       };
+      seating_charts: {
+        Row: {
+          id: string;
+          name: string;
+          default_seats_per_table: number;
+          is_active: boolean;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          default_seats_per_table?: number;
+          is_active?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          default_seats_per_table?: number;
+          is_active?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      seating_tables: {
+        Row: {
+          id: string;
+          seating_chart_id: string;
+          table_number: number;
+          table_name: string | null;
+          capacity_override: number | null;
+          position_x: number;
+          position_y: number;
+          shape: "round" | "rectangle" | "square";
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          seating_chart_id: string;
+          table_number: number;
+          table_name?: string | null;
+          capacity_override?: number | null;
+          position_x?: number;
+          position_y?: number;
+          shape?: "round" | "rectangle" | "square";
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          seating_chart_id?: string;
+          table_number?: number;
+          table_name?: string | null;
+          capacity_override?: number | null;
+          position_x?: number;
+          position_y?: number;
+          shape?: "round" | "rectangle" | "square";
+          notes?: string | null;
+          created_at?: string;
+        };
+      };
+      guest_table_assignments: {
+        Row: {
+          id: string;
+          seating_table_id: string;
+          guest_id: string;
+          seat_number: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          seating_table_id: string;
+          guest_id: string;
+          seat_number?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          seating_table_id?: string;
+          guest_id?: string;
+          seat_number?: number | null;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
