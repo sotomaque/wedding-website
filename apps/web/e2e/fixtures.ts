@@ -85,6 +85,8 @@ export const TEST_DATA = {
     home: "/",
     rsvp: "/rsvp",
     thingsToDo: "/things-to-do",
+    registry: "/registry",
+    registryThankYou: "/registry/thank-you",
     admin: "/admin",
     adminGuests: "/admin/guests",
     adminEvents: "/admin/events",
