@@ -101,11 +101,13 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
     (searchParams.get("sortOrder") as "asc" | "desc") || undefined;
   const currentPage = Number.parseInt(searchParams.get("page") || "0", 10);
 
-  const hasActiveFilters =
+  const hasActiveUrlFilters =
     searchParams.get("giftType") ||
     searchParams.get("status") ||
     searchParams.get("thankYouSent") ||
     searchParams.get("hasGuest");
+  const hasActiveColumnFilters = columnFilters.length > 0;
+  const hasActiveFilters = hasActiveUrlFilters || hasActiveColumnFilters;
 
   function handleEdit(giftId: string) {
     const params = new URLSearchParams(searchParams.toString());

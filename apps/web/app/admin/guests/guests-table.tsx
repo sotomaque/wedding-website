@@ -70,7 +70,9 @@ export function GuestsTable({ initialGuests, error }: GuestsTableProps) {
 
   const currentSide = searchParams.get("side");
   const currentStatus = searchParams.get("rsvpStatus");
-  const hasActiveFilters = currentSide || currentStatus;
+  const hasActiveUrlFilters = currentSide || currentStatus;
+  const hasActiveColumnFilters = columnFilters.length > 0;
+  const hasActiveFilters = hasActiveUrlFilters || hasActiveColumnFilters;
 
   function handleSort(column: SortableColumn) {
     const params = new URLSearchParams(searchParams.toString());

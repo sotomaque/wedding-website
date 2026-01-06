@@ -237,7 +237,7 @@ test.describe("Guest Management - CRUD Operations", () => {
     // Verify guest no longer appears
     await page.getByPlaceholder(/filter by name/i).clear();
     await page.getByPlaceholder(/filter by name/i).fill(testFirstName);
-    await expect(page.getByText(/no guests found/i)).toBeVisible({
+    await expect(page.getByText(/no guests match your filters/i)).toBeVisible({
       timeout: 5000,
     });
   });
