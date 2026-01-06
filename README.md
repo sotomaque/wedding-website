@@ -1,36 +1,57 @@
-# Helen & Enrique's Wedding Website
+# 💒 Wedding Website
 
-A beautiful, modern wedding website built with Next.js 16, React 19, and Tailwind CSS. Features an interactive photo carousel, randomized galleries, an interactive map of San Diego recommendations, and elegant animations.
+The ultimate open-source wedding website platform. A beautiful, modern wedding website built with Next.js 16, React 19, and Tailwind CSS that goes beyond a simple static site to provide a complete wedding management solution.
 
-## Features
+## ✨ Why This Wedding Website?
 
-- **Hero Carousel**: Auto-scrolling photo carousel with manual navigation and timer reset
-- **Randomized Photos**: Photos are shuffled on each visit for a fresh experience
-- **Things to Do**: Curated recommendations for guests visiting San Diego
-- **Responsive Design**: Fully responsive across all devices
-- **Dark/Light Mode**: Theme switching support
-- **Elegant Animations**: Smooth hover effects and transitions throughout
-- **SEO Optimized**: Complete meta tags, Open Graph, and Twitter Card support
+Most wedding websites are just static pages. This platform gives you everything you need to manage your entire wedding:
 
-## Tech Stack
+- 👥 **Guest Management with Tier Lists** - Organize guests into A, B, and C lists for phased invitations
+- 📋 **Smart RSVP System** - Track responses, dietary restrictions, plus-ones, and attendance
+- 📧 **Automated Email Notifications** - Send save-the-dates, invitations, and reminders automatically
+- 🎁 **Gift Registry & Tracking** - Accept gifts for honeymoon, baby fund, or custom categories via Stripe
+- 🪑 **Seating Chart Generation** - AI-powered seating arrangements (coming soon)
+- 📱 **Multi-channel Notifications** - Email today, SMS/WhatsApp coming soon
+- 🌐 **Beautiful Public Site** - Photo galleries, event details, and interactive venue maps
 
-- **Framework**: [Next.js 16](https://nextjs.org/) with App Router
-- **UI Library**: [React 19](https://react.dev/)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **Components**: Custom component library with [shadcn/ui](https://ui.shadcn.com/)
-- **Carousel**: [Embla Carousel](https://www.embla-carousel.com/)
-- **Database**: PostgreSQL via [Supabase](https://supabase.com/) with [Kysely](https://kysely.dev/)
-- **Monorepo**: [Turborepo](https://turbo.build/)
-- **Package Manager**: [Bun](https://bun.sh/)
-- **Linting**: [Biome](https://biomejs.dev/)
-- **Type Checking**: [TypeScript 5](https://www.typescriptlang.org/)
+## 🎯 Features
 
-## Prerequisites
+### 🌸 Public Website
+- Photo galleries with randomized display
+- Event details and schedule
+- Interactive venue maps and local recommendations
+- Responsive design across all devices
+- Dark/light mode support
+- SEO optimized
+
+### 🔐 Admin Dashboard
+- **Guest Management** - Add, edit, and organize guests with tier lists (A/B/C priority)
+- **RSVP Tracking** - Real-time status, dietary restrictions, and plus-one management
+- **Bulk Email Actions** - Send invitations to multiple guests at once
+- **Gift Registry** - Track donations by category with real-time statistics
+- **Notes & Filtering** - Add private notes and use advanced filters for large guest lists
+
+## 🛠️ Tech Stack
+
+- [Next.js 16](https://nextjs.org/) with App Router
+- [React 19](https://react.dev/)
+- [Tailwind CSS 4](https://tailwindcss.com/)
+- [shadcn/ui](https://ui.shadcn.com/) components
+- [Supabase](https://supabase.com/) (PostgreSQL) + [Kysely](https://kysely.dev/)
+- [Clerk](https://clerk.com/) authentication
+- [Stripe](https://stripe.com/) payments
+- [Resend](https://resend.com/) email
+- [Turborepo](https://turbo.build/) monorepo
+- [Bun](https://bun.sh/) package manager
+- [TypeScript 5](https://www.typescriptlang.org/)
+- [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) testing
+
+## 📋 Prerequisites
 
 - [Bun](https://bun.sh/) 1.3.5 or higher
 - Node.js 20 or higher
 
-## Installation
+## 🚀 Installation
 
 1. Clone the repository:
 ```bash
@@ -65,6 +86,10 @@ DATABASE_URL=postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].poole
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
 ADMIN_EMAILS=your-email@example.com,partner-email@example.com
+
+# Required for gift registry (optional - only needed if accepting gifts)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 **Getting API Keys:**
@@ -76,6 +101,11 @@ ADMIN_EMAILS=your-email@example.com,partner-email@example.com
   3. Enable Email and Google OAuth as sign-in methods
   4. Copy your Publishable and Secret keys from the dashboard
   5. Add your admin emails to `ADMIN_EMAILS` (comma-separated)
+- **Stripe Keys** (Optional - for gift registry):
+  1. Create a Stripe account at [https://stripe.com](https://stripe.com)
+  2. Get your Secret Key from Developers → API keys
+  3. Set up a webhook endpoint pointing to `/api/webhooks/stripe`
+  4. Copy the webhook signing secret
 
 4. Update site configuration:
 Edit `apps/web/app/site-config.ts` to update:
@@ -93,7 +123,7 @@ Edit `apps/web/app/constants.ts` to customize:
 - Schedule
 - RSVP form fields
 
-## Development
+## 💻 Development
 
 Start the development server:
 ```bash
@@ -102,14 +132,14 @@ bun dev
 
 The app will be available at [http://localhost:3000](http://localhost:3000)
 
-## Build
+## 🏗️ Build
 
 Build the project for production:
 ```bash
 bun run build
 ```
 
-## Linting & Type Checking
+## 🧹 Linting & Type Checking
 
 ```bash
 # Run linter
@@ -122,7 +152,7 @@ bun --filter=web lint:fix
 bun --filter=web lint:types
 ```
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 wedding-website/
@@ -141,7 +171,7 @@ wedding-website/
 └── package.json          # Root package.json
 ```
 
-## Adding shadcn/ui Components
+## 🧩 Adding shadcn/ui Components
 
 To add new shadcn/ui components:
 
@@ -151,7 +181,7 @@ bunx shadcn@latest add button -c apps/web
 
 This will place the UI components in the `packages/ui/src/components` directory.
 
-## Using Components
+## 📦 Using Components
 
 Import components from the UI package:
 
@@ -160,7 +190,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Navigation } from "@workspace/ui/components/navigation"
 ```
 
-## Customization
+## 🎨 Customization
 
 ### Colors and Theme
 
@@ -174,7 +204,7 @@ Update `apps/web/app/navigation-config.ts` to modify navigation links and brandi
 
 Place your wedding photos in `apps/web/public/our-photos/` and update the `HERO_PHOTOS` array in `apps/web/app/constants.ts`.
 
-## Admin Dashboard
+## 🔐 Admin Dashboard
 
 The website includes a protected admin area at `/admin` for managing wedding-related tasks.
 
@@ -203,7 +233,7 @@ The website includes a protected admin area at `/admin` for managing wedding-rel
    ADMIN_EMAILS=your-email@example.com,partner-email@example.com
    ```
 
-## Deployment
+## 🚢 Deployment
 
 This project is ready to deploy to:
 
@@ -223,6 +253,6 @@ vercel
 
 Remember to add your environment variables in your deployment platform's settings.
 
-## License
+## 📄 License
 
 Private - All rights reserved
