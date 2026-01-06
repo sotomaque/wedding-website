@@ -42,341 +42,171 @@ function log(
   }
 }
 
-// Map payment link IDs to gift types
-// You'll need to update these with your actual payment link IDs from Stripe
-const PAYMENT_LINK_TO_GIFT_TYPE: Record<
-  string,
-  "baby_fund" | "honeymoon" | "student_loans"
-> = {
-  // These will be populated based on the payment link ID in the checkout session
-  // The payment link ID is available in session.payment_link
-};
-
 /**
- * Determine gift type from payment link URL or ID
+ * Find a guest by email, name, or phone number
+ * Returns the first matching guest or null if no match found
  */
-function getGiftTypeFromPaymentLink(
-  paymentLinkId: string | null,
-  paymentLinkUrl: string | null,
-): "baby_fund" | "honeymoon" | "student_loans" | null {
-  log("debug", "Determining gift type from payment link", {
-    paymentLinkId,
-    paymentLinkUrl,
-    configuredLinks: {
-      babyFund: env.NEXT_PUBLIC_STRIPE_LINK_BABY_FUND || "NOT SET",
-      honeymoon: env.NEXT_PUBLIC_STRIPE_LINK_HONEYMOON || "NOT SET",
-      studentLoans: env.NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS || "NOT SET",
-    },
+async function findGuest(params: {
+  email?: string | null;
+  name?: string | null;
+  phone?: string | null;
+}) {
+  const { email, name, phone } = params;
+
+  log("debug", "Looking up guest by multiple criteria", {
+    email,
+    name,
+    phone,
   });
 
-  // First check if we have a direct mapping
-  if (paymentLinkId && PAYMENT_LINK_TO_GIFT_TYPE[paymentLinkId]) {
-    const giftType = PAYMENT_LINK_TO_GIFT_TYPE[paymentLinkId];
-    log("info", "Gift type determined from direct mapping", {
-      paymentLinkId,
-      giftType,
-    });
-    return giftType;
-  }
+  // Try to match by email first (most reliable)
+  if (email) {
+    const guestByEmail = await db
+      .selectFrom("guests")
+      .selectAll()
+      .where("email", "=", email.toLowerCase())
+      .executeTakeFirst();
 
-  // Fall back to checking the URL patterns from env vars
-  if (paymentLinkUrl) {
-    const babyFundSlug =
-      env.NEXT_PUBLIC_STRIPE_LINK_BABY_FUND?.split("/").pop() || "";
-    const honeymoonSlug =
-      env.NEXT_PUBLIC_STRIPE_LINK_HONEYMOON?.split("/").pop() || "";
-    const studentLoansSlug =
-      env.NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS?.split("/").pop() || "";
-
-    log("debug", "Checking payment link URL against slugs", {
-      paymentLinkUrl,
-      babyFundSlug,
-      honeymoonSlug,
-      studentLoansSlug,
-    });
-
-    if (babyFundSlug && paymentLinkUrl.includes(babyFundSlug)) {
-      log("info", "Gift type determined: baby_fund", { paymentLinkUrl });
-      return "baby_fund";
-    }
-    if (honeymoonSlug && paymentLinkUrl.includes(honeymoonSlug)) {
-      log("info", "Gift type determined: honeymoon", { paymentLinkUrl });
-      return "honeymoon";
-    }
-    if (studentLoansSlug && paymentLinkUrl.includes(studentLoansSlug)) {
-      log("info", "Gift type determined: student_loans", { paymentLinkUrl });
-      return "student_loans";
-    }
-  }
-
-  // Also check the paymentLinkId against the URL slugs (Stripe sometimes uses the slug as ID)
-  if (paymentLinkId) {
-    const babyFundSlug =
-      env.NEXT_PUBLIC_STRIPE_LINK_BABY_FUND?.split("/").pop() || "";
-    const honeymoonSlug =
-      env.NEXT_PUBLIC_STRIPE_LINK_HONEYMOON?.split("/").pop() || "";
-    const studentLoansSlug =
-      env.NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS?.split("/").pop() || "";
-
-    log("debug", "Checking payment link ID against slugs", {
-      paymentLinkId,
-      babyFundSlug,
-      honeymoonSlug,
-      studentLoansSlug,
-    });
-
-    if (babyFundSlug && paymentLinkId.includes(babyFundSlug)) {
-      log("info", "Gift type determined from ID: baby_fund", { paymentLinkId });
-      return "baby_fund";
-    }
-    if (honeymoonSlug && paymentLinkId.includes(honeymoonSlug)) {
-      log("info", "Gift type determined from ID: honeymoon", { paymentLinkId });
-      return "honeymoon";
-    }
-    if (studentLoansSlug && paymentLinkId.includes(studentLoansSlug)) {
-      log("info", "Gift type determined from ID: student_loans", {
-        paymentLinkId,
+    if (guestByEmail) {
+      log("info", "Found matching guest by email", {
+        guestId: guestByEmail.id,
+        guestName: `${guestByEmail.first_name} ${guestByEmail.last_name}`,
+        guestEmail: guestByEmail.email,
+        matchedBy: "email",
       });
-      return "student_loans";
+      return guestByEmail;
     }
   }
 
-  log("warn", "Could not determine gift type from payment link", {
-    paymentLinkId,
-    paymentLinkUrl,
+  // Try to match by name (first + last)
+  if (name) {
+    // Parse the name into first and last
+    const nameParts = name.trim().split(/\s+/);
+    if (nameParts.length >= 2 && nameParts[0]) {
+      const firstName = nameParts[0].toLowerCase();
+      const lastName = nameParts.slice(1).join(" ").toLowerCase();
+
+      log("debug", "Attempting name match", { firstName, lastName });
+
+      // Use raw SQL for case-insensitive matching
+      const guestByName = await db
+        .selectFrom("guests")
+        .selectAll()
+        .where((eb) =>
+          eb.and([
+            eb("first_name", "ilike", firstName),
+            eb("last_name", "ilike", lastName),
+          ]),
+        )
+        .executeTakeFirst();
+
+      if (guestByName) {
+        log("info", "Found matching guest by name", {
+          guestId: guestByName.id,
+          guestName: `${guestByName.first_name} ${guestByName.last_name}`,
+          searchedName: name,
+          matchedBy: "name",
+        });
+        return guestByName;
+      }
+
+      // Also try reverse order (last name first)
+      const guestByNameReverse = await db
+        .selectFrom("guests")
+        .selectAll()
+        .where((eb) =>
+          eb.and([
+            eb("first_name", "ilike", lastName),
+            eb("last_name", "ilike", firstName),
+          ]),
+        )
+        .executeTakeFirst();
+
+      if (guestByNameReverse) {
+        log("info", "Found matching guest by name (reversed)", {
+          guestId: guestByNameReverse.id,
+          guestName: `${guestByNameReverse.first_name} ${guestByNameReverse.last_name}`,
+          searchedName: name,
+          matchedBy: "name_reversed",
+        });
+        return guestByNameReverse;
+      }
+    }
+  }
+
+  // Try to match by phone number
+  if (phone) {
+    // Normalize phone number - remove all non-digit characters
+    const normalizedPhone = phone.replace(/\D/g, "");
+
+    log("debug", "Attempting phone match", {
+      originalPhone: phone,
+      normalizedPhone,
+    });
+
+    // Try phone_number field
+    const guestByPhone = await db
+      .selectFrom("guests")
+      .selectAll()
+      .where((eb) =>
+        eb.or([
+          eb("phone_number", "like", `%${normalizedPhone}`),
+          eb("whatsapp", "like", `%${normalizedPhone}`),
+        ]),
+      )
+      .executeTakeFirst();
+
+    if (guestByPhone) {
+      log("info", "Found matching guest by phone", {
+        guestId: guestByPhone.id,
+        guestName: `${guestByPhone.first_name} ${guestByPhone.last_name}`,
+        searchedPhone: phone,
+        matchedBy: "phone",
+      });
+      return guestByPhone;
+    }
+  }
+
+  log("debug", "No matching guest found", {
+    email,
+    name,
+    phone,
   });
   return null;
 }
 
 /**
- * Find a guest by email address
+ * Determine gift type from Stripe product ID
+ * Product IDs are set via env vars and mapped to gift types
  */
-async function findGuestByEmail(email: string) {
-  log("debug", "Looking up guest by email", { email: email.toLowerCase() });
+function getGiftTypeFromProductId(
+  productId: string | null | undefined,
+): "baby_fund" | "honeymoon" | "student_loans" | null {
+  if (!productId) return null;
 
-  const guest = await db
-    .selectFrom("guests")
-    .selectAll()
-    .where("email", "=", email.toLowerCase())
-    .executeTakeFirst();
+  // Get product IDs from env vars
+  const babyFundProductId = env.STRIPE_PRODUCT_BABY_FUND;
+  const honeymoonProductId = env.STRIPE_PRODUCT_HONEYMOON;
+  const studentLoansProductId = env.STRIPE_PRODUCT_STUDENT_LOANS;
 
-  if (guest) {
-    log("info", "Found matching guest", {
-      guestId: guest.id,
-      guestName: `${guest.first_name} ${guest.last_name}`,
-      guestEmail: guest.email,
-    });
-  } else {
-    log("debug", "No matching guest found for email", { email });
-  }
-
-  return guest;
-}
-
-/**
- * Handle checkout.session.completed event
- */
-async function handleCheckoutSessionCompleted(
-  session: Stripe.Checkout.Session,
-) {
-  log("info", "=== CHECKOUT SESSION COMPLETED ===", {
-    sessionId: session.id,
-    mode: session.mode,
-    status: session.status,
-    paymentStatus: session.payment_status,
+  log("debug", "Matching product ID to gift type", {
+    productId,
+    babyFundProductId: babyFundProductId || "NOT SET",
+    honeymoonProductId: honeymoonProductId || "NOT SET",
+    studentLoansProductId: studentLoansProductId || "NOT SET",
   });
 
-  // Log full session details for debugging
-  log("debug", "Full checkout session details", {
-    sessionId: session.id,
-    customerId: session.customer,
-    customerDetails: session.customer_details,
-    amountTotal: session.amount_total,
-    amountSubtotal: session.amount_subtotal,
-    currency: session.currency,
-    paymentIntent: session.payment_intent,
-    paymentLink: session.payment_link,
-    metadata: session.metadata,
-    successUrl: session.success_url,
-    cancelUrl: session.cancel_url,
-  });
-
-  // Extract donor information
-  const donorEmail = session.customer_details?.email || null;
-  const donorName = session.customer_details?.name || null;
-  const amountTotal = session.amount_total || 0;
-  const currency = session.currency || "usd";
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : session.payment_intent?.id || null;
-  const paymentLinkId =
-    typeof session.payment_link === "string"
-      ? session.payment_link
-      : session.payment_link?.id || null;
-
-  log("info", "Extracted donor information", {
-    donorEmail,
-    donorName,
-    amountTotal,
-    amountDollars: amountTotal / 100,
-    currency,
-    paymentIntentId,
-    paymentLinkId,
-  });
-
-  // Determine gift type from payment link
-  const giftType = getGiftTypeFromPaymentLink(paymentLinkId, null);
-  log("info", "Gift type determination result", { giftType, paymentLinkId });
-
-  // Try to match donor email to a guest
-  let guestId: string | null = null;
-  if (donorEmail) {
-    const guest = await findGuestByEmail(donorEmail);
-    if (guest) {
-      guestId = guest.id;
-      log("info", "Matched donation to guest", {
-        donorEmail,
-        guestId,
-        guestName: `${guest.first_name} ${guest.last_name}`,
-      });
-    } else {
-      log("info", "Donor email did not match any guest", { donorEmail });
-    }
-  } else {
-    log("warn", "No donor email available for guest matching");
+  if (babyFundProductId && productId === babyFundProductId) {
+    return "baby_fund";
+  }
+  if (honeymoonProductId && productId === honeymoonProductId) {
+    return "honeymoon";
+  }
+  if (studentLoansProductId && productId === studentLoansProductId) {
+    return "student_loans";
   }
 
-  // Check if we already processed this session (idempotency)
-  log("debug", "Checking for existing gift record by session ID", {
-    sessionId: session.id,
-  });
-
-  const existingGift = await db
-    .selectFrom("gifts")
-    .select(["id", "status", "created_at"])
-    .where("stripe_checkout_session_id", "=", session.id)
-    .executeTakeFirst();
-
-  if (existingGift) {
-    log("warn", "Gift already recorded for this session - skipping", {
-      sessionId: session.id,
-      existingGiftId: existingGift.id,
-      existingStatus: existingGift.status,
-      createdAt: existingGift.created_at,
-    });
-    return;
-  }
-
-  // Also check by payment intent ID
-  if (paymentIntentId) {
-    log("debug", "Checking for existing gift record by payment intent ID", {
-      paymentIntentId,
-    });
-
-    const existingByPaymentIntent = await db
-      .selectFrom("gifts")
-      .select([
-        "id",
-        "status",
-        "stripe_checkout_session_id",
-        "stripe_charge_id",
-      ])
-      .where("stripe_payment_intent_id", "=", paymentIntentId)
-      .executeTakeFirst();
-
-    if (existingByPaymentIntent) {
-      log(
-        "info",
-        "Found existing gift by payment intent - updating with session details",
-        {
-          existingGiftId: existingByPaymentIntent.id,
-          paymentIntentId,
-          sessionId: session.id,
-        },
-      );
-
-      // Update existing record with checkout session details
-      await db
-        .updateTable("gifts")
-        .set({
-          stripe_checkout_session_id: session.id,
-          stripe_payment_link_id: paymentLinkId,
-          gift_type: giftType,
-          donor_email: donorEmail,
-          donor_name: donorName,
-          guest_id: guestId,
-          updated_at: new Date().toISOString(),
-        })
-        .where("id", "=", existingByPaymentIntent.id)
-        .execute();
-
-      log("info", "Updated existing gift with checkout session details", {
-        giftId: existingByPaymentIntent.id,
-        updatedFields: {
-          stripe_checkout_session_id: session.id,
-          stripe_payment_link_id: paymentLinkId,
-          gift_type: giftType,
-          donor_email: donorEmail,
-          donor_name: donorName,
-          guest_id: guestId,
-        },
-      });
-      return;
-    }
-  }
-
-  // Insert the gift record
-  log("info", "Creating new gift record", {
-    sessionId: session.id,
-    paymentIntentId,
-    paymentLinkId,
-    donorEmail,
-    donorName,
-    amountCents: amountTotal,
-    currency,
-    giftType,
-    guestId,
-  });
-
-  try {
-    const gift = await db
-      .insertInto("gifts")
-      .values({
-        stripe_checkout_session_id: session.id,
-        stripe_payment_intent_id: paymentIntentId,
-        stripe_payment_link_id: paymentLinkId,
-        donor_email: donorEmail,
-        donor_name: donorName,
-        amount_cents: amountTotal,
-        currency: currency,
-        gift_type: giftType,
-        guest_id: guestId,
-        status: "completed",
-        thank_you_email_sent: false,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-
-    log("info", "✅ Gift record created successfully", {
-      giftId: gift.id,
-      sessionId: session.id,
-      amountDollars: amountTotal / 100,
-      currency,
-      giftType,
-      donorEmail,
-      donorName,
-      matchedGuest: guestId ? "yes" : "no",
-      guestId,
-    });
-  } catch (error) {
-    log("error", "Failed to create gift record", {
-      sessionId: session.id,
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-    throw error;
-  }
+  return null;
 }
 
 /**
@@ -401,7 +231,7 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
     billingDetails: charge.billing_details,
     customer: charge.customer,
     description: charge.description,
-    metadata: charge.metadata,
+    chargeMetadata: charge.metadata,
     receiptEmail: charge.receipt_email,
     receiptUrl: charge.receipt_url,
   });
@@ -410,6 +240,43 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
     typeof charge.payment_intent === "string"
       ? charge.payment_intent
       : charge.payment_intent?.id || null;
+
+  // Determine gift type from the PaymentIntent's product reference
+  let giftType: "baby_fund" | "honeymoon" | "student_loans" | null = null;
+
+  if (paymentIntentId) {
+    try {
+      const paymentIntent =
+        await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      // The product ID is in payment_details.order_reference
+      const productId = (
+        paymentIntent as unknown as {
+          payment_details?: { order_reference?: string };
+        }
+      ).payment_details?.order_reference;
+
+      log("debug", "Retrieved PaymentIntent for gift type", {
+        paymentIntentId,
+        productId,
+      });
+
+      giftType = getGiftTypeFromProductId(productId);
+
+      if (giftType) {
+        log("info", "Gift type determined from product ID", {
+          giftType,
+          productId,
+          paymentIntentId,
+        });
+      }
+    } catch (err) {
+      log("warn", "Failed to retrieve PaymentIntent for gift type", {
+        paymentIntentId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   // Extract billing details from the charge
   const donorEmail = charge.billing_details?.email || null;
@@ -425,35 +292,40 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
     amount,
     amountDollars: amount / 100,
     currency,
+    giftType,
     billingAddress: charge.billing_details?.address,
   });
 
-  // Try to match donor email to a guest
+  // Try to match donor to a guest by email, name, or phone
   let guestId: string | null = null;
-  if (donorEmail) {
-    const guest = await findGuestByEmail(donorEmail);
-    if (guest) {
-      guestId = guest.id;
-      log("info", "Matched charge to guest", {
-        chargeId: charge.id,
-        donorEmail,
-        guestId,
-        guestName: `${guest.first_name} ${guest.last_name}`,
-      });
-    } else {
-      log("info", "Charge donor email did not match any guest", {
-        chargeId: charge.id,
-        donorEmail,
-      });
-    }
-  } else {
-    log("warn", "No billing email available on charge", {
+  const billingPhone = charge.billing_details?.phone || null;
+
+  const guest = await findGuest({
+    email: donorEmail,
+    name: donorName,
+    phone: billingPhone,
+  });
+
+  if (guest) {
+    guestId = guest.id;
+    log("info", "Matched charge to guest", {
       chargeId: charge.id,
+      donorEmail,
+      donorName,
+      billingPhone,
+      guestId,
+      guestName: `${guest.first_name} ${guest.last_name}`,
+    });
+  } else {
+    log("info", "Charge did not match any guest", {
+      chargeId: charge.id,
+      donorEmail,
+      donorName,
+      billingPhone,
     });
   }
 
   // Check if we already have a gift record for this payment intent
-  // (may have been created by checkout.session.completed)
   if (paymentIntentId) {
     log("debug", "Checking for existing gift by payment intent", {
       paymentIntentId,
@@ -547,16 +419,10 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
   }
 
   // No existing gift found - create a new record
-  // This handles cases where charge.succeeded arrives before checkout.session.completed
-  // or for direct charges without a checkout session
-  log(
-    "info",
-    "Creating new gift record from charge (no checkout session found)",
-    {
-      chargeId: charge.id,
-      paymentIntentId,
-    },
-  );
+  log("info", "Creating new gift record from charge", {
+    chargeId: charge.id,
+    paymentIntentId,
+  });
 
   try {
     const gift = await db
@@ -568,7 +434,7 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
         donor_name: donorName,
         amount_cents: amount,
         currency: currency,
-        gift_type: null, // Will be updated by checkout.session.completed if available
+        gift_type: giftType,
         guest_id: guestId,
         status: "completed",
         thank_you_email_sent: false,
@@ -584,9 +450,9 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
       currency,
       donorEmail,
       donorName,
+      giftType,
       matchedGuest: guestId ? "yes" : "no",
       guestId,
-      note: "Gift type will be set when checkout.session.completed arrives",
     });
   } catch (error) {
     log("error", "Failed to create gift record from charge", {
@@ -780,6 +646,43 @@ async function handleChargePending(charge: Stripe.Charge) {
       ? charge.payment_intent
       : charge.payment_intent?.id || null;
 
+  // Determine gift type from the PaymentIntent's product reference
+  let giftType: "baby_fund" | "honeymoon" | "student_loans" | null = null;
+
+  if (paymentIntentId) {
+    try {
+      const paymentIntent =
+        await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      // The product ID is in payment_details.order_reference
+      const productId = (
+        paymentIntent as unknown as {
+          payment_details?: { order_reference?: string };
+        }
+      ).payment_details?.order_reference;
+
+      log("debug", "Retrieved PaymentIntent for gift type (pending)", {
+        paymentIntentId,
+        productId,
+      });
+
+      giftType = getGiftTypeFromProductId(productId);
+
+      if (giftType) {
+        log("info", "Gift type determined from product ID", {
+          giftType,
+          productId,
+          paymentIntentId,
+        });
+      }
+    } catch (err) {
+      log("warn", "Failed to retrieve PaymentIntent for gift type (pending)", {
+        paymentIntentId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   // Extract billing details from the charge
   const donorEmail = charge.billing_details?.email || null;
   const donorName = charge.billing_details?.name || null;
@@ -794,21 +697,29 @@ async function handleChargePending(charge: Stripe.Charge) {
     amount,
     amountDollars: amount / 100,
     currency,
+    giftType,
   });
 
-  // Try to match donor email to a guest
+  // Try to match donor to a guest by email, name, or phone
   let guestId: string | null = null;
-  if (donorEmail) {
-    const guest = await findGuestByEmail(donorEmail);
-    if (guest) {
-      guestId = guest.id;
-      log("info", "Matched pending charge to guest", {
-        chargeId: charge.id,
-        donorEmail,
-        guestId,
-        guestName: `${guest.first_name} ${guest.last_name}`,
-      });
-    }
+  const billingPhone = charge.billing_details?.phone || null;
+
+  const guest = await findGuest({
+    email: donorEmail,
+    name: donorName,
+    phone: billingPhone,
+  });
+
+  if (guest) {
+    guestId = guest.id;
+    log("info", "Matched pending charge to guest", {
+      chargeId: charge.id,
+      donorEmail,
+      donorName,
+      billingPhone,
+      guestId,
+      guestName: `${guest.first_name} ${guest.last_name}`,
+    });
   }
 
   // Check if we already have a gift record for this payment intent
@@ -885,7 +796,7 @@ async function handleChargePending(charge: Stripe.Charge) {
         donor_name: donorName,
         amount_cents: amount,
         currency: currency,
-        gift_type: null,
+        gift_type: giftType,
         guest_id: guestId,
         status: "pending",
         thank_you_email_sent: false,
@@ -900,6 +811,7 @@ async function handleChargePending(charge: Stripe.Charge) {
       amountDollars: amount / 100,
       currency,
       donorEmail,
+      giftType,
       matchedGuest: guestId ? "yes" : "no",
       guestId,
       note: "Payment is pending - will update when charge.succeeded or charge.failed arrives",
@@ -1083,17 +995,9 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
 
     // Handle the event
+    // We only listen to charge events to avoid duplicate records
+    // (checkout.session.completed and charge.succeeded both fire for the same payment)
     switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        log("info", "Handling checkout.session.completed", {
-          requestId,
-          sessionId: session.id,
-        });
-        await handleCheckoutSessionCompleted(session);
-        break;
-      }
-
       case "charge.succeeded": {
         const charge = event.data.object as Stripe.Charge;
         log("info", "Handling charge.succeeded", {

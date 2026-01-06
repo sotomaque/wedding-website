@@ -38,6 +38,7 @@ CREATE TABLE gifts (
 CREATE INDEX idx_gifts_donor_email ON gifts(donor_email);
 CREATE INDEX idx_gifts_guest_id ON gifts(guest_id);
 CREATE INDEX idx_gifts_stripe_session ON gifts(stripe_checkout_session_id);
+CREATE INDEX idx_gifts_stripe_payment_intent ON gifts(stripe_payment_intent_id);
 CREATE INDEX idx_gifts_stripe_charge ON gifts(stripe_charge_id);
 CREATE INDEX idx_gifts_gift_type ON gifts(gift_type);
 CREATE INDEX idx_gifts_status ON gifts(status);

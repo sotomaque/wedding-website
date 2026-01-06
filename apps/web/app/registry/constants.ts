@@ -28,8 +28,7 @@ export const REGISTRY_CONTENT = {
     {
       id: "student-loans",
       title: "Bye Bye Student Loans",
-      description:
-        "Help us break up with Sallie Mae for good—she's overstayed her welcome.",
+      description: "Contribute to our 'Sallie Mae Freedom Fund'.",
       image: "/registry/student-loan-relief.jpg",
       stripeUrl: env.NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS,
       emoji: "🎓",
