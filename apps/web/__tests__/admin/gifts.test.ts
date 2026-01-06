@@ -227,18 +227,12 @@ describe("Admin Gifts - getGiftStats", () => {
     expect(stats.total_count).toBe(5);
   });
 
-  it("should return zero stats on error", async () => {
+  it("should throw error on database failure", async () => {
     mockExecute.mockRejectedValue(new Error("Database error"));
 
     const { getGiftStats } = await import("@/app/admin/gifts/actions");
 
-    const stats = await getGiftStats();
-
-    expect(stats.baby_fund.total).toBe(0);
-    expect(stats.honeymoon.total).toBe(0);
-    expect(stats.student_loans.total).toBe(0);
-    expect(stats.grand_total).toBe(0);
-    expect(stats.total_count).toBe(0);
+    await expect(getGiftStats()).rejects.toThrow("Database error");
   });
 
   it("should handle null gift types as unknown", async () => {
