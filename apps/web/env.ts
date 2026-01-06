@@ -7,18 +7,19 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    RESEND_API_KEY: z.string().optional(),
-    RSVP_EMAIL: z.string().optional(), // Comma-separated list of emails
-    CLERK_SECRET_KEY: z.string().optional(),
-    ADMIN_EMAILS: z.string().optional(),
-    DATABASE_URL: z.string().optional(),
-    UPLOADTHING_TOKEN: z.string().optional(),
-    OPENAI_API_KEY: z.string().optional(),
-    STRIPE_SECRET_KEY: z.string().optional(),
-    STRIPE_WEBHOOK_SECRET: z.string().optional(),
-    STRIPE_PRODUCT_BABY_FUND: z.string().optional(),
-    STRIPE_PRODUCT_HONEYMOON: z.string().optional(),
-    STRIPE_PRODUCT_STUDENT_LOANS: z.string().optional(),
+    RESEND_API_KEY: z.string(),
+    RSVP_EMAIL: z.string(), // Comma-separated list of emails
+    CLERK_SECRET_KEY: z.string(),
+    ADMIN_EMAILS: z.string(),
+    DATABASE_URL: z.string(),
+    UPLOADTHING_TOKEN: z.string(),
+    OPENAI_API_KEY: z.string(),
+    STRIPE_SECRET_KEY: z.string(),
+    STRIPE_WEBHOOK_SECRET: z.string(),
+    STRIPE_PRODUCT_BABY_FUND: z.string(),
+    STRIPE_PRODUCT_HONEYMOON: z.string(),
+    STRIPE_PRODUCT_STUDENT_LOANS: z.string(),
+    E2E_TEST_MODE: z.enum(["true", "false"]).default("true"),
   },
 
   /**
@@ -27,13 +28,13 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    NEXT_PUBLIC_RSVP_EMAIL: z.string().email().optional(),
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
-    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
-    NEXT_PUBLIC_ADMIN_EMAILS: z.string().optional(),
-    NEXT_PUBLIC_STRIPE_LINK_BABY_FUND: z.string().url().optional(),
-    NEXT_PUBLIC_STRIPE_LINK_HONEYMOON: z.string().url().optional(),
-    NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS: z.string().url().optional(),
+    NEXT_PUBLIC_RSVP_EMAIL: z.email(),
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
+    NEXT_PUBLIC_APP_URL: z.url(),
+    NEXT_PUBLIC_ADMIN_EMAILS: z.string(),
+    NEXT_PUBLIC_STRIPE_LINK_BABY_FUND: z.url(),
+    NEXT_PUBLIC_STRIPE_LINK_HONEYMOON: z.url(),
+    NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS: z.url(),
   },
 
   /**
@@ -53,6 +54,7 @@ export const env = createEnv({
     STRIPE_PRODUCT_BABY_FUND: process.env.STRIPE_PRODUCT_BABY_FUND,
     STRIPE_PRODUCT_HONEYMOON: process.env.STRIPE_PRODUCT_HONEYMOON,
     STRIPE_PRODUCT_STUDENT_LOANS: process.env.STRIPE_PRODUCT_STUDENT_LOANS,
+    E2E_TEST_MODE: process.env.E2E_TEST_MODE,
     NEXT_PUBLIC_RSVP_EMAIL: process.env.NEXT_PUBLIC_RSVP_EMAIL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,

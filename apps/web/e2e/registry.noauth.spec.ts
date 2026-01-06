@@ -83,9 +83,7 @@ test.describe("Registry - Public Access", () => {
     await expect(
       page.getByText(/fund our first adventure as a married couple/i),
     ).toBeVisible();
-    await expect(
-      page.getByText(/help us break up with sallie mae/i),
-    ).toBeVisible();
+    await expect(page.getByText(/sallie mae freedom fund/i)).toBeVisible();
   });
 
   test("displays emojis for each gift", async ({ page }) => {

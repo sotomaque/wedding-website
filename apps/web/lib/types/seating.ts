@@ -86,11 +86,6 @@ export interface GuestFilter {
   rsvp: GuestRsvpFilter;
 }
 
-export const DEFAULT_GUEST_FILTER: GuestFilter = {
-  list: "abc",
-  rsvp: "confirmed",
-};
-
 export const GUEST_LIST_FILTER_OPTIONS: {
   value: GuestListFilter;
   label: string;

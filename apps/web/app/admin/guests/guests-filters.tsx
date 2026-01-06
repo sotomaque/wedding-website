@@ -100,7 +100,11 @@ export function GuestsFilters() {
         </PopoverTrigger>
         <PopoverContent
           className="w-80 max-h-[80vh] overflow-y-auto"
+          side="bottom"
           align="start"
+          sideOffset={4}
+          avoidCollisions={true}
+          collisionPadding={16}
         >
           <div className="space-y-4">
             <div className="space-y-2">
