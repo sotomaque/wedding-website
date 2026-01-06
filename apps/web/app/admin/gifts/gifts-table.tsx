@@ -11,6 +11,13 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Button } from "@workspace/ui/components/button";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@workspace/ui/components/empty";
 import { Input } from "@workspace/ui/components/input";
 import {
   Table,
@@ -20,7 +27,12 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table";
-import { RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  Gift as GiftIcon,
+  RefreshCw,
+  SearchX,
+} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createColumns } from "./columns";
@@ -41,6 +53,7 @@ interface Gift {
   status: "pending" | "completed" | "refunded" | "failed";
   thank_you_email_sent: boolean;
   thank_you_email_sent_at: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
   guest_first_name?: string | null;
@@ -67,6 +80,7 @@ type SortableColumn =
 interface GiftsTableProps {
   initialGifts: Gift[];
   stats: GiftStats;
+  error?: string | null;
 }
 
 function formatCurrency(cents: number): string {
@@ -76,7 +90,7 @@ function formatCurrency(cents: number): string {
   }).format(cents / 100);
 }
 
-export function GiftsTable({ initialGifts, stats }: GiftsTableProps) {
+export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const router = useRouter();
@@ -92,6 +106,26 @@ export function GiftsTable({ initialGifts, stats }: GiftsTableProps) {
     searchParams.get("status") ||
     searchParams.get("thankYouSent") ||
     searchParams.get("hasGuest");
+
+  function handleEdit(giftId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("edit", giftId);
+    router.push(`/admin/gifts?${params.toString()}`, { scroll: false });
+  }
+
+  async function handleUpdateNotes(giftId: string, notes: string) {
+    const response = await fetch("/api/admin/gifts", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: giftId, notes }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update notes");
+    }
+
+    router.refresh();
+  }
 
   function handleSort(column: SortableColumn) {
     const params = new URLSearchParams(searchParams.toString());
@@ -134,6 +168,8 @@ export function GiftsTable({ initialGifts, stats }: GiftsTableProps) {
     currentSortBy,
     currentSortOrder,
     onSort: handleSort,
+    onEdit: handleEdit,
+    onUpdateNotes: handleUpdateNotes,
   });
 
   const table = useReactTable({
@@ -296,13 +332,35 @@ export function GiftsTable({ initialGifts, stats }: GiftsTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <p className="text-muted-foreground">No gifts found.</p>
-                    {hasActiveFilters && (
+                <TableCell colSpan={columns.length} className="h-64">
+                  {error ? (
+                    <Empty className="border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <AlertCircle className="text-destructive" />
+                        </EmptyMedia>
+                        <EmptyTitle>Failed to load gifts</EmptyTitle>
+                        <EmptyDescription>{error}</EmptyDescription>
+                      </EmptyHeader>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshGifts}
+                      >
+                        Try again
+                      </Button>
+                    </Empty>
+                  ) : hasActiveFilters ? (
+                    <Empty className="border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <SearchX />
+                        </EmptyMedia>
+                        <EmptyTitle>No gifts match your filters</EmptyTitle>
+                        <EmptyDescription>
+                          Try adjusting your filters or search criteria
+                        </EmptyDescription>
+                      </EmptyHeader>
                       <Button
                         variant="outline"
                         size="sm"
@@ -310,8 +368,21 @@ export function GiftsTable({ initialGifts, stats }: GiftsTableProps) {
                       >
                         Clear filters
                       </Button>
-                    )}
-                  </div>
+                    </Empty>
+                  ) : (
+                    <Empty className="border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <GiftIcon />
+                        </EmptyMedia>
+                        <EmptyTitle>No gifts yet</EmptyTitle>
+                        <EmptyDescription>
+                          Gifts will appear here once donors contribute through
+                          your registry
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  )}
                 </TableCell>
               </TableRow>
             )}

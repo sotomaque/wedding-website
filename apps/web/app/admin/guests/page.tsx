@@ -40,9 +40,18 @@ async function GuestsContent({
   searchParams: PageProps["searchParams"];
 }) {
   const params = await searchParams;
-  const guests = await getGuests(params);
 
-  return <GuestsTable initialGuests={guests} />;
+  let guests: Awaited<ReturnType<typeof getGuests>> = [];
+  let error: string | null = null;
+
+  try {
+    guests = await getGuests(params);
+  } catch (e) {
+    console.error("Error fetching guests:", e);
+    error = "Failed to load guests. Please try again.";
+  }
+
+  return <GuestsTable initialGuests={guests} error={error} />;
 }
 
 async function EditGuestContent({ guestId }: { guestId: string }) {

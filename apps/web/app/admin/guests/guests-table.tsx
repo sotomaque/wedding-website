@@ -12,6 +12,13 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Button } from "@workspace/ui/components/button";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@workspace/ui/components/empty";
 import { Input } from "@workspace/ui/components/input";
 import {
   Table,
@@ -21,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table";
-import { Plus, RefreshCw } from "lucide-react";
+import { AlertCircle, Plus, RefreshCw, SearchX, Users } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -44,9 +51,10 @@ type SortableColumn =
 
 interface GuestsTableProps {
   initialGuests: Guest[];
+  error?: string | null;
 }
 
-export function GuestsTable({ initialGuests }: GuestsTableProps) {
+export function GuestsTable({ initialGuests, error }: GuestsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -438,13 +446,35 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <p className="text-muted-foreground">No guests found.</p>
-                    {hasActiveFilters && (
+                <TableCell colSpan={columns.length} className="h-64">
+                  {error ? (
+                    <Empty className="border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <AlertCircle className="text-destructive" />
+                        </EmptyMedia>
+                        <EmptyTitle>Failed to load guests</EmptyTitle>
+                        <EmptyDescription>{error}</EmptyDescription>
+                      </EmptyHeader>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshGuests}
+                      >
+                        Try again
+                      </Button>
+                    </Empty>
+                  ) : hasActiveFilters ? (
+                    <Empty className="border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <SearchX />
+                        </EmptyMedia>
+                        <EmptyTitle>No guests match your filters</EmptyTitle>
+                        <EmptyDescription>
+                          Try adjusting your filters or search criteria
+                        </EmptyDescription>
+                      </EmptyHeader>
                       <Button
                         variant="outline"
                         size="sm"
@@ -452,8 +482,24 @@ export function GuestsTable({ initialGuests }: GuestsTableProps) {
                       >
                         Clear filters
                       </Button>
-                    )}
-                  </div>
+                    </Empty>
+                  ) : (
+                    <Empty className="border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Users />
+                        </EmptyMedia>
+                        <EmptyTitle>No guests yet</EmptyTitle>
+                        <EmptyDescription>
+                          Add your first guest to get started with your guest
+                          list
+                        </EmptyDescription>
+                      </EmptyHeader>
+                      <Button size="sm" onClick={() => setShowAddForm(true)}>
+                        Add Guest
+                      </Button>
+                    </Empty>
+                  )}
                 </TableCell>
               </TableRow>
             )}

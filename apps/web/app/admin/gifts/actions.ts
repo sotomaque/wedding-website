@@ -17,6 +17,7 @@ interface Gift {
   status: "pending" | "completed" | "refunded" | "failed";
   thank_you_email_sent: boolean;
   thank_you_email_sent_at: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
   // Joined guest data
@@ -59,6 +60,7 @@ export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
         "gifts.status",
         "gifts.thank_you_email_sent",
         "gifts.thank_you_email_sent_at",
+        "gifts.notes",
         "gifts.created_at",
         "gifts.updated_at",
         "guests.first_name as guest_first_name",
@@ -117,6 +119,72 @@ export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
     return gifts as any;
   } catch (error) {
     console.error("Error fetching gifts:", error);
+    throw error;
+  }
+}
+
+export async function getGiftWithGuest(giftId: string) {
+  try {
+    const gift = await db
+      .selectFrom("gifts")
+      .leftJoin("guests", "gifts.guest_id", "guests.id")
+      .select([
+        "gifts.id",
+        "gifts.stripe_checkout_session_id",
+        "gifts.stripe_payment_intent_id",
+        "gifts.stripe_payment_link_id",
+        "gifts.stripe_charge_id",
+        "gifts.donor_email",
+        "gifts.donor_name",
+        "gifts.amount_cents",
+        "gifts.currency",
+        "gifts.gift_type",
+        "gifts.guest_id",
+        "gifts.status",
+        "gifts.thank_you_email_sent",
+        "gifts.thank_you_email_sent_at",
+        "gifts.notes",
+        "gifts.created_at",
+        "gifts.updated_at",
+        "guests.first_name as guest_first_name",
+        "guests.last_name as guest_last_name",
+        "guests.email as guest_email",
+      ])
+      .where("gifts.id", "=", giftId)
+      .executeTakeFirst();
+
+    if (!gift) {
+      return null;
+    }
+
+    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
+    return gift as any as Gift;
+  } catch (error) {
+    console.error("Error fetching gift:", error);
+    return null;
+  }
+}
+
+interface GuestOption {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  email: string | null;
+}
+
+export async function getGuestOptions(): Promise<GuestOption[]> {
+  try {
+    const guests = await db
+      .selectFrom("guests")
+      .select(["id", "first_name", "last_name", "email"])
+      .where("is_plus_one", "=", false)
+      .orderBy("first_name", "asc")
+      .orderBy("last_name", "asc")
+      .execute();
+
+    return guests;
+  } catch (error) {
+    console.error("Error fetching guest options:", error);
     return [];
   }
 }
@@ -159,13 +227,6 @@ export async function getGiftStats() {
     return stats;
   } catch (error) {
     console.error("Error fetching gift stats:", error);
-    return {
-      baby_fund: { total: 0, count: 0 },
-      honeymoon: { total: 0, count: 0 },
-      student_loans: { total: 0, count: 0 },
-      unknown: { total: 0, count: 0 },
-      grand_total: 0,
-      total_count: 0,
-    };
+    throw error;
   }
 }
