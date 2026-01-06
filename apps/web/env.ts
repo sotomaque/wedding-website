@@ -14,6 +14,12 @@ export const env = createEnv({
     DATABASE_URL: z.string().optional(),
     UPLOADTHING_TOKEN: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
+    STRIPE_SECRET_KEY: z.string().optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    STRIPE_PRODUCT_BABY_FUND: z.string().optional(),
+    STRIPE_PRODUCT_HONEYMOON: z.string().optional(),
+    STRIPE_PRODUCT_STUDENT_LOANS: z.string().optional(),
+    E2E_TEST_MODE: z.enum(["true", "false"]).default("true"),
   },
 
   /**
@@ -22,10 +28,13 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    NEXT_PUBLIC_RSVP_EMAIL: z.string().email().optional(),
+    NEXT_PUBLIC_RSVP_EMAIL: z.email().optional(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
-    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_APP_URL: z.url().optional(),
     NEXT_PUBLIC_ADMIN_EMAILS: z.string().optional(),
+    NEXT_PUBLIC_STRIPE_LINK_BABY_FUND: z.url().optional(),
+    NEXT_PUBLIC_STRIPE_LINK_HONEYMOON: z.url().optional(),
+    NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS: z.url().optional(),
   },
 
   /**
@@ -40,11 +49,23 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    STRIPE_PRODUCT_BABY_FUND: process.env.STRIPE_PRODUCT_BABY_FUND,
+    STRIPE_PRODUCT_HONEYMOON: process.env.STRIPE_PRODUCT_HONEYMOON,
+    STRIPE_PRODUCT_STUDENT_LOANS: process.env.STRIPE_PRODUCT_STUDENT_LOANS,
+    E2E_TEST_MODE: process.env.E2E_TEST_MODE,
     NEXT_PUBLIC_RSVP_EMAIL: process.env.NEXT_PUBLIC_RSVP_EMAIL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_ADMIN_EMAILS: process.env.NEXT_PUBLIC_ADMIN_EMAILS,
+    NEXT_PUBLIC_STRIPE_LINK_BABY_FUND:
+      process.env.NEXT_PUBLIC_STRIPE_LINK_BABY_FUND,
+    NEXT_PUBLIC_STRIPE_LINK_HONEYMOON:
+      process.env.NEXT_PUBLIC_STRIPE_LINK_HONEYMOON,
+    NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS:
+      process.env.NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

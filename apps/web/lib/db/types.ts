@@ -157,6 +157,30 @@ export interface GuestTableAssignmentsTable {
   created_at: ColumnType<Date, string | undefined, never>;
 }
 
+// Gifts table (Stripe webhook data)
+export interface GiftsTable {
+  id: Generated<string>;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  stripe_payment_link_id: string | null;
+  stripe_charge_id: string | null;
+  donor_email: string | null;
+  donor_name: string | null;
+  amount_cents: number;
+  currency: string;
+  gift_type: "baby_fund" | "honeymoon" | "student_loans" | null;
+  guest_id: string | null;
+  status: "pending" | "completed" | "refunded" | "failed";
+  thank_you_email_sent: ColumnType<boolean, boolean | undefined, boolean>;
+  thank_you_email_sent_at: ColumnType<
+    Date,
+    string | undefined,
+    string | undefined
+  > | null;
+  created_at: ColumnType<Date, string | undefined, never>;
+  updated_at: ColumnType<Date, string | undefined, string>;
+}
+
 // Database interface
 export interface Database {
   guests: GuestsTable;
@@ -168,4 +192,5 @@ export interface Database {
   seating_charts: SeatingChartsTable;
   seating_tables: SeatingTablesTable;
   guest_table_assignments: GuestTableAssignmentsTable;
+  gifts: GiftsTable;
 }
