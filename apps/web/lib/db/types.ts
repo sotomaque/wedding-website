@@ -177,6 +177,7 @@ export interface GiftsTable {
     string | undefined,
     string | undefined
   > | null;
+  notes: string | null;
   created_at: ColumnType<Date, string | undefined, never>;
   updated_at: ColumnType<Date, string | undefined, string>;
 }

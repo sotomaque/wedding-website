@@ -101,7 +101,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, thank_you_email_sent, guest_id } = body;
+    const { id, thank_you_email_sent, guest_id, notes } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -124,6 +124,10 @@ export async function PATCH(request: NextRequest) {
 
     if (guest_id !== undefined) {
       updates.guest_id = guest_id;
+    }
+
+    if (notes !== undefined) {
+      updates.notes = notes;
     }
 
     const updatedGift = await db

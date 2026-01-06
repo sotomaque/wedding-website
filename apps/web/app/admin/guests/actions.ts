@@ -90,7 +90,7 @@ export async function getGuests(
     return guests as any;
   } catch (error) {
     console.error("Error fetching guests:", error);
-    return [];
+    throw error;
   }
 }
 

@@ -1,7 +1,10 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { ExternalLink } from "lucide-react";
+import { Button } from "@workspace/ui/components/button";
+import { Check, ExternalLink, Pencil, X } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface Gift {
   id: string;
@@ -18,6 +21,7 @@ interface Gift {
   status: "pending" | "completed" | "refunded" | "failed";
   thank_you_email_sent: boolean;
   thank_you_email_sent_at: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
   guest_first_name?: string | null;
@@ -36,6 +40,8 @@ interface ColumnsConfig {
   currentSortBy?: string;
   currentSortOrder?: "asc" | "desc";
   onSort: (column: SortableColumn) => void;
+  onEdit: (giftId: string) => void;
+  onUpdateNotes: (giftId: string, notes: string) => Promise<void>;
 }
 
 function formatCurrency(cents: number, currency: string): string {
@@ -79,10 +85,100 @@ const statusColors: Record<string, string> = {
   failed: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
 };
 
+function EditableNotesCell({
+  gift,
+  onSave,
+}: {
+  gift: Gift;
+  onSave: (giftId: string, notes: string) => Promise<void>;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [value, setValue] = useState(gift.notes || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      await onSave(gift.id, value);
+      setIsEditing(false);
+      toast.success("Notes updated", {
+        description: "Gift notes have been saved",
+      });
+    } catch {
+      toast.error("Error", {
+        description: "Failed to update notes",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handleCancel() {
+    setValue(gift.notes || "");
+    setIsEditing(false);
+  }
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1 min-w-[200px]">
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="flex-1 min-h-[60px] text-xs border rounded px-2 py-1 bg-background resize-none"
+          placeholder="Add notes..."
+          disabled={isSaving}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              handleCancel();
+            }
+          }}
+        />
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+            title="Save"
+          >
+            <Check className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={isSaving}
+            className="p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
+            title="Cancel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const displayValue = value || "—";
+  const truncated =
+    value.length > 50 ? `${value.slice(0, 50)}...` : displayValue;
+
+  return (
+    <button
+      type="button"
+      onClick={() => setIsEditing(true)}
+      className="text-xs text-left hover:bg-secondary/50 px-2 py-1 rounded transition-colors w-full"
+      title={value || "Click to add notes"}
+    >
+      <span className={!value ? "text-muted-foreground" : ""}>{truncated}</span>
+    </button>
+  );
+}
+
 export function createColumns({
   currentSortBy,
   currentSortOrder,
   onSort,
+  onEdit,
+  onUpdateNotes,
 }: ColumnsConfig): ColumnDef<Gift>[] {
   const getSortIcon = (columnKey: string) => {
     if (currentSortBy === columnKey) {
@@ -256,6 +352,28 @@ export function createColumns({
           </a>
         );
       },
+    },
+    {
+      accessorKey: "notes",
+      header: "Notes",
+      cell: ({ row }) => (
+        <EditableNotesCell gift={row.original} onSave={onUpdateNotes} />
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onEdit(row.original.id)}
+          className="h-8 w-8 p-0"
+        >
+          <Pencil className="h-4 w-4" />
+          <span className="sr-only">Edit gift</span>
+        </Button>
+      ),
     },
   ];
 }
