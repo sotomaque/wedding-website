@@ -27,6 +27,7 @@ export interface GuestsTable {
   preferred_contact_method: "email" | "text" | "whatsapp" | "phone_call" | null;
   family: boolean;
   under_21: boolean;
+  three_and_under: boolean;
   notes: string | null;
   clerk_user_id: string | null;
   gender: "male" | "female" | null;
@@ -43,6 +44,7 @@ export interface GuestsTable {
     string | undefined
   > | null;
   activities_email_resend_count: ColumnType<number, number | undefined, number>;
+  party_id: string | null;
   created_at: ColumnType<Date, string | undefined, never>;
 }
 
@@ -157,6 +159,19 @@ export interface GuestTableAssignmentsTable {
   created_at: ColumnType<Date, string | undefined, never>;
 }
 
+// Parties table (groups of guests who attend together)
+export interface PartiesTable {
+  id: Generated<string>;
+  invite_code: string;
+  name: string | null;
+  side: "bride" | "groom" | "both" | null;
+  list: "a" | "b" | "c" | null;
+  family: string | null;
+  notes: string | null;
+  created_at: ColumnType<Date, string | undefined, never>;
+  updated_at: ColumnType<Date, string | undefined, string>;
+}
+
 // Gifts table (Stripe webhook data)
 export interface GiftsTable {
   id: Generated<string>;
@@ -193,5 +208,6 @@ export interface Database {
   seating_charts: SeatingChartsTable;
   seating_tables: SeatingTablesTable;
   guest_table_assignments: GuestTableAssignmentsTable;
+  parties: PartiesTable;
   gifts: GiftsTable;
 }

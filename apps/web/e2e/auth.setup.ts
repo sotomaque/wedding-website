@@ -114,12 +114,79 @@ setup("authenticate as admin and create test guest", async ({ page }) => {
   );
   const inviteCode = testGuest?.invite_code || null;
 
+  // Create a multi-guest party for testing multi-guest RSVP flow
+  // We'll create a party with 2 guests via the API
+  const multiGuestPartyId = `E2E-Party-${uniqueId}`;
+  const multiGuestNames = [
+    `E2E-Family-Adult-${uniqueId}`,
+    `E2E-Family-Child-${uniqueId}`,
+  ];
+
+  let multiGuestPartyCode: string | null = null;
+
+  try {
+    // Create party first
+    const createPartyResponse = await page.request.post("/api/admin/parties", {
+      data: {
+        name: multiGuestPartyId,
+      },
+    });
+
+    if (createPartyResponse.ok()) {
+      const partyData = await createPartyResponse.json();
+      const partyId = partyData.party?.id;
+      multiGuestPartyCode = partyData.party?.invite_code || null;
+
+      if (partyId) {
+        // Create first guest (adult with plus-one allowed)
+        await page.request.post("/api/admin/guests", {
+          data: {
+            firstName: multiGuestNames[0],
+            lastName: "Test",
+            email: `e2e-family-adult-${uniqueId}@example.com`,
+            side: "bride",
+            list: "a",
+            plusOneAllowed: true,
+            sendEmail: false,
+            family: true,
+            under21: false,
+            threeAndUnder: false,
+            partyId: partyId,
+          },
+        });
+
+        // Create second guest (child)
+        await page.request.post("/api/admin/guests", {
+          data: {
+            firstName: multiGuestNames[1],
+            lastName: "Test",
+            side: "bride",
+            list: "a",
+            plusOneAllowed: false,
+            sendEmail: false,
+            family: true,
+            under21: true,
+            threeAndUnder: false,
+            partyId: partyId,
+          },
+        });
+
+        console.log(`Multi-guest party created: ${multiGuestPartyId}`);
+        console.log(`Multi-guest party code: ${multiGuestPartyCode}`);
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to create multi-guest party:", error);
+  }
+
   // Save test data for other tests
   const testData = {
     inviteCode,
     testGuestName: testFirstName,
     testGuestEmail: testEmail,
     authAvailable: true,
+    multiGuestPartyCode,
+    multiGuestPartyNames: multiGuestNames,
   };
 
   fs.mkdirSync(path.dirname(testDataFile), { recursive: true });

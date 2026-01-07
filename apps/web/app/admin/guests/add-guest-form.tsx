@@ -3,7 +3,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
 import { PhoneInput } from "@workspace/ui/components/phone-input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select";
 import {
   Sheet,
   SheetContent,
@@ -15,19 +23,27 @@ import { Switch } from "@workspace/ui/components/switch";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { type AddGuestFormData, addGuestSchema } from "@/lib/validations/guest";
+import type { PartyOption } from "./actions";
 
 interface AddGuestFormProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  parties: PartyOption[];
 }
 
-export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
+export function AddGuestForm({
+  open,
+  onClose,
+  onSuccess,
+  parties,
+}: AddGuestFormProps) {
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<AddGuestFormData>({
     resolver: zodResolver(addGuestSchema),
@@ -47,7 +63,11 @@ export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
       preferredContactMethod: "",
       family: false,
       under21: false,
+      threeAndUnder: false,
       notes: "",
+      gender: "",
+      bridalPartyRole: "",
+      partyId: "",
     },
   });
 
@@ -56,6 +76,8 @@ export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
   const email = watch("email");
   const family = watch("family");
   const under21 = watch("under21");
+  const threeAndUnder = watch("threeAndUnder");
+  const gender = watch("gender");
 
   async function onSubmit(data: AddGuestFormData) {
     try {
@@ -70,6 +92,7 @@ export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
           description:
             `${data.firstName} ${data.lastName || ""} has been added to the guest list`.trim(),
         });
+        reset();
         onSuccess();
       } else {
         toast.error("Error", {
@@ -173,6 +196,34 @@ export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
                   <option value="c">C List</option>
                 </select>
               </div>
+            </div>
+
+            {/* Party Assignment */}
+            <div>
+              <label
+                htmlFor="partyId"
+                className="block text-sm font-medium mb-1"
+              >
+                Party (Optional)
+              </label>
+              <select
+                id="partyId"
+                {...register("partyId")}
+                className="w-full border rounded px-3 py-2 bg-background"
+              >
+                <option value="">Create new party</option>
+                {parties.map((party) => (
+                  <option key={party.id} value={party.id}>
+                    {party.invite_code} -{" "}
+                    {party.name || party.guestNames || "Empty party"} (
+                    {party.guestCount} guests)
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Add to an existing party or create a new one with a unique
+                invite code
+              </p>
             </div>
 
             {/* Plus One Section */}
@@ -324,6 +375,22 @@ export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
                 />
               </div>
 
+              <div className="flex items-center justify-between">
+                <label htmlFor="threeAndUnder" className="text-sm font-medium">
+                  3 and Under
+                </label>
+                <Switch
+                  id="threeAndUnder"
+                  checked={threeAndUnder}
+                  onCheckedChange={(checked) => {
+                    setValue("threeAndUnder", checked);
+                    if (checked) {
+                      setValue("under21", true);
+                    }
+                  }}
+                />
+              </div>
+
               <div>
                 <label
                   htmlFor="notes"
@@ -338,6 +405,80 @@ export function AddGuestForm({ open, onClose, onSuccess }: AddGuestFormProps) {
                   rows={3}
                   className="w-full border rounded px-3 py-2 bg-background resize-none"
                 />
+              </div>
+            </div>
+
+            {/* Bridal Party Section */}
+            <div className="border-t pt-4 mt-2 space-y-4">
+              <h3 className="text-sm font-semibold">Bridal Party</h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Gender</Label>
+                  <Select
+                    value={gender || "none"}
+                    onValueChange={(value: "none" | "male" | "female") => {
+                      setValue("gender", value === "none" ? "" : value);
+                      // Clear bridal party role if gender changes
+                      if (value !== gender) {
+                        setValue("bridalPartyRole", "");
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Not specified" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Bridal Party Role</Label>
+                  <Select
+                    value={watch("bridalPartyRole") || "none"}
+                    onValueChange={(
+                      value:
+                        | "none"
+                        | "groomsman"
+                        | "best_man"
+                        | "bridesmaid"
+                        | "maid_of_honor",
+                    ) =>
+                      setValue("bridalPartyRole", value === "none" ? "" : value)
+                    }
+                    disabled={!gender}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {gender === "male" && (
+                        <>
+                          <SelectItem value="groomsman">Groomsman</SelectItem>
+                          <SelectItem value="best_man">Best Man</SelectItem>
+                        </>
+                      )}
+                      {gender === "female" && (
+                        <>
+                          <SelectItem value="bridesmaid">Bridesmaid</SelectItem>
+                          <SelectItem value="maid_of_honor">
+                            Maid of Honor
+                          </SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {errors.bridalPartyRole && (
+                    <p className="text-sm text-red-600">
+                      {errors.bridalPartyRole.message}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 

@@ -84,7 +84,11 @@ export async function POST(request: NextRequest) {
       preferredContactMethod,
       family,
       under21,
+      threeAndUnder,
       notes,
+      gender,
+      bridalPartyRole,
+      partyId,
     } = body;
 
     if (!firstName) {
@@ -94,30 +98,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique invite code
-    let inviteCode = generateInviteCode();
-    let attempts = 0;
-    const maxAttempts = 10;
+    let inviteCode: string;
+    let targetPartyId: string;
 
-    while (attempts < maxAttempts) {
-      // Kysely query - check if invite code exists
-      const existing = await db
-        .selectFrom("guests")
-        .select("id")
-        .where("invite_code", "=", inviteCode)
+    // If partyId is provided, add guest to existing party
+    if (partyId) {
+      const existingParty = await db
+        .selectFrom("parties")
+        .select(["id", "invite_code"])
+        .where("id", "=", partyId)
         .executeTakeFirst();
 
-      if (!existing) break;
+      if (!existingParty) {
+        return NextResponse.json({ error: "Party not found" }, { status: 404 });
+      }
 
+      inviteCode = existingParty.invite_code;
+      targetPartyId = existingParty.id;
+    } else {
+      // Generate unique invite code for new party
       inviteCode = generateInviteCode();
-      attempts++;
-    }
+      let attempts = 0;
+      const maxAttempts = 10;
 
-    if (attempts >= maxAttempts) {
-      return NextResponse.json(
-        { error: "Failed to generate unique invite code" },
-        { status: 500 },
-      );
+      while (attempts < maxAttempts) {
+        // Kysely query - check if invite code exists in parties table
+        const existing = await db
+          .selectFrom("parties")
+          .select("id")
+          .where("invite_code", "=", inviteCode)
+          .executeTakeFirst();
+
+        if (!existing) break;
+
+        inviteCode = generateInviteCode();
+        attempts++;
+      }
+
+      if (attempts >= maxAttempts) {
+        return NextResponse.json(
+          { error: "Failed to generate unique invite code" },
+          { status: 500 },
+        );
+      }
+
+      // Create new party
+      const newParty = await db
+        .insertInto("parties")
+        .values({
+          invite_code: inviteCode,
+          side: side || null,
+          list: list || "a",
+        })
+        .returning(["id"])
+        .executeTakeFirstOrThrow();
+
+      targetPartyId = newParty.id;
     }
 
     // Kysely query - insert primary guest
@@ -128,6 +164,7 @@ export async function POST(request: NextRequest) {
         last_name: lastName || null,
         email: email || null,
         invite_code: inviteCode,
+        party_id: targetPartyId,
         side: side || null,
         list: list || "a",
         is_plus_one: false,
@@ -141,7 +178,10 @@ export async function POST(request: NextRequest) {
         preferred_contact_method: preferredContactMethod || null,
         family: family || false,
         under_21: under21 || false,
+        three_and_under: threeAndUnder || false,
         notes: notes || null,
+        gender: gender || null,
+        bridal_party_role: bridalPartyRole || null,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -167,6 +207,7 @@ export async function POST(request: NextRequest) {
             last_name: plusOneLastNameFinal,
             email: null, // Plus-ones don't have their own email
             invite_code: inviteCode, // Same invite code
+            party_id: targetPartyId, // Same party as primary guest
             side: side || null,
             list: list || "a",
             is_plus_one: true,
@@ -181,6 +222,7 @@ export async function POST(request: NextRequest) {
             preferred_contact_method: null,
             family: family || false, // Inherit family status from primary guest
             under_21: under21 || false, // Inherit under_21 status from primary guest
+            three_and_under: threeAndUnder || false, // Inherit three_and_under status from primary guest
             notes: null,
           })
           .returningAll()

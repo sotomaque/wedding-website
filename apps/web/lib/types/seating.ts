@@ -52,6 +52,7 @@ export interface GuestForSeating {
   isPlusOne: boolean;
   primaryGuestId: string | null;
   inviteCode: string;
+  partyId: string | null;
 }
 
 // AI seating assignment for a single table

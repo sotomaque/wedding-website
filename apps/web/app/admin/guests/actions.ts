@@ -13,6 +13,7 @@ interface GetGuestsParams {
   isPlusOne?: "true" | "false";
   emailStatus?: "not_sent" | "sent" | "resent";
   under21?: "true" | "false";
+  threeAndUnder?: "true" | "false";
   bridalParty?:
     | "groomsman"
     | "best_man"
@@ -71,6 +72,14 @@ export async function getGuests(
       query = query.where("under_21", "=", params.under21 === "true");
     }
 
+    if (params.threeAndUnder !== undefined) {
+      query = query.where(
+        "three_and_under",
+        "=",
+        params.threeAndUnder === "true",
+      );
+    }
+
     if (params.bridalParty) {
       if (params.bridalParty === "any") {
         query = query.where("bridal_party_role", "is not", null);
@@ -119,5 +128,59 @@ export async function getGuestWithPlusOne(guestId: string) {
   } catch (error) {
     console.error("Error fetching guest with plus-one:", error);
     return { guest: null, plusOne: null };
+  }
+}
+
+export interface PartyOption {
+  id: string;
+  invite_code: string;
+  name: string | null;
+  guestNames: string;
+  guestCount: number;
+}
+
+/**
+ * Get all parties with guest info for dropdown selection
+ */
+export async function getPartiesForSelect(): Promise<PartyOption[]> {
+  try {
+    const parties = await db
+      .selectFrom("parties")
+      .selectAll()
+      .orderBy("created_at", "desc")
+      .execute();
+
+    // Fetch guest counts and names for each party
+    const partiesWithInfo = await Promise.all(
+      parties.map(async (party) => {
+        const guests = await db
+          .selectFrom("guests")
+          .select(["first_name", "last_name"])
+          .where("party_id", "=", party.id)
+          .orderBy("is_plus_one", "asc")
+          .execute();
+
+        const guestNames = guests
+          .slice(0, 3)
+          .map((g) => g.first_name)
+          .join(", ");
+
+        return {
+          id: party.id,
+          invite_code: party.invite_code,
+          name: party.name,
+          guestNames:
+            guests.length > 3
+              ? `${guestNames} +${guests.length - 3}`
+              : guestNames,
+          guestCount: guests.length,
+        };
+      }),
+    );
+
+    return partiesWithInfo;
+  } catch (error) {
+    console.error("Error fetching parties for select:", error);
+    return [];
   }
 }

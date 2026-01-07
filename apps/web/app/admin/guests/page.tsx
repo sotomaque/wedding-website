@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getGuests, getGuestWithPlusOne } from "./actions";
+import { getGuests, getGuestWithPlusOne, getPartiesForSelect } from "./actions";
 import { EditGuestSheet } from "./edit-guest-sheet";
 import { GuestsTable } from "./guests-table";
 import { GuestsTableSkeleton } from "./guests-table-skeleton";
@@ -51,17 +51,22 @@ async function GuestsContent({
     error = "Failed to load guests. Please try again.";
   }
 
-  return <GuestsTable initialGuests={guests} error={error} />;
+  const parties = await getPartiesForSelect();
+
+  return <GuestsTable initialGuests={guests} error={error} parties={parties} />;
 }
 
 async function EditGuestContent({ guestId }: { guestId: string }) {
-  const { guest, plusOne } = await getGuestWithPlusOne(guestId);
+  const [{ guest, plusOne }, parties] = await Promise.all([
+    getGuestWithPlusOne(guestId),
+    getPartiesForSelect(),
+  ]);
 
   if (!guest) {
     return null;
   }
 
-  return <EditGuestSheet guest={guest} plusOne={plusOne} />;
+  return <EditGuestSheet guest={guest} plusOne={plusOne} parties={parties} />;
 }
 
 export default async function AdminGuestsPage({ searchParams }: PageProps) {

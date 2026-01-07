@@ -27,9 +27,12 @@ const mockInsertValues = mock(() => {});
 const mockUpdateSet = mock(() => {});
 const mockDeleteWhere = mock(() => {});
 
+// Mock for party creation - returns a party with id
+const mockPartyId = "party-123";
+
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => ({
+    selectFrom: (table: string) => ({
       selectAll: () => ({
         orderBy: () => ({
           execute: mockExecute,
@@ -44,17 +47,26 @@ mock.module("@/lib/db", () => ({
       }),
       select: () => ({
         where: () => ({
-          executeTakeFirst: mockExecuteTakeFirst,
+          executeTakeFirst:
+            table === "parties"
+              ? mock(() => Promise.resolve(null)) // No existing party with that invite code
+              : mockExecuteTakeFirst,
         }),
       }),
     }),
-    insertInto: () => ({
+    insertInto: (table: string) => ({
       values: (data: unknown) => {
         mockInsertValues(data);
         return {
           returningAll: () => ({
             executeTakeFirstOrThrow: mockExecuteTakeFirstOrThrow,
             executeTakeFirst: mockExecuteTakeFirst,
+          }),
+          returning: () => ({
+            executeTakeFirstOrThrow:
+              table === "parties"
+                ? mock(() => Promise.resolve({ id: mockPartyId }))
+                : mockExecuteTakeFirstOrThrow,
           }),
           execute: mockExecute,
         };

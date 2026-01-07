@@ -138,35 +138,25 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
     }
   };
 
-  // Helper to find all party members (same invite_code) for a guest
+  // Helper to find all party members (same party_id or invite_code) for a guest
   const getPartyMembers = (guestId: string) => {
-    // First check unassigned guests
-    const unassignedGuest = chart.unassignedGuests.find(
-      (g) => g.id === guestId,
-    );
-    if (unassignedGuest) {
-      // Find all unassigned guests with same invite code
-      return chart.unassignedGuests.filter(
-        (g) => g.invite_code === unassignedGuest.invite_code,
-      );
+    // Get all guests from all sources
+    const allGuests = [
+      ...chart.unassignedGuests,
+      ...chart.tables.flatMap((t) => t.guests),
+    ];
+
+    // Find the target guest
+    const targetGuest = allGuests.find((g) => g.id === guestId);
+    if (!targetGuest) return [];
+
+    // Use party_id if available, otherwise fall back to invite_code
+    if (targetGuest.party_id) {
+      return allGuests.filter((g) => g.party_id === targetGuest.party_id);
     }
 
-    // Check assigned guests across all tables
-    for (const table of chart.tables) {
-      const assignedGuest = table.guests.find((g) => g.id === guestId);
-      if (assignedGuest) {
-        // Find all guests with same invite code (could be split across tables or unassigned)
-        const allGuests = [
-          ...chart.unassignedGuests,
-          ...chart.tables.flatMap((t) => t.guests),
-        ];
-        return allGuests.filter(
-          (g) => g.invite_code === assignedGuest.invite_code,
-        );
-      }
-    }
-
-    return [];
+    // Fallback to invite_code for backwards compatibility
+    return allGuests.filter((g) => g.invite_code === targetGuest.invite_code);
   };
 
   const handleAssignGuest = async (guestId: string, tableId: string) => {

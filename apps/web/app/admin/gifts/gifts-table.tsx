@@ -200,7 +200,7 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
   });
 
   function refreshGifts() {
-    window.location.reload();
+    router.refresh();
   }
 
   return (

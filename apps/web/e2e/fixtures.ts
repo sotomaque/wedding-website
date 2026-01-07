@@ -14,6 +14,9 @@ interface TestData {
   testGuestName: string;
   testGuestEmail: string;
   authAvailable: boolean;
+  // Multi-guest party data
+  multiGuestPartyCode: string | null;
+  multiGuestPartyNames: string[];
 }
 
 /**
@@ -29,6 +32,8 @@ export function getTestData(): TestData {
       testGuestName: "",
       testGuestEmail: "",
       authAvailable: false,
+      multiGuestPartyCode: null,
+      multiGuestPartyNames: [],
     };
   }
 }

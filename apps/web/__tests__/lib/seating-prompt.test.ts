@@ -18,6 +18,7 @@ describe("formatGuestForSeating", () => {
       is_plus_one: false,
       primary_guest_id: null,
       invite_code: "ABCD-1234",
+      party_id: "party-uuid-1",
     };
 
     const result = formatGuestForSeating(dbGuest);
@@ -32,6 +33,7 @@ describe("formatGuestForSeating", () => {
       isPlusOne: false,
       primaryGuestId: null,
       inviteCode: "ABCD-1234",
+      partyId: "party-uuid-1",
     });
   });
 
@@ -47,6 +49,7 @@ describe("formatGuestForSeating", () => {
       is_plus_one: false,
       primary_guest_id: null,
       invite_code: "EFGH-5678",
+      party_id: null,
     };
 
     const result = formatGuestForSeating(dbGuest);
@@ -68,6 +71,7 @@ describe("formatGuestForSeating", () => {
       is_plus_one: true,
       primary_guest_id: "primary-uuid",
       invite_code: "ABCD-1234",
+      party_id: "party-uuid-1",
     };
 
     const result = formatGuestForSeating(dbGuest);
@@ -88,6 +92,7 @@ describe("formatGuestForSeating", () => {
       is_plus_one: false,
       primary_guest_id: null,
       invite_code: "BOTH-1234",
+      party_id: null,
     };
 
     const result = formatGuestForSeating(dbGuest);
@@ -108,6 +113,7 @@ describe("buildSeatingPrompt", () => {
       isPlusOne: false,
       primaryGuestId: null,
       inviteCode: "ABCD-1234",
+      partyId: "party-1",
     },
     {
       id: "uuid-2",
@@ -119,6 +125,7 @@ describe("buildSeatingPrompt", () => {
       isPlusOne: true,
       primaryGuestId: "uuid-1",
       inviteCode: "ABCD-1234",
+      partyId: "party-1",
     },
     {
       id: "uuid-3",
@@ -130,6 +137,7 @@ describe("buildSeatingPrompt", () => {
       isPlusOne: false,
       primaryGuestId: null,
       inviteCode: "EFGH-5678",
+      partyId: "party-2",
     },
   ];
 
@@ -163,20 +171,21 @@ describe("buildSeatingPrompt", () => {
     expect(prompt).toContain("Best Man");
   });
 
-  it("should include invite codes for grouping", () => {
+  it("should include party identifiers for grouping", () => {
     const prompt = buildSeatingPrompt(mockGuests, 5, 8);
 
-    expect(prompt).toContain("ABCD-1234");
-    expect(prompt).toContain("EFGH-5678");
+    // When partyId is available, it uses party IDs for grouping
+    expect(prompt).toContain("party-1");
+    expect(prompt).toContain("party-2");
   });
 
-  it("should include group size for couples", () => {
+  it("should include party size for couples", () => {
     const prompt = buildSeatingPrompt(mockGuests, 5, 8);
 
-    // John and Jane share invite code, should show group size 2
-    expect(prompt).toContain("Group Size: 2");
-    // Best Man is solo, should show group size 1
-    expect(prompt).toContain("Group Size: 1");
+    // John and Jane share party_id, should show party size 2
+    expect(prompt).toContain("Party Size: 2");
+    // Best Man is solo, should show party size 1
+    expect(prompt).toContain("Party Size: 1");
   });
 
   it("should include side information", () => {
@@ -212,6 +221,7 @@ describe("buildSeatingPrompt", () => {
         isPlusOne: false,
         primaryGuestId: null,
         inviteCode: "NOTE-1234",
+        partyId: null,
       },
     ];
 
@@ -224,7 +234,7 @@ describe("buildSeatingPrompt", () => {
     const prompt = buildSeatingPrompt(mockGuests, 5, 8);
 
     expect(prompt).toContain("EXACT guest ID UUIDs");
-    expect(prompt).toContain("DO NOT use invite codes");
+    expect(prompt).toContain("DO NOT use party IDs or invite codes");
   });
 
   it("should include JSON output format instructions", () => {
@@ -239,7 +249,7 @@ describe("buildSeatingPrompt", () => {
   it("should include seating rules", () => {
     const prompt = buildSeatingPrompt(mockGuests, 5, 8);
 
-    expect(prompt).toContain("COUPLES MUST SIT TOGETHER");
+    expect(prompt).toContain("PARTIES MUST SIT TOGETHER");
     expect(prompt).toContain("SEPARATE POTENTIAL CONFLICTS");
     expect(prompt).toContain("GROUP BY FAMILY");
     expect(prompt).toContain("GROUP BY SIDE");

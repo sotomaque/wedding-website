@@ -24,6 +24,10 @@ export function GuestsFilters() {
   const currentList = searchParams.get("list") as "a" | "b" | "c" | null;
   const currentFamily = searchParams.get("family") as "true" | "false" | null;
   const currentUnder21 = searchParams.get("under21") as "true" | "false" | null;
+  const currentThreeAndUnder = searchParams.get("threeAndUnder") as
+    | "true"
+    | "false"
+    | null;
   const currentIsPlusOne = searchParams.get("isPlusOne") as
     | "true"
     | "false"
@@ -67,6 +71,7 @@ export function GuestsFilters() {
     currentList ||
     currentFamily ||
     currentUnder21 ||
+    currentThreeAndUnder ||
     currentIsPlusOne ||
     currentEmailStatus ||
     currentBridalParty;
@@ -76,6 +81,7 @@ export function GuestsFilters() {
     currentList,
     currentFamily,
     currentUnder21,
+    currentThreeAndUnder,
     currentIsPlusOne,
     currentEmailStatus,
     currentBridalParty,
@@ -278,6 +284,43 @@ export function GuestsFilters() {
                   variant={currentUnder21 === "false" ? "default" : "outline"}
                   size="sm"
                   onClick={() => updateFilter("under21", "false")}
+                  className="w-full"
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+
+            {/* 3 and Under Filter */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium">3 and Under</span>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={
+                    currentThreeAndUnder === null ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("threeAndUnder", null)}
+                  className="w-full"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={
+                    currentThreeAndUnder === "true" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("threeAndUnder", "true")}
+                  className="w-full"
+                >
+                  Yes
+                </Button>
+                <Button
+                  variant={
+                    currentThreeAndUnder === "false" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("threeAndUnder", "false")}
                   className="w-full"
                 >
                   No
@@ -504,6 +547,18 @@ export function GuestsFilters() {
               <button
                 type="button"
                 onClick={() => updateFilter("under21", null)}
+                className="hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {currentThreeAndUnder && (
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+              3 and Under: {currentThreeAndUnder === "true" ? "Yes" : "No"}
+              <button
+                type="button"
+                onClick={() => updateFilter("threeAndUnder", null)}
                 className="hover:text-foreground"
               >
                 <X className="h-3 w-3" />
