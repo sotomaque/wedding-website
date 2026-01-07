@@ -382,17 +382,14 @@ test.describe("RSVP - Under 21 and Three and Under", () => {
     await waitForHydration(page);
 
     // Click accept to show attending-only fields
-    // Use same pattern as dietary tests for consistency
     const acceptButton = page
       .getByRole("button", { name: /joyfully accept/i })
       .first();
-    await acceptButton.waitFor({ state: "attached", timeout: 10000 });
-    await acceptButton.evaluate((el) => (el as HTMLButtonElement).click());
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
 
     // Should show "Under 21?" toggle - use first() since plus-one section may also have one
-    const under21Label = page.getByText(/under 21\?/i).first();
-    await under21Label.waitFor({ state: "attached", timeout: 10000 });
-    await expect(under21Label).toHaveCount(1);
+    await expect(page.getByText(/under 21\?/i).first()).toBeVisible();
   });
 
   test("shows 3 and under toggle when guest is attending", async ({ page }) => {
@@ -410,13 +407,11 @@ test.describe("RSVP - Under 21 and Three and Under", () => {
     const acceptButton = page
       .getByRole("button", { name: /joyfully accept/i })
       .first();
-    await acceptButton.waitFor({ state: "attached", timeout: 10000 });
-    await acceptButton.evaluate((el) => (el as HTMLButtonElement).click());
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
 
     // Should show "3 or under?" toggle - use first() since plus-one section may also have one
-    const threeAndUnderLabel = page.getByText(/3 or under\?/i).first();
-    await threeAndUnderLabel.waitFor({ state: "attached", timeout: 10000 });
-    await expect(threeAndUnderLabel).toHaveCount(1);
+    await expect(page.getByText(/3 or under\?/i).first()).toBeVisible();
   });
 
   test("can toggle under 21 and submit", async ({ page }) => {
@@ -434,8 +429,8 @@ test.describe("RSVP - Under 21 and Three and Under", () => {
     const acceptButton = page
       .getByRole("button", { name: /joyfully accept/i })
       .first();
-    await acceptButton.waitFor({ state: "attached", timeout: 10000 });
-    await acceptButton.evaluate((el) => (el as HTMLButtonElement).click());
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
 
     // Find and click the under 21 switch by nearby label
     const under21Container = page.locator("div").filter({
@@ -450,8 +445,8 @@ test.describe("RSVP - Under 21 and Three and Under", () => {
     const submitButton = page.getByRole("button", {
       name: /submit rsvp|update rsvp/i,
     });
-    await submitButton.waitFor({ state: "attached", timeout: 5000 });
-    await submitButton.evaluate((el) => (el as HTMLButtonElement).click());
+    await expect(submitButton).toBeVisible({ timeout: 5000 });
+    await submitButton.click();
 
     // Should show success
     await expect(page.getByText(/rsvp submitted|rsvp updated/i).first())
@@ -474,23 +469,17 @@ test.describe("RSVP - Dietary Restrictions", () => {
     await page.goto(`${TEST_DATA.routes.rsvp}?code=${inviteCode}&step=form`);
     await waitForHydration(page);
 
-    // Wait for the accept button to be ready and click it with force
-    // The form has overflow scrolling that can cause visibility issues
+    // Click accept to show attending-only fields
     const acceptButton = page
       .getByRole("button", { name: /joyfully accept/i })
       .first();
-    await acceptButton.waitFor({ state: "attached", timeout: 10000 });
-    // Use evaluate to click via JavaScript to bypass visibility checks
-    await acceptButton.evaluate((el) => (el as HTMLButtonElement).click());
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
 
-    // Wait for dietary restrictions label to appear after clicking accept
-    // The label appears in the attending-only section
-    const dietaryLabel = page
-      .getByText(/dietary restrictions.*optional/i)
-      .first();
-    await dietaryLabel.waitFor({ state: "attached", timeout: 10000 });
-    // Verify it's in the DOM (state: attached is sufficient for conditional render)
-    await expect(dietaryLabel).toHaveCount(1);
+    // Should show dietary restrictions label
+    await expect(
+      page.getByText(/dietary restrictions.*optional/i).first(),
+    ).toBeVisible();
   });
 
   test("can enter dietary restrictions and submit", async ({ page }) => {
@@ -504,29 +493,24 @@ test.describe("RSVP - Dietary Restrictions", () => {
     await page.goto(`${TEST_DATA.routes.rsvp}?code=${inviteCode}&step=form`);
     await waitForHydration(page);
 
-    // Wait for the accept button to be ready and click it with evaluate
+    // Click accept to show attending-only fields
     const acceptButton = page
       .getByRole("button", { name: /joyfully accept/i })
       .first();
-    await acceptButton.waitFor({ state: "attached", timeout: 10000 });
-    // Use evaluate to click via JavaScript to bypass visibility checks
-    await acceptButton.evaluate((el) => (el as HTMLButtonElement).click());
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
 
-    // Wait for dietary restrictions input to appear
+    // Fill dietary restrictions
     const dietaryInput = page.getByLabel(/dietary restrictions/i).first();
-    await dietaryInput.waitFor({ state: "attached", timeout: 10000 });
-    // Use focus + fill with force to bypass visibility checks but still trigger React events
-    await dietaryInput.focus();
-    await dietaryInput.fill("E2E Test - Vegetarian", { force: true });
+    await expect(dietaryInput).toBeVisible({ timeout: 5000 });
+    await dietaryInput.fill("E2E Test - Vegetarian");
 
-    // Submit the form - wait for it to be enabled (hasFormChanged check)
+    // Submit the form
     const submitButton = page.getByRole("button", {
       name: /submit rsvp|update rsvp/i,
     });
-    await submitButton.waitFor({ state: "attached", timeout: 5000 });
-    // Wait a moment for React to process the form state change
-    await page.waitForTimeout(500);
-    await submitButton.evaluate((el) => (el as HTMLButtonElement).click());
+    await expect(submitButton).toBeVisible({ timeout: 5000 });
+    await submitButton.click();
 
     // Should show success
     await expect(page.getByText(/rsvp submitted|rsvp updated/i).first())
