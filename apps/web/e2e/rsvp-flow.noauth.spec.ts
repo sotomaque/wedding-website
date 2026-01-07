@@ -504,18 +504,17 @@ test.describe("RSVP - Dietary Restrictions", () => {
     // Wait for dietary restrictions input to appear
     const dietaryInput = page.getByLabel(/dietary restrictions/i).first();
     await dietaryInput.waitFor({ state: "attached", timeout: 10000 });
-    // Fill using evaluate to bypass visibility checks
-    await dietaryInput.evaluate((el) => {
-      const input = el as HTMLInputElement;
-      input.value = "E2E Test - Vegetarian";
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    });
+    // Use focus + fill with force to bypass visibility checks but still trigger React events
+    await dietaryInput.focus();
+    await dietaryInput.fill("E2E Test - Vegetarian", { force: true });
 
-    // Submit the form
+    // Submit the form - wait for it to be enabled (hasFormChanged check)
     const submitButton = page.getByRole("button", {
       name: /submit rsvp|update rsvp/i,
     });
     await submitButton.waitFor({ state: "attached", timeout: 5000 });
+    // Wait a moment for React to process the form state change
+    await page.waitForTimeout(500);
     await submitButton.evaluate((el) => (el as HTMLButtonElement).click());
 
     // Should show success
