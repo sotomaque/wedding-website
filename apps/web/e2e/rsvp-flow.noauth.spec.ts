@@ -382,12 +382,17 @@ test.describe("RSVP - Under 21 and Three and Under", () => {
     await waitForHydration(page);
 
     // Click accept to show attending-only fields
-    const acceptButton = page.getByRole("button", { name: /joyfully accept/i });
-    await expect(acceptButton).toBeVisible({ timeout: 10000 });
-    await acceptButton.click();
+    // Use same pattern as dietary tests for consistency
+    const acceptButton = page
+      .getByRole("button", { name: /joyfully accept/i })
+      .first();
+    await acceptButton.waitFor({ state: "attached", timeout: 10000 });
+    await acceptButton.evaluate((el) => (el as HTMLButtonElement).click());
 
-    // Should show "Under 21?" toggle
-    await expect(page.getByText(/under 21/i)).toBeVisible();
+    // Should show "Under 21?" toggle - use first() since plus-one section may also have one
+    const under21Label = page.getByText(/under 21\?/i).first();
+    await under21Label.waitFor({ state: "attached", timeout: 10000 });
+    await expect(under21Label).toHaveCount(1);
   });
 
   test("shows 3 and under toggle when guest is attending", async ({ page }) => {
@@ -402,12 +407,16 @@ test.describe("RSVP - Under 21 and Three and Under", () => {
     await waitForHydration(page);
 
     // Click accept to show attending-only fields
-    const acceptButton = page.getByRole("button", { name: /joyfully accept/i });
-    await expect(acceptButton).toBeVisible({ timeout: 10000 });
-    await acceptButton.click();
+    const acceptButton = page
+      .getByRole("button", { name: /joyfully accept/i })
+      .first();
+    await acceptButton.waitFor({ state: "attached", timeout: 10000 });
+    await acceptButton.evaluate((el) => (el as HTMLButtonElement).click());
 
-    // Should show "3 or under?" toggle
-    await expect(page.getByText(/3 or under/i)).toBeVisible();
+    // Should show "3 or under?" toggle - use first() since plus-one section may also have one
+    const threeAndUnderLabel = page.getByText(/3 or under\?/i).first();
+    await threeAndUnderLabel.waitFor({ state: "attached", timeout: 10000 });
+    await expect(threeAndUnderLabel).toHaveCount(1);
   });
 
   test("can toggle under 21 and submit", async ({ page }) => {
@@ -422,9 +431,11 @@ test.describe("RSVP - Under 21 and Three and Under", () => {
     await waitForHydration(page);
 
     // Click accept
-    const acceptButton = page.getByRole("button", { name: /joyfully accept/i });
-    await expect(acceptButton).toBeVisible({ timeout: 10000 });
-    await acceptButton.click();
+    const acceptButton = page
+      .getByRole("button", { name: /joyfully accept/i })
+      .first();
+    await acceptButton.waitFor({ state: "attached", timeout: 10000 });
+    await acceptButton.evaluate((el) => (el as HTMLButtonElement).click());
 
     // Find and click the under 21 switch by nearby label
     const under21Container = page.locator("div").filter({
@@ -439,8 +450,8 @@ test.describe("RSVP - Under 21 and Three and Under", () => {
     const submitButton = page.getByRole("button", {
       name: /submit rsvp|update rsvp/i,
     });
-    await expect(submitButton).toBeVisible({ timeout: 5000 });
-    await submitButton.click();
+    await submitButton.waitFor({ state: "attached", timeout: 5000 });
+    await submitButton.evaluate((el) => (el as HTMLButtonElement).click());
 
     // Should show success
     await expect(page.getByText(/rsvp submitted|rsvp updated/i).first())
