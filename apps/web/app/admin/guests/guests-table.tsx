@@ -309,9 +309,8 @@ export function GuestsTable({ initialGuests, error }: GuestsTableProps) {
     }
   }
 
-  async function refreshGuests() {
-    // This will trigger a router refresh which will re-fetch server data
-    window.location.reload();
+  function refreshGuests() {
+    router.refresh();
   }
 
   return (

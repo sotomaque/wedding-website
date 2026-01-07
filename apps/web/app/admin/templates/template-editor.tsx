@@ -573,6 +573,68 @@ export function TemplateEditor({
                 Admin notification when guest responds to event invite
               </p>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setName("gift-notification");
+                setSubject(
+                  "{{{GIFT_EMOJI}}} New Gift: {{{AMOUNT}}} for {{{GIFT_TYPE}}}",
+                );
+                setHtml(GIFT_NOTIFICATION_TEMPLATE);
+                // Admin notification for registry gifts
+                setVariables([
+                  { key: "GIFT_EMOJI", type: "string", fallbackValue: "🎁" },
+                  {
+                    key: "AMOUNT",
+                    type: "string",
+                    fallbackValue: "$50.00",
+                  },
+                  {
+                    key: "GIFT_TYPE",
+                    type: "string",
+                    fallbackValue: "General Gift",
+                  },
+                  {
+                    key: "DONOR_NAME",
+                    type: "string",
+                    fallbackValue: "Anonymous",
+                  },
+                  {
+                    key: "DONOR_EMAIL",
+                    type: "string",
+                    fallbackValue: "No email provided",
+                  },
+                  {
+                    key: "MATCHED_GUEST_NAME",
+                    type: "string",
+                    fallbackValue: "",
+                  },
+                  {
+                    key: "MATCHED_GUEST_STATUS",
+                    type: "string",
+                    fallbackValue: "unmatched",
+                  },
+                  {
+                    key: "MATCHED_GUEST_DISPLAY",
+                    type: "string",
+                    fallbackValue: "none",
+                  },
+                  {
+                    key: "UNMATCHED_GUEST_DISPLAY",
+                    type: "string",
+                    fallbackValue: "block",
+                  },
+                  { key: "CHARGE_ID", type: "string", fallbackValue: "" },
+                  { key: "SUBMITTED_AT", type: "string", fallbackValue: "" },
+                ]);
+              }}
+              className="p-4 border rounded-lg text-left hover:border-primary transition-colors"
+            >
+              <h4 className="font-medium mb-1">Gift Notification (Admin)</h4>
+              <p className="text-sm text-muted-foreground">
+                Admin notification when a gift is received via registry
+              </p>
+            </button>
           </div>
         </div>
       )}
@@ -960,6 +1022,116 @@ const RSVP_NOTIFICATION_TEMPLATE = `<!DOCTYPE html>
         <div style="background: #f0fff4; border: 1px solid #68d391; border-radius: 8px; padding: 16px; text-align: center;">
           <p style="margin: 0; color: #276749; font-size: 14px;">
             {{{GUEST_COUNT_TEXT}}} {{{CONFIRMATION_TEXT}}}
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div style="background: #f7fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+        <p style="margin: 0; color: #718096; font-size: 13px;">
+          This is an automated notification from your wedding website.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>`;
+
+// Gift Notification (Admin) - matches lib/email/templates/gift-notification.tsx
+const GIFT_NOTIFICATION_TEMPLATE = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Gift Received</title>
+  </head>
+  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+
+      <!-- Header -->
+      <div style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); padding: 40px; text-align: center;">
+        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">
+          {{{GIFT_EMOJI}}} New Gift Received!
+        </h1>
+      </div>
+
+      <!-- Main Content -->
+      <div style="padding: 40px;">
+
+        <!-- Amount Badge -->
+        <div style="text-align: center; margin-bottom: 30px;">
+          <span style="display: inline-block; background-color: #48bb78; color: #ffffff; padding: 16px 32px; border-radius: 50px; font-size: 24px; font-weight: 700;">
+            {{{AMOUNT}}}
+          </span>
+        </div>
+
+        <!-- Gift Details Card -->
+        <div style="background: #f7fafc; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="padding: 8px 0;">
+                <span style="color: #718096; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Gift Type</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0 0 16px;">
+                <span style="color: #2d3748; font-size: 18px; font-weight: 600;">{{{GIFT_EMOJI}}} {{{GIFT_TYPE}}}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0;">
+                <span style="color: #718096; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Donor Name</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0 0 16px;">
+                <span style="color: #2d3748; font-size: 16px;">{{{DONOR_NAME}}}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0;">
+                <span style="color: #718096; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Donor Email</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0 0 16px;">
+                <span style="color: #4a5568; font-size: 14px;">{{{DONOR_EMAIL}}}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0;">
+                <span style="color: #718096; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Received At</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <span style="color: #4a5568; font-size: 14px;">{{{SUBMITTED_AT}}}</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Guest Match Status - Matched -->
+        <div style="background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 8px; padding: 20px; margin-bottom: 24px; display: {{{MATCHED_GUEST_DISPLAY}}};">
+          <p style="margin: 0 0 8px; color: #2b6cb0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+            ✅ Matched to Guest
+          </p>
+          <p style="margin: 0; color: #2c5282; font-size: 16px; font-weight: 600;">
+            {{{MATCHED_GUEST_NAME}}}
+          </p>
+        </div>
+
+        <!-- Guest Match Status - Unmatched -->
+        <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 20px; margin-bottom: 24px; display: {{{UNMATCHED_GUEST_DISPLAY}}};">
+          <p style="margin: 0; color: #92400e; font-size: 14px;">
+            ℹ️ No matching guest found in the guest list
+          </p>
+        </div>
+
+        <!-- Transaction ID -->
+        <div style="text-align: center; padding: 16px; background: #f7fafc; border-radius: 8px;">
+          <p style="margin: 0; color: #718096; font-size: 12px;">
+            Transaction ID: <code style="background: #edf2f7; padding: 2px 6px; border-radius: 4px;">{{{CHARGE_ID}}}</code>
           </p>
         </div>
 

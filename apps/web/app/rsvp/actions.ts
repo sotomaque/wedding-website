@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
-import { getRsvpNotificationEmail } from "@/lib/email/templates/rsvp-notification";
 import type { Database } from "@/lib/supabase/types";
 
 type Guest = Database["public"]["Tables"]["guests"]["Row"];
@@ -229,28 +229,41 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
           .where("invite_code", "=", inviteCode.toUpperCase())
           .execute();
 
-        const emailHtml = getRsvpNotificationEmail({
-          guests: updatedGuests.map((g) => ({
-            firstName: g.first_name,
-            lastName: g.last_name,
-            email: g.email,
-          })),
-          inviteCode: inviteCode.toUpperCase(),
-          attending,
-          dietaryRestrictions,
-          submittedAt: new Date().toLocaleString("en-US", {
-            dateStyle: "full",
-            timeStyle: "short",
-            timeZone: "America/Los_Angeles",
-          }),
-        });
+        const guestNames = updatedGuests
+          .map((g) => `${g.first_name}${g.last_name ? ` ${g.last_name}` : ""}`)
+          .join(", ");
+
+        const guestEmails = updatedGuests
+          .filter((g) => g.email)
+          .map((g) => g.email)
+          .join(", ");
 
         const recipients = env.RSVP_EMAIL.split(",").map((e) => e.trim());
         await sendEmail({
           from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
           to: recipients,
           subject: `${attending ? "✅" : "❌"} RSVP: ${updatedGuests.map((g) => g.first_name).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,
-          html: emailHtml,
+          template: {
+            id: RSVP_NOTIFICATION_TEMPLATE_ALIAS,
+            variables: {
+              GUEST_NAMES: guestNames,
+              GUEST_EMAILS: guestEmails || "No email provided",
+              INVITE_CODE: inviteCode.toUpperCase(),
+              STATUS_TEXT: attending ? "Attending" : "Not Attending",
+              STATUS_EMOJI: attending ? "✅" : "❌",
+              DIETARY_RESTRICTIONS: dietaryRestrictions || "None",
+              GUEST_COUNT_TEXT:
+                updatedGuests.length > 1
+                  ? `${updatedGuests.length} guests`
+                  : "1 guest",
+              CONFIRMATION_TEXT: attending ? "confirmed" : "declined",
+              SUBMITTED_AT: new Date().toLocaleString("en-US", {
+                dateStyle: "full",
+                timeStyle: "short",
+                timeZone: "America/Los_Angeles",
+              }),
+            },
+          },
         });
       } catch (emailError) {
         // Log but don't fail the RSVP submission if email fails

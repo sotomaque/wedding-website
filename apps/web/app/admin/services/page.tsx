@@ -192,7 +192,7 @@ export default function ServicesPage() {
             </h2>
             <div className="flex flex-wrap gap-3">
               <Link
-                href="https://github.com/sotomaque/wedding-website/blob/main/.env.example"
+                href="https://github.com/sotomaque/wedding-website/blob/main/apps/web/.env.examplee"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-md bg-secondary px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary/80 transition-colors"

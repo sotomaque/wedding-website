@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { GIFT_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
+import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
 // Initialize Stripe
 const stripe = new Stripe(env.STRIPE_SECRET_KEY || "", {
@@ -173,6 +175,105 @@ async function findGuest(params: {
     phone,
   });
   return null;
+}
+
+/**
+ * Send gift notification email to admin
+ */
+async function sendGiftNotificationEmail(params: {
+  donorName: string | null;
+  donorEmail: string | null;
+  amount: number; // in cents
+  currency: string;
+  giftType: "baby_fund" | "honeymoon" | "student_loans" | null;
+  matchedGuest: { firstName: string; lastName: string | null } | null;
+  chargeId: string;
+}) {
+  if (!getResendClient() || !env.RSVP_EMAIL) {
+    log(
+      "debug",
+      "Skipping gift notification email - no Resend client or RSVP_EMAIL",
+      {
+        hasResendClient: !!getResendClient(),
+        hasRsvpEmail: !!env.RSVP_EMAIL,
+      },
+    );
+    return;
+  }
+
+  const {
+    donorName,
+    donorEmail,
+    amount,
+    currency,
+    giftType,
+    matchedGuest,
+    chargeId,
+  } = params;
+
+  const amountDollars = amount / 100;
+  const formattedAmount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(amountDollars);
+
+  const giftTypeLabel = giftType
+    ? giftType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : "General Gift";
+
+  const giftEmoji =
+    giftType === "baby_fund"
+      ? "👶"
+      : giftType === "honeymoon"
+        ? "🏝️"
+        : giftType === "student_loans"
+          ? "🎓"
+          : "🎁";
+
+  try {
+    const recipients = env.RSVP_EMAIL.split(",").map((e) => e.trim());
+    await sendEmail({
+      from: "Wedding Registry <rsvp@helen-and-enrique.com>",
+      to: recipients,
+      subject: `${giftEmoji} New Gift: ${formattedAmount} for ${giftTypeLabel}${donorName ? ` from ${donorName}` : ""}`,
+      template: {
+        id: GIFT_NOTIFICATION_TEMPLATE_ALIAS,
+        variables: {
+          DONOR_NAME: donorName || "Anonymous",
+          DONOR_EMAIL: donorEmail || "No email provided",
+          AMOUNT: formattedAmount,
+          GIFT_TYPE: giftTypeLabel,
+          GIFT_EMOJI: giftEmoji,
+          MATCHED_GUEST_NAME: matchedGuest
+            ? `${matchedGuest.firstName}${matchedGuest.lastName ? ` ${matchedGuest.lastName}` : ""}`
+            : "",
+          MATCHED_GUEST_STATUS: matchedGuest ? "matched" : "unmatched",
+          MATCHED_GUEST_DISPLAY: matchedGuest ? "block" : "none",
+          UNMATCHED_GUEST_DISPLAY: matchedGuest ? "none" : "block",
+          CHARGE_ID: chargeId,
+          SUBMITTED_AT: new Date().toLocaleString("en-US", {
+            dateStyle: "full",
+            timeStyle: "short",
+            timeZone: "America/Los_Angeles",
+          }),
+        },
+      },
+    });
+
+    log("info", "Gift notification email sent", {
+      chargeId,
+      recipients: recipients.length,
+      donorName,
+      amountDollars,
+      giftType,
+    });
+  } catch (emailError) {
+    log("error", "Failed to send gift notification email", {
+      chargeId,
+      error:
+        emailError instanceof Error ? emailError.message : String(emailError),
+    });
+  }
 }
 
 /**
@@ -453,6 +554,19 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
       giftType,
       matchedGuest: guestId ? "yes" : "no",
       guestId,
+    });
+
+    // Send gift notification email to admin
+    await sendGiftNotificationEmail({
+      donorName,
+      donorEmail,
+      amount,
+      currency,
+      giftType,
+      matchedGuest: guest
+        ? { firstName: guest.first_name, lastName: guest.last_name }
+        : null,
+      chargeId: charge.id,
     });
   } catch (error) {
     log("error", "Failed to create gift record from charge", {
