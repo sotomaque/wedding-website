@@ -12,15 +12,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
-import { Switch } from "@workspace/ui/components/switch";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
-import { type RSVPFormData, rsvpFormSchema } from "@/lib/validations/rsvp";
-import { submitRSVP } from "./actions";
+import {
+  type MultiGuestRsvpFormData,
+  multiGuestRsvpSchema,
+} from "@/lib/validations/rsvp";
+import { submitMultiGuestRSVP } from "./actions";
+import { GuestRsvpCard } from "./guest-rsvp-card";
 
 type Guest = Database["public"]["Tables"]["guests"]["Row"];
 
@@ -33,40 +36,56 @@ interface RSVPFormProps {
 export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
   const router = useRouter();
 
-  const primaryGuest = guests.find((g) => !g.is_plus_one);
-  const existingPlusOne = guests.find((g) => g.is_plus_one);
-  const hasRSVPd = primaryGuest && primaryGuest.rsvp_status !== "pending";
+  // Separate primary guests from plus-ones
+  const primaryGuests = guests.filter((g) => !g.is_plus_one);
+  const plusOnes = guests.filter((g) => g.is_plus_one);
+
+  // Check if any guest has already RSVP'd
+  const hasRSVPd = primaryGuests.some((g) => g.rsvp_status !== "pending");
+
+  // Get first non-plus-one guest for contact info defaults
+  const firstGuest = primaryGuests[0];
+
+  // Find plus-one for a specific guest
+  const findPlusOneFor = (guestId: string) =>
+    plusOnes.find((p) => p.primary_guest_id === guestId);
 
   // Memoize initial values from DB to compare against current form values
-  const initialValues = useMemo(
-    (): RSVPFormData => ({
-      firstName: primaryGuest?.first_name || "",
-      lastName: primaryGuest?.last_name || "",
-      attending: primaryGuest?.rsvp_status !== "no",
-      plusOneAttending: existingPlusOne
-        ? existingPlusOne.rsvp_status === "yes"
-        : undefined,
-      plusOneFirstName: existingPlusOne?.first_name || "",
-      plusOneLastName: existingPlusOne?.last_name || "",
-      plusOneEmail: existingPlusOne?.email || "",
-      plusOnePhoneNumber: existingPlusOne?.phone_number || "",
-      plusOneWhatsapp: existingPlusOne?.whatsapp || "",
-      plusOnePreferredContactMethod:
-        (existingPlusOne?.preferred_contact_method as RSVPFormData["plusOnePreferredContactMethod"]) ||
-        "",
-      plusOneDietaryRestrictions: existingPlusOne?.dietary_restrictions || "",
-      dietaryRestrictions: primaryGuest?.dietary_restrictions || "",
-      under21: primaryGuest?.under_21 || false,
-      plusOneUnder21: existingPlusOne?.under_21 || false,
-      mailingAddress: primaryGuest?.mailing_address || "",
-      phoneNumber: primaryGuest?.phone_number || "",
-      whatsapp: primaryGuest?.whatsapp || "",
+  const initialValues = useMemo((): MultiGuestRsvpFormData => {
+    return {
+      guests: primaryGuests.map((guest) => {
+        const existingPlusOne = plusOnes.find(
+          (p) => p.primary_guest_id === guest.id,
+        );
+        return {
+          guestId: guest.id,
+          firstName: guest.first_name || "",
+          lastName: guest.last_name || "",
+          attending: guest.rsvp_status !== "no",
+          dietaryRestrictions: guest.dietary_restrictions || "",
+          under21: guest.under_21 || false,
+          threeAndUnder: guest.three_and_under || false,
+          plusOneAllowed: guest.plus_one_allowed || false,
+          existingPlusOneId: existingPlusOne?.id,
+          plusOneAttending: existingPlusOne
+            ? existingPlusOne.rsvp_status === "yes"
+            : false,
+          plusOneFirstName: existingPlusOne?.first_name || "",
+          plusOneLastName: existingPlusOne?.last_name || "",
+          plusOneDietaryRestrictions:
+            existingPlusOne?.dietary_restrictions || "",
+          plusOneUnder21: existingPlusOne?.under_21 || false,
+          plusOneThreeAndUnder: existingPlusOne?.three_and_under || false,
+        };
+      }),
+      mailingAddress: firstGuest?.mailing_address || "",
+      phoneNumber: firstGuest?.phone_number || "",
+      whatsapp: firstGuest?.whatsapp || "",
       preferredContactMethod:
-        (primaryGuest?.preferred_contact_method as RSVPFormData["preferredContactMethod"]) ||
+        (firstGuest?.preferred_contact_method as MultiGuestRsvpFormData["preferredContactMethod"]) ||
         "",
-    }),
-    [primaryGuest, existingPlusOne],
-  );
+    };
+  }, [primaryGuests, firstGuest, plusOnes]);
 
   const {
     register,
@@ -74,14 +93,10 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
     watch,
     setValue,
     formState: { isSubmitting, errors },
-  } = useForm<RSVPFormData>({
-    resolver: zodResolver(rsvpFormSchema),
+  } = useForm<MultiGuestRsvpFormData>({
+    resolver: zodResolver(multiGuestRsvpSchema),
     defaultValues: initialValues,
   });
-
-  const attending = watch("attending");
-  const plusOneAttending = watch("plusOneAttending");
-  const hasPlusOne = primaryGuest?.plus_one_allowed || false;
 
   // Watch all form values to detect changes
   const formValues = watch();
@@ -91,58 +106,55 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
     // For new RSVPs, always allow submission
     if (!hasRSVPd) return true;
 
-    // Compare each field
-    const fieldsToCompare: (keyof RSVPFormData)[] = [
-      "firstName",
-      "lastName",
-      "attending",
-      "dietaryRestrictions",
-      "under21",
-      "mailingAddress",
-      "phoneNumber",
-      "whatsapp",
-      "preferredContactMethod",
-    ];
+    // Deep compare guests array
+    const initialGuests = initialValues.guests;
+    const currentGuests = formValues.guests;
 
-    // Add plus-one fields if applicable
-    if (hasPlusOne) {
-      fieldsToCompare.push(
-        "plusOneAttending",
-        "plusOneFirstName",
-        "plusOneLastName",
-        "plusOneEmail",
-        "plusOnePhoneNumber",
-        "plusOneWhatsapp",
-        "plusOnePreferredContactMethod",
-        "plusOneDietaryRestrictions",
-        "plusOneUnder21",
-      );
+    if (initialGuests.length !== currentGuests.length) return true;
+
+    for (let i = 0; i < initialGuests.length; i++) {
+      const initial = initialGuests[i];
+      const current = currentGuests[i];
+
+      if (!initial || !current) return true;
+
+      // Compare each field
+      if (
+        initial.firstName !== current.firstName ||
+        initial.lastName !== current.lastName ||
+        initial.attending !== current.attending ||
+        initial.dietaryRestrictions !== current.dietaryRestrictions ||
+        initial.under21 !== current.under21 ||
+        initial.threeAndUnder !== current.threeAndUnder ||
+        initial.plusOneAttending !== current.plusOneAttending ||
+        initial.plusOneFirstName !== current.plusOneFirstName ||
+        initial.plusOneLastName !== current.plusOneLastName ||
+        initial.plusOneDietaryRestrictions !==
+          current.plusOneDietaryRestrictions ||
+        initial.plusOneUnder21 !== current.plusOneUnder21 ||
+        initial.plusOneThreeAndUnder !== current.plusOneThreeAndUnder
+      ) {
+        return true;
+      }
     }
 
-    return fieldsToCompare.some((field) => {
-      const initial = initialValues[field] ?? "";
-      const current = formValues[field] ?? "";
-      return initial !== current;
-    });
-  }, [formValues, initialValues, hasRSVPd, hasPlusOne]);
+    // Compare contact info
+    if (
+      initialValues.mailingAddress !== formValues.mailingAddress ||
+      initialValues.phoneNumber !== formValues.phoneNumber ||
+      initialValues.whatsapp !== formValues.whatsapp ||
+      initialValues.preferredContactMethod !== formValues.preferredContactMethod
+    ) {
+      return true;
+    }
 
-  async function onSubmit(data: RSVPFormData) {
-    const result = await submitRSVP({
+    return false;
+  }, [formValues, initialValues, hasRSVPd]);
+
+  async function onSubmit(data: MultiGuestRsvpFormData) {
+    const result = await submitMultiGuestRSVP({
       inviteCode,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      attending: data.attending,
-      plusOneAttending: data.plusOneAttending,
-      plusOneFirstName: data.plusOneFirstName,
-      plusOneLastName: data.plusOneLastName,
-      plusOneEmail: data.plusOneEmail,
-      plusOnePhoneNumber: data.plusOnePhoneNumber,
-      plusOneWhatsapp: data.plusOneWhatsapp,
-      plusOnePreferredContactMethod: data.plusOnePreferredContactMethod || null,
-      plusOneDietaryRestrictions: data.plusOneDietaryRestrictions,
-      dietaryRestrictions: data.dietaryRestrictions,
-      under21: data.under21,
-      plusOneUnder21: data.plusOneUnder21,
+      guests: data.guests,
       mailingAddress: data.mailingAddress,
       phoneNumber: data.phoneNumber,
       whatsapp: data.whatsapp,
@@ -155,9 +167,9 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
           ? "Your RSVP has been updated successfully."
           : "Thank you for your response. We can't wait to celebrate with you!",
       });
-      // Redirect to things-to-do page for first-time RSVPs who are attending
-      // For updates, just refresh the page
-      if (!hasRSVPd && data.attending) {
+      // Redirect to things-to-do page for first-time RSVPs with at least one attending
+      const anyAttending = data.guests.some((g) => g.attending);
+      if (!hasRSVPd && anyAttending) {
         router.push("/things-to-do");
       } else {
         router.refresh();
@@ -166,6 +178,13 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       toast.error(result.error || "Failed to submit RSVP");
     }
   }
+
+  // Calculate attending summary
+  const attendingCount = formValues.guests.filter((g) => g.attending).length;
+  const totalGuests = formValues.guests.length;
+  const plusOneCount = formValues.guests.filter(
+    (g) => g.attending && g.plusOneAllowed && g.plusOneAttending,
+  ).length;
 
   return (
     <form
@@ -186,345 +205,48 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
           </p>
         </div>
 
-        {/* RSVP Status Banner - only show if previously submitted (not pending) */}
+        {/* RSVP Status Banner - only show if previously submitted */}
         {hasRSVPd && (
-          <div
-            className={`p-4 rounded-lg border-2 ${
-              primaryGuest?.rsvp_status === "yes"
-                ? "bg-green-50 dark:bg-green-900/20 border-green-500"
-                : "bg-red-50 dark:bg-red-900/20 border-red-500"
-            }`}
-          >
+          <div className="p-4 rounded-lg border-2 bg-blue-50 dark:bg-blue-900/20 border-blue-500">
             <p className="text-sm font-medium text-foreground">
-              {primaryGuest?.rsvp_status === "yes"
-                ? "✓ You've RSVP'd YES"
-                : "✗ You've RSVP'd NO"}
+              You've already submitted your RSVP
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              You can update your RSVP anytime before the deadline
+              You can update your response anytime before the deadline
             </p>
           </div>
         )}
 
-        {/* Your Name */}
-        <div>
-          <p className="text-sm font-medium mb-3">Your Name</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="first-name" className="text-xs">
-                First Name *
-              </Label>
-              <Input
-                id="first-name"
-                {...register("firstName")}
-                placeholder="First name"
-              />
-              {errors.firstName && (
-                <p className="text-sm text-red-600 mt-1">
-                  {errors.firstName.message}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="last-name" className="text-xs">
-                Last Name
-              </Label>
-              <Input
-                id="last-name"
-                {...register("lastName")}
-                placeholder="Last name"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Plus One Information */}
-        {hasPlusOne && (
-          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-            <p className="text-sm font-medium text-green-700 dark:text-green-300">
-              ✓ You are invited to bring a plus-one!
+        {/* Attendance Summary */}
+        {totalGuests > 1 && (
+          <div className="p-3 rounded-lg bg-muted/50 border">
+            <p className="text-sm font-medium">
+              {attendingCount} of {totalGuests} guests attending
+              {plusOneCount > 0 && ` (+${plusOneCount} plus-ones)`}
             </p>
           </div>
         )}
 
-        {/* Attendance */}
-        <div>
-          <label
-            htmlFor="attendance-choice"
-            className="block text-sm font-medium mb-3"
-          >
-            Will you be attending?
-          </label>
-          <input type="hidden" {...register("attending")} />
-          <div id="attendance-choice" className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setValue("attending", true)}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                attending
-                  ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                  : "border-border hover:border-green-300"
-              }`}
-            >
-              <p className="font-semibold">✓ Joyfully Accept</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setValue("attending", false)}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                !attending
-                  ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                  : "border-border hover:border-red-300"
-              }`}
-            >
-              <p className="font-semibold">✗ Regretfully Decline</p>
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Children 3 and under are welcome to attend and do not need to be
-            listed.
-          </p>
+        {/* Guest Cards */}
+        <div className="space-y-4">
+          {primaryGuests.map((guest, index) => (
+            <GuestRsvpCard
+              key={guest.id}
+              index={index}
+              guest={guest}
+              existingPlusOne={findPlusOneFor(guest.id)}
+              register={register}
+              watch={watch}
+              setValue={setValue}
+              errors={errors}
+            />
+          ))}
         </div>
 
-        {/* Plus-One Section (only if attending and has plus-one allowed) */}
-        {attending && hasPlusOne && (
-          <div className="p-4 rounded-lg border-2 border-purple-200 bg-purple-50 dark:bg-purple-900/20">
-            <div className="flex items-center justify-between mb-3">
-              <label
-                htmlFor="plus-one-attending"
-                className="text-sm font-medium"
-              >
-                Will your plus-one be attending?
-              </label>
-              <Switch
-                id="plus-one-attending"
-                checked={plusOneAttending || false}
-                onCheckedChange={(checked) =>
-                  setValue("plusOneAttending", checked)
-                }
-              />
-            </div>
-
-            {plusOneAttending && (
-              <div className="mt-4 space-y-4">
-                {/* Plus-One Name Fields */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label
-                      htmlFor="plus-one-first-name"
-                      className="block text-sm font-medium mb-2"
-                    >
-                      First Name *
-                    </label>
-                    <Input
-                      id="plus-one-first-name"
-                      {...register("plusOneFirstName")}
-                      placeholder="First name"
-                      className="bg-white dark:bg-gray-800"
-                    />
-                    {errors.plusOneFirstName && (
-                      <p className="text-sm text-red-600 mt-1">
-                        {errors.plusOneFirstName.message}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="plus-one-last-name"
-                      className="block text-sm font-medium mb-2"
-                    >
-                      Last Name
-                    </label>
-                    <Input
-                      id="plus-one-last-name"
-                      {...register("plusOneLastName")}
-                      placeholder="Last name"
-                      className="bg-white dark:bg-gray-800"
-                    />
-                    {errors.plusOneLastName && (
-                      <p className="text-sm text-red-600 mt-1">
-                        {errors.plusOneLastName.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Plus-One Contact Information */}
-                <div className="pt-3 border-t border-purple-200">
-                  <p className="text-sm font-medium mb-3">
-                    Plus-One Contact Information (Optional)
-                  </p>
-                  <div className="space-y-3">
-                    {/* Email */}
-                    <div>
-                      <label
-                        htmlFor="plus-one-email"
-                        className="block text-xs font-medium mb-1"
-                      >
-                        Email
-                      </label>
-                      <Input
-                        id="plus-one-email"
-                        type="email"
-                        {...register("plusOneEmail")}
-                        placeholder="email@example.com"
-                        className="bg-white dark:bg-gray-800"
-                      />
-                    </div>
-
-                    {/* Phone Number */}
-                    <div>
-                      <label
-                        htmlFor="plus-one-phone"
-                        className="block text-xs font-medium mb-1"
-                      >
-                        Phone Number
-                      </label>
-                      <PhoneInput
-                        id="plus-one-phone"
-                        value={watch("plusOnePhoneNumber") || ""}
-                        onChange={(value) =>
-                          setValue("plusOnePhoneNumber", value)
-                        }
-                        placeholder="(555) 123-4567"
-                        className="bg-white dark:bg-gray-800"
-                      />
-                    </div>
-
-                    {/* WhatsApp */}
-                    <div>
-                      <label
-                        htmlFor="plus-one-whatsapp"
-                        className="block text-xs font-medium mb-1"
-                      >
-                        WhatsApp
-                      </label>
-                      <PhoneInput
-                        id="plus-one-whatsapp"
-                        value={watch("plusOneWhatsapp") || ""}
-                        onChange={(value) => setValue("plusOneWhatsapp", value)}
-                        international
-                        placeholder="+1 (555) 123-4567"
-                        className="bg-white dark:bg-gray-800"
-                      />
-                    </div>
-
-                    {/* Preferred Contact Method */}
-                    <div className="space-y-1">
-                      <Label className="text-xs">
-                        Preferred Contact Method
-                      </Label>
-                      <Select
-                        value={watch("plusOnePreferredContactMethod") || "none"}
-                        onValueChange={(
-                          value:
-                            | "none"
-                            | "email"
-                            | "text"
-                            | "whatsapp"
-                            | "phone_call",
-                        ) =>
-                          setValue(
-                            "plusOnePreferredContactMethod",
-                            value === "none" ? "" : value,
-                          )
-                        }
-                      >
-                        <SelectTrigger className="w-full bg-white dark:bg-gray-800">
-                          <SelectValue placeholder="Select a method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Select a method</SelectItem>
-                          <SelectItem value="email">Email</SelectItem>
-                          <SelectItem value="text">Text Message</SelectItem>
-                          <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                          <SelectItem value="phone_call">Phone Call</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Dietary Restrictions */}
-                    <div>
-                      <label
-                        htmlFor="plus-one-dietary-restrictions"
-                        className="block text-xs font-medium mb-1"
-                      >
-                        Dietary Restrictions
-                      </label>
-                      <Input
-                        id="plus-one-dietary-restrictions"
-                        {...register("plusOneDietaryRestrictions")}
-                        placeholder="e.g., Vegetarian, Gluten-free, Allergies..."
-                        className="bg-white dark:bg-gray-800"
-                      />
-                    </div>
-
-                    {/* Plus-One Under 21 Toggle */}
-                    <div className="flex items-center justify-between p-2 rounded-lg border bg-white/50 dark:bg-gray-800/50">
-                      <div>
-                        <label
-                          htmlFor="plus-one-under21"
-                          className="text-xs font-medium"
-                        >
-                          Is your plus-one under 21?
-                        </label>
-                      </div>
-                      <Switch
-                        id="plus-one-under21"
-                        checked={watch("plusOneUnder21") || false}
-                        onCheckedChange={(checked) =>
-                          setValue("plusOneUnder21", checked)
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Dietary Restrictions (only if attending) */}
-        {attending && (
-          <div className="space-y-4">
-            <div>
-              <label
-                htmlFor="dietary-restrictions"
-                className="block text-sm font-medium mb-2"
-              >
-                Your Dietary Restrictions (Optional)
-              </label>
-              <Input
-                id="dietary-restrictions"
-                {...register("dietaryRestrictions")}
-                placeholder="e.g., Vegetarian, Gluten-free, Allergies..."
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                For you (primary guest)
-                {hasPlusOne && plusOneAttending
-                  ? ". Plus-one dietary restrictions are in their contact information section above."
-                  : ""}
-              </p>
-            </div>
-
-            {/* Under 21 Toggle */}
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-              <div>
-                <label htmlFor="under21" className="text-sm font-medium">
-                  Are you under 21?
-                </label>
-                <p className="text-xs text-muted-foreground">
-                  This helps us with beverage planning
-                </p>
-              </div>
-              <Switch
-                id="under21"
-                checked={watch("under21") || false}
-                onCheckedChange={(checked) => setValue("under21", checked)}
-              />
-            </div>
-          </div>
-        )}
+        <p className="text-xs text-muted-foreground">
+          Children 3 and under are welcome to attend and do not need to be
+          listed.
+        </p>
 
         {/* Contact Information Section */}
         <div className="pt-6 border-t border-border">

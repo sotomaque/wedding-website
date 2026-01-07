@@ -28,11 +28,20 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table";
-import { AlertCircle, Plus, RefreshCw, SearchX, Users } from "lucide-react";
+import {
+  AlertCircle,
+  Plus,
+  RefreshCw,
+  SearchX,
+  Users,
+  UsersRound,
+} from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
+import type { PartyOption } from "./actions";
 import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
 import { GuestsFilters } from "./guests-filters";
@@ -52,9 +61,14 @@ type SortableColumn =
 interface GuestsTableProps {
   initialGuests: Guest[];
   error?: string | null;
+  parties: PartyOption[];
 }
 
-export function GuestsTable({ initialGuests, error }: GuestsTableProps) {
+export function GuestsTable({
+  initialGuests,
+  error,
+  parties,
+}: GuestsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -340,6 +354,17 @@ export function GuestsTable({ initialGuests, error }: GuestsTableProps) {
           >
             Refresh
           </Button>
+          <Button variant="outline" size="icon" asChild className="md:hidden">
+            <Link href="/admin/parties">
+              <UsersRound className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button variant="outline" asChild className="hidden md:flex">
+            <Link href="/admin/parties">
+              <UsersRound className="h-4 w-4 mr-2" />
+              Parties
+            </Link>
+          </Button>
           <Button
             size="icon"
             onClick={() => setShowAddForm(true)}
@@ -542,6 +567,7 @@ export function GuestsTable({ initialGuests, error }: GuestsTableProps) {
           setShowAddForm(false);
           refreshGuests();
         }}
+        parties={parties}
       />
     </>
   );

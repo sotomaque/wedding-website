@@ -41,15 +41,21 @@ import {
   type EditGuestFormData,
   editGuestSchema,
 } from "@/lib/validations/guest";
+import type { PartyOption } from "./actions";
 
 type Guest = Database["public"]["Tables"]["guests"]["Row"];
 
 interface EditGuestSheetProps {
   guest: Guest;
   plusOne: Guest | null;
+  parties: PartyOption[];
 }
 
-export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
+export function EditGuestSheet({
+  guest,
+  plusOne,
+  parties,
+}: EditGuestSheetProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBListEmailDialog, setShowBListEmailDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -81,6 +87,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
         | "",
       family: guest.family || false,
       under21: guest.under_21 || false,
+      threeAndUnder: guest.three_and_under || false,
       notes: guest.notes || "",
       gender: (guest.gender || "") as "male" | "female" | "",
       bridalPartyRole: (guest.bridal_party_role || "") as
@@ -89,6 +96,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
         | "bridesmaid"
         | "maid_of_honor"
         | "",
+      partyId: guest.party_id || "",
     }),
     [guest, plusOne],
   );
@@ -108,6 +116,7 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
   const physicalInviteSent = watch("physicalInviteSent");
   const family = watch("family");
   const under21 = watch("under21");
+  const threeAndUnder = watch("threeAndUnder");
 
   // Watch all form values to detect changes
   const formValues = watch();
@@ -130,9 +139,11 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
       "preferredContactMethod",
       "family",
       "under21",
+      "threeAndUnder",
       "notes",
       "gender",
       "bridalPartyRole",
+      "partyId",
     ];
 
     return fieldsToCompare.some((field) => {
@@ -358,6 +369,34 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
               </div>
             </div>
 
+            {/* Party Assignment */}
+            <div className="space-y-2">
+              <Label>Party</Label>
+              <Select
+                value={watch("partyId") || "none"}
+                onValueChange={(value) =>
+                  setValue("partyId", value === "none" ? "" : value)
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="No party assigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No party assigned</SelectItem>
+                  {parties.map((party) => (
+                    <SelectItem key={party.id} value={party.id}>
+                      {party.invite_code} -{" "}
+                      {party.name || party.guestNames || "Empty party"} (
+                      {party.guestCount} guests)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Move this guest to a different party
+              </p>
+            </div>
+
             {/* Plus One Section - Only show for primary guests */}
             {!guest.is_plus_one && (
               <div className="border-t pt-4 mt-2">
@@ -510,6 +549,20 @@ export function EditGuestSheet({ guest, plusOne }: EditGuestSheetProps) {
                   id="under21"
                   checked={under21}
                   onCheckedChange={(checked) => setValue("under21", checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="threeAndUnder">3 and Under</Label>
+                <Switch
+                  id="threeAndUnder"
+                  checked={threeAndUnder}
+                  onCheckedChange={(checked) => {
+                    setValue("threeAndUnder", checked);
+                    if (checked) {
+                      setValue("under21", true);
+                    }
+                  }}
                 />
               </div>
 

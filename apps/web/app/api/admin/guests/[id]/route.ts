@@ -4,6 +4,26 @@ import { env } from "@/env";
 import { db } from "@/lib/db";
 
 /**
+ * Helper function to delete a party if it has no guests remaining
+ */
+async function deleteEmptyParty(partyId: string): Promise<void> {
+  try {
+    const guestCount = await db
+      .selectFrom("guests")
+      .select(db.fn.count("id").as("count"))
+      .where("party_id", "=", partyId)
+      .executeTakeFirst();
+
+    if (guestCount && Number(guestCount.count) === 0) {
+      await db.deleteFrom("parties").where("id", "=", partyId).execute();
+    }
+  } catch (error) {
+    // Log but don't fail the main operation
+    console.error("Error cleaning up empty party:", error);
+  }
+}
+
+/**
  * GET /api/admin/guests/[id]
  * Get a guest and their plus-one if they have one (admin only)
  */
@@ -102,9 +122,11 @@ export async function PATCH(
       preferredContactMethod,
       family,
       under21,
+      threeAndUnder,
       notes,
       gender,
       bridalPartyRole,
+      partyId,
     } = body;
 
     // Kysely query - fetch the current guest to check if they have a plus one
@@ -116,6 +138,35 @@ export async function PATCH(
 
     if (!currentGuest) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
+    }
+
+    // Handle party change - get the new party's invite_code if partyId changed
+    let newPartyId = currentGuest.party_id;
+    let newInviteCode = currentGuest.invite_code;
+    const sourcePartyId = currentGuest.party_id; // Track for cleanup
+
+    if (partyId !== undefined && partyId !== currentGuest.party_id) {
+      if (partyId) {
+        // Moving to an existing party
+        const targetParty = await db
+          .selectFrom("parties")
+          .select(["id", "invite_code"])
+          .where("id", "=", partyId)
+          .executeTakeFirst();
+
+        if (!targetParty) {
+          return NextResponse.json(
+            { error: "Target party not found" },
+            { status: 404 },
+          );
+        }
+
+        newPartyId = targetParty.id;
+        newInviteCode = targetParty.invite_code;
+      } else {
+        // Removing from party (set to null)
+        newPartyId = null;
+      }
     }
 
     // Update the primary guest
@@ -149,12 +200,18 @@ export async function PATCH(
             : currentGuest.preferred_contact_method,
         family: family !== undefined ? family : currentGuest.family,
         under_21: under21 !== undefined ? under21 : currentGuest.under_21,
+        three_and_under:
+          threeAndUnder !== undefined
+            ? threeAndUnder
+            : currentGuest.three_and_under,
         notes: notes !== undefined ? notes || null : currentGuest.notes,
         gender: gender !== undefined ? gender || null : currentGuest.gender,
         bridal_party_role:
           bridalPartyRole !== undefined
             ? bridalPartyRole || null
             : currentGuest.bridal_party_role,
+        party_id: newPartyId,
+        invite_code: newInviteCode,
       })
       .where("id", "=", id)
       .returningAll()
@@ -191,6 +248,8 @@ export async function PATCH(
             first_name: plusOneFirstNameFinal,
             last_name: plusOneLastNameFinal,
             side: side !== undefined ? side : currentGuest.side,
+            party_id: newPartyId,
+            invite_code: newInviteCode,
           })
           .where("id", "=", existingPlusOne.id)
           .execute();
@@ -204,7 +263,8 @@ export async function PATCH(
             first_name: plusOneFirstNameFinal,
             last_name: plusOneLastNameFinal,
             email: null, // Plus-ones don't have their own email
-            invite_code: currentGuest.invite_code,
+            invite_code: newInviteCode,
+            party_id: newPartyId,
             side: side !== undefined ? side : currentGuest.side,
             list: list || currentGuest.list,
             is_plus_one: true,
@@ -215,6 +275,10 @@ export async function PATCH(
             physical_invite_sent: false,
             family: family !== undefined ? family : currentGuest.family,
             under_21: under21 !== undefined ? under21 : currentGuest.under_21,
+            three_and_under:
+              threeAndUnder !== undefined
+                ? threeAndUnder
+                : currentGuest.three_and_under,
           })
           .execute();
       }
@@ -225,6 +289,11 @@ export async function PATCH(
         .where("primary_guest_id", "=", id)
         .where("is_plus_one", "=", true)
         .execute();
+    }
+
+    // Clean up the source party if it's now empty (guest was moved to a different party)
+    if (sourcePartyId && sourcePartyId !== newPartyId) {
+      await deleteEmptyParty(sourcePartyId);
     }
 
     return NextResponse.json({ guest: updatedGuest });

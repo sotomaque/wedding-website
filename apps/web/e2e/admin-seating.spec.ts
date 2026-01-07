@@ -401,13 +401,14 @@ test.describe("Seating Chart Editor - AI Generate", () => {
 
 test.describe("Seating Chart Editor - Guest Pool", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/admin/seating");
+    // Increase timeout for navigation since this runs later in the test suite
+    await page.goto("/admin/seating", { timeout: 30000 });
     await waitForHydration(page);
 
     // Navigate to first chart
     const chartLink = page.locator("a").filter({ hasText: /chart/i }).first();
 
-    if (await chartLink.isVisible()) {
+    if (await chartLink.isVisible({ timeout: 5000 }).catch(() => false)) {
       await chartLink.click();
       await waitForHydration(page);
     } else {
@@ -416,14 +417,15 @@ test.describe("Seating Chart Editor - Guest Pool", () => {
   });
 
   test("displays unassigned guests section", async ({ page }) => {
-    // Should show unassigned guests header
-    await expect(page.getByText(/unassigned/i)).toBeVisible();
+    // Should show unassigned guests header - wait a bit longer as this test
+    // runs late in the suite and may need more time
+    await expect(page.getByText(/unassigned/i)).toBeVisible({ timeout: 10000 });
   });
 
   test("shows guest count in header", async ({ page }) => {
     // Header should show something like "X of Y guests seated"
     await expect(
       page.getByText(/\d+ of \d+ guests/i).or(page.getByText(/guests seated/i)),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
   });
 });

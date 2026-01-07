@@ -1,16 +1,18 @@
 import type { GuestForSeating } from "@/lib/types/seating";
 
 /**
- * Group guests by invite code to identify couples/groups
+ * Group guests by party (using party_id, falling back to invite_code)
  */
-function groupByInviteCode(
+function groupByParty(
   guests: GuestForSeating[],
 ): Map<string, GuestForSeating[]> {
   const groups = new Map<string, GuestForSeating[]>();
   for (const guest of guests) {
-    const existing = groups.get(guest.inviteCode) || [];
+    // Use party_id if available, otherwise fall back to invite_code
+    const groupKey = guest.partyId || guest.inviteCode;
+    const existing = groups.get(groupKey) || [];
     existing.push(guest);
-    groups.set(guest.inviteCode, existing);
+    groups.set(groupKey, existing);
   }
   return groups;
 }
@@ -24,13 +26,14 @@ function formatGuestData(
 ): string {
   return guests
     .map((g) => {
-      const groupSize = groups.get(g.inviteCode)?.length || 1;
+      const groupKey = g.partyId || g.inviteCode;
+      const groupSize = groups.get(groupKey)?.length || 1;
       const lines = [
         `- ${g.name} (ID: ${g.id})`,
         `  Side: ${g.side || "unspecified"}`,
         `  Family: ${g.family ? "yes" : "no"}`,
         `  Bridal Party: ${g.bridalPartyRole || "none"}`,
-        `  Group Size: ${groupSize} (invite: ${g.inviteCode})`,
+        `  Party Size: ${groupSize} (party: ${groupKey})`,
       ];
       if (g.notes) {
         lines.push(`  Notes: ${g.notes}`);
@@ -48,13 +51,13 @@ export function buildSeatingPrompt(
   tablesCount: number,
   seatsPerTable: number,
 ): string {
-  const guestGroups = groupByInviteCode(guests);
+  const guestGroups = groupByParty(guests);
   const totalSeats = tablesCount * seatsPerTable;
 
   return `You are a wedding seating planner assistant. Create optimal seating assignments for ${guests.length} guests across ${tablesCount} tables with ${seatsPerTable} seats each (${totalSeats} total seats).
 
 RULES (in order of priority):
-1. COUPLES MUST SIT TOGETHER: Guests with the same invite code are couples/groups and MUST be at the same table. Never separate them.
+1. PARTIES MUST SIT TOGETHER: Guests in the same party (same party ID) are couples/families/groups and MUST be at the same table. Never separate them.
 2. SEPARATE POTENTIAL CONFLICTS: If guest notes mention "conflict with", "doesn't get along with", "avoid", "separate from", or similar phrases, keep those guests at different tables.
 3. GROUP BY FAMILY: Family members (family=yes) from the same side should be seated together when possible.
 4. GROUP BY SIDE: Try to group bride's side and groom's side at the same tables, but mixing is acceptable to fill tables.
@@ -76,10 +79,10 @@ Respond with ONLY valid JSON in this exact format, no additional text:
 
 CRITICAL INSTRUCTIONS:
 - Use the EXACT guest ID UUIDs (the long alphanumeric strings like "30355773-01ab-48f3-877a-6376c6be0026") in guestIds arrays
-- DO NOT use invite codes (short codes like "54MN-GN92") - those are only for grouping reference
+- DO NOT use party IDs or invite codes - those are only for grouping reference
 - Include ALL guest IDs in your assignments
 - Do not exceed ${seatsPerTable} guests per table
-- Ensure couples (same invite code) are always at the same table`;
+- Ensure party members (same party) are always at the same table`;
 }
 
 /**
@@ -96,6 +99,7 @@ export function formatGuestForSeating(guest: {
   is_plus_one: boolean;
   primary_guest_id: string | null;
   invite_code: string;
+  party_id: string | null;
 }): GuestForSeating {
   return {
     id: guest.id,
@@ -107,5 +111,6 @@ export function formatGuestForSeating(guest: {
     isPlusOne: guest.is_plus_one,
     primaryGuestId: guest.primary_guest_id,
     inviteCode: guest.invite_code,
+    partyId: guest.party_id,
   };
 }

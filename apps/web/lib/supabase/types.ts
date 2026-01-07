@@ -33,6 +33,7 @@ export interface Database {
             | null;
           family: boolean;
           under_21: boolean;
+          three_and_under: boolean;
           notes: string | null;
           clerk_user_id: string | null;
           gender: "male" | "female" | null;
@@ -45,6 +46,7 @@ export interface Database {
           activities_email_sent: boolean;
           activities_email_sent_at: string | null;
           activities_email_resend_count: number;
+          party_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -73,6 +75,7 @@ export interface Database {
             | null;
           family?: boolean;
           under_21?: boolean;
+          three_and_under?: boolean;
           notes?: string | null;
           clerk_user_id?: string | null;
           gender?: "male" | "female" | null;
@@ -85,6 +88,7 @@ export interface Database {
           activities_email_sent?: boolean;
           activities_email_sent_at?: string | null;
           activities_email_resend_count?: number;
+          party_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -113,6 +117,7 @@ export interface Database {
             | null;
           family?: boolean;
           under_21?: boolean;
+          three_and_under?: boolean;
           notes?: string | null;
           clerk_user_id?: string | null;
           gender?: "male" | "female" | null;
@@ -125,7 +130,43 @@ export interface Database {
           activities_email_sent?: boolean;
           activities_email_sent_at?: string | null;
           activities_email_resend_count?: number;
+          party_id?: string | null;
           created_at?: string;
+        };
+      };
+      parties: {
+        Row: {
+          id: string;
+          invite_code: string;
+          name: string | null;
+          side: "bride" | "groom" | "both" | null;
+          list: "a" | "b" | "c" | null;
+          family: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          invite_code: string;
+          name?: string | null;
+          side?: "bride" | "groom" | "both" | null;
+          list?: "a" | "b" | "c" | null;
+          family?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          invite_code?: string;
+          name?: string | null;
+          side?: "bride" | "groom" | "both" | null;
+          list?: "a" | "b" | "c" | null;
+          family?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
       };
       activities: {

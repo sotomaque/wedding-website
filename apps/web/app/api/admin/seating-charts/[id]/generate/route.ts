@@ -96,6 +96,7 @@ export async function POST(
         "is_plus_one",
         "primary_guest_id",
         "invite_code",
+        "party_id",
       ]);
 
     // Apply RSVP filter

@@ -34,15 +34,19 @@ mock.module("@/lib/email/templates/rsvp-notification", () => ({
 
 // Mock db
 const mockExecute = mock(() => Promise.resolve([]));
+const mockExecuteTakeFirst = mock(() => Promise.resolve(undefined));
 const mockUpdateSet = mock(() => {});
 const mockInsertValues = mock(() => {});
 
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => ({
+    selectFrom: (table: string) => ({
       selectAll: () => ({
         where: () => ({
           execute: mockExecute,
+          // For parties table, return undefined (no party found, fallback to guests)
+          executeTakeFirst:
+            table === "parties" ? mockExecuteTakeFirst : mockExecute,
         }),
       }),
       select: () => ({
@@ -76,8 +80,11 @@ describe("RSVP - Submit (Manual Entry)", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
     mockExecute.mockClear();
+    mockExecuteTakeFirst.mockClear();
     mockUpdateSet.mockClear();
     mockInsertValues.mockClear();
+    // Default mock: no party found (triggers fallback to guests table)
+    mockExecuteTakeFirst.mockResolvedValue(undefined);
     // Default mock: primary guest only
     mockExecute.mockResolvedValue([
       {
@@ -93,6 +100,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
         list: "a",
         family: false,
         under_21: false,
+        party_id: null,
       },
     ]);
   });
@@ -168,8 +176,11 @@ describe("RSVP - Plus One Scenarios", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
     mockExecute.mockClear();
+    mockExecuteTakeFirst.mockClear();
     mockUpdateSet.mockClear();
     mockInsertValues.mockClear();
+    // Default mock: no party found (triggers fallback to guests table)
+    mockExecuteTakeFirst.mockResolvedValue(undefined);
   });
 
   it("Scenario 1: Primary declines - plus one should be marked as no", async () => {
@@ -348,8 +359,11 @@ describe("RSVP - Contact Information", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
     mockExecute.mockClear();
+    mockExecuteTakeFirst.mockClear();
     mockUpdateSet.mockClear();
     mockInsertValues.mockClear();
+    // Default mock: no party found (triggers fallback to guests table)
+    mockExecuteTakeFirst.mockResolvedValue(undefined);
     mockExecute.mockResolvedValue([
       {
         id: "guest-123",
@@ -360,6 +374,7 @@ describe("RSVP - Contact Information", () => {
         side: "bride",
         list: "a",
         under_21: false,
+        party_id: null,
       },
     ]);
   });
@@ -437,8 +452,11 @@ describe("RSVP - Notification Email", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
     mockExecute.mockClear();
+    mockExecuteTakeFirst.mockClear();
     mockUpdateSet.mockClear();
     mockInsertValues.mockClear();
+    // Default mock: no party found (triggers fallback to guests table)
+    mockExecuteTakeFirst.mockResolvedValue(undefined);
     mockExecute.mockResolvedValue([
       {
         id: "guest-123",
@@ -450,6 +468,7 @@ describe("RSVP - Notification Email", () => {
         side: "bride",
         list: "a",
         under_21: false,
+        party_id: null,
       },
     ]);
   });

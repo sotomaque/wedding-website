@@ -8,6 +8,7 @@ import { getTestData, TEST_DATA, waitForHydration } from "./fixtures";
  * - Email deeplink flow (arriving with ?code=XXX)
  * - Manual code entry flow
  * - Skip sign-in flow
+ * - Multi-guest RSVP flow (new)
  *
  * NOTE: These tests use the invite code created during setup.
  * The setup creates a test guest and saves their invite code.
@@ -16,6 +17,11 @@ import { getTestData, TEST_DATA, waitForHydration } from "./fixtures";
 function getInviteCode(): string {
   const testData = getTestData();
   return testData.inviteCode || "TEST-1234";
+}
+
+function getMultiGuestPartyCode(): string | null {
+  const testData = getTestData();
+  return testData.multiGuestPartyCode || null;
 }
 
 test.describe("RSVP - Code Entry Page", () => {
@@ -269,5 +275,238 @@ test.describe("RSVP - Form Submission", () => {
     ).toBeVisible({
       timeout: 15000,
     });
+  });
+});
+
+test.describe("RSVP - Multi-Guest Party", () => {
+  test("shows multiple guest cards for a party", async ({ page }) => {
+    const partyCode = getMultiGuestPartyCode();
+    // Skip test if no multi-guest party code is set
+    if (!partyCode) {
+      test.skip();
+      return;
+    }
+
+    // Go directly to the form step
+    await page.goto(`${TEST_DATA.routes.rsvp}?code=${partyCode}&step=form`);
+    await waitForHydration(page);
+
+    // Should show multiple guest cards (at least 2 "Joyfully Accept" buttons)
+    const acceptButtons = page.getByRole("button", {
+      name: /joyfully accept/i,
+    });
+    await expect(acceptButtons.first()).toBeVisible({ timeout: 10000 });
+
+    // Count guest cards - should have at least 2
+    const buttonCount = await acceptButtons.count();
+    expect(buttonCount).toBeGreaterThanOrEqual(2);
+  });
+
+  test("can submit RSVP with mixed attendance for multi-guest party", async ({
+    page,
+  }) => {
+    const partyCode = getMultiGuestPartyCode();
+    // Skip test if no multi-guest party code is set
+    if (!partyCode) {
+      test.skip();
+      return;
+    }
+
+    await page.goto(`${TEST_DATA.routes.rsvp}?code=${partyCode}&step=form`);
+    await waitForHydration(page);
+
+    // Wait for guest cards to load
+    const acceptButtons = page.getByRole("button", {
+      name: /joyfully accept/i,
+    });
+    await expect(acceptButtons.first()).toBeVisible({ timeout: 10000 });
+
+    // First guest accepts
+    await acceptButtons.first().click();
+
+    // Second guest declines
+    const declineButtons = page.getByRole("button", {
+      name: /regretfully decline/i,
+    });
+    if ((await declineButtons.count()) >= 2) {
+      await declineButtons.nth(1).click();
+    }
+
+    // Submit the form
+    const submitButton = page.getByRole("button", {
+      name: /submit rsvp|update rsvp/i,
+    });
+    await expect(submitButton).toBeVisible({ timeout: 5000 });
+    await submitButton.click();
+
+    // Should show success message
+    await expect(page.getByText(/rsvp submitted|rsvp updated/i).first())
+      .toBeVisible({ timeout: 15000 })
+      .catch(async () => {
+        // May redirect to things-to-do if at least one is attending
+        await expect(page).toHaveURL(/things-to-do/, { timeout: 5000 });
+      });
+  });
+
+  test("shows attendance summary for multi-guest party", async ({ page }) => {
+    const partyCode = getMultiGuestPartyCode();
+    // Skip test if no multi-guest party code is set
+    if (!partyCode) {
+      test.skip();
+      return;
+    }
+
+    await page.goto(`${TEST_DATA.routes.rsvp}?code=${partyCode}&step=form`);
+    await waitForHydration(page);
+
+    // Wait for guest cards to load
+    await expect(
+      page.getByRole("button", { name: /joyfully accept/i }).first(),
+    ).toBeVisible({ timeout: 10000 });
+
+    // Should show attendance summary text like "X of Y guests attending"
+    await expect(page.getByText(/\d+ of \d+ guests attending/i)).toBeVisible();
+  });
+});
+
+test.describe("RSVP - Under 21 and Three and Under", () => {
+  test("shows under 21 toggle when guest is attending", async ({ page }) => {
+    const inviteCode = getInviteCode();
+    // Skip test if no valid test code is set
+    if (inviteCode === "TEST-1234") {
+      test.skip();
+      return;
+    }
+
+    await page.goto(`${TEST_DATA.routes.rsvp}?code=${inviteCode}&step=form`);
+    await waitForHydration(page);
+
+    // Click accept to show attending-only fields
+    const acceptButton = page.getByRole("button", { name: /joyfully accept/i });
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
+
+    // Should show "Under 21?" toggle
+    await expect(page.getByText(/under 21/i)).toBeVisible();
+  });
+
+  test("shows 3 and under toggle when guest is attending", async ({ page }) => {
+    const inviteCode = getInviteCode();
+    // Skip test if no valid test code is set
+    if (inviteCode === "TEST-1234") {
+      test.skip();
+      return;
+    }
+
+    await page.goto(`${TEST_DATA.routes.rsvp}?code=${inviteCode}&step=form`);
+    await waitForHydration(page);
+
+    // Click accept to show attending-only fields
+    const acceptButton = page.getByRole("button", { name: /joyfully accept/i });
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
+
+    // Should show "3 or under?" toggle
+    await expect(page.getByText(/3 or under/i)).toBeVisible();
+  });
+
+  test("can toggle under 21 and submit", async ({ page }) => {
+    const inviteCode = getInviteCode();
+    // Skip test if no valid test code is set
+    if (inviteCode === "TEST-1234") {
+      test.skip();
+      return;
+    }
+
+    await page.goto(`${TEST_DATA.routes.rsvp}?code=${inviteCode}&step=form`);
+    await waitForHydration(page);
+
+    // Click accept
+    const acceptButton = page.getByRole("button", { name: /joyfully accept/i });
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
+
+    // Find and click the under 21 switch by nearby label
+    const under21Container = page.locator("div").filter({
+      hasText: /under 21/i,
+    });
+    const switchInContainer = under21Container.locator('button[role="switch"]');
+    if ((await switchInContainer.count()) > 0) {
+      await switchInContainer.first().click();
+    }
+
+    // Submit the form
+    const submitButton = page.getByRole("button", {
+      name: /submit rsvp|update rsvp/i,
+    });
+    await expect(submitButton).toBeVisible({ timeout: 5000 });
+    await submitButton.click();
+
+    // Should show success
+    await expect(page.getByText(/rsvp submitted|rsvp updated/i).first())
+      .toBeVisible({ timeout: 15000 })
+      .catch(async () => {
+        await expect(page).toHaveURL(/things-to-do/, { timeout: 5000 });
+      });
+  });
+});
+
+test.describe("RSVP - Dietary Restrictions", () => {
+  test("shows dietary restrictions field when attending", async ({ page }) => {
+    const inviteCode = getInviteCode();
+    // Skip test if no valid test code is set
+    if (inviteCode === "TEST-1234") {
+      test.skip();
+      return;
+    }
+
+    await page.goto(`${TEST_DATA.routes.rsvp}?code=${inviteCode}&step=form`);
+    await waitForHydration(page);
+
+    // Click accept to show attending-only fields
+    const acceptButton = page.getByRole("button", { name: /joyfully accept/i });
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
+
+    // Should show dietary restrictions field
+    await expect(
+      page.getByPlaceholder(/vegetarian|gluten|allergies/i),
+    ).toBeVisible();
+  });
+
+  test("can enter dietary restrictions and submit", async ({ page }) => {
+    const inviteCode = getInviteCode();
+    // Skip test if no valid test code is set
+    if (inviteCode === "TEST-1234") {
+      test.skip();
+      return;
+    }
+
+    await page.goto(`${TEST_DATA.routes.rsvp}?code=${inviteCode}&step=form`);
+    await waitForHydration(page);
+
+    // Click accept
+    const acceptButton = page.getByRole("button", { name: /joyfully accept/i });
+    await expect(acceptButton).toBeVisible({ timeout: 10000 });
+    await acceptButton.click();
+
+    // Enter dietary restrictions
+    const dietaryField = page.getByPlaceholder(/vegetarian|gluten|allergies/i);
+    await expect(dietaryField.first()).toBeVisible();
+    await dietaryField.first().fill("E2E Test - Vegetarian");
+
+    // Submit the form
+    const submitButton = page.getByRole("button", {
+      name: /submit rsvp|update rsvp/i,
+    });
+    await expect(submitButton).toBeVisible({ timeout: 5000 });
+    await submitButton.click();
+
+    // Should show success
+    await expect(page.getByText(/rsvp submitted|rsvp updated/i).first())
+      .toBeVisible({ timeout: 15000 })
+      .catch(async () => {
+        await expect(page).toHaveURL(/things-to-do/, { timeout: 5000 });
+      });
   });
 });

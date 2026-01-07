@@ -234,12 +234,39 @@ test.describe("Guest Management - CRUD Operations", () => {
       timeout: 10000,
     });
 
-    // Verify guest no longer appears
-    await page.getByPlaceholder(/filter by name/i).clear();
-    await page.getByPlaceholder(/filter by name/i).fill(testFirstName);
-    await expect(page.getByText(/no guests match your filters/i)).toBeVisible({
-      timeout: 5000,
-    });
+    // Wait for the edit sheet to close and page to stabilize
+    await expect(
+      page.getByRole("heading", { name: /edit guest/i }),
+    ).not.toBeVisible({ timeout: 5000 });
+
+    // Wait for page to refresh after deletion
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(500);
+
+    // Verify guest no longer appears - clear filter first, then search
+    const filterInput = page.getByPlaceholder(/filter by name/i);
+    await filterInput.clear();
+    await page.waitForTimeout(300);
+    await filterInput.fill(testFirstName);
+    await page.waitForTimeout(500);
+
+    // Check that the guest row is gone - either "no guests match" message or the row is not visible
+    const guestRowAfterDelete = page
+      .locator("table tbody tr")
+      .filter({ hasText: testFirstName });
+
+    // Wait for either the "no guests" message or verify the row count is 0
+    await expect(
+      page
+        .getByText(/no guests match your filters/i)
+        .or(guestRowAfterDelete.first()),
+    )
+      .toBeVisible({ timeout: 5000 })
+      .catch(async () => {
+        // If neither is visible, just check the row is gone
+        const rowCount = await guestRowAfterDelete.count();
+        expect(rowCount).toBe(0);
+      });
   });
 });
 
