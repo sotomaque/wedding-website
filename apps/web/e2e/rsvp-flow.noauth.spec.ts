@@ -292,23 +292,23 @@ test.describe("RSVP - Form Submission", () => {
       page.getByRole("button", { name: /submit rsvp|update rsvp/i }),
     ).toBeVisible({ timeout: 10000 });
 
-    // Click the "Regretfully Decline" button using evaluate to bypass visibility checks
-    // This is needed because the button may be in a hidden responsive container
-    await page.evaluate(() => {
-      const buttons = Array.from(document.querySelectorAll("button, p"));
-      const declineButton = buttons.find((el) =>
-        el.textContent?.includes("Regretfully Decline"),
-      );
-      if (declineButton) {
-        (declineButton as HTMLElement).click();
-      }
-    });
+    // Click the "Regretfully Decline" button
+    // Find the button that contains the text "Regretfully Decline"
+    const declineButton = page
+      .getByRole("button", { name: /regretfully decline/i })
+      .first();
+    await expect(declineButton).toBeVisible({ timeout: 5000 });
+    await declineButton.click();
+
+    // Wait a bit for React Hook Form to update state
+    await page.waitForTimeout(500);
 
     // Now click the Submit button (may be "Update RSVP" if already submitted)
     const submitButton = page.getByRole("button", {
       name: /submit rsvp|update rsvp/i,
     });
     await expect(submitButton).toBeVisible({ timeout: 5000 });
+    await expect(submitButton).toBeEnabled({ timeout: 5000 });
     await submitButton.click();
 
     // Should show success message (won't redirect to things-to-do for "no")
