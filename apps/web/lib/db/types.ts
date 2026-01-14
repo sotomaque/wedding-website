@@ -197,6 +197,49 @@ export interface GiftsTable {
   updated_at: ColumnType<Date, string | undefined, string>;
 }
 
+// Hotels table
+export interface HotelsTable {
+  id: Generated<string>;
+  name: string;
+  description: string | null;
+  address: string | null;
+  website_url: string | null;
+  phone: string | null;
+  image_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  hotel_type: "luxury" | "moderate" | "budget" | null;
+  distance_to_venue: string | null;
+  parking_info: string | null;
+  amenities: string | null;
+  display_order: ColumnType<number, number | undefined, number>;
+  created_at: ColumnType<Date, string | undefined, never>;
+  updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+// Guest Hotel Interests junction table
+export interface GuestHotelInterestsTable {
+  id: Generated<string>;
+  guest_id: string;
+  hotel_id: string;
+  invite_code: string;
+  status: "interested" | "booked";
+  check_in_date: ColumnType<
+    Date,
+    string | undefined,
+    string | undefined
+  > | null;
+  check_out_date: ColumnType<
+    Date,
+    string | undefined,
+    string | undefined
+  > | null;
+  number_of_rooms: number | null;
+  notes: string | null;
+  created_at: ColumnType<Date, string | undefined, never>;
+  updated_at: ColumnType<Date, string | undefined, string>;
+}
+
 // Database interface
 export interface Database {
   guests: GuestsTable;
@@ -210,4 +253,6 @@ export interface Database {
   guest_table_assignments: GuestTableAssignmentsTable;
   parties: PartiesTable;
   gifts: GiftsTable;
+  hotels: HotelsTable;
+  guest_hotel_interests: GuestHotelInterestsTable;
 }

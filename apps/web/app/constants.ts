@@ -165,11 +165,6 @@ export const HERO_PHOTOS: HeroPhoto[] = [
     description: "Views from Mount Soledad",
   },
   {
-    src: "/our-photos/immaculata.jpeg",
-    alt: "The Immaculata",
-    description: "Beautiful architecture of The Immaculata",
-  },
-  {
     src: "/our-photos/engagement-bbq.jpeg",
     alt: "Engagement BBQ",
     description: "Celebrating our engagement with a BBQ",
@@ -236,9 +231,9 @@ export const DETAILS_CONTENT = {
     icon: "⛪️",
     title: "Ceremony",
     time: "4:00 PM",
-    venue: "The Immaculata Church",
-    location: "University of San Diego",
-    address: "San Diego, CA 92110",
+    venue: "St. Therese of Carmel Catholic Church",
+    location: "Carmel Valley, San Diego",
+    address: "4355 Del Mar Trails Rd, San Diego, CA 92130",
   },
   reception: {
     icon: "🍾",

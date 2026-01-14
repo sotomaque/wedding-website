@@ -10,3 +10,6 @@ export const RSVP_NOTIFICATION_TEMPLATE_ALIAS = "rsvp-notification";
 
 // Resend template alias for gift notifications sent to admin
 export const GIFT_NOTIFICATION_TEMPLATE_ALIAS = "gift-notification";
+
+// Resend template alias for hotel interest notifications sent to admin
+export const HOTEL_INTEREST_NOTIFICATION = "hotel-interest-notification";
