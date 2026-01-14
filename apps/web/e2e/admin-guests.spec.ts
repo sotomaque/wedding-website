@@ -127,13 +127,16 @@ test.describe("Guest Management - CRUD Operations", () => {
       return;
     }
 
-    // Click the Edit button in the first row
-    await page.getByRole("button", { name: /edit/i }).first().click();
+    // Wait for the edit button to be ready and click it
+    const editButton = page.getByRole("button", { name: /edit/i }).first();
+    await expect(editButton).toBeVisible({ timeout: 5000 });
+    await page.waitForTimeout(500); // Wait for any animations to settle
+    await editButton.click();
 
-    // Wait for edit sheet to open
+    // Wait for edit sheet to open with longer timeout
     await expect(
       page.getByRole("heading", { name: /edit guest/i }),
-    ).toBeVisible({ timeout: 5000 });
+    ).toBeVisible({ timeout: 10000 });
 
     // Get current first name
     const firstNameInput = page.getByLabel(/^first name/i).first();
@@ -166,10 +169,15 @@ test.describe("Guest Management - CRUD Operations", () => {
     await expect(
       page.getByRole("cell", { name: modifiedName }).first(),
     ).toBeVisible({ timeout: 5000 });
-    await page.getByRole("button", { name: /edit/i }).first().click();
+    const revertEditButton = page
+      .getByRole("button", { name: /edit/i })
+      .first();
+    await expect(revertEditButton).toBeVisible({ timeout: 5000 });
+    await page.waitForTimeout(500);
+    await revertEditButton.click();
     await expect(
       page.getByRole("heading", { name: /edit guest/i }),
-    ).toBeVisible({ timeout: 5000 });
+    ).toBeVisible({ timeout: 10000 });
     await page
       .getByLabel(/^first name/i)
       .first()

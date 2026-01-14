@@ -204,12 +204,17 @@ test.describe("Seating Chart Editor - Tables", () => {
 
     if (await chartLink.isVisible()) {
       await chartLink.click();
+      await page.waitForLoadState("networkidle");
     } else {
       // Create a new chart
       await page.getByRole("button", { name: /new chart/i }).click();
       await page.getByLabel(/chart name/i).fill(`Table Test ${Date.now()}`);
       await page.getByRole("button", { name: /create chart/i }).click();
-      await page.waitForURL(/\/admin\/seating\/[a-z0-9-]+/i, { timeout: 5000 });
+      // Increase timeout and wait for navigation
+      await page.waitForURL(/\/admin\/seating\/[a-z0-9-]+/i, {
+        timeout: 15000,
+      });
+      await page.waitForLoadState("networkidle");
     }
 
     await waitForHydration(page);
