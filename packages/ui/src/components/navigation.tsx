@@ -1,6 +1,8 @@
 "use client";
 
 import { cn } from "@workspace/ui/lib/utils";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 export interface NavLink {
   href: string;
@@ -27,6 +29,8 @@ function Navigation({
   rightLinks = [],
   className,
 }: NavigationProps) {
+  const pathname = usePathname();
+
   return (
     <header
       className={cn(
@@ -38,15 +42,21 @@ function Navigation({
         <nav className="grid grid-cols-2 lg:grid-cols-3 items-center text-foreground">
           {/* Left Navigation Links */}
           <div className="hidden lg:flex items-center gap-6 mr-auto">
-            {leftLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm uppercase transition-colors hover:text-accent"
-              >
-                {link.label}
-              </a>
-            ))}
+            {leftLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "text-sm uppercase transition-colors hover:text-accent",
+                    isActive && "font-bold",
+                  )}
+                >
+                  {link.label}
+                </a>
+              );
+            })}
           </div>
 
           {/* Brand/Logo */}
@@ -56,12 +66,13 @@ function Navigation({
           >
             <span className="sr-only">Go home</span>
             {brandImage ? (
-              <img
+              <Image
                 src={brandImage.src}
                 alt={brandImage.alt}
-                width={brandImage.width}
-                height={brandImage.height}
+                width={brandImage.width || 200}
+                height={brandImage.height || 64}
                 className="h-8 lg:h-16 w-auto object-contain"
+                priority
               />
             ) : (
               <span className="text-2xl lg:text-6xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground">
@@ -72,15 +83,21 @@ function Navigation({
 
           {/* Right Navigation Links */}
           <div className="hidden lg:flex items-center gap-6 ml-auto">
-            {rightLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm uppercase transition-colors hover:text-accent"
-              >
-                {link.label}
-              </a>
-            ))}
+            {rightLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "text-sm uppercase transition-colors hover:text-accent",
+                    isActive && "font-bold",
+                  )}
+                >
+                  {link.label}
+                </a>
+              );
+            })}
           </div>
 
           {/* Mobile Menu */}
@@ -91,40 +108,52 @@ function Navigation({
               </summary>
               <div className="absolute top-full left-0 right-0 bg-background border-b border-border md:mt-4 overflow-hidden transition-all duration-900 ease-in-out group-open:opacity-100 group-open:max-h-[600px] opacity-0 max-h-0">
                 <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-4 flex flex-col gap-4">
-                  {leftLinks.map((link) => (
-                    <a
-                      key={link.href}
-                      href={link.href}
-                      onClick={(e) => {
-                        const details = (e.target as HTMLElement).closest(
-                          "details",
-                        );
-                        if (details) {
-                          details.removeAttribute("open");
-                        }
-                      }}
-                      className="text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground"
-                    >
-                      {link.label}
-                    </a>
-                  ))}
-                  {rightLinks.map((link) => (
-                    <a
-                      key={link.href}
-                      href={link.href}
-                      onClick={(e) => {
-                        const details = (e.target as HTMLElement).closest(
-                          "details",
-                        );
-                        if (details) {
-                          details.removeAttribute("open");
-                        }
-                      }}
-                      className="text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground"
-                    >
-                      {link.label}
-                    </a>
-                  ))}
+                  {leftLinks.map((link) => {
+                    const isActive = pathname === link.href;
+                    return (
+                      <a
+                        key={link.href}
+                        href={link.href}
+                        onClick={(e) => {
+                          const details = (e.target as HTMLElement).closest(
+                            "details",
+                          );
+                          if (details) {
+                            details.removeAttribute("open");
+                          }
+                        }}
+                        className={cn(
+                          "text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground",
+                          isActive && "font-bold",
+                        )}
+                      >
+                        {link.label}
+                      </a>
+                    );
+                  })}
+                  {rightLinks.map((link) => {
+                    const isActive = pathname === link.href;
+                    return (
+                      <a
+                        key={link.href}
+                        href={link.href}
+                        onClick={(e) => {
+                          const details = (e.target as HTMLElement).closest(
+                            "details",
+                          );
+                          if (details) {
+                            details.removeAttribute("open");
+                          }
+                        }}
+                        className={cn(
+                          "text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground",
+                          isActive && "font-bold",
+                        )}
+                      >
+                        {link.label}
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             </details>

@@ -4,10 +4,10 @@ import { cookies } from "next/headers";
 import { NAVIGATION_CONFIG } from "@/app/navigation-config";
 import { SITE_CONFIG } from "@/app/site-config";
 import { getGuestParty } from "@/lib/auth/guest-session";
-import { getActivities, getBeaches, getVenues } from "./actions";
-import { ThingsToDoContent } from "./things-to-do-content";
+import { getHotels } from "./actions";
+import { HotelsContent } from "./hotels-content";
 
-interface ThingsToDoPageProps {
+interface HotelsPageProps {
   searchParams: Promise<{ code?: string }>;
 }
 
@@ -27,9 +27,7 @@ function getRandomSdImage(): string {
   return images[randomIndex]!;
 }
 
-export default async function ThingsToDoPage({
-  searchParams,
-}: ThingsToDoPageProps) {
+export default async function HotelsPage({ searchParams }: HotelsPageProps) {
   const params = await searchParams;
 
   // Get invite code from URL, cookie, or logged-in Clerk user
@@ -44,12 +42,8 @@ export default async function ThingsToDoPage({
   // Select random hero image on server
   const heroImage = getRandomSdImage();
 
-  // Fetch data from database
-  const [activities, venues, beaches] = await Promise.all([
-    getActivities(inviteCode),
-    getVenues(),
-    getBeaches(inviteCode),
-  ]);
+  // Fetch hotels from database
+  const hotels = await getHotels(inviteCode);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -60,10 +54,8 @@ export default async function ThingsToDoPage({
       />
 
       <main className="grow">
-        <ThingsToDoContent
-          activities={activities}
-          venues={venues}
-          beaches={beaches}
+        <HotelsContent
+          hotels={hotels}
           inviteCode={inviteCode}
           heroImage={heroImage}
         />

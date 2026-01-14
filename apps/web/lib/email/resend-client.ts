@@ -40,7 +40,7 @@ type HtmlEmailParams = {
 type TemplateEmailParams = {
   from: string;
   to: string | string[];
-  subject: string;
+  subject?: string;
   template: {
     id: string;
     variables: Record<string, string>;

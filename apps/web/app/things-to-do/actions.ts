@@ -256,3 +256,23 @@ export async function getVenues(): Promise<Activity[]> {
     displayOrder: v.display_order,
   }));
 }
+
+/**
+ * Get beaches with interest data
+ */
+export async function getBeaches(
+  inviteCode?: string,
+): Promise<ActivityWithInterest[]> {
+  // Beach activities are identified by their emojis
+  const beachEmojis = ["🏖️", "🌊", "🏄"];
+
+  const allActivities = await getActivities(inviteCode);
+
+  // Filter for beaches
+  return allActivities.filter(
+    (activity) =>
+      !activity.isVenue &&
+      activity.emoji &&
+      beachEmojis.includes(activity.emoji),
+  );
+}

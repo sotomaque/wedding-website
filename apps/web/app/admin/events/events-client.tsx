@@ -482,7 +482,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                     locationName: e.target.value,
                   }))
                 }
-                placeholder="The Immaculata Church"
+                placeholder="St. Therese Church"
               />
             </div>
 

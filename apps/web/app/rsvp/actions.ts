@@ -307,7 +307,6 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
         await sendEmail({
           from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
           to: recipients,
-          subject: `${attending ? "✅" : "❌"} RSVP: ${updatedGuests.map((g) => g.first_name).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,
           template: {
             id: RSVP_NOTIFICATION_TEMPLATE_ALIAS,
             variables: {
@@ -612,7 +611,6 @@ export async function submitMultiGuestRSVP(
         await sendEmail({
           from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
           to: recipients,
-          subject: `${anyAttending ? "✅" : "❌"} RSVP: ${inviteCode.toUpperCase()} - ${attendingGuests.length} attending, ${decliningGuests.length} declined`,
           template: {
             id: RSVP_NOTIFICATION_TEMPLATE_ALIAS,
             variables: {

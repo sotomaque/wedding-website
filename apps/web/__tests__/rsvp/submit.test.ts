@@ -485,7 +485,9 @@ describe("RSVP - Notification Email", () => {
     expect(mockSendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: ["admin@example.com"],
-        subject: expect.stringContaining("RSVP"),
+        template: expect.objectContaining({
+          id: "rsvp-notification",
+        }),
       }),
     );
   });

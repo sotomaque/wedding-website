@@ -1,18 +1,21 @@
-"use client";
-
+import Image from "next/image";
 import type { Activity, ActivityWithInterest } from "./actions";
 import { ActivityCard } from "./activity-card";
 
 interface ThingsToDoContentProps {
   activities: ActivityWithInterest[];
   venues: Activity[];
+  beaches: ActivityWithInterest[];
   inviteCode?: string;
+  heroImage: string;
 }
 
 export function ThingsToDoContent({
   activities,
   venues,
+  beaches,
   inviteCode,
+  heroImage,
 }: ThingsToDoContentProps) {
   // Separate venues by type
   const ceremonyVenue = venues.find((v) => v.venueType === "ceremony");
@@ -27,38 +30,63 @@ export function ThingsToDoContent({
   return (
     <>
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-card">
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
+      <section className="relative overflow-hidden h-[600px] flex items-center justify-center">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src={heroImage}
+            alt="San Diego"
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/60" />
+        </div>
+
+        {/* Content */}
+        <div className="relative max-w-screen-2xl mx-auto px-4 md:px-12 w-full">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif text-foreground mb-6">
-              Our Favorite San Diego Spots
+            <div className="inline-block mb-4">
+              <span className="text-4xl">🌴</span>
+            </div>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif text-white mb-6">
+              Explore San Diego
             </h1>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              We're so excited to share our favorite corners of San Diego with
-              you! Whether you're looking for ocean views, amazing food, or a
-              bit of local culture, these are the places we love and think you
-              will too.
+            <p className="text-lg md:text-xl text-white/90 leading-relaxed max-w-2xl mx-auto">
+              We're excited to share our favorite corners of San Diego with you!
+              From stunning beaches to world-class dining, discover the places
+              we love.
             </p>
             {inviteCode && (
-              <p className="mt-6 text-sm text-accent font-medium">
-                Mark your interest below to see who else is planning to visit!
-              </p>
+              <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm text-white border border-white/20 rounded-full text-sm font-medium">
+                <span>✨</span>
+                <span>
+                  Mark your interest to see who else is planning to visit!
+                </span>
+              </div>
             )}
           </div>
         </div>
       </section>
 
       {/* Wedding Venues Section */}
-      <section className="relative bg-secondary">
+      <section className="relative bg-gradient-to-b from-secondary/30 to-background">
         <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-serif text-center mb-12 text-foreground">
-              Wedding Venues
-            </h2>
-            <div className="w-24 h-1 bg-accent mx-auto mb-12 -mt-8" />
-            <div className="grid gap-8">
-              {venuesList.map((venue) => (
-                <ActivityCard key={venue.id} activity={venue} isVenue />
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl md:text-5xl font-serif text-foreground mb-4">
+                Wedding Venues
+              </h2>
+              <p className="text-muted-foreground">Where we'll celebrate</p>
+            </div>
+            <div className="grid gap-6">
+              {venuesList.map((venue, index) => (
+                <ActivityCard
+                  key={venue.id}
+                  activity={venue}
+                  index={index}
+                  isVenue
+                />
               ))}
             </div>
           </div>
@@ -66,24 +94,50 @@ export function ThingsToDoContent({
       </section>
 
       {/* Things to Do Section */}
-      <section className="relative overflow-hidden bg-card">
+      <section className="relative bg-gradient-to-b from-background to-secondary/20">
         <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-serif text-center mb-12 text-foreground">
-              Things to Do
-            </h2>
-            <div className="w-24 h-1 bg-accent mx-auto mb-12 -mt-8" />
-            {inviteCode && (
-              <p className="text-center text-sm text-muted-foreground mb-8">
-                Click "Interested" or "I'm Going" to let others know your plans!
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl md:text-5xl font-serif text-foreground mb-4">
+                Things to Do
+              </h2>
+              <p className="text-muted-foreground">
+                Our favorite spots to explore in the city
               </p>
-            )}
-            <div className="grid gap-8">
-              {thingsToDoActivities.map((activity) => (
+            </div>
+            <div className="grid gap-6">
+              {thingsToDoActivities.map((activity, index) => (
                 <ActivityCard
                   key={activity.id}
                   activity={activity}
                   inviteCode={inviteCode}
+                  index={index}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Beaches Section */}
+      <section className="relative bg-gradient-to-b from-secondary/20 to-background">
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl md:text-5xl font-serif text-foreground mb-4">
+                Our Favorite Beaches
+              </h2>
+              <p className="text-muted-foreground">
+                The best spots to catch some sun and surf
+              </p>
+            </div>
+            <div className="grid gap-6">
+              {beaches.map((beach, index) => (
+                <ActivityCard
+                  key={beach.id}
+                  activity={beach}
+                  inviteCode={inviteCode}
+                  index={index}
                 />
               ))}
             </div>
@@ -92,90 +146,92 @@ export function ThingsToDoContent({
       </section>
 
       {/* Food & Drink Section */}
-      <section className="relative overflow-hidden bg-secondary">
+      <section className="relative bg-gradient-to-br from-accent/5 via-card to-secondary/30">
         <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-serif text-center mb-12 text-foreground">
-              Where We Love to Eat & Drink
-            </h2>
-            <div className="w-24 h-1 bg-accent mx-auto mb-12 -mt-8" />
-            <div className="grid gap-8">
-              <div className="bg-card p-8 rounded-lg border border-border">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl md:text-5xl font-serif text-foreground mb-4">
+                Where We Love to Eat & Drink
+              </h2>
+              <p className="text-muted-foreground">
+                San Diego's best breweries and restaurants
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-card/80 backdrop-blur-sm p-8 rounded-2xl border border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+                <div className="text-3xl mb-4">🍺</div>
                 <h3 className="text-2xl font-serif text-foreground mb-4">
                   Our Brewery Picks
                 </h3>
-                <p className="text-muted-foreground mb-4">
-                  San Diego's craft beer scene is world-class, and we've tried
-                  our fair share! These are our favorites for a casual afternoon
-                  or evening out.
+                <p className="text-muted-foreground mb-6 text-sm">
+                  San Diego's craft beer scene is world-class. These are our
+                  favorites.
                 </p>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Ballast Point - We love their Sculpin IPA</li>
-                  <li>• Stone Brewing - Amazing food and great patio</li>
-                  <li>• Modern Times - Perfect for a relaxed vibe</li>
-                  <li>• Karl Strauss - A San Diego classic</li>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent mt-1">•</span>
+                    <span className="text-foreground">
+                      <strong>Ballast Point</strong> - We love their Sculpin IPA
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent mt-1">•</span>
+                    <span className="text-foreground">
+                      <strong>Stone Brewing</strong> - Amazing food and great
+                      patio
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent mt-1">•</span>
+                    <span className="text-foreground">
+                      <strong>Modern Times</strong> - Perfect for a relaxed vibe
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent mt-1">•</span>
+                    <span className="text-foreground">
+                      <strong>Karl Strauss</strong> - A San Diego classic
+                    </span>
+                  </li>
                 </ul>
               </div>
 
-              <div className="bg-card p-8 rounded-lg border border-border">
+              <div className="bg-card/80 backdrop-blur-sm p-8 rounded-2xl border border-border/50 shadow-lg hover:shadow-xl transition-shadow">
+                <div className="text-3xl mb-4">🌮</div>
                 <h3 className="text-2xl font-serif text-foreground mb-4">
                   Must-Try Restaurants
                 </h3>
-                <p className="text-muted-foreground mb-4">
-                  These are the places we find ourselves coming back to again
-                  and again. Trust us, you won't be disappointed!
+                <p className="text-muted-foreground mb-6 text-sm">
+                  Places we find ourselves coming back to again and again.
                 </p>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Puesto - Best tacos in town, hands down</li>
-                  <li>• Hodad's - Massive burgers worth the wait</li>
-                  <li>• The Fish Market - Fresh catch with harbor views</li>
-                  <li>• Oscar's - Our fish taco spot near the beach</li>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent mt-1">•</span>
+                    <span className="text-foreground">
+                      <strong>Puesto</strong> - Best tacos in town, hands down
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent mt-1">•</span>
+                    <span className="text-foreground">
+                      <strong>Hodad's</strong> - Massive burgers worth the wait
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent mt-1">•</span>
+                    <span className="text-foreground">
+                      <strong>The Fish Market</strong> - Fresh catch with harbor
+                      views
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent mt-1">•</span>
+                    <span className="text-foreground">
+                      <strong>Oscar's</strong> - Our fish taco spot near the
+                      beach
+                    </span>
+                  </li>
                 </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Getting Around Section */}
-      <section className="relative overflow-hidden bg-card">
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-serif text-center mb-8 text-foreground">
-              Getting Around the City
-            </h2>
-            <div className="w-24 h-1 bg-accent mx-auto mb-8 -mt-4" />
-            <p className="text-muted-foreground text-center mb-8 leading-relaxed">
-              We usually drive everywhere, but San Diego has plenty of options
-              depending on where you're headed:
-            </p>
-            <div className="grid gap-6">
-              <div className="bg-secondary p-6 rounded-lg border border-border">
-                <h4 className="font-semibold text-foreground mb-2">
-                  Rideshare
-                </h4>
-                <p className="text-muted-foreground text-sm">
-                  Our go-to for nights out in the Gaslamp or La Jolla. Uber and
-                  Lyft are easy and reliable.
-                </p>
-              </div>
-              <div className="bg-secondary p-6 rounded-lg border border-border">
-                <h4 className="font-semibold text-foreground mb-2">
-                  Trolley & Bus
-                </h4>
-                <p className="text-muted-foreground text-sm">
-                  Great for getting downtown or to the beach. The trolley is fun
-                  and surprisingly convenient!
-                </p>
-              </div>
-              <div className="bg-secondary p-6 rounded-lg border border-border">
-                <h4 className="font-semibold text-foreground mb-2">
-                  Rental Cars
-                </h4>
-                <p className="text-muted-foreground text-sm">
-                  Best if you want to explore beyond the city—Coronado, La
-                  Jolla, and Balboa Park are easier with a car.
-                </p>
               </div>
             </div>
           </div>
