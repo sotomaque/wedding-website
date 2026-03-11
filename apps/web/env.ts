@@ -20,7 +20,7 @@ export const env = createEnv({
     STRIPE_PRODUCT_BABY_FUND: z.string().optional(),
     STRIPE_PRODUCT_HONEYMOON: z.string().optional(),
     STRIPE_PRODUCT_STUDENT_LOANS: z.string().optional(),
-    E2E_TEST_MODE: z.enum(["true", "false"]).default("true"),
+    E2E_TEST_MODE: z.enum(["true", "false"]).default("false"),
     E2E_RESET_SECRET: z.string().optional(),
     VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
   },
