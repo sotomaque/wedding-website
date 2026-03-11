@@ -109,6 +109,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           max_timeout: 600
           path: /api/health
+          vercel_password: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

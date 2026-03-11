@@ -24,9 +24,10 @@ export async function POST(request: NextRequest) {
     await resetAndSeed();
     return NextResponse.json({ status: "reset" });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Error resetting database:", error);
     return NextResponse.json(
-      { error: "Failed to reset database" },
+      { error: "Failed to reset database", detail: message },
       { status: 500 },
     );
   }

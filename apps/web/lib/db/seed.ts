@@ -8,29 +8,29 @@ import { db } from "./index";
 export const SEED = {
   parties: {
     single: {
-      id: "e2e-party-single",
+      id: "00000000-0000-4000-a000-000000000001",
       inviteCode: "E2E1-SNGL",
     },
     family: {
-      id: "e2e-party-family",
+      id: "00000000-0000-4000-a000-000000000002",
       inviteCode: "E2E2-FMLY",
     },
   },
   guests: {
     alice: {
-      id: "e2e-guest-alice",
+      id: "00000000-0000-4000-b000-000000000001",
       firstName: "E2E-Alice",
       lastName: "TestGuest",
       email: "e2e-alice@example.com",
     },
     bob: {
-      id: "e2e-guest-bob",
+      id: "00000000-0000-4000-b000-000000000002",
       firstName: "E2E-Bob",
       lastName: "TestGuest",
       email: "e2e-bob@example.com",
     },
     carol: {
-      id: "e2e-guest-carol",
+      id: "00000000-0000-4000-b000-000000000003",
       firstName: "E2E-Carol",
       lastName: "TestChild",
       email: null,
@@ -38,11 +38,11 @@ export const SEED = {
   },
   events: {
     ceremony: {
-      id: "e2e-event-ceremony",
+      id: "00000000-0000-4000-c000-000000000001",
       name: "Ceremony",
     },
     reception: {
-      id: "e2e-event-reception",
+      id: "00000000-0000-4000-c000-000000000002",
       name: "Reception",
     },
   },
