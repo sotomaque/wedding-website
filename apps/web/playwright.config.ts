@@ -12,6 +12,10 @@ config({ path: path.resolve(__dirname, ".env") });
 
 /**
  * Playwright configuration for E2E testing
+ *
+ * CI: Tests run against a Vercel preview deployment with a freshly seeded database.
+ * Local: Tests run against the local dev server (starts automatically if not running).
+ *
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
@@ -22,7 +26,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI */
+  /* Opt out of parallel tests on CI for DB consistency */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use */
   reporter: [["html", { open: "never" }], ["list"]],
@@ -43,7 +47,7 @@ export default defineConfig({
       name: "global-setup",
       testMatch: /global\.setup\.ts/,
     },
-    // Setup project - creates test guest and authenticates
+    // Setup project - authenticates admin user
     {
       name: "setup",
       testMatch: /auth\.setup\.ts/,
@@ -57,7 +61,7 @@ export default defineConfig({
         storageState: "e2e/.auth/admin.json",
       },
       dependencies: ["setup"],
-      testIgnore: [/.*\.noauth\.spec\.ts/, /teardown\.ts/],
+      testIgnore: [/.*\.noauth\.spec\.ts/],
     },
     // Unauthenticated tests (depend on setup for test invite code)
     {
@@ -68,27 +72,18 @@ export default defineConfig({
       dependencies: ["setup"],
       testMatch: /.*\.noauth\.spec\.ts/,
     },
-    // Teardown project - cleans up test guest
-    {
-      name: "teardown",
-      testMatch: /teardown\.ts/,
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "e2e/.auth/admin.json",
-      },
-      dependencies: ["chromium", "chromium-no-auth"],
-    },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: "bun run dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-    env: {
-      // Enable E2E test mode to mock email sending
-      E2E_TEST_MODE: "true",
+  /* Run local dev server when not in CI (CI uses Vercel preview) */
+  ...(!process.env.CI && {
+    webServer: {
+      command: "bun run dev",
+      url: "http://localhost:3000",
+      reuseExistingServer: true,
+      timeout: 120 * 1000,
+      env: {
+        E2E_TEST_MODE: "true",
+      },
     },
-  },
+  }),
 });

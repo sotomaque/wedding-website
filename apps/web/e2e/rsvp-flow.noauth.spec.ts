@@ -408,7 +408,11 @@ test.describe("RSVP - Multi-Guest Party", () => {
     ).toBeVisible({ timeout: 10000 });
 
     // Should show attendance summary text like "X of Y guests attending"
-    await expect(page.getByText(/\d+ of \d+ guests attending/i)).toBeVisible();
+    // The page renders both a mobile (md:hidden) and desktop (hidden md:block)
+    // layout, each with its own RSVPForm. Use .last() to target the desktop
+    // instance (which is visible at Desktop Chrome's 1280px viewport).
+    const summary = page.getByText(/\d+ of \d+ guests attending/i).last();
+    await expect(summary).toBeVisible({ timeout: 10000 });
   });
 });
 

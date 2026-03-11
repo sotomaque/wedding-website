@@ -40,3 +40,6 @@ npm-debug.log*
 # Misc
 .DS_Store
 *.pem
+
+# Playwrite report
+/playwright-report/

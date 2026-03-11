@@ -13,7 +13,8 @@ const createPool = () => {
   // Supabase connection string format:
   // postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
 
-  const connectionString = env.DATABASE_URL;
+  // Supabase Vercel integration sets POSTGRES_URL; fallback to DATABASE_URL for local dev
+  const connectionString = env.POSTGRES_URL ?? env.DATABASE_URL;
 
   if (!connectionString) {
     throw new Error(
@@ -24,9 +25,17 @@ const createPool = () => {
     );
   }
 
+  // Strip sslmode from connection string — the pg library maps sslmode=require
+  // to ssl:true which validates certs and fails on Supabase preview branches.
+  // We handle SSL explicitly below instead.
+  const url = new URL(connectionString);
+  url.searchParams.delete("sslmode");
+  const cleanConnectionString = url.toString();
+
   return new Pool({
-    connectionString,
-    max: 10, // Maximum number of clients in the pool
+    connectionString: cleanConnectionString,
+    max: 10,
+    ssl: { rejectUnauthorized: false },
   });
 };
 

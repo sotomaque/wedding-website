@@ -168,7 +168,9 @@ test.describe("Registry - Navigation", () => {
     await brandLink.click();
 
     // Should navigate to home (may include hash like /#story)
-    await expect(page).toHaveURL(/^http:\/\/localhost:3000\/?/);
+    // Verify we navigated to the home page (any host, root path, optional hash)
+    const url = new URL(page.url());
+    expect(url.pathname).toBe("/");
   });
 });
 

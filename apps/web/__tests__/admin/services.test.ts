@@ -1,10 +1,11 @@
 import { describe, expect, it, mock } from "bun:test";
 
-// Mock env with a sample DATABASE_URL
+// Mock env with a sample POSTGRES_URL
 mock.module("@/env", () => ({
   env: {
-    DATABASE_URL:
+    POSTGRES_URL:
       "postgresql://postgres.abcdef123456:password@db.supabase.co:5432/postgres",
+    DATABASE_URL: undefined,
   },
 }));
 
@@ -56,16 +57,17 @@ describe("Admin Services - Service URLs", () => {
 });
 
 describe("Admin Services - Supabase URL", () => {
-  it("should extract project ref from DATABASE_URL", () => {
+  it("should extract project ref from POSTGRES_URL", () => {
     const url = getSupabaseConsole();
     expect(url).toContain("supabase.com/dashboard/project/");
     expect(url).toContain("abcdef123456");
   });
 
-  it("should return default Supabase URL when DATABASE_URL is not set", async () => {
+  it("should return default Supabase URL when no database URL is set", async () => {
     // Create a new mock for this test
     mock.module("@/env", () => ({
       env: {
+        POSTGRES_URL: undefined,
         DATABASE_URL: undefined,
       },
     }));
