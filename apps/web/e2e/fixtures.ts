@@ -7,7 +7,7 @@ import {
 } from "@playwright/test";
 
 /**
- * Test data from setup (created by auth.setup.ts)
+ * Test data from setup (created by auth.setup.ts, references seed data)
  */
 interface TestData {
   inviteCode: string | null;
@@ -62,7 +62,7 @@ export const test = base.extend<{
 export { expect };
 
 /**
- * Prefixes used for E2E test data - used for cleanup
+ * Prefixes used for E2E test data - used for local cleanup in afterAll hooks
  */
 export const E2E_TEST_PREFIXES = {
   guest: "E2E-",
@@ -78,11 +78,26 @@ export const TEST_DATA = {
   // Admin test credentials (set via environment variables)
   adminEmail: process.env.TEST_ADMIN_EMAIL || "admin@example.com",
 
-  // Guest test data
-  testGuest: {
-    firstName: "E2E",
-    lastName: "TestGuest",
-    email: "e2e-test@example.com",
+  // Seed data references (deterministic, from lib/db/seed.ts)
+  seedGuests: {
+    alice: {
+      firstName: "E2E-Alice",
+      lastName: "TestGuest",
+      email: "e2e-alice@example.com",
+    },
+    bob: {
+      firstName: "E2E-Bob",
+      lastName: "TestGuest",
+      email: "e2e-bob@example.com",
+    },
+    carol: {
+      firstName: "E2E-Carol",
+      lastName: "TestChild",
+    },
+  },
+  seedInviteCodes: {
+    single: "E2E1-SNGL",
+    family: "E2E2-FMLY",
   },
 
   // Known routes
@@ -97,6 +112,7 @@ export const TEST_DATA = {
     adminEvents: "/admin/events",
     adminTemplates: "/admin/templates",
     adminSeating: "/admin/seating",
+    adminTodos: "/admin/todos",
     unauthorized: "/unauthorized",
   },
 } as const;
@@ -114,6 +130,21 @@ export async function waitForHydration(page: Page) {
 }
 
 /**
+ * Extract the domain from the base URL for cookie setting.
+ * Handles both localhost and Vercel preview URLs.
+ */
+function getCookieDomain(): string {
+  const baseURL =
+    process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
+  try {
+    const url = new URL(baseURL);
+    return url.hostname;
+  } catch {
+    return "localhost";
+  }
+}
+
+/**
  * Helper to set invite code cookie
  */
 export async function setInviteCodeCookie(
@@ -125,7 +156,7 @@ export async function setInviteCodeCookie(
     {
       name: "invite_code",
       value: code,
-      domain: "localhost",
+      domain: getCookieDomain(),
       path: "/",
     },
   ]);

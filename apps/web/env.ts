@@ -20,6 +20,8 @@ export const env = createEnv({
     STRIPE_PRODUCT_HONEYMOON: z.string().optional(),
     STRIPE_PRODUCT_STUDENT_LOANS: z.string().optional(),
     E2E_TEST_MODE: z.enum(["true", "false"]).default("true"),
+    E2E_RESET_SECRET: z.string().optional(),
+    VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
   },
 
   /**
@@ -55,6 +57,8 @@ export const env = createEnv({
     STRIPE_PRODUCT_HONEYMOON: process.env.STRIPE_PRODUCT_HONEYMOON,
     STRIPE_PRODUCT_STUDENT_LOANS: process.env.STRIPE_PRODUCT_STUDENT_LOANS,
     E2E_TEST_MODE: process.env.E2E_TEST_MODE,
+    E2E_RESET_SECRET: process.env.E2E_RESET_SECRET,
+    VERCEL_ENV: process.env.VERCEL_ENV,
     NEXT_PUBLIC_RSVP_EMAIL: process.env.NEXT_PUBLIC_RSVP_EMAIL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
