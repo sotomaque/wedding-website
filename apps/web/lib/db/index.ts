@@ -25,8 +25,15 @@ const createPool = () => {
     );
   }
 
+  // Strip sslmode from connection string — the pg library maps sslmode=require
+  // to ssl:true which validates certs and fails on Supabase preview branches.
+  // We handle SSL explicitly below instead.
+  const url = new URL(connectionString);
+  url.searchParams.delete("sslmode");
+  const cleanConnectionString = url.toString();
+
   return new Pool({
-    connectionString,
+    connectionString: cleanConnectionString,
     max: 10,
     ssl: { rejectUnauthorized: false },
   });
