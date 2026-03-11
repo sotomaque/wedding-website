@@ -8,9 +8,14 @@ ALTER TABLE guests
 DROP CONSTRAINT IF EXISTS guests_list_check;
 
 -- Step 2: Add new list check constraint with 'c' option
-ALTER TABLE guests
-ADD CONSTRAINT guests_list_check
-CHECK (list IN ('a', 'b', 'c'));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'guests_list_check'
+  ) THEN
+    ALTER TABLE guests ADD CONSTRAINT guests_list_check CHECK (list IN ('a', 'b', 'c'));
+  END IF;
+END $$;
 
 -- Step 3: Create a function to cascade updates to plus-ones
 CREATE OR REPLACE FUNCTION cascade_guest_updates_to_plus_ones()

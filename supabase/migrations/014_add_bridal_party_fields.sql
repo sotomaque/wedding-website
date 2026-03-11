@@ -23,12 +23,18 @@ CREATE INDEX IF NOT EXISTS idx_guests_bridal_party_role ON guests(bridal_party_r
 
 -- Add constraint to ensure bridal party roles match gender
 -- Best man/groomsman requires male, maid of honor/bridesmaid requires female
-ALTER TABLE guests
-ADD CONSTRAINT chk_bridal_party_gender CHECK (
-  bridal_party_role IS NULL
-  OR (bridal_party_role IN ('groomsman', 'best_man') AND gender = 'male')
-  OR (bridal_party_role IN ('bridesmaid', 'maid_of_honor') AND gender = 'female')
-);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'chk_bridal_party_gender'
+  ) THEN
+    ALTER TABLE guests ADD CONSTRAINT chk_bridal_party_gender CHECK (
+      bridal_party_role IS NULL
+      OR (bridal_party_role IN ('groomsman', 'best_man') AND gender = 'male')
+      OR (bridal_party_role IN ('bridesmaid', 'maid_of_honor') AND gender = 'female')
+    );
+  END IF;
+END $$;
 
 -- Update comment for gender
 COMMENT ON COLUMN guests.gender IS 'Gender of the guest: male or female';

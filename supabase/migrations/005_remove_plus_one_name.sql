@@ -6,6 +6,7 @@ ALTER TABLE guests
 DROP COLUMN IF EXISTS plus_one_name;
 
 -- Make email nullable since plus-ones don't have their own email addresses
+-- ALTER COLUMN ... DROP NOT NULL is idempotent (safe to re-run)
 ALTER TABLE guests
 ALTER COLUMN email DROP NOT NULL;
 

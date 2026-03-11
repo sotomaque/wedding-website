@@ -6,9 +6,15 @@ ALTER TABLE guests
 DROP CONSTRAINT IF EXISTS guests_side_check;
 
 -- Step 2: Add new side check constraint with 'both' option
-ALTER TABLE guests
-ADD CONSTRAINT guests_side_check
-CHECK (side IN ('bride', 'groom', 'both') OR side IS NULL);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'guests_side_check'
+  ) THEN
+    ALTER TABLE guests ADD CONSTRAINT guests_side_check
+      CHECK (side IN ('bride', 'groom', 'both') OR side IS NULL);
+  END IF;
+END $$;
 
 -- Add comment for documentation
 COMMENT ON CONSTRAINT guests_side_check ON guests IS 'Allows side to be bride, groom, both, or null';

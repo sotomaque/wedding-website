@@ -21,26 +21,34 @@ ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
 -- All write operations go through service_role which bypasses RLS.
 
 -- Events: public can view (displayed on RSVP page)
+DROP POLICY IF EXISTS "Allow public read events" ON events;
 CREATE POLICY "Allow public read events"
   ON events FOR SELECT USING (true);
 
 -- Hotels: public can view (displayed on hotels page)
+DROP POLICY IF EXISTS "Allow public read hotels" ON hotels;
 CREATE POLICY "Allow public read hotels"
   ON hotels FOR SELECT USING (true);
 
 -- Guest event invites: public can view and update (RSVP flow)
+DROP POLICY IF EXISTS "Allow public read guest_event_invites" ON guest_event_invites;
 CREATE POLICY "Allow public read guest_event_invites"
   ON guest_event_invites FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public update guest_event_invites" ON guest_event_invites;
 CREATE POLICY "Allow public update guest_event_invites"
   ON guest_event_invites FOR UPDATE USING (true);
 
 -- Guest hotel interests: public can view and manage (hotel interest flow)
+DROP POLICY IF EXISTS "Allow public read guest_hotel_interests" ON guest_hotel_interests;
 CREATE POLICY "Allow public read guest_hotel_interests"
   ON guest_hotel_interests FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public insert guest_hotel_interests" ON guest_hotel_interests;
 CREATE POLICY "Allow public insert guest_hotel_interests"
   ON guest_hotel_interests FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public update guest_hotel_interests" ON guest_hotel_interests;
 CREATE POLICY "Allow public update guest_hotel_interests"
   ON guest_hotel_interests FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Allow public delete guest_hotel_interests" ON guest_hotel_interests;
 CREATE POLICY "Allow public delete guest_hotel_interests"
   ON guest_hotel_interests FOR DELETE USING (true);
 

@@ -168,18 +168,41 @@ Migrations live in [`supabase/migrations/`](supabase/migrations/) and are number
 **Writing new migrations:**
 
 1. Create a new file: `supabase/migrations/NNN_description.sql` (next sequential number)
-2. Use idempotent guards where possible:
+2. **All statements must be idempotent** (safe to re-run). Use these patterns:
+
    ```sql
+   -- Tables
    CREATE TABLE IF NOT EXISTS my_table (...);
+
+   -- Columns
    ALTER TABLE my_table ADD COLUMN IF NOT EXISTS my_col TEXT;
+
+   -- Indexes
+   CREATE INDEX IF NOT EXISTS idx_name ON my_table(col);
+
+   -- Constraints (no IF NOT EXISTS in PostgreSQL — use DO block)
    DO $$ BEGIN
-     IF NOT EXISTS (
-       SELECT 1 FROM pg_policies WHERE policyname = 'my_policy'
-     ) THEN
-       CREATE POLICY "my_policy" ON my_table FOR SELECT USING (true);
+     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'my_constraint') THEN
+       ALTER TABLE my_table ADD CONSTRAINT my_constraint CHECK (...);
      END IF;
    END $$;
+
+   -- Policies (drop + recreate)
+   DROP POLICY IF EXISTS "my_policy" ON my_table;
+   CREATE POLICY "my_policy" ON my_table FOR SELECT USING (true);
+
+   -- Triggers (drop + recreate)
+   DROP TRIGGER IF EXISTS my_trigger ON my_table;
+   CREATE TRIGGER my_trigger ...;
+
+   -- Functions (always idempotent)
+   CREATE OR REPLACE FUNCTION my_func() ...;
+
+   -- Seed data (use WHERE NOT EXISTS or ON CONFLICT)
+   INSERT INTO my_table (name) SELECT 'value'
+     WHERE NOT EXISTS (SELECT 1 FROM my_table WHERE name = 'value');
    ```
+
 3. **Never modify** an existing migration that has already run on production
 4. Test by pushing your branch and verifying the Supabase preview branch applies cleanly
 

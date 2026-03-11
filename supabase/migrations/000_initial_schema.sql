@@ -30,8 +30,13 @@ CREATE TABLE IF NOT EXISTS guests (
 -- RLS
 ALTER TABLE guests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read" ON guests;
 CREATE POLICY "Allow public read" ON guests FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow insert for RSVP" ON guests;
 CREATE POLICY "Allow insert for RSVP" ON guests FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update for RSVP" ON guests;
 CREATE POLICY "Allow update for RSVP" ON guests FOR UPDATE USING (true);
 
 -- ============================================================
@@ -47,6 +52,7 @@ CREATE TABLE IF NOT EXISTS activities (
 
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read activities" ON activities;
 CREATE POLICY "Allow public read activities" ON activities FOR SELECT USING (true);
 
 -- ============================================================
@@ -61,12 +67,19 @@ CREATE TABLE IF NOT EXISTS guest_activity_interests (
 
 ALTER TABLE guest_activity_interests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read guest_activity_interests" ON guest_activity_interests;
 CREATE POLICY "Allow public read guest_activity_interests"
   ON guest_activity_interests FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert guest_activity_interests" ON guest_activity_interests;
 CREATE POLICY "Allow public insert guest_activity_interests"
   ON guest_activity_interests FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public update guest_activity_interests" ON guest_activity_interests;
 CREATE POLICY "Allow public update guest_activity_interests"
   ON guest_activity_interests FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Allow public delete guest_activity_interests" ON guest_activity_interests;
 CREATE POLICY "Allow public delete guest_activity_interests"
   ON guest_activity_interests FOR DELETE USING (true);
 
@@ -85,4 +98,5 @@ CREATE TABLE IF NOT EXISTS photos (
 
 ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public read photos" ON photos;
 CREATE POLICY "Allow public read photos" ON photos FOR SELECT USING (true);
