@@ -12,3 +12,5 @@ pre-push:
       run: bun run --filter=web typecheck
     test:
       run: bun run --filter=web test
+    knip:
+      run: bun run knip
