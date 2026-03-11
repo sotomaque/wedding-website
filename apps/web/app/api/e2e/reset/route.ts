@@ -14,13 +14,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Guard 2: Verify DATABASE_URL contains branch/pooler indicator (not production)
+  // Guard 2: Verify database URL does not point to production
   // Supabase branching uses a different project ref for preview branches
-  const dbUrl = process.env.DATABASE_URL ?? "";
+  const dbUrl = env.POSTGRES_URL ?? env.DATABASE_URL ?? "";
   const prodProjectRef = "yjezfveooxxggzsnaray";
   if (dbUrl.includes(prodProjectRef)) {
     console.error(
-      "SAFETY: Refusing to reset — DATABASE_URL points to production project",
+      "SAFETY: Refusing to reset — database URL points to production project",
     );
     return NextResponse.json(
       { error: "Refusing to reset production database" },

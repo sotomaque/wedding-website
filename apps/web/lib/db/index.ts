@@ -14,7 +14,7 @@ const createPool = () => {
   // postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
 
   // Supabase Vercel integration sets POSTGRES_URL; fallback to DATABASE_URL for local dev
-  const connectionString = process.env.POSTGRES_URL ?? env.DATABASE_URL;
+  const connectionString = env.POSTGRES_URL ?? env.DATABASE_URL;
 
   if (!connectionString) {
     throw new Error(

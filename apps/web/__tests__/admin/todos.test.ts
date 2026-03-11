@@ -8,6 +8,7 @@ mock.module("next/cache", () => ({
 // Mock env
 mock.module("@/env", () => ({
   env: {
+    POSTGRES_URL: undefined,
     DATABASE_URL: "postgresql://test",
     ADMIN_EMAILS: "admin@example.com",
   },

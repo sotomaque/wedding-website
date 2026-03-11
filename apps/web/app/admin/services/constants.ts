@@ -28,7 +28,7 @@ const UPLOADTHING_CONSOLE = "https://uploadthing.com/dashboard";
 
 // Supabase URL comes from env since it's project-specific
 export const getSupabaseConsole = () => {
-  const dbUrl = env.DATABASE_URL;
+  const dbUrl = env.POSTGRES_URL ?? env.DATABASE_URL;
   if (!dbUrl) return "https://supabase.com/dashboard";
 
   // Extract project ref from DATABASE_URL
