@@ -6,20 +6,30 @@ ALTER TABLE guests
 ADD COLUMN IF NOT EXISTS first_name TEXT,
 ADD COLUMN IF NOT EXISTS last_name TEXT;
 
--- Migrate existing name data by splitting on first space
--- This assumes format "FirstName LastName"
-UPDATE guests
-SET
-  first_name = SPLIT_PART(name, ' ', 1),
-  last_name = CASE
-    WHEN POSITION(' ' IN name) > 0 THEN SUBSTRING(name FROM POSITION(' ' IN name) + 1)
-    ELSE ''
-  END
-WHERE name IS NOT NULL AND first_name IS NULL;
+-- Migrate existing name data by splitting on first space (only if name column still exists)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'guests' AND column_name = 'name'
+  ) THEN
+    UPDATE guests
+    SET
+      first_name = SPLIT_PART(name, ' ', 1),
+      last_name = CASE
+        WHEN POSITION(' ' IN name) > 0 THEN SUBSTRING(name FROM POSITION(' ' IN name) + 1)
+        ELSE ''
+      END
+    WHERE name IS NOT NULL AND first_name IS NULL;
+  END IF;
+END $$;
 
--- Make first_name required (after migration)
-ALTER TABLE guests
-ALTER COLUMN first_name SET NOT NULL;
+-- Make first_name required (after migration) — idempotent, safe to re-run
+DO $$
+BEGIN
+  ALTER TABLE guests ALTER COLUMN first_name SET NOT NULL;
+EXCEPTION WHEN others THEN NULL;
+END $$;
 
 -- Drop the old name column
 ALTER TABLE guests
