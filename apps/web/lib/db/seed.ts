@@ -2,35 +2,35 @@ import { sql } from "kysely";
 import { db } from "./index";
 
 /**
- * Deterministic seed data IDs for E2E tests.
- * Use these constants in test specs to reference known entities.
+ * Deterministic seed data for E2E tests.
+ * IDs are generated fresh each reset; use invite codes and names to reference entities in tests.
  */
 export const SEED = {
   parties: {
     single: {
-      id: "00000000-0000-4000-a000-000000000001",
+      id: crypto.randomUUID(),
       inviteCode: "E2E1-SNGL",
     },
     family: {
-      id: "00000000-0000-4000-a000-000000000002",
+      id: crypto.randomUUID(),
       inviteCode: "E2E2-FMLY",
     },
   },
   guests: {
     alice: {
-      id: "00000000-0000-4000-b000-000000000001",
+      id: crypto.randomUUID(),
       firstName: "E2E-Alice",
       lastName: "TestGuest",
       email: "e2e-alice@example.com",
     },
     bob: {
-      id: "00000000-0000-4000-b000-000000000002",
+      id: crypto.randomUUID(),
       firstName: "E2E-Bob",
       lastName: "TestGuest",
       email: "e2e-bob@example.com",
     },
     carol: {
-      id: "00000000-0000-4000-b000-000000000003",
+      id: crypto.randomUUID(),
       firstName: "E2E-Carol",
       lastName: "TestChild",
       email: null,
@@ -38,15 +38,15 @@ export const SEED = {
   },
   events: {
     ceremony: {
-      id: "00000000-0000-4000-c000-000000000001",
+      id: crypto.randomUUID(),
       name: "Ceremony",
     },
     reception: {
-      id: "00000000-0000-4000-c000-000000000002",
+      id: crypto.randomUUID(),
       name: "Reception",
     },
   },
-} as const;
+};
 
 /**
  * Truncate all tables in the database.
@@ -77,6 +77,27 @@ async function truncateAll() {
  * Seed the database with deterministic E2E test data.
  */
 async function seedData() {
+  // Events first (needed before guests, since guest insert trigger creates invites for default events)
+  await db
+    .insertInto("events")
+    .values([
+      {
+        id: SEED.events.ceremony.id,
+        name: SEED.events.ceremony.name,
+        description: "Wedding ceremony",
+        is_default: true,
+        display_order: 1,
+      },
+      {
+        id: SEED.events.reception.id,
+        name: SEED.events.reception.name,
+        description: "Wedding reception",
+        is_default: true,
+        display_order: 2,
+      },
+    ])
+    .execute();
+
   // Parties
   await db
     .insertInto("parties")
@@ -98,7 +119,7 @@ async function seedData() {
     ])
     .execute();
 
-  // Guests
+  // Guests (trigger `invite_new_guest_to_default_events` auto-creates guest_event_invites)
   await db
     .insertInto("guests")
     .values([
@@ -159,50 +180,11 @@ async function seedData() {
     ])
     .execute();
 
-  // Events
+  // Update Bob & Carol's event invites to "yes" (trigger created them as "pending")
   await db
-    .insertInto("events")
-    .values([
-      {
-        id: SEED.events.ceremony.id,
-        name: SEED.events.ceremony.name,
-        description: "Wedding ceremony",
-        is_default: true,
-        display_order: 1,
-      },
-      {
-        id: SEED.events.reception.id,
-        name: SEED.events.reception.name,
-        description: "Wedding reception",
-        is_default: true,
-        display_order: 2,
-      },
-    ])
-    .execute();
-
-  // Guest event invites
-  await db
-    .insertInto("guest_event_invites")
-    .values([
-      {
-        guest_id: SEED.guests.alice.id,
-        event_id: SEED.events.ceremony.id,
-      },
-      {
-        guest_id: SEED.guests.alice.id,
-        event_id: SEED.events.reception.id,
-      },
-      {
-        guest_id: SEED.guests.bob.id,
-        event_id: SEED.events.ceremony.id,
-        rsvp_status: "yes",
-      },
-      {
-        guest_id: SEED.guests.bob.id,
-        event_id: SEED.events.reception.id,
-        rsvp_status: "yes",
-      },
-    ])
+    .updateTable("guest_event_invites")
+    .set({ rsvp_status: "yes" })
+    .where("guest_id", "in", [SEED.guests.bob.id, SEED.guests.carol.id])
     .execute();
 
   // Wedding todos
