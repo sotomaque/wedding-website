@@ -408,7 +408,9 @@ test.describe("RSVP - Multi-Guest Party", () => {
     ).toBeVisible({ timeout: 10000 });
 
     // Should show attendance summary text like "X of Y guests attending"
-    await expect(page.getByText(/\d+ of \d+ guests attending/i)).toBeVisible();
+    await expect(
+      page.getByText(/\d+ of \d+ guests attending/i).first(),
+    ).toBeVisible();
   });
 });
 

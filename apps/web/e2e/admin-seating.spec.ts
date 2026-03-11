@@ -99,7 +99,7 @@ test.describe("Seating Chart Management - Navigation", () => {
   test("displays seating charts page", async ({ page }) => {
     // Should show the seating charts heading
     await expect(
-      page.getByRole("heading", { name: /seating charts/i }),
+      page.getByRole("heading", { name: "Seating Charts", exact: true }),
     ).toBeVisible();
 
     // Should show New Chart button
@@ -119,7 +119,7 @@ test.describe("Seating Chart Management - Navigation", () => {
     // Should be on seating page
     await expect(page).toHaveURL(/\/admin\/seating/);
     await expect(
-      page.getByRole("heading", { name: /seating charts/i }),
+      page.getByRole("heading", { name: "Seating Charts", exact: true }),
     ).toBeVisible();
   });
 });
