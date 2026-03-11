@@ -1,7 +1,7 @@
 -- Migration: Add gifts table for Stripe webhook tracking
 -- Tracks donations made through Stripe payment links
 
-CREATE TABLE gifts (
+CREATE TABLE IF NOT EXISTS gifts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Stripe data
@@ -35,15 +35,15 @@ CREATE TABLE gifts (
 );
 
 -- Create indexes
-CREATE INDEX idx_gifts_donor_email ON gifts(donor_email);
-CREATE INDEX idx_gifts_guest_id ON gifts(guest_id);
-CREATE INDEX idx_gifts_stripe_session ON gifts(stripe_checkout_session_id);
-CREATE INDEX idx_gifts_stripe_payment_intent ON gifts(stripe_payment_intent_id);
-CREATE INDEX idx_gifts_stripe_charge ON gifts(stripe_charge_id);
-CREATE INDEX idx_gifts_gift_type ON gifts(gift_type);
-CREATE INDEX idx_gifts_status ON gifts(status);
-CREATE INDEX idx_gifts_thank_you_pending ON gifts(thank_you_email_sent) WHERE thank_you_email_sent = false;
-CREATE INDEX idx_gifts_created_at ON gifts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_gifts_donor_email ON gifts(donor_email);
+CREATE INDEX IF NOT EXISTS idx_gifts_guest_id ON gifts(guest_id);
+CREATE INDEX IF NOT EXISTS idx_gifts_stripe_session ON gifts(stripe_checkout_session_id);
+CREATE INDEX IF NOT EXISTS idx_gifts_stripe_payment_intent ON gifts(stripe_payment_intent_id);
+CREATE INDEX IF NOT EXISTS idx_gifts_stripe_charge ON gifts(stripe_charge_id);
+CREATE INDEX IF NOT EXISTS idx_gifts_gift_type ON gifts(gift_type);
+CREATE INDEX IF NOT EXISTS idx_gifts_status ON gifts(status);
+CREATE INDEX IF NOT EXISTS idx_gifts_thank_you_pending ON gifts(thank_you_email_sent) WHERE thank_you_email_sent = false;
+CREATE INDEX IF NOT EXISTS idx_gifts_created_at ON gifts(created_at DESC);
 
 -- Add comments
 COMMENT ON TABLE gifts IS 'Tracks donations received via Stripe payment links';

@@ -40,35 +40,36 @@ COMMENT ON TABLE events IS 'Wedding events that guests can be invited to';
 COMMENT ON COLUMN events.is_default IS 'If true, all guests are automatically invited to this event';
 COMMENT ON TABLE guest_event_invites IS 'Junction table tracking which guests are invited to which events';
 
--- Seed with the two main wedding events
+-- Seed with the two main wedding events (idempotent: skip if already exists)
 INSERT INTO events (name, description, event_date, start_time, end_time, location_name, location_address, latitude, longitude, is_default, display_order)
-VALUES
-  (
+SELECT
     'Wedding Ceremony',
     'Join us as we exchange vows at the beautiful Immaculata Church',
-    '2026-07-30',
-    '16:00:00',
-    '17:00:00',
+    '2026-07-30'::DATE,
+    '16:00:00'::TIME,
+    '17:00:00'::TIME,
     'The Immaculata Church',
     '5998 Alcalá Park, San Diego, CA 92110',
     32.7719,
     -117.1902,
     true,
     1
-  ),
-  (
+WHERE NOT EXISTS (SELECT 1 FROM events WHERE name = 'Wedding Ceremony');
+
+INSERT INTO events (name, description, event_date, start_time, end_time, location_name, location_address, latitude, longitude, is_default, display_order)
+SELECT
     'Wedding Reception',
     'Dinner, Dancing & Celebration',
-    '2026-07-30',
-    '18:00:00',
-    '22:00:00',
+    '2026-07-30'::DATE,
+    '18:00:00'::TIME,
+    '22:00:00'::TIME,
     'Headquarters at Seaport',
     '789 W Harbor Dr Suite 148, San Diego, CA 92101',
     32.7091,
     -117.1689,
     true,
     2
-  );
+WHERE NOT EXISTS (SELECT 1 FROM events WHERE name = 'Wedding Reception');
 
 -- Create a function to automatically invite all guests to default events
 CREATE OR REPLACE FUNCTION invite_all_guests_to_default_events()

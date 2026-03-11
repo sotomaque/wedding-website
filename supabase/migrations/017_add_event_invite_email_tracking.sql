@@ -3,9 +3,9 @@
 
 -- Add email tracking fields to guest_event_invites
 ALTER TABLE guest_event_invites
-ADD COLUMN email_sent BOOLEAN DEFAULT false,
-ADD COLUMN email_sent_at TIMESTAMPTZ NULL,
-ADD COLUMN email_resend_count INTEGER DEFAULT 0;
+ADD COLUMN IF NOT EXISTS email_sent BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMPTZ NULL,
+ADD COLUMN IF NOT EXISTS email_resend_count INTEGER DEFAULT 0;
 
 -- Add comments
 COMMENT ON COLUMN guest_event_invites.email_sent IS 'Whether invitation email has been sent for this event';

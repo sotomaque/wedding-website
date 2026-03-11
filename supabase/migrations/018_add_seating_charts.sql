@@ -2,7 +2,7 @@
 -- Creates tables for seating charts, tables, and guest assignments
 
 -- Seating Charts table (stores chart configurations)
-CREATE TABLE seating_charts (
+CREATE TABLE IF NOT EXISTS seating_charts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   default_seats_per_table INTEGER NOT NULL DEFAULT 8,
@@ -13,7 +13,7 @@ CREATE TABLE seating_charts (
 );
 
 -- Seating Tables table (stores individual table definitions)
-CREATE TABLE seating_tables (
+CREATE TABLE IF NOT EXISTS seating_tables (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   seating_chart_id UUID NOT NULL REFERENCES seating_charts(id) ON DELETE CASCADE,
   table_number INTEGER NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE seating_tables (
 );
 
 -- Guest Table Assignments (junction table)
-CREATE TABLE guest_table_assignments (
+CREATE TABLE IF NOT EXISTS guest_table_assignments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   seating_table_id UUID NOT NULL REFERENCES seating_tables(id) ON DELETE CASCADE,
   guest_id UUID NOT NULL REFERENCES guests(id) ON DELETE CASCADE,
@@ -39,10 +39,10 @@ CREATE TABLE guest_table_assignments (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_seating_charts_is_active ON seating_charts(is_active);
-CREATE INDEX idx_seating_tables_chart_id ON seating_tables(seating_chart_id);
-CREATE INDEX idx_guest_table_assignments_table_id ON guest_table_assignments(seating_table_id);
-CREATE INDEX idx_guest_table_assignments_guest_id ON guest_table_assignments(guest_id);
+CREATE INDEX IF NOT EXISTS idx_seating_charts_is_active ON seating_charts(is_active);
+CREATE INDEX IF NOT EXISTS idx_seating_tables_chart_id ON seating_tables(seating_chart_id);
+CREATE INDEX IF NOT EXISTS idx_guest_table_assignments_table_id ON guest_table_assignments(seating_table_id);
+CREATE INDEX IF NOT EXISTS idx_guest_table_assignments_guest_id ON guest_table_assignments(guest_id);
 
 -- Add comments for documentation
 COMMENT ON TABLE seating_charts IS 'Stores seating chart configurations';
