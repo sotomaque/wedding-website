@@ -27,7 +27,8 @@ const createPool = () => {
 
   return new Pool({
     connectionString,
-    max: 10, // Maximum number of clients in the pool
+    max: 10,
+    ssl: { rejectUnauthorized: false },
   });
 };
 
