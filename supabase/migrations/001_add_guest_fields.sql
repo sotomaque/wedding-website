@@ -8,10 +8,9 @@ ADD COLUMN list TEXT NOT NULL DEFAULT 'a' CHECK (list IN ('a', 'b')),
 ADD COLUMN is_plus_one BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN primary_guest_id UUID REFERENCES guests(id) ON DELETE CASCADE;
 
--- Drop the old plus_one fields (we'll use linked records instead)
+-- Drop the old plus_one_name (will be re-added below for temp storage)
 ALTER TABLE guests
-DROP COLUMN IF EXISTS plus_one_name,
-DROP COLUMN IF EXISTS plus_one_allowed;
+DROP COLUMN IF EXISTS plus_one_name;
 
 -- Add new plus_one_name column (for when name is provided but record not created yet)
 ALTER TABLE guests
