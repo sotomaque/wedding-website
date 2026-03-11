@@ -240,6 +240,16 @@ export interface GuestHotelInterestsTable {
   updated_at: ColumnType<Date, string | undefined, string>;
 }
 
+// Wedding Todos table
+export interface WeddingTodosTable {
+  id: Generated<string>;
+  title: string;
+  is_completed: ColumnType<boolean, boolean | undefined, boolean>;
+  display_order: ColumnType<number, number | undefined, number>;
+  created_at: ColumnType<Date, string | undefined, never>;
+  updated_at: ColumnType<Date, string | undefined, string>;
+}
+
 // Database interface
 export interface Database {
   guests: GuestsTable;
@@ -255,4 +265,5 @@ export interface Database {
   gifts: GiftsTable;
   hotels: HotelsTable;
   guest_hotel_interests: GuestHotelInterestsTable;
+  wedding_todos: WeddingTodosTable;
 }

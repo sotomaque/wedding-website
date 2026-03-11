@@ -19,6 +19,7 @@ const adminLinks: AdminNavLink[] = [
   { href: "/admin/seating", label: "Seating" },
   { href: "/admin/templates", label: "Templates" },
   { href: "/admin/photos", label: "Photos" },
+  { href: "/admin/todos", label: "Todos" },
   { href: "/admin/services", label: "Services" },
 ];
 
