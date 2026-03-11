@@ -6,7 +6,11 @@
       "ignoreDependencies": ["supabase"]
     },
     "apps/web": {
-      "ignoreDependencies": ["@t3-oss/env-nextjs"],
+      "ignoreDependencies": [
+        "@t3-oss/env-nextjs",
+        "@tailwindcss/postcss",
+        "postcss"
+      ],
       "entry": [
         "app/**/*.{ts,tsx}",
         "lib/**/*.{ts,tsx}",
@@ -23,15 +27,13 @@
       "playwright": {
         "config": ["playwright.config.ts"],
         "entry": ["e2e/**/*.{ts,spec.ts}"]
-      },
-      "ignore": ["lib/email/templates/**"]
+      }
     },
     "packages/ui": {
-      "ignoreDependencies": ["@tailwindcss/postcss", "postcss-load-config"],
-      "ignore": ["src/styles/**"]
+      "ignoreDependencies": ["postcss-load-config", "postcss"]
     },
     "packages/typescript-config": {
-      "ignore": ["**/*"],
+      "entry": ["*.json"],
       "ignoreDependencies": ["next"]
     }
   }
