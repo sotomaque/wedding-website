@@ -12,6 +12,7 @@
         "CLERK_SECRET_KEY",
         "ADMIN_EMAILS",
         "DATABASE_URL",
+        "POSTGRES_URL",
         "UPLOADTHING_TOKEN",
         "OPENAI_API_KEY",
         "STRIPE_SECRET_KEY",
@@ -29,7 +30,9 @@
         "NEXT_PUBLIC_STRIPE_LINK_HONEYMOON",
         "NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS",
         "SKIP_ENV_VALIDATION",
-        "E2E_TEST_MODE"
+        "E2E_TEST_MODE",
+        "E2E_RESET_SECRET",
+        "VERCEL_ENV"
       ]
     },
     "lint": {
