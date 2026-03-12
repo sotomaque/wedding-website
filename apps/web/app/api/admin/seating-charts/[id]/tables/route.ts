@@ -3,8 +3,14 @@ import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 
 /**
- * POST /api/admin/seating-charts/[id]/tables
- * Add a table to a seating chart
+ * Add table to seating chart
+ * @description Create a new table in a seating chart with optional number, name, capacity, position, and shape
+ * @pathParams IdParams
+ * @body CreateTableBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function POST(
   request: NextRequest,
@@ -85,8 +91,13 @@ export async function POST(
 }
 
 /**
- * DELETE /api/admin/seating-charts/[id]/tables
- * Delete all tables from a seating chart (bulk delete)
+ * Delete all tables from chart
+ * @description Bulk delete all tables from a seating chart
+ * @pathParams IdParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function DELETE(
   _request: NextRequest,

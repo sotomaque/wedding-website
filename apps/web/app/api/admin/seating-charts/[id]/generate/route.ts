@@ -15,8 +15,14 @@ import type {
 } from "@/lib/types/seating";
 
 /**
- * POST /api/admin/seating-charts/[id]/generate
  * Generate AI seating suggestions
+ * @description Use OpenAI to generate intelligent seating assignments based on guest relationships, sides, and family groups
+ * @pathParams IdParams
+ * @body GenerateSeatingBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function POST(
   request: NextRequest,

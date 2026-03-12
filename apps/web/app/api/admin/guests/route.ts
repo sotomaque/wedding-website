@@ -7,8 +7,12 @@ import { sendEmail } from "@/lib/email/resend-client";
 import { generateInviteCode } from "@/lib/utils/invite-code";
 
 /**
- * GET /api/admin/guests
- * Fetch all guests (admin only)
+ * List all guests
+ * @description Fetch all guests ordered by creation date (admin only)
+ * @response 200:GuestListResponse
+ * @auth bearer
+ * @tag Admin - Guests
+ * @openapi
  */
 export async function GET() {
   try {
@@ -46,8 +50,13 @@ export async function GET() {
 }
 
 /**
- * POST /api/admin/guests
- * Create a new guest and send invite email (admin only)
+ * Create a guest
+ * @description Create a new guest, optionally with a plus-one, and send invitation email (admin only)
+ * @body CreateGuestBody
+ * @response 201:CreateGuestResponse
+ * @auth bearer
+ * @tag Admin - Guests
+ * @openapi
  */
 export async function POST(request: NextRequest) {
   try {
@@ -312,8 +321,13 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * DELETE /api/admin/guests?id=xxx
- * Delete a guest (admin only)
+ * Delete a guest
+ * @description Delete a guest by ID passed as query parameter (admin only)
+ * @params DeleteGuestParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Guests
+ * @openapi
  */
 export async function DELETE(request: NextRequest) {
   try {

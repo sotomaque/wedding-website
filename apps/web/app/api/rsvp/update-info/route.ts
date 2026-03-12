@@ -2,8 +2,12 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 /**
- * PATCH /api/rsvp/update-info
- * Update guest contact information (non-admin route)
+ * Update guest contact info
+ * @description Update guest contact information including mailing address, phone, WhatsApp, and preferred contact method
+ * @body UpdateGuestInfoBody
+ * @response 200:SuccessResponse
+ * @tag RSVP
+ * @openapi
  */
 export async function PATCH(request: NextRequest) {
   try {

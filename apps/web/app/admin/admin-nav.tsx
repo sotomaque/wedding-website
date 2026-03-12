@@ -21,6 +21,7 @@ const adminLinks: AdminNavLink[] = [
   { href: "/admin/photos", label: "Photos" },
   { href: "/admin/todos", label: "Todos" },
   { href: "/admin/services", label: "Services" },
+  { href: "/admin/api-docs", label: "API Docs" },
 ];
 
 export function AdminNav() {

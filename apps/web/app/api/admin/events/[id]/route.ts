@@ -6,8 +6,13 @@ import { db } from "@/lib/db";
 type RouteContext = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/admin/events/[id]
- * Get a single event with its invites (admin only)
+ * Get event by ID
+ * @description Get a single event with RSVP counts (admin only)
+ * @pathParams IdParams
+ * @response 200:EventDetailResponse
+ * @auth bearer
+ * @tag Admin - Events
+ * @openapi
  */
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
@@ -83,8 +88,14 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 }
 
 /**
- * PATCH /api/admin/events/[id]
- * Update an event (admin only)
+ * Update an event
+ * @description Update event details. Setting isDefault to true auto-invites all guests (admin only)
+ * @pathParams IdParams
+ * @body UpdateEventBody
+ * @response 200:EventDetailResponse
+ * @auth bearer
+ * @tag Admin - Events
+ * @openapi
  */
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
@@ -187,8 +198,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 /**
- * DELETE /api/admin/events/[id]
- * Delete an event (admin only)
+ * Delete an event
+ * @description Delete an event and cascade delete all invites (admin only)
+ * @pathParams IdParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Events
+ * @openapi
  */
 export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {

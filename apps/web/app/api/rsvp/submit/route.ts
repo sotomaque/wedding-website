@@ -5,8 +5,12 @@ import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
 /**
- * POST /api/rsvp/submit
- * Submit RSVP response
+ * Submit RSVP
+ * @description Submit an RSVP response for a guest party. Updates all guests with the given invite code
+ * @body RsvpSubmitBody
+ * @response 200:RsvpSubmitResponse
+ * @tag RSVP
+ * @openapi
  */
 export async function POST(request: NextRequest) {
   try {

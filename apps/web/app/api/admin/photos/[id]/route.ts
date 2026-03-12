@@ -6,8 +6,14 @@ import { db } from "@/lib/db";
 type RouteContext = { params: Promise<{ id: string }> };
 
 /**
- * PATCH /api/admin/photos/[id]
- * Update a photo (admin only)
+ * Update a photo
+ * @description Update photo metadata such as alt text, description, display order, or active status
+ * @pathParams IdParams
+ * @body UpdatePhotoBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Photos
+ * @openapi
  */
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
@@ -67,8 +73,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 /**
- * DELETE /api/admin/photos/[id]
- * Delete a photo (admin only)
+ * Delete a photo
+ * @description Permanently delete a photo by its ID
+ * @pathParams IdParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Photos
+ * @openapi
  */
 export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {

@@ -3,8 +3,12 @@ import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 
 /**
- * GET /api/admin/seating-charts
- * Fetch all seating charts
+ * List seating charts
+ * @description Fetch all seating charts ordered by last updated
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function GET() {
   try {
@@ -33,8 +37,13 @@ export async function GET() {
 }
 
 /**
- * POST /api/admin/seating-charts
- * Create a new seating chart
+ * Create seating chart
+ * @description Create a new seating chart with a name, default seats per table, and optional notes
+ * @body CreateSeatingChartBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function POST(request: NextRequest) {
   try {

@@ -1,0 +1,24 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Wedding Website API",
+    "version": "1.0.0",
+    "description": "API for the wedding website - manage guests, events, RSVPs, gifts, photos, and more"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development server"
+    }
+  ],
+  "apiDir": "app/api",
+  "routerType": "app",
+  "schemaDir": "lib/openapi-schemas",
+  "schemaType": "zod",
+  "outputFile": "openapi.json",
+  "outputDir": "./public",
+  "docsUrl": "/admin/api-docs",
+  "includeOpenApiRoutes": true,
+  "ignoreRoutes": ["/api/uploadthing", "/api/webhooks/**", "/api/e2e/**"],
+  "debug": false
+}

@@ -8,8 +8,14 @@ import { getEventInvitationEmail } from "@/lib/email/templates/event-invitation"
 type RouteContext = { params: Promise<{ id: string }> };
 
 /**
- * POST /api/admin/events/[id]/send-invites
- * Send invitation emails to selected guests for this event (admin only)
+ * Send event invitation emails
+ * @description Send invitation emails to selected guests for this event, optionally using a Resend template
+ * @pathParams IdParams
+ * @body SendEventInvitesBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Events
+ * @openapi
  */
 export async function POST(request: NextRequest, context: RouteContext) {
   try {

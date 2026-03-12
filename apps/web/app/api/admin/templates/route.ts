@@ -3,7 +3,14 @@ import { NextResponse } from "next/server";
 import { env } from "@/env";
 import { getResendClient } from "@/lib/email/resend-client";
 
-// GET /api/admin/templates - List all templates
+/**
+ * List email templates
+ * @description Fetch all email templates from Resend
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Templates
+ * @openapi
+ */
 export async function GET(): Promise<NextResponse> {
   try {
     const user = await currentUser();
@@ -47,7 +54,15 @@ export async function GET(): Promise<NextResponse> {
   }
 }
 
-// POST /api/admin/templates - Create a new template
+/**
+ * Create email template
+ * @description Create a new email template in Resend with optional variables and auto-publish
+ * @body CreateTemplateBody
+ * @response 201:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Templates
+ * @openapi
+ */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const user = await currentUser();

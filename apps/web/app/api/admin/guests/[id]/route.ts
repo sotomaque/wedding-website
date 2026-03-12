@@ -24,8 +24,13 @@ async function deleteEmptyParty(partyId: string): Promise<void> {
 }
 
 /**
- * GET /api/admin/guests/[id]
- * Get a guest and their plus-one if they have one (admin only)
+ * Get a guest by ID
+ * @description Get a guest and their plus-one if they have one (admin only)
+ * @pathParams IdParams
+ * @response 200:GuestDetailResponse
+ * @auth bearer
+ * @tag Admin - Guests
+ * @openapi
  */
 export async function GET(
   _request: NextRequest,
@@ -80,8 +85,14 @@ export async function GET(
 }
 
 /**
- * PATCH /api/admin/guests/[id]
- * Update a guest (admin only)
+ * Update a guest
+ * @description Update a guest's details, manage plus-ones, and handle party reassignment (admin only)
+ * @pathParams IdParams
+ * @body UpdateGuestBody
+ * @response 200:UpdateGuestResponse
+ * @auth bearer
+ * @tag Admin - Guests
+ * @openapi
  */
 export async function PATCH(
   request: NextRequest,

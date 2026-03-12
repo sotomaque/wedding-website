@@ -4,8 +4,12 @@ import { env } from "@/env";
 import { db } from "@/lib/db";
 
 /**
- * GET /api/admin/photos
- * Fetch all photos (admin only)
+ * List all photos
+ * @description Fetch all photos including inactive ones (admin only)
+ * @response 200:PhotoListResponse
+ * @auth bearer
+ * @tag Admin - Photos
+ * @openapi
  */
 export async function GET() {
   try {
@@ -43,8 +47,13 @@ export async function GET() {
 }
 
 /**
- * POST /api/admin/photos
- * Create a new photo (admin only)
+ * Create a photo
+ * @description Add a new photo to the gallery (admin only)
+ * @body CreatePhotoBody
+ * @response 201:CreatePhotoResponse
+ * @auth bearer
+ * @tag Admin - Photos
+ * @openapi
  */
 export async function POST(request: NextRequest) {
   try {

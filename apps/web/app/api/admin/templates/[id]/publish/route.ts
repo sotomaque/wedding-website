@@ -7,7 +7,15 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// POST /api/admin/templates/[id]/publish - Publish a template
+/**
+ * Publish email template
+ * @description Publish a draft email template in Resend, making it available for sending
+ * @pathParams IdParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Templates
+ * @openapi
+ */
 export async function POST(
   _request: Request,
   { params }: RouteParams,

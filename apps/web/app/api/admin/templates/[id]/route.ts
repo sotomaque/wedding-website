@@ -7,7 +7,15 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// GET /api/admin/templates/[id] - Get a specific template
+/**
+ * Get email template
+ * @description Fetch a specific email template by ID from Resend
+ * @pathParams IdParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Templates
+ * @openapi
+ */
 export async function GET(
   _request: Request,
   { params }: RouteParams,
@@ -56,7 +64,16 @@ export async function GET(
   }
 }
 
-// PATCH /api/admin/templates/[id] - Update a template
+/**
+ * Update email template
+ * @description Update an existing email template's name, subject, or HTML content
+ * @pathParams IdParams
+ * @body UpdateTemplateBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Templates
+ * @openapi
+ */
 export async function PATCH(
   request: Request,
   { params }: RouteParams,
@@ -124,7 +141,15 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/admin/templates/[id] - Delete a template
+/**
+ * Delete email template
+ * @description Permanently delete an email template from Resend
+ * @pathParams IdParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Templates
+ * @openapi
+ */
 export async function DELETE(
   _request: Request,
   { params }: RouteParams,

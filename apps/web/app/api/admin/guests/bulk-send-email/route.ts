@@ -6,14 +6,13 @@ import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
 /**
- * POST /api/admin/guests/bulk-send-email
- * Send invitation emails to multiple guests (admin only)
- * Uses the "wedding-invitation" Resend template by default
- *
- * Body:
- * - guestIds: string[] - Array of guest IDs to send emails to
- * - templateId?: string - Optional Resend template ID/alias to override default
- * - subject?: string - Optional custom subject
+ * Bulk send invitation emails
+ * @description Send wedding invitation emails to multiple guests at once using the default or a custom Resend template
+ * @body BulkSendEmailBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Guests
+ * @openapi
  */
 export async function POST(request: NextRequest) {
   try {
