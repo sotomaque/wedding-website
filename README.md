@@ -17,6 +17,7 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 | Payments       | Stripe                              |
 | File Uploads   | UploadThing                         |
 | Linting        | Biome                               |
+| API Docs       | next-openapi-gen + Swagger UI       |
 | CI             | GitHub Actions                      |
 | Hosting        | Vercel                              |
 
@@ -40,6 +41,14 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 - Hotel management
 - Wedding todo list
 - Service links dashboard (GitHub, Vercel, Supabase, Clerk, Stripe, Resend)
+
+### API Documentation (`/admin/api-docs`)
+
+Interactive API documentation powered by [next-openapi-gen](https://github.com/nicobao/next-openapi-gen) and [Swagger UI](https://swagger.io/tools/swagger-ui/). The OpenAPI spec is auto-generated from JSDoc annotations across all 30 API route handlers.
+
+- **Swagger UI** - Browse and test every endpoint from the browser
+- **Quick API Tester** - Built-in panel with pre-configured sample requests for health checks, RSVP, guests, events, gifts, and more
+- **Regenerate the spec** with `bun run generate:openapi` (outputs `public/openapi.json`)
 
 ## Monorepo Structure
 
