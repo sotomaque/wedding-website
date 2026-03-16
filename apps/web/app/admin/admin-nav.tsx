@@ -1,29 +1,111 @@
 "use client";
 
 import { SignOutButton } from "@clerk/nextjs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
 import { cn } from "@workspace/ui/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-interface AdminNavLink {
+interface NavLink {
+  type: "link";
   href: string;
   label: string;
+  external?: boolean;
 }
 
-const adminLinks: AdminNavLink[] = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/guests", label: "Guests" },
-  { href: "/admin/gifts", label: "Gifts" },
-  { href: "/admin/events", label: "Events" },
-  { href: "/admin/seating", label: "Seating" },
-  { href: "/admin/templates", label: "Templates" },
-  { href: "/admin/photos", label: "Photos" },
-  { href: "/admin/photos/guest", label: "Guest Photos" },
-  { href: "/admin/todos", label: "Todos" },
-  { href: "/admin/services", label: "Services" },
-  { href: "/admin/api-docs", label: "API Docs" },
+interface NavGroup {
+  type: "group";
+  label: string;
+  links: Omit<NavLink, "type">[];
+}
+
+type NavItem = NavLink | NavGroup;
+
+const navItems: NavItem[] = [
+  {
+    type: "group",
+    label: "Guests",
+    links: [
+      { href: "/admin/guests", label: "Management" },
+      { href: "/admin/seating", label: "Seating" },
+    ],
+  },
+  {
+    type: "group",
+    label: "Photos",
+    links: [
+      { href: "/admin/photos", label: "Main Photos" },
+      { href: "/admin/photos/guest", label: "Guest Photos" },
+      { href: "/slideshow", label: "Slideshow ↗", external: true },
+    ],
+  },
+  { type: "link", href: "/admin/events", label: "Events" },
+  { type: "link", href: "/admin/gifts", label: "Gifts" },
+  { type: "link", href: "/admin/templates", label: "Templates" },
+  { type: "link", href: "/admin/todos", label: "Todos" },
+  {
+    type: "group",
+    label: "Admin",
+    links: [
+      { href: "/admin/services", label: "Services" },
+      { href: "/admin/api-docs", label: "API Docs" },
+    ],
+  },
 ];
+
+function NavDropdown({
+  group,
+  pathname,
+}: {
+  group: Omit<NavGroup, "type">;
+  pathname: string;
+}) {
+  const isActive = group.links.some((l) => !l.external && pathname === l.href);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-accent flex items-center gap-1 outline-none",
+          isActive && "text-accent border-b-2 border-accent",
+        )}
+      >
+        {group.label}
+        <span className="text-xs opacity-60">▾</span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+          {group.label}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {group.links.map((link) => (
+          <DropdownMenuItem key={link.href} asChild>
+            <Link
+              href={link.href}
+              {...(link.external
+                ? { target: "_blank", rel: "noopener noreferrer" }
+                : {})}
+              className={cn(
+                "cursor-pointer",
+                !link.external && pathname === link.href && "font-medium",
+              )}
+            >
+              {link.label}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function AdminNav() {
   const pathname = usePathname();
@@ -33,7 +115,7 @@ export function AdminNav() {
     <header className="sticky top-0 w-full z-50 bg-background border-b border-border">
       <div className="max-w-screen-2xl mx-auto px-4 md:px-6 lg:px-8">
         <nav className="flex items-center justify-between h-16">
-          {/* Brand/Logo */}
+          {/* Brand */}
           <Link
             href="/admin"
             className="text-xl lg:text-2xl font-serif font-medium tracking-tight"
@@ -43,21 +125,28 @@ export function AdminNav() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
-            {adminLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
+            {navItems.map((item) =>
+              item.type === "group" ? (
+                <NavDropdown
+                  key={item.label}
+                  group={item}
+                  pathname={pathname}
+                />
+              ) : (
                 <Link
-                  key={link.href}
-                  href={link.href}
+                  key={item.href}
+                  href={item.href}
                   className={cn(
                     "text-sm font-medium transition-colors hover:text-accent",
-                    isActive && "text-accent border-b-2 border-accent",
+                    pathname === item.href &&
+                      "text-accent border-b-2 border-accent",
                   )}
                 >
-                  {link.label}
+                  {item.label}
                 </Link>
-              );
-            })}
+              ),
+            )}
+
             <Link
               href="/"
               className="text-sm font-medium transition-colors hover:text-accent"
@@ -89,22 +178,46 @@ export function AdminNav() {
         {isMobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col gap-4">
-              {adminLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
+              {navItems.map((item) =>
+                item.type === "group" ? (
+                  <div key={item.label} className="flex flex-col gap-2">
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
+                      {item.label}
+                    </p>
+                    {item.links.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        {...(link.external
+                          ? { target: "_blank", rel: "noopener noreferrer" }
+                          : {})}
+                        className={cn(
+                          "text-lg font-medium transition-colors hover:text-accent pl-3",
+                          !link.external &&
+                            pathname === link.href &&
+                            "text-accent",
+                        )}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
                   <Link
-                    key={link.href}
-                    href={link.href}
+                    key={item.href}
+                    href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
                       "text-lg font-medium transition-colors hover:text-accent",
-                      isActive && "text-accent",
+                      pathname === item.href && "text-accent",
                     )}
                   >
-                    {link.label}
+                    {item.label}
                   </Link>
-                );
-              })}
+                ),
+              )}
+
               <Link
                 href="/"
                 onClick={() => setIsMobileMenuOpen(false)}

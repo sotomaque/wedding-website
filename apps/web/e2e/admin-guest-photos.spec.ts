@@ -89,19 +89,31 @@ test.describe("Filter tabs", () => {
   });
 
   test("All tab shows count of 4", async ({ page }) => {
-    await expect(page.getByRole("button", { name: /all.*4/i })).toBeVisible();
+    // Scope to the filter tab group to avoid matching "↓ Download All (4)"
+    const tabGroup = page.locator(
+      ".flex.gap-1.border.border-border.rounded-lg",
+    );
+    await expect(tabGroup.getByRole("button", { name: /^all/i })).toContainText(
+      "(4)",
+    );
   });
 
   test("Visible tab shows count of 3", async ({ page }) => {
+    const tabGroup = page.locator(
+      ".flex.gap-1.border.border-border.rounded-lg",
+    );
     await expect(
-      page.getByRole("button", { name: /visible.*3/i }),
-    ).toBeVisible();
+      tabGroup.getByRole("button", { name: /^visible/i }),
+    ).toContainText("(3)");
   });
 
   test("Hidden tab shows count of 1", async ({ page }) => {
+    const tabGroup = page.locator(
+      ".flex.gap-1.border.border-border.rounded-lg",
+    );
     await expect(
-      page.getByRole("button", { name: /hidden.*1/i }),
-    ).toBeVisible();
+      tabGroup.getByRole("button", { name: /^hidden/i }),
+    ).toContainText("(1)");
   });
 
   test("clicking Hidden tab shows only the pre-hidden photo", async ({

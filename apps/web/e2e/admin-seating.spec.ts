@@ -113,8 +113,9 @@ test.describe("Seating Chart Management - Navigation", () => {
     await page.goto("/admin");
     await waitForHydration(page);
 
-    // Click on Seating link in nav
-    await page.getByRole("link", { name: /seating/i }).click();
+    // Seating is inside the "Guests" dropdown — open it first
+    await page.getByRole("button", { name: /^guests/i }).click();
+    await page.getByRole("menuitem", { name: /seating/i }).click();
 
     // Should be on seating page
     await expect(page).toHaveURL(/\/admin\/seating/);
