@@ -6,8 +6,13 @@ import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getActivitiesInvitationEmail } from "@/lib/email/templates/activities-invitation";
 
 /**
- * POST /api/admin/guests/send-activities-email
- * Send activities invitation email to a guest who has RSVP'd yes (admin only)
+ * Send activities email
+ * @description Send an activities/things-to-do invitation email to a guest who has RSVP'd yes
+ * @body SendActivitiesEmailBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Guests
+ * @openapi
  */
 export async function POST(request: NextRequest) {
   try {

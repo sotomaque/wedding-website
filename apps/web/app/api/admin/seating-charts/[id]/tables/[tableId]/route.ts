@@ -3,8 +3,14 @@ import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 
 /**
- * PATCH /api/admin/seating-charts/[id]/tables/[tableId]
  * Update a table
+ * @description Update a table's number, name, capacity, position, shape, or notes
+ * @pathParams SeatingTableParams
+ * @body UpdateTableBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function PATCH(
   request: NextRequest,
@@ -67,8 +73,13 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/admin/seating-charts/[id]/tables/[tableId]
  * Delete a table
+ * @description Permanently delete a table and its guest assignments from the seating chart
+ * @pathParams SeatingTableParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function DELETE(
   _request: NextRequest,

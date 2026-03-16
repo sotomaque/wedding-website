@@ -5,9 +5,12 @@ import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getHotelInterestNotificationEmail } from "@/lib/email/templates/hotel-interest-notification";
 
 /**
- * POST /api/admin/hotels/send-interest-notification
- * Send hotel interest notification email to admin and travel agent
- * Note: This endpoint doesn't require auth since it's called from server actions
+ * Send hotel interest notification
+ * @description Send a notification email to admin when a guest expresses interest in a hotel booking
+ * @body HotelInterestBody
+ * @response 200:SuccessResponse
+ * @tag Admin - Hotels
+ * @openapi
  */
 export async function POST(request: NextRequest) {
   try {

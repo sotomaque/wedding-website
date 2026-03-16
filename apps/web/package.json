@@ -16,7 +16,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "generate:openapi": "next-openapi-gen generate"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.2",
@@ -52,10 +53,12 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/swagger-ui-react": "^5.18.0",
     "@workspace/typescript-config": "workspace:*",
     "dotenv": "^17.2.3",
     "jiti": "^2.6.1",
     "postcss": "^8.5.6",
+    "swagger-ui-react": "^5.32.0",
     "typescript": "^5.9.3"
   }
 }

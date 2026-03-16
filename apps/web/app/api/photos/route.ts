@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 /**
- * GET /api/photos
- * Fetch all active photos (public)
+ * List public photos
+ * @description Fetch all active photos for the public gallery
+ * @response 200:PhotoListResponse
+ * @tag Photos
+ * @openapi
  */
 export async function GET() {
   try {

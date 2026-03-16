@@ -5,8 +5,12 @@ import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getEventRsvpNotificationEmail } from "@/lib/email/templates/event-rsvp-notification";
 
 /**
- * POST /api/events/rsvp/submit
- * Submit RSVP for a specific event
+ * Submit event RSVP
+ * @description Submit an RSVP response for a specific event, confirming or declining attendance
+ * @body EventRsvpSubmitBody
+ * @response 200:SuccessResponse
+ * @tag Events RSVP
+ * @openapi
  */
 export async function POST(request: NextRequest) {
   try {

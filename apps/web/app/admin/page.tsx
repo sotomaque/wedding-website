@@ -1,7 +1,7 @@
 import { SignOutButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 import { Button } from "@workspace/ui/components/button";
-import { Calendar, Clock, Heart, Mail, Users } from "lucide-react";
+import { Calendar, Clock, Code, Heart, Mail, Users } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import {
@@ -191,6 +191,18 @@ export default async function AdminPage() {
                     </h3>
                     <p className="text-sm text-muted-foreground">
                       Create and manage email templates
+                    </p>
+                  </div>
+                </Link>
+
+                <Link href="/admin/api-docs">
+                  <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
+                    <Code className="w-8 h-8 text-primary mb-3" />
+                    <h3 className="font-semibold text-foreground mb-1">
+                      API Docs
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Interactive API reference and testing
                     </p>
                   </div>
                 </Link>

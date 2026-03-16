@@ -3,8 +3,13 @@ import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 
 /**
- * GET /api/admin/seating-charts/[id]
- * Fetch a seating chart with all its tables and guest assignments
+ * Get seating chart details
+ * @description Fetch a seating chart with all its tables, guest assignments, and unassigned guests
+ * @pathParams IdParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function GET(
   _request: NextRequest,
@@ -117,8 +122,14 @@ export async function GET(
 }
 
 /**
- * PATCH /api/admin/seating-charts/[id]
- * Update a seating chart
+ * Update seating chart
+ * @description Update a seating chart's name, default seats per table, active status, or notes
+ * @pathParams IdParams
+ * @body UpdateSeatingChartBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function PATCH(
   request: NextRequest,
@@ -169,8 +180,13 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/admin/seating-charts/[id]
- * Delete a seating chart
+ * Delete seating chart
+ * @description Permanently delete a seating chart and all its associated tables and assignments
+ * @pathParams IdParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function DELETE(
   _request: NextRequest,

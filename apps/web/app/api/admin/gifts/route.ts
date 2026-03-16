@@ -3,8 +3,12 @@ import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 
 /**
- * GET /api/admin/gifts
- * Get all gifts with optional guest information
+ * List all gifts
+ * @description Get all gifts with guest info and totals (admin only)
+ * @response 200:GiftListResponse
+ * @auth bearer
+ * @tag Admin - Gifts
+ * @openapi
  */
 export async function GET() {
   try {
@@ -87,8 +91,13 @@ export async function GET() {
 }
 
 /**
- * PATCH /api/admin/gifts
- * Update a gift (e.g., mark thank you email sent)
+ * Update a gift
+ * @description Update a gift record, e.g. mark thank-you email sent or link to guest (admin only)
+ * @body UpdateGiftBody
+ * @response 200:UpdateGiftResponse
+ * @auth bearer
+ * @tag Admin - Gifts
+ * @openapi
  */
 export async function PATCH(request: NextRequest) {
   try {

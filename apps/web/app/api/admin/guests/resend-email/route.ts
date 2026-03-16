@@ -6,8 +6,13 @@ import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
 /**
- * POST /api/admin/guests/resend-email
- * Resend invitation email to a guest (admin only)
+ * Resend invitation email
+ * @description Resend a wedding invitation email to a specific guest, with optional email override
+ * @body ResendEmailBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Guests
+ * @openapi
  */
 export async function POST(request: NextRequest) {
   try {

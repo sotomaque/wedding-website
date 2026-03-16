@@ -4,9 +4,14 @@ import { db } from "@/lib/db";
 import { isValidUUID } from "@/lib/utils/uuid";
 
 /**
- * POST /api/admin/seating-charts/[id]/assignments
- * Assign guests to tables (bulk operation)
- * Body: { assignments: [{ guestId: string, tableId: string, seatNumber?: number }] }
+ * Bulk assign guests to tables
+ * @description Assign multiple guests to tables in a single operation, replacing any existing assignments
+ * @pathParams IdParams
+ * @body BulkAssignmentsBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function POST(
   request: NextRequest,
@@ -114,9 +119,14 @@ export async function POST(
 }
 
 /**
- * DELETE /api/admin/seating-charts/[id]/assignments
- * Clear all assignments for a chart, or specific guests
- * Query params: ?guestIds=id1,id2 (optional - if not provided, clears all)
+ * Clear guest assignments
+ * @description Remove all guest-to-table assignments for a chart, or only specific guests via query params
+ * @pathParams IdParams
+ * @params ClearAssignmentsParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Seating
+ * @openapi
  */
 export async function DELETE(
   request: NextRequest,

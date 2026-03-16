@@ -4,8 +4,12 @@ import { env } from "@/env";
 import { db } from "@/lib/db";
 
 /**
- * GET /api/admin/events
- * Fetch all events with invite counts (admin only)
+ * List all events
+ * @description Fetch all events with invite/RSVP counts (admin only)
+ * @response 200:EventListResponse
+ * @auth bearer
+ * @tag Admin - Events
+ * @openapi
  */
 export async function GET() {
   try {
@@ -81,8 +85,13 @@ export async function GET() {
 }
 
 /**
- * POST /api/admin/events
- * Create a new event (admin only)
+ * Create an event
+ * @description Create a new wedding event. If isDefault is true, all guests are auto-invited (admin only)
+ * @body CreateEventBody
+ * @response 201:CreateEventResponse
+ * @auth bearer
+ * @tag Admin - Events
+ * @openapi
  */
 export async function POST(request: NextRequest) {
   try {

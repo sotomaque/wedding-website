@@ -6,8 +6,13 @@ import { db } from "@/lib/db";
 type RouteContext = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/admin/events/[id]/invites
- * Get all guests with their invite status for this event (admin only)
+ * List event invites
+ * @description Get all guests with their invite status for a specific event, including RSVP counts and email tracking
+ * @pathParams IdParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Events
+ * @openapi
  */
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
@@ -133,8 +138,14 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 }
 
 /**
- * POST /api/admin/events/[id]/invites
- * Add guests to this event (create guest_event_invites records)
+ * Add guests to event
+ * @description Create guest_event_invites records to invite guests to this event
+ * @pathParams IdParams
+ * @body GuestIdsBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Events
+ * @openapi
  */
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
@@ -216,8 +227,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
 }
 
 /**
- * DELETE /api/admin/events/[id]/invites
- * Remove guests from this event (delete guest_event_invites records)
+ * Remove guests from event
+ * @description Delete guest_event_invites records to remove guests from this event
+ * @pathParams IdParams
+ * @body GuestIdsBody
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Events
+ * @openapi
  */
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {

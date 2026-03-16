@@ -2,8 +2,12 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 /**
- * GET /api/events/rsvp/verify
- * Verify an invite code and check if guest is invited to a specific event
+ * Verify event invite code
+ * @description Verify an invite code and check if the guest is invited to a specific event, returning guest and event details
+ * @params EventRsvpVerifyParams
+ * @response 200:SuccessResponse
+ * @tag Events RSVP
+ * @openapi
  */
 export async function GET(request: NextRequest) {
   try {

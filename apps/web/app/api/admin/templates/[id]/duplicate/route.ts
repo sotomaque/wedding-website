@@ -7,7 +7,15 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// POST /api/admin/templates/[id]/duplicate - Duplicate a template
+/**
+ * Duplicate email template
+ * @description Create a copy of an existing email template in Resend
+ * @pathParams IdParams
+ * @response 200:SuccessResponse
+ * @auth bearer
+ * @tag Admin - Templates
+ * @openapi
+ */
 export async function POST(
   _request: Request,
   { params }: RouteParams,
