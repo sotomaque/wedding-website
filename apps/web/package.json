@@ -17,7 +17,11 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
-    "generate:openapi": "next-openapi-gen generate"
+    "generate:openapi": "next-openapi-gen generate",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "supabase:status": "supabase status"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.2",
