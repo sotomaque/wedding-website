@@ -2,9 +2,6 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "ignoreExportsUsedInFile": true,
   "workspaces": {
-    ".": {
-      "ignoreDependencies": ["supabase"]
-    },
     "apps/web": {
       "ignoreDependencies": [
         "@t3-oss/env-nextjs",
