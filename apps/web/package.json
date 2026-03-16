@@ -55,7 +55,6 @@
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/bun": "latest",
-    "@types/jszip": "^3.4.1",
     "@types/node": "^20.19.25",
     "@types/pg": "^8.16.0",
     "@types/react": "^19.2.7",
