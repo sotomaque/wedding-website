@@ -193,7 +193,7 @@ function QuickTestPanel() {
               className="w-full p-2 border border-border rounded-md bg-background text-foreground"
             >
               {EXAMPLE_REQUESTS.map((ex, i) => (
-                <option key={ex.path} value={i}>
+                <option key={`${ex.method}-${ex.path}`} value={i}>
                   {ex.method} - {ex.label}
                 </option>
               ))}
