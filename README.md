@@ -32,6 +32,13 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 - Things to do recommendations
 - Dark/light mode, responsive design, SEO optimized
 
+### Guest Photo Sharing
+- Guests scan a QR code at the reception and upload photos from their phones at `/photos/upload` (no login required)
+- Photos appear immediately on a live `/slideshow` page with crossfade transitions, uploader name attribution, and auto-refresh every 30 seconds
+- The slideshow displays a QR code in the corner so guests watching can upload directly
+- Admins can hide or permanently delete photos from `/admin/photos/guest`
+- Download all guest photos as a single ZIP archive from the admin dashboard
+
 ### Admin Dashboard (`/admin`)
 - Guest management with tier lists (A/B/C priority)
 - Real-time RSVP tracking and bulk email actions
@@ -40,6 +47,7 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 - Event management with per-event RSVPs
 - Hotel management
 - Wedding todo list
+- Guest photo moderation with bulk ZIP download
 - Service links dashboard (GitHub, Vercel, Supabase, Clerk, Stripe, Resend)
 
 ### API Documentation (`/admin/api-docs`)
@@ -65,7 +73,7 @@ packages/ui/               Shared UI components (shadcn/ui)
 packages/typescript-config/ Shared TS configs
 supabase/
   config.toml              Supabase CLI configuration
-  migrations/              Numbered SQL migration files (000-029)
+  migrations/              Numbered SQL migration files (000-030)
   seed.sql                 Local development seed data
 .github/workflows/         CI pipeline
 ```
@@ -252,6 +260,7 @@ All tables have RLS enabled (see `029_enable_rls_all_tables.sql`). The app conne
 | `seating_tables`           | No          | No           | Admin only (service_role)     |
 | `guest_table_assignments`  | No          | No           | Admin only (service_role)     |
 | `wedding_todos`            | No          | No           | Admin only (service_role)     |
+| `guest_photos`             | Yes (visible only) | Yes   | Guest photo uploads; public read filtered by `is_visible = true` |
 
 Admin-only tables have RLS enabled with no public policies. All admin operations use `service_role` which bypasses RLS.
 
