@@ -25,6 +25,7 @@ export const metadata: Metadata = {
   authors: [{ name: "Helen & Enrique" }],
   icons: {
     icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
   openGraph: {
     title: "Helen & Enrique | Wedding",
