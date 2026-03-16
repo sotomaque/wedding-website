@@ -107,6 +107,39 @@ Features that improve the guest-facing experience across all weddings.
 
 Advanced tools for wedding organizers.
 
+### 4.0 Physical Mail
+
+Send real-world letters and postcards to guests directly from the admin dashboard — thank you notes, save-the-dates, or custom announcements.
+
+**Recommended API: [Lob](https://lob.com)**
+- REST API for letters and postcards (print + postage handled by Lob)
+- ~$0.89/letter, ~$0.77/postcard (free developer tier, no monthly fee)
+- Built-in address verification
+- Merge variables for personalization (guest name, table number, etc.)
+
+**Alternatives**
+- **PostGrid** — drag-and-drop template editor + API, supports QR codes and personalized URLs per mailpiece (~$0.82/postcard)
+- **ClickSend** — no minimums, simple setup, Zapier integration
+- **Print.one** — postcard/greeting-card focus, no subscription
+
+**Proposed implementation**
+- [ ] Add mailing address fields to the guest record (`address_line1`, `address_line2`, `city`, `state`, `postal_code`, `country`)
+- [ ] Build an address collection flow: optional field on RSVP form, or admin bulk-import via CSV
+- [ ] Create a "Physical Mail" section in the admin dashboard
+  - Select recipient segment (all guests, attending only, specific party, individual)
+  - Choose mail type (letter or postcard)
+  - Choose or upload a template with merge variables (`{{guest_name}}`, `{{couple_name}}`, etc.)
+  - Preview before sending
+- [ ] Server Action: pulls guest + address data from Supabase, calls Lob API, stores `lob_letter_id` and delivery status back on the guest record
+- [ ] Track delivery status via Lob webhooks → update guest record with `mail_status` (created / in_transit / delivered / returned)
+- [ ] (Optional) Trigger automatically: after RSVP confirmed, queue a thank-you letter via a Supabase Edge Function
+
+**Thank you letter use case (MVP)**
+1. Admin clicks "Send thank you letters" after the wedding
+2. App filters guests with `rsvp_status = attending` and a valid mailing address
+3. Single Lob API call per guest with a shared letter template + personalized merge vars
+4. Status tracked per guest; admin sees a delivery dashboard
+
 ### 4.1 Analytics Dashboard
 
 - [ ] RSVP response rate over time (chart)
