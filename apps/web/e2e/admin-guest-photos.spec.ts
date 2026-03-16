@@ -148,7 +148,7 @@ test.describe("Photo grid", () => {
     const card = page
       .locator(".group")
       .filter({ has: page.getByAltText("Photo by E2E-Hidden") });
-    await expect(card.getByText("Hidden")).toBeVisible();
+    await expect(card.getByText("Hidden", { exact: true })).toBeVisible();
   });
 
   test("pre-hidden photo card has reduced opacity class", async ({ page }) => {
@@ -182,7 +182,7 @@ test("hide a visible photo: card gets opacity-50 and Hidden badge", async ({
 
   // Card should now be hidden
   await expect(card).toHaveClass(/opacity-50/);
-  await expect(card.getByText("Hidden")).toBeVisible();
+  await expect(card.getByText("Hidden", { exact: true })).toBeVisible();
 });
 
 test("show a hidden photo: card loses opacity-50 and Hidden badge", async ({
@@ -203,7 +203,7 @@ test("show a hidden photo: card loses opacity-50 and Hidden badge", async ({
   await page.waitForLoadState("networkidle");
 
   await expect(card).not.toHaveClass(/opacity-50/);
-  await expect(card.getByText("Hidden")).not.toBeVisible();
+  await expect(card.getByText("Hidden", { exact: true })).not.toBeVisible();
 });
 
 // ----- Delete (serial — mutates state) -----
