@@ -22,6 +22,7 @@ export const env = createEnv({
     STRIPE_PRODUCT_STUDENT_LOANS: z.string().optional(),
     E2E_TEST_MODE: z.enum(["true", "false"]).default("false"),
     E2E_RESET_SECRET: z.string().optional(),
+    LOCAL_E2E_MODE: z.enum(["true", "false"]).optional(),
     VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
   },
 
@@ -60,6 +61,7 @@ export const env = createEnv({
     STRIPE_PRODUCT_STUDENT_LOANS: process.env.STRIPE_PRODUCT_STUDENT_LOANS,
     E2E_TEST_MODE: process.env.E2E_TEST_MODE,
     E2E_RESET_SECRET: process.env.E2E_RESET_SECRET,
+    LOCAL_E2E_MODE: process.env.LOCAL_E2E_MODE,
     VERCEL_ENV: process.env.VERCEL_ENV,
     NEXT_PUBLIC_RSVP_EMAIL: process.env.NEXT_PUBLIC_RSVP_EMAIL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:

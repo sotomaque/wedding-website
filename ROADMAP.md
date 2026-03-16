@@ -96,10 +96,7 @@ Features that improve the guest-facing experience across all weddings.
 
 ### 3.4 Photo Sharing
 
-- [ ] Guest photo uploads (during/after the wedding)
-- [ ] Photo gallery with moderation queue for admin approval
-- [ ] QR code generation for easy upload at the event
-- [ ] Integration with shared albums (Google Photos, iCloud)
+> **Shipped.** Guests upload via QR code → `/photos/upload`, photos display immediately on `/slideshow`, admins moderate at `/admin/photos/guest` with ZIP download. See README for details.
 
 ---
 
@@ -229,7 +226,7 @@ If working toward multi-tenancy as the primary goal, the recommended order is:
 | 6 | 3.3 Improved RSVP | High-value guest experience improvement |
 | 7 | 2.2 Themes | Visual differentiation between weddings |
 | 8 | 4.1 Analytics | Compelling value-add for admins |
-| 9 | 3.4 Photo Sharing | Frequently requested wedding feature |
+| 9 | ~~3.4 Photo Sharing~~ | **Shipped** |
 | 10 | 5.1 Pricing | Monetize once there's proven value |
 
 ---

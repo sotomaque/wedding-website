@@ -1,0 +1,3 @@
+-- Local development seed
+-- E2E test data is managed via POST /api/e2e/reset (see apps/web/lib/db/seed.ts)
+-- Run: curl -X POST http://localhost:3000/api/e2e/reset -H "x-e2e-reset-token: local-dev-secret"

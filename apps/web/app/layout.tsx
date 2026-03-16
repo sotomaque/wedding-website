@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   authors: [{ name: "Helen & Enrique" }],
   icons: {
     icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    // apple-touch-icon is auto-generated from app/apple-icon.tsx by Next.js
   },
   openGraph: {
     title: "Helen & Enrique | Wedding",

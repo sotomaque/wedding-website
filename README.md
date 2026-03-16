@@ -32,6 +32,13 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 - Things to do recommendations
 - Dark/light mode, responsive design, SEO optimized
 
+### Guest Photo Sharing
+- Guests scan a QR code at the reception and upload photos from their phones at `/photos/upload` (no login required)
+- Photos appear immediately on a live `/slideshow` page with crossfade transitions, uploader name attribution, and auto-refresh every 30 seconds
+- The slideshow displays a QR code in the corner so guests watching can upload directly
+- Admins can hide or permanently delete photos from `/admin/photos/guest`
+- Download all guest photos as a single ZIP archive from the admin dashboard
+
 ### Admin Dashboard (`/admin`)
 - Guest management with tier lists (A/B/C priority)
 - Real-time RSVP tracking and bulk email actions
@@ -40,6 +47,7 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 - Event management with per-event RSVPs
 - Hotel management
 - Wedding todo list
+- Guest photo moderation with bulk ZIP download
 - Service links dashboard (GitHub, Vercel, Supabase, Clerk, Stripe, Resend)
 
 ### API Documentation (`/admin/api-docs`)
@@ -65,7 +73,7 @@ packages/ui/               Shared UI components (shadcn/ui)
 packages/typescript-config/ Shared TS configs
 supabase/
   config.toml              Supabase CLI configuration
-  migrations/              Numbered SQL migration files (000-029)
+  migrations/              Numbered SQL migration files (000-030)
   seed.sql                 Local development seed data
 .github/workflows/         CI pipeline
 ```
@@ -90,6 +98,90 @@ bun run typecheck      # TypeScript type check
 bun run test           # Unit tests (Bun test)
 bun run test:e2e       # E2E tests (Playwright)
 bun run knip           # Dead code / unused dependency detection
+```
+
+---
+
+## Local Development (with Local Supabase)
+
+By default, `.env` points to the production Supabase database. For local development and safe E2E testing, you can run the app against a local Supabase instance.
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (required by the Supabase CLI)
+- Supabase CLI (installed as a dev dependency — no global install needed)
+
+### Setup
+
+```bash
+# 1. Start local Supabase (spins up Postgres, Auth, Storage in Docker)
+bun run supabase:start
+
+# 2. Create your local env override (gitignored)
+cp apps/web/.env.local.example apps/web/.env.local   # if example exists, else create manually
+```
+
+Your `apps/web/.env.local` should contain:
+
+```bash
+# Local Supabase
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
+# Unlock /api/e2e/reset for local E2E testing
+LOCAL_E2E_MODE=true
+E2E_TEST_MODE=true
+E2E_RESET_SECRET=local-dev-secret
+```
+
+```bash
+# 3. Apply migrations to local DB
+bun run supabase:reset
+
+# 4. Start the dev server (picks up .env.local automatically)
+bun run dev
+```
+
+### Local vs Production
+
+| Setting              | Local                                        | Production (Vercel)             |
+| -------------------- | -------------------------------------------- | ------------------------------- |
+| `DATABASE_URL`       | `postgresql://postgres:postgres@127.0.0.1:54322/postgres` | Supabase cloud connection string |
+| Supabase Studio      | `http://127.0.0.1:54323`                    | Supabase dashboard              |
+| Clerk auth           | Same dev instance (shared `.env`)            | Same dev instance               |
+| UploadThing          | Same dev token (uploads to UploadThing cloud)| Same                            |
+| `/api/e2e/reset`     | Enabled via `LOCAL_E2E_MODE=true`            | Enabled on preview branches only |
+
+### Running E2E Tests Locally
+
+```bash
+# Make sure local Supabase is running and .env.local is configured
+bun run supabase:start
+
+# Run the full E2E suite (auto-starts dev server)
+bun run test:e2e
+
+# Or run a specific spec
+bunx playwright test e2e/admin-guest-photos.spec.ts
+```
+
+The E2E tests call `POST /api/e2e/reset` in `beforeAll` to reset and seed the local database before each spec runs. This is safe because Guard 2 in the reset endpoint prevents it from ever running against the production database URL.
+
+### Switching Back to Production
+
+Remove or rename `.env.local` and restart the dev server:
+
+```bash
+mv apps/web/.env.local apps/web/.env.local.bak
+bun run dev
+```
+
+### Supabase Convenience Scripts
+
+```bash
+bun run supabase:start   # Start local Supabase
+bun run supabase:stop    # Stop local Supabase
+bun run supabase:reset   # Re-apply all migrations (wipes local data)
+bun run supabase:status  # Show connection info and local URLs
 ```
 
 ---
@@ -252,6 +344,7 @@ All tables have RLS enabled (see `029_enable_rls_all_tables.sql`). The app conne
 | `seating_tables`           | No          | No           | Admin only (service_role)     |
 | `guest_table_assignments`  | No          | No           | Admin only (service_role)     |
 | `wedding_todos`            | No          | No           | Admin only (service_role)     |
+| `guest_photos`             | Yes (visible only) | Yes   | Guest photo uploads; public read filtered by `is_visible = true` |
 
 Admin-only tables have RLS enabled with no public policies. All admin operations use `service_role` which bypasses RLS.
 

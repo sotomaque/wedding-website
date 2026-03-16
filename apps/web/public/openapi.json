@@ -415,6 +415,91 @@
         }
       }
     },
+    "/admin/guest-photos/{id}": {
+      "patch": {
+        "operationId": "patch-admin-guest-photos-{id}",
+        "summary": "Toggle guest photo visibility",
+        "description": "Hide or show a guest-submitted photo (admin only)",
+        "tags": ["Admin - Guest Photos"],
+        "parameters": [],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleGuestPhotoBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestPhotoResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete-admin-guest-photos-{id}",
+        "summary": "Delete a guest photo",
+        "description": "Permanently delete a guest-submitted photo (admin only)",
+        "tags": ["Admin - Guest Photos"],
+        "parameters": [],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteGuestPhotoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/guest-photos/download": {
+      "get": {
+        "operationId": "get-admin-guest-photos-download",
+        "summary": "Download all guest photos as a ZIP archive",
+        "description": "Fetches all guest-submitted photos and returns them as a downloadable ZIP (admin only)",
+        "tags": ["Admin - Guest Photos"],
+        "parameters": [],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZipFile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/guests": {
       "get": {
         "operationId": "get-admin-guests",
@@ -1624,6 +1709,27 @@
         }
       }
     },
+    "/guest-photos": {
+      "get": {
+        "operationId": "get-guest-photos",
+        "summary": "List visible guest photos",
+        "description": "Fetch all guest-submitted photos that are visible (public)",
+        "tags": ["Guest Photos"],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestPhotoListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "operationId": "get-health",
@@ -1979,6 +2085,10 @@
         },
         "required": ["gift"]
       },
+      "ToggleGuestPhotoBody": {},
+      "GuestPhotoResponse": {},
+      "DeleteGuestPhotoResponse": {},
+      "ZipFile": {},
       "GuestDetailResponse": {
         "type": "object",
         "properties": {
@@ -2309,6 +2419,7 @@
       "CreateTemplateBody": {},
       "EventRsvpSubmitBody": {},
       "EventRsvpVerifyParams": {},
+      "GuestPhotoListResponse": {},
       "HealthResponse": {
         "type": "object",
         "properties": {

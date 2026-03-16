@@ -9,8 +9,11 @@ import { resetAndSeed } from "@/lib/db/seed";
  * Only available on Vercel preview deployments, protected by multiple guards.
  */
 export async function POST(request: NextRequest) {
-  // Guard 1: Only available on preview deployments
-  if (env.VERCEL_ENV !== "preview") {
+  // Guard 1: Only available on preview deployments or explicit local E2E mode
+  const isPreview = env.VERCEL_ENV === "preview";
+  const isLocalE2E = env.LOCAL_E2E_MODE === "true";
+
+  if (!isPreview && !isLocalE2E) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

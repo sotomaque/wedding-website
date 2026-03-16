@@ -240,6 +240,17 @@ export interface GuestHotelInterestsTable {
   updated_at: ColumnType<Date, string | undefined, string>;
 }
 
+// Guest Photos table (guest-submitted photos from reception)
+export interface GuestPhotosTable {
+  id: Generated<string>;
+  url: string;
+  uploader_name: string | null;
+  is_visible: boolean;
+  uploaded_at: ColumnType<Date, string | undefined, never>;
+  hidden_at: Date | null;
+  hidden_by: string | null;
+}
+
 // Wedding Todos table
 export interface WeddingTodosTable {
   id: Generated<string>;
@@ -266,4 +277,5 @@ export interface Database {
   hotels: HotelsTable;
   guest_hotel_interests: GuestHotelInterestsTable;
   wedding_todos: WeddingTodosTable;
+  guest_photos: GuestPhotosTable;
 }

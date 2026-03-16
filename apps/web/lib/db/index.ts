@@ -32,10 +32,14 @@ const createPool = () => {
   url.searchParams.delete("sslmode");
   const cleanConnectionString = url.toString();
 
+  // Local Supabase (127.0.0.1 / localhost) does not support SSL.
+  // Remote Supabase requires SSL but without strict cert validation.
+  const isLocal = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+
   return new Pool({
     connectionString: cleanConnectionString,
     max: 10,
-    ssl: { rejectUnauthorized: false },
+    ssl: isLocal ? false : { rejectUnauthorized: false },
   });
 };
 

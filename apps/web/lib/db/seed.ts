@@ -46,6 +46,12 @@ export const SEED = {
       name: "Reception",
     },
   },
+  guestPhotos: {
+    visible1: { id: crypto.randomUUID() },
+    visible2: { id: crypto.randomUUID() },
+    hidden1: { id: crypto.randomUUID() },
+    deletable: { id: crypto.randomUUID() },
+  },
 };
 
 /**
@@ -68,7 +74,8 @@ async function truncateAll() {
       events,
       activities,
       photos,
-      hotels
+      hotels,
+      guest_photos
     CASCADE
   `.execute(db);
 }
@@ -185,6 +192,39 @@ async function seedData() {
     .updateTable("guest_event_invites")
     .set({ rsvp_status: "yes" })
     .where("guest_id", "in", [SEED.guests.bob.id, SEED.guests.carol.id])
+    .execute();
+
+  // Guest photos (seed for E2E tests — 4 total: 3 visible, 1 hidden)
+  await db
+    .insertInto("guest_photos")
+    .values([
+      {
+        id: SEED.guestPhotos.visible1.id,
+        url: "https://utfs.io/f/e2e-photo-1.jpg",
+        uploader_name: "E2E-Guest",
+        is_visible: true,
+      },
+      {
+        id: SEED.guestPhotos.visible2.id,
+        url: "https://utfs.io/f/e2e-photo-2.jpg",
+        uploader_name: null,
+        is_visible: true,
+      },
+      {
+        id: SEED.guestPhotos.hidden1.id,
+        url: "https://utfs.io/f/e2e-photo-3.jpg",
+        uploader_name: "E2E-Hidden",
+        is_visible: false,
+        hidden_at: new Date("2026-01-15T10:00:00Z"),
+        hidden_by: "admin@example.com",
+      },
+      {
+        id: SEED.guestPhotos.deletable.id,
+        url: "https://utfs.io/f/e2e-photo-4.jpg",
+        uploader_name: "E2E-Delete-Me",
+        is_visible: true,
+      },
+    ])
     .execute();
 
   // Wedding todos

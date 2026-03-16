@@ -147,6 +147,7 @@ jobs:
           TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
           NEXT_PUBLIC_ADMIN_EMAILS: ${{ secrets.NEXT_PUBLIC_ADMIN_EMAILS }}
+          E2E_RESET_SECRET: ${{ secrets.E2E_RESET_SECRET }}
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

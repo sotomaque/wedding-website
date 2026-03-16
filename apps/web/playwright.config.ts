@@ -9,6 +9,7 @@ import { config } from "dotenv";
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 config({ path: path.resolve(__dirname, ".env") });
+config({ path: path.resolve(__dirname, ".env.local"), override: true });
 
 /**
  * Playwright configuration for E2E testing

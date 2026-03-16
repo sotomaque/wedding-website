@@ -27,7 +27,7 @@ async function checkAdmin() {
 }
 
 export const ourFileRouter: FileRouter = {
-  // Photo uploader for wedding gallery
+  // Photo uploader for wedding gallery (admin only)
   photoUploader: f({
     image: {
       maxFileSize: "8MB",
@@ -43,6 +43,20 @@ export const ourFileRouter: FileRouter = {
       console.log("file url", file.ufsUrl);
 
       return { uploadedBy: metadata.userId, url: file.ufsUrl };
+    }),
+
+  // Guest photo uploader — no auth required, open to anyone with the link
+  guestPhotoUploader: f({
+    image: {
+      maxFileSize: "8MB",
+      maxFileCount: 5,
+    },
+  })
+    .middleware(async () => {
+      return {};
+    })
+    .onUploadComplete(async ({ file }) => {
+      return { url: file.ufsUrl };
     }),
 };
 
