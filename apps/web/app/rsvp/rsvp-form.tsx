@@ -14,21 +14,19 @@ import {
 } from "@workspace/ui/components/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import type { Database } from "@/lib/supabase/types";
 import {
   type MultiGuestRsvpFormData,
   multiGuestRsvpSchema,
 } from "@/lib/validations/rsvp";
+import type { RsvpGuest } from "./actions";
 import { submitMultiGuestRSVP } from "./actions";
 import { GuestRsvpCard } from "./guest-rsvp-card";
 
-type Guest = Database["public"]["Tables"]["guests"]["Row"];
-
 interface RSVPFormProps {
-  guests: Guest[];
+  guests: RsvpGuest[];
   inviteCode: string;
   onBack: () => void;
 }
@@ -47,8 +45,10 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
   const firstGuest = primaryGuests[0];
 
   // Find plus-one for a specific guest
-  const findPlusOneFor = (guestId: string) =>
-    plusOnes.find((p) => p.primary_guest_id === guestId);
+  const findPlusOneFor = useCallback(
+    (guestId: string) => plusOnes.find((p) => p.primary_guest_id === guestId),
+    [plusOnes],
+  );
 
   // Memoize initial values from DB to compare against current form values
   const initialValues = useMemo((): MultiGuestRsvpFormData => {
@@ -97,7 +97,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
     handleSubmit,
     watch,
     setValue,
-    formState: { isSubmitting, errors },
+    formState: { isSubmitting, errors, isDirty },
   } = useForm<MultiGuestRsvpFormData>({
     resolver: zodResolver(multiGuestRsvpSchema),
     defaultValues: initialValues,
@@ -106,66 +106,8 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
   // Watch all form values to detect changes
   const formValues = watch();
 
-  // Check if form has changed from initial DB values
-  const hasFormChanged = useMemo(() => {
-    // For new RSVPs, always allow submission
-    if (!hasRSVPd) return true;
-
-    // Deep compare guests array
-    const initialGuests = initialValues.guests;
-    const currentGuests = formValues.guests;
-
-    if (initialGuests.length !== currentGuests.length) return true;
-
-    for (let i = 0; i < initialGuests.length; i++) {
-      const initial = initialGuests[i];
-      const current = currentGuests[i];
-
-      if (!initial || !current) return true;
-
-      // Compare each field
-      if (
-        initial.firstName !== current.firstName ||
-        initial.lastName !== current.lastName ||
-        initial.attending !== current.attending ||
-        initial.dietaryRestrictions !== current.dietaryRestrictions ||
-        initial.under21 !== current.under21 ||
-        initial.threeAndUnder !== current.threeAndUnder ||
-        initial.plusOneAttending !== current.plusOneAttending ||
-        initial.plusOneFirstName !== current.plusOneFirstName ||
-        initial.plusOneLastName !== current.plusOneLastName ||
-        initial.plusOneDietaryRestrictions !==
-          current.plusOneDietaryRestrictions ||
-        initial.plusOneUnder21 !== current.plusOneUnder21 ||
-        initial.plusOneThreeAndUnder !== current.plusOneThreeAndUnder
-      ) {
-        return true;
-      }
-    }
-
-    // Compare contact info
-    if (
-      initialValues.mailingAddress !== formValues.mailingAddress ||
-      initialValues.phoneNumber !== formValues.phoneNumber ||
-      initialValues.whatsapp !== formValues.whatsapp ||
-      initialValues.preferredContactMethod !== formValues.preferredContactMethod
-    ) {
-      return true;
-    }
-
-    // Compare travel info
-    if (
-      initialValues.arrivalDate !== formValues.arrivalDate ||
-      initialValues.arrivalTransport !== formValues.arrivalTransport ||
-      initialValues.departureDate !== formValues.departureDate ||
-      initialValues.departureTransport !== formValues.departureTransport ||
-      initialValues.accommodationNotes !== formValues.accommodationNotes
-    ) {
-      return true;
-    }
-
-    return false;
-  }, [formValues, initialValues, hasRSVPd]);
+  // Allow submit if this is a new RSVP or if any field has changed
+  const canSubmit = !hasRSVPd || isDirty;
 
   async function onSubmit(data: MultiGuestRsvpFormData) {
     const result = await submitMultiGuestRSVP({
@@ -455,7 +397,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
         </Button>
         <Button
           type="submit"
-          disabled={isSubmitting || !hasFormChanged}
+          disabled={isSubmitting || !canSubmit}
           className="flex-1"
         >
           {isSubmitting

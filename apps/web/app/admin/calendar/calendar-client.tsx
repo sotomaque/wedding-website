@@ -7,7 +7,6 @@ import {
   type GuestTravel,
   getStayBars,
   getWeeksInMonth,
-  type StayBar,
   toDateKey,
 } from "./utils";
 
@@ -54,25 +53,66 @@ const STAY_COLORS = [
 
 const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// ---------------------------------------------------------------------------
+// DotContext — lets DayButtonWithDots read dot sets without being re-created
+// on every render (fixes React unmounting the full day-button tree on toggle).
+// ---------------------------------------------------------------------------
+interface DotContextValue {
+  eventDates: Set<string>;
+  arrivalDates: Set<string>;
+  departureDates: Set<string>;
+}
+
+const DotContext = React.createContext<DotContextValue>({
+  eventDates: new Set(),
+  arrivalDates: new Set(),
+  departureDates: new Set(),
+});
+
+function DayButtonWithDots({
+  day,
+  modifiers,
+  children,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof CalendarDayButton>) {
+  const { eventDates, arrivalDates, departureDates } =
+    React.useContext(DotContext);
+  const key = toDateKey(day.date);
+  const hasEvent = eventDates.has(key);
+  const hasArrival = arrivalDates.has(key);
+  const hasDeparture = departureDates.has(key);
+  const hasDots = hasEvent || hasArrival || hasDeparture;
+
+  return (
+    <CalendarDayButton day={day} modifiers={modifiers} {...props}>
+      {children}
+      {hasDots && (
+        <div className="flex gap-0.5 justify-center">
+          {hasEvent && <div className="h-1 w-1 rounded-full bg-blue-500" />}
+          {hasArrival && <div className="h-1 w-1 rounded-full bg-green-500" />}
+          {hasDeparture && (
+            <div className="h-1 w-1 rounded-full bg-orange-500" />
+          )}
+        </div>
+      )}
+    </CalendarDayButton>
+  );
+}
+
+const CALENDAR_COMPONENTS = { DayButton: DayButtonWithDots };
+
 function StayOverview({
   month,
   guests,
+  colorMap,
 }: {
   month: Date;
   guests: GuestTravel[];
+  colorMap: Map<string, string>;
 }) {
   const year = month.getFullYear();
   const monthIndex = month.getMonth();
   const weeks = getWeeksInMonth(year, monthIndex);
-
-  // Assign a stable color to each guest
-  const colorMap = React.useMemo(() => {
-    const map = new Map<string, string>();
-    guests.forEach((g, i) => {
-      map.set(g.id, STAY_COLORS[i % STAY_COLORS.length] as string);
-    });
-    return map;
-  }, [guests]);
 
   const guestsWithBothDates = guests.filter(
     (g) => g.arrival_date && g.departure_date,
@@ -190,6 +230,15 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
     "all",
   );
 
+  // Stable color assignment keyed to unfiltered guests — prevents color shift on filter change
+  const colorMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    guests.forEach((g, i) => {
+      map.set(g.id, STAY_COLORS[i % STAY_COLORS.length] as string);
+    });
+    return map;
+  }, [guests]);
+
   // Apply side filter to guests
   const filteredGuests = React.useMemo(
     () =>
@@ -263,37 +312,8 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
     [selectedKey, filteredGuests, showDepartures],
   );
 
-  // Custom DayButton with colored dots
-  const DayButtonWithDots = React.useCallback(
-    function DotButton({
-      day,
-      modifiers,
-      children,
-      ...props
-    }: React.ComponentPropsWithoutRef<typeof CalendarDayButton>) {
-      const key = toDateKey(day.date);
-      const hasEvent = eventDates.has(key);
-      const hasArrival = arrivalDates.has(key);
-      const hasDeparture = departureDates.has(key);
-      const hasDots = hasEvent || hasArrival || hasDeparture;
-
-      return (
-        <CalendarDayButton day={day} modifiers={modifiers} {...props}>
-          {children}
-          {hasDots && (
-            <div className="flex gap-0.5 justify-center">
-              {hasEvent && <div className="h-1 w-1 rounded-full bg-blue-500" />}
-              {hasArrival && (
-                <div className="h-1 w-1 rounded-full bg-green-500" />
-              )}
-              {hasDeparture && (
-                <div className="h-1 w-1 rounded-full bg-orange-500" />
-              )}
-            </div>
-          )}
-        </CalendarDayButton>
-      );
-    },
+  const dotContextValue = React.useMemo(
+    () => ({ eventDates, arrivalDates, departureDates }),
     [eventDates, arrivalDates, departureDates],
   );
 
@@ -358,15 +378,17 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Calendar */}
         <div className="shrink-0">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            month={month}
-            onMonthChange={setMonth}
-            components={{ DayButton: DayButtonWithDots }}
-            className="rounded-lg border p-4 bg-background"
-          />
+          <DotContext.Provider value={dotContextValue}>
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              month={month}
+              onMonthChange={setMonth}
+              components={CALENDAR_COMPONENTS}
+              className="rounded-lg border p-4 bg-background"
+            />
+          </DotContext.Provider>
           {/* Legend */}
           <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground px-1">
             {showEvents && (
@@ -508,7 +530,11 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
               year: "numeric",
             })}
           </h2>
-          <StayOverview month={month} guests={filteredGuests} />
+          <StayOverview
+            month={month}
+            guests={filteredGuests}
+            colorMap={colorMap}
+          />
         </div>
       )}
     </div>

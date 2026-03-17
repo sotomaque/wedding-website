@@ -8,15 +8,13 @@ import type {
   UseFormSetValue,
   UseFormWatch,
 } from "react-hook-form";
-import type { Database } from "@/lib/supabase/types";
 import type { MultiGuestRsvpFormData } from "@/lib/validations/rsvp";
-
-type Guest = Database["public"]["Tables"]["guests"]["Row"];
+import type { RsvpGuest } from "./actions";
 
 interface GuestRsvpCardProps {
   index: number;
-  guest: Guest;
-  existingPlusOne?: Guest;
+  guest: RsvpGuest;
+  existingPlusOne?: RsvpGuest;
   register: UseFormRegister<MultiGuestRsvpFormData>;
   watch: UseFormWatch<MultiGuestRsvpFormData>;
   setValue: UseFormSetValue<MultiGuestRsvpFormData>;

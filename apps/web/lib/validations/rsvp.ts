@@ -56,7 +56,7 @@ export type GuestRsvpData = z.infer<typeof guestRsvpSchema>;
 
 // Multi-guest RSVP form schema
 export const multiGuestRsvpSchema = z.object({
-  guests: z.array(guestRsvpSchema).min(1),
+  guests: z.array(guestRsvpSchema).min(1, "At least one guest is required"),
   // Shared contact info (party-level)
   mailingAddress: z.string().optional(),
   phoneNumber: z.string().optional(),

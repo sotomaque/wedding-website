@@ -27,6 +27,11 @@ mock.module("next/cache", () => ({
   revalidatePath: () => {},
 }));
 
+// Mock next/server — after() runs the callback immediately in tests
+mock.module("next/server", () => ({
+  after: (fn: () => unknown) => fn(),
+}));
+
 // Mock email template
 mock.module("@/lib/email/templates/rsvp-notification", () => ({
   getRsvpNotificationEmail: () => "<html>RSVP Notification</html>",
@@ -51,6 +56,8 @@ mock.module("@/lib/db", () => ({
       select: () => ({
         where: () => ({
           execute: mockExecute,
+          executeTakeFirst:
+            table === "parties" ? mockExecuteTakeFirst : mockExecute,
         }),
       }),
     }),

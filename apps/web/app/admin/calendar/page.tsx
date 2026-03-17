@@ -11,18 +11,39 @@ function toDateStr(val: unknown): string | null {
 }
 
 export default async function CalendarPage() {
-  const eventsRaw = await db
-    .selectFrom("events")
-    .select([
-      "id",
-      "name",
-      "event_date",
-      "start_time",
-      "end_time",
-      "location_name",
-    ])
-    .orderBy("event_date")
-    .execute();
+  const [eventsRaw, guestsRaw] = await Promise.all([
+    db
+      .selectFrom("events")
+      .select([
+        "id",
+        "name",
+        "event_date",
+        "start_time",
+        "end_time",
+        "location_name",
+      ])
+      .orderBy("event_date")
+      .execute(),
+    db
+      .selectFrom("guests")
+      .select([
+        "id",
+        "first_name",
+        "last_name",
+        "side",
+        "arrival_date",
+        "arrival_transport",
+        "departure_date",
+        "departure_transport",
+      ])
+      .where((eb) =>
+        eb.or([
+          eb("arrival_date", "is not", null),
+          eb("departure_date", "is not", null),
+        ]),
+      )
+      .execute(),
+  ]);
 
   const events = eventsRaw.map((e) => ({
     id: e.id,
@@ -32,26 +53,6 @@ export default async function CalendarPage() {
     end_time: e.end_time,
     location_name: e.location_name,
   }));
-
-  const guestsRaw = await db
-    .selectFrom("guests")
-    .select([
-      "id",
-      "first_name",
-      "last_name",
-      "side",
-      "arrival_date",
-      "arrival_transport",
-      "departure_date",
-      "departure_transport",
-    ])
-    .where((eb) =>
-      eb.or([
-        eb("arrival_date", "is not", null),
-        eb("departure_date", "is not", null),
-      ]),
-    )
-    .execute();
 
   const guests = guestsRaw.map((g) => ({
     id: g.id,
