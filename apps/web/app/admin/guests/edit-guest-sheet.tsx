@@ -97,6 +97,11 @@ export function EditGuestSheet({
         | "maid_of_honor"
         | "",
       partyId: guest.party_id || "",
+      arrivalDate: guest.arrival_date || "",
+      arrivalTransport: guest.arrival_transport || "",
+      departureDate: guest.departure_date || "",
+      departureTransport: guest.departure_transport || "",
+      accommodationNotes: guest.accommodation_notes || "",
     }),
     [guest, plusOne],
   );
@@ -144,6 +149,11 @@ export function EditGuestSheet({
       "gender",
       "bridalPartyRole",
       "partyId",
+      "arrivalDate",
+      "arrivalTransport",
+      "departureDate",
+      "departureTransport",
+      "accommodationNotes",
     ];
 
     return fieldsToCompare.some((field) => {
@@ -564,6 +574,60 @@ export function EditGuestSheet({
                     }
                   }}
                 />
+              </div>
+
+              {/* Travel Information Section */}
+              <div className="border-t pt-4 mt-2 space-y-4">
+                <h3 className="text-sm font-semibold">Travel Information</h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="arrivalDate">Arrival Date</Label>
+                    <Input
+                      id="arrivalDate"
+                      type="date"
+                      {...register("arrivalDate")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="arrivalTransport">Arrival Transport</Label>
+                    <Input
+                      id="arrivalTransport"
+                      {...register("arrivalTransport")}
+                      placeholder="e.g. SAN, LAX, Driving"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="departureDate">Departure Date</Label>
+                    <Input
+                      id="departureDate"
+                      type="date"
+                      {...register("departureDate")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="departureTransport">
+                      Departure Transport
+                    </Label>
+                    <Input
+                      id="departureTransport"
+                      {...register("departureTransport")}
+                      placeholder="e.g. SAN, LAX, Driving"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="accommodationNotes">Accommodation</Label>
+                  <Input
+                    id="accommodationNotes"
+                    {...register("accommodationNotes")}
+                    placeholder="e.g. Airbnb in La Jolla, staying with family"
+                  />
+                </div>
               </div>
 
               {/* Bridal Party Section */}
