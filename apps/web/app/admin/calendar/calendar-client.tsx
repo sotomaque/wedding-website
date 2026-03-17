@@ -3,6 +3,13 @@
 import { Calendar, CalendarDayButton } from "@workspace/ui/components/calendar";
 import { cn } from "@workspace/ui/lib/utils";
 import * as React from "react";
+import {
+  type GuestTravel,
+  getStayBars,
+  getWeeksInMonth,
+  type StayBar,
+  toDateKey,
+} from "./utils";
 
 // Types for data passed from server
 interface CalendarEvent {
@@ -14,24 +21,9 @@ interface CalendarEvent {
   location_name: string | null;
 }
 
-interface GuestTravel {
-  id: string;
-  first_name: string;
-  last_name: string | null;
-  arrival_date: string | null;
-  arrival_transport: string | null;
-  departure_date: string | null;
-  departure_transport: string | null;
-}
-
 interface CalendarClientProps {
   events: CalendarEvent[];
   guests: GuestTravel[];
-}
-
-/** Normalize any date string to "YYYY-MM-DD" */
-function toDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function normalizeKey(raw: string): string {
@@ -49,38 +41,6 @@ function formatDateHeading(dateStr: string): string {
   });
 }
 
-/** Parse a "YYYY-MM-DD" string as a local date (no timezone shift) */
-function parseLocalDate(dateStr: string): Date {
-  const parts = dateStr.split("-").map(Number);
-  return new Date(parts[0] ?? 2026, (parts[1] ?? 1) - 1, parts[2] ?? 1);
-}
-
-/** Returns an array of weeks, each week is an array of 7 Date objects (Sun–Sat) */
-function getWeeksInMonth(year: number, month: number): Date[][] {
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-
-  // Start grid from the Sunday on or before the 1st
-  const start = new Date(firstDay);
-  start.setDate(start.getDate() - start.getDay());
-
-  // End grid at the Saturday on or after the last day
-  const end = new Date(lastDay);
-  end.setDate(end.getDate() + (6 - end.getDay()));
-
-  const weeks: Date[][] = [];
-  const cursor = new Date(start);
-  while (cursor <= end) {
-    const week: Date[] = [];
-    for (let i = 0; i < 7; i++) {
-      week.push(new Date(cursor));
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    weeks.push(week);
-  }
-  return weeks;
-}
-
 const STAY_COLORS = [
   "bg-violet-200 text-violet-900 dark:bg-violet-800 dark:text-violet-100",
   "bg-pink-200 text-pink-900 dark:bg-pink-800 dark:text-pink-100",
@@ -91,57 +51,6 @@ const STAY_COLORS = [
   "bg-indigo-200 text-indigo-900 dark:bg-indigo-800 dark:text-indigo-100",
   "bg-teal-200 text-teal-900 dark:bg-teal-800 dark:text-teal-100",
 ];
-
-interface StayBar {
-  guest: GuestTravel;
-  colorClass: string;
-  colStart: number; // 1–7 (Sun=1, Sat=7)
-  colEnd: number; // 1–7
-  isStart: boolean; // arrival falls within this week
-  isEnd: boolean; // departure falls within this week
-}
-
-function getStayBars(
-  week: Date[],
-  guests: GuestTravel[],
-  colorMap: Map<string, string>,
-): StayBar[] {
-  const bars: StayBar[] = [];
-  const weekStart = week[0] as Date;
-  const weekEnd = week[6] as Date;
-
-  for (const guest of guests) {
-    if (!guest.arrival_date || !guest.departure_date) continue;
-
-    const arrival = parseLocalDate(guest.arrival_date);
-    const departure = parseLocalDate(guest.departure_date);
-
-    // Skip if the stay doesn't overlap this week at all
-    if (departure < weekStart || arrival > weekEnd) continue;
-
-    const isStart = arrival >= weekStart && arrival <= weekEnd;
-    const isEnd = departure >= weekStart && departure <= weekEnd;
-
-    // Clamp to week boundaries
-    const clampedStart = isStart ? arrival : weekStart;
-    const clampedEnd = isEnd ? departure : weekEnd;
-
-    // colStart/colEnd are 1-indexed (Sunday = 1)
-    const colStart = clampedStart.getDay() + 1;
-    const colEnd = clampedEnd.getDay() + 1;
-
-    bars.push({
-      guest,
-      colorClass: colorMap.get(guest.id) ?? (STAY_COLORS[0] as string),
-      colStart,
-      colEnd,
-      isStart,
-      isEnd,
-    });
-  }
-
-  return bars;
-}
 
 const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -277,6 +186,18 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
   const [showArrivals, setShowArrivals] = React.useState(true);
   const [showDepartures, setShowDepartures] = React.useState(true);
   const [showStays, setShowStays] = React.useState(true);
+  const [sideFilter, setSideFilter] = React.useState<"all" | "bride" | "groom">(
+    "all",
+  );
+
+  // Apply side filter to guests
+  const filteredGuests = React.useMemo(
+    () =>
+      sideFilter === "all"
+        ? guests
+        : guests.filter((g) => g.side === sideFilter),
+    [guests, sideFilter],
+  );
 
   // Compute sets of "YYYY-MM-DD" keys per layer
   const eventDates = React.useMemo(() => {
@@ -291,20 +212,20 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
   const arrivalDates = React.useMemo(() => {
     const set = new Set<string>();
     if (!showArrivals) return set;
-    for (const g of guests) {
+    for (const g of filteredGuests) {
       if (g.arrival_date) set.add(normalizeKey(g.arrival_date));
     }
     return set;
-  }, [guests, showArrivals]);
+  }, [filteredGuests, showArrivals]);
 
   const departureDates = React.useMemo(() => {
     const set = new Set<string>();
     if (!showDepartures) return set;
-    for (const g of guests) {
+    for (const g of filteredGuests) {
       if (g.departure_date) set.add(normalizeKey(g.departure_date));
     }
     return set;
-  }, [guests, showDepartures]);
+  }, [filteredGuests, showDepartures]);
 
   // Selected day detail data
   const selectedKey = selectedDate ? toDateKey(selectedDate) : null;
@@ -322,24 +243,24 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
   const dayArrivals = React.useMemo(
     () =>
       selectedKey && showArrivals
-        ? guests.filter(
+        ? filteredGuests.filter(
             (g) =>
               g.arrival_date && normalizeKey(g.arrival_date) === selectedKey,
           )
         : [],
-    [selectedKey, guests, showArrivals],
+    [selectedKey, filteredGuests, showArrivals],
   );
 
   const dayDepartures = React.useMemo(
     () =>
       selectedKey && showDepartures
-        ? guests.filter(
+        ? filteredGuests.filter(
             (g) =>
               g.departure_date &&
               normalizeKey(g.departure_date) === selectedKey,
           )
         : [],
-    [selectedKey, guests, showDepartures],
+    [selectedKey, filteredGuests, showDepartures],
   );
 
   // Custom DayButton with colored dots
@@ -378,8 +299,35 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
 
   return (
     <div className="space-y-6">
-      {/* Layer Toggles */}
-      <div className="flex flex-wrap gap-3">
+      {/* Filters row */}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Side filter */}
+        <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 p-0.5 text-sm">
+          {(["all", "bride", "groom"] as const).map((val) => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => setSideFilter(val)}
+              className={cn(
+                "rounded-full px-3 py-1 transition-colors capitalize",
+                sideFilter === val
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {val === "all"
+                ? "All Guests"
+                : val === "bride"
+                  ? "Bride's Side"
+                  : "Groom's Side"}
+            </button>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className="h-5 w-px bg-border hidden sm:block" />
+
+        {/* Layer Toggles */}
         <ToggleButton
           active={showEvents}
           onToggle={() => setShowEvents((v) => !v)}
@@ -560,7 +508,7 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
               year: "numeric",
             })}
           </h2>
-          <StayOverview month={month} guests={guests} />
+          <StayOverview month={month} guests={filteredGuests} />
         </div>
       )}
     </div>

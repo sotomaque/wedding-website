@@ -510,4 +510,49 @@ describe("multiGuestRsvpSchema", () => {
       expect(result.data.guests[0]?.plusOneThreeAndUnder).toBe(true);
     }
   });
+
+  it("should accept travel information fields", () => {
+    const result = multiGuestRsvpSchema.safeParse({
+      guests: [
+        {
+          guestId: "guest-123",
+          firstName: "John",
+          attending: true,
+          plusOneAllowed: false,
+        },
+      ],
+      arrivalDate: "2026-09-10",
+      arrivalTransport: "SAN",
+      departureDate: "2026-09-14",
+      departureTransport: "LAX",
+      accommodationNotes: "Hotel del Coronado",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.arrivalDate).toBe("2026-09-10");
+      expect(result.data.arrivalTransport).toBe("SAN");
+      expect(result.data.departureDate).toBe("2026-09-14");
+      expect(result.data.departureTransport).toBe("LAX");
+      expect(result.data.accommodationNotes).toBe("Hotel del Coronado");
+    }
+  });
+
+  it("should succeed without travel information (all optional)", () => {
+    const result = multiGuestRsvpSchema.safeParse({
+      guests: [
+        {
+          guestId: "guest-123",
+          firstName: "John",
+          attending: true,
+          plusOneAllowed: false,
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.arrivalDate).toBeUndefined();
+      expect(result.data.departureDate).toBeUndefined();
+      expect(result.data.accommodationNotes).toBeUndefined();
+    }
+  });
 });

@@ -867,6 +867,135 @@ describe("submitMultiGuestRSVP - Shared Contact Information", () => {
   });
 });
 
+describe("submitMultiGuestRSVP - Travel Information", () => {
+  beforeEach(() => {
+    mockSendEmail.mockClear();
+    mockExecute.mockClear();
+    mockExecuteTakeFirst.mockClear();
+    mockUpdateSet.mockClear();
+    mockInsertValues.mockClear();
+    mockExecuteTakeFirst.mockResolvedValue(undefined);
+  });
+
+  it("should save travel info for all guests in the party", async () => {
+    mockExecute.mockResolvedValue([
+      {
+        id: "guest-1",
+        first_name: "John",
+        invite_code: "ABCD-1234",
+        is_plus_one: false,
+        plus_one_allowed: false,
+        side: "bride",
+        list: "a",
+        under_21: false,
+        three_and_under: false,
+        party_id: null,
+        arrival_date: null,
+        departure_date: null,
+      },
+      {
+        id: "guest-2",
+        first_name: "Jane",
+        invite_code: "ABCD-1234",
+        is_plus_one: false,
+        plus_one_allowed: false,
+        side: "bride",
+        list: "a",
+        under_21: false,
+        three_and_under: false,
+        party_id: null,
+        arrival_date: null,
+        departure_date: null,
+      },
+    ]);
+
+    const { submitMultiGuestRSVP } = await import("@/app/rsvp/actions");
+
+    const result = await submitMultiGuestRSVP({
+      inviteCode: "ABCD-1234",
+      guests: [
+        {
+          guestId: "guest-1",
+          firstName: "John",
+          attending: true,
+          plusOneAllowed: false,
+        },
+        {
+          guestId: "guest-2",
+          firstName: "Jane",
+          attending: true,
+          plusOneAllowed: false,
+        },
+      ],
+      arrivalDate: "2026-09-10",
+      arrivalTransport: "SAN",
+      departureDate: "2026-09-14",
+      departureTransport: "LAX",
+      accommodationNotes: "Hotel del Coronado",
+    });
+
+    expect(result.success).toBe(true);
+    // Both guests should receive the same travel info
+    expect(mockUpdateSet).toHaveBeenCalledTimes(2);
+    expect(mockUpdateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        arrival_date: "2026-09-10",
+        arrival_transport: "SAN",
+        departure_date: "2026-09-14",
+        departure_transport: "LAX",
+        accommodation_notes: "Hotel del Coronado",
+      }),
+    );
+  });
+
+  it("should preserve existing travel info when new values are not provided", async () => {
+    mockExecute.mockResolvedValue([
+      {
+        id: "guest-1",
+        first_name: "John",
+        invite_code: "ABCD-1234",
+        is_plus_one: false,
+        plus_one_allowed: false,
+        side: "bride",
+        list: "a",
+        under_21: false,
+        three_and_under: false,
+        party_id: null,
+        arrival_date: "2026-09-10",
+        arrival_transport: "SAN",
+        departure_date: "2026-09-14",
+        departure_transport: "LAX",
+        accommodation_notes: "Airbnb",
+      },
+    ]);
+
+    const { submitMultiGuestRSVP } = await import("@/app/rsvp/actions");
+
+    const result = await submitMultiGuestRSVP({
+      inviteCode: "ABCD-1234",
+      guests: [
+        {
+          guestId: "guest-1",
+          firstName: "John",
+          attending: true,
+          plusOneAllowed: false,
+        },
+      ],
+      // No travel fields submitted
+    });
+
+    expect(result.success).toBe(true);
+    // Should fall back to existing DB values
+    expect(mockUpdateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        arrival_date: "2026-09-10",
+        departure_date: "2026-09-14",
+        accommodation_notes: "Airbnb",
+      }),
+    );
+  });
+});
+
 describe("submitMultiGuestRSVP - Notification Email", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
