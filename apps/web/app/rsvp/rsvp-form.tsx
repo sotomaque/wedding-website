@@ -84,6 +84,11 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       preferredContactMethod:
         (firstGuest?.preferred_contact_method as MultiGuestRsvpFormData["preferredContactMethod"]) ||
         "",
+      arrivalDate: firstGuest?.arrival_date || "",
+      arrivalTransport: firstGuest?.arrival_transport || "",
+      departureDate: firstGuest?.departure_date || "",
+      departureTransport: firstGuest?.departure_transport || "",
+      accommodationNotes: firstGuest?.accommodation_notes || "",
     };
   }, [primaryGuests, firstGuest, plusOnes]);
 
@@ -148,6 +153,17 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       return true;
     }
 
+    // Compare travel info
+    if (
+      initialValues.arrivalDate !== formValues.arrivalDate ||
+      initialValues.arrivalTransport !== formValues.arrivalTransport ||
+      initialValues.departureDate !== formValues.departureDate ||
+      initialValues.departureTransport !== formValues.departureTransport ||
+      initialValues.accommodationNotes !== formValues.accommodationNotes
+    ) {
+      return true;
+    }
+
     return false;
   }, [formValues, initialValues, hasRSVPd]);
 
@@ -159,6 +175,11 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       phoneNumber: data.phoneNumber,
       whatsapp: data.whatsapp,
       preferredContactMethod: data.preferredContactMethod || null,
+      arrivalDate: data.arrivalDate,
+      arrivalTransport: data.arrivalTransport,
+      departureDate: data.departureDate,
+      departureTransport: data.departureTransport,
+      accommodationNotes: data.accommodationNotes,
     });
 
     if (result.success) {
@@ -178,6 +199,8 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       toast.error(result.error || "Failed to submit RSVP");
     }
   }
+
+  const anyAttending = formValues.guests.some((g) => g.attending);
 
   // Calculate attending summary
   const attendingCount = formValues.guests.filter((g) => g.attending).length;
@@ -332,6 +355,92 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
             </div>
           </div>
         </div>
+
+        {/* Travel Information Section - only when someone is attending */}
+        {anyAttending && (
+          <div className="pt-6 border-t border-border">
+            <h3 className="text-lg font-semibold mb-4">
+              Travel Information (Optional)
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Let us know when you're arriving so we can coordinate!
+            </p>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="arrival-date"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Arrival Date
+                  </label>
+                  <Input
+                    id="arrival-date"
+                    type="date"
+                    {...register("arrivalDate")}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="arrival-transport"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    How are you getting here?
+                  </label>
+                  <Input
+                    id="arrival-transport"
+                    {...register("arrivalTransport")}
+                    placeholder="e.g. SAN, LAX, Driving"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="departure-date"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Departure Date
+                  </label>
+                  <Input
+                    id="departure-date"
+                    type="date"
+                    {...register("departureDate")}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="departure-transport"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Departure Transport
+                  </label>
+                  <Input
+                    id="departure-transport"
+                    {...register("departureTransport")}
+                    placeholder="e.g. SAN, LAX, Driving"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="accommodation-notes"
+                  className="block text-sm font-medium mb-2"
+                >
+                  Where are you staying? (Optional)
+                </label>
+                <Input
+                  id="accommodation-notes"
+                  {...register("accommodationNotes")}
+                  placeholder="e.g. Airbnb in La Jolla, Hotel del Coronado"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Submit Buttons */}

@@ -388,6 +388,11 @@ interface MultiGuestRSVPSubmitData {
   phoneNumber?: string;
   whatsapp?: string;
   preferredContactMethod?: "email" | "text" | "whatsapp" | "phone_call" | null;
+  arrivalDate?: string;
+  arrivalTransport?: string;
+  departureDate?: string;
+  departureTransport?: string;
+  accommodationNotes?: string;
 }
 
 /**
@@ -404,6 +409,11 @@ export async function submitMultiGuestRSVP(
       phoneNumber,
       whatsapp,
       preferredContactMethod,
+      arrivalDate,
+      arrivalTransport,
+      departureDate,
+      departureTransport,
+      accommodationNotes,
     } = data;
 
     if (!inviteCode) {
@@ -468,6 +478,15 @@ export async function submitMultiGuestRSVP(
           whatsapp: whatsapp || existingGuest.whatsapp,
           preferred_contact_method:
             preferredContactMethod || existingGuest.preferred_contact_method,
+          // Update travel info from shared party-level data
+          arrival_date: arrivalDate || existingGuest.arrival_date,
+          arrival_transport:
+            arrivalTransport || existingGuest.arrival_transport,
+          departure_date: departureDate || existingGuest.departure_date,
+          departure_transport:
+            departureTransport || existingGuest.departure_transport,
+          accommodation_notes:
+            accommodationNotes || existingGuest.accommodation_notes,
         })
         .where("id", "=", guestRsvp.guestId)
         .execute();

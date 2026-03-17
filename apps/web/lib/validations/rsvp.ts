@@ -65,6 +65,12 @@ export const multiGuestRsvpSchema = z.object({
     .enum(["email", "text", "whatsapp", "phone_call"])
     .optional()
     .or(z.literal("")),
+  // Shared travel info (party-level)
+  arrivalDate: z.string().optional(),
+  arrivalTransport: z.string().optional(),
+  departureDate: z.string().optional(),
+  departureTransport: z.string().optional(),
+  accommodationNotes: z.string().optional(),
 });
 
 export type MultiGuestRsvpFormData = z.infer<typeof multiGuestRsvpSchema>;

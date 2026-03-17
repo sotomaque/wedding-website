@@ -48,6 +48,7 @@ const navItems: NavItem[] = [
     ],
   },
   { type: "link", href: "/admin/events", label: "Events" },
+  { type: "link", href: "/admin/calendar", label: "Calendar" },
   { type: "link", href: "/admin/gifts", label: "Gifts" },
   { type: "link", href: "/admin/templates", label: "Templates" },
   { type: "link", href: "/admin/todos", label: "Todos" },
