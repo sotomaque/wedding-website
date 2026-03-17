@@ -1,5 +1,14 @@
 "use client";
 
+function toDateInput(val: unknown): string {
+  if (!val) return "";
+  try {
+    return new Date(val as string | Date).toISOString().slice(0, 10);
+  } catch {
+    return "";
+  }
+}
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -84,9 +93,9 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       preferredContactMethod:
         (firstGuest?.preferred_contact_method as MultiGuestRsvpFormData["preferredContactMethod"]) ||
         "",
-      arrivalDate: firstGuest?.arrival_date || "",
+      arrivalDate: toDateInput(firstGuest?.arrival_date),
       arrivalTransport: firstGuest?.arrival_transport || "",
-      departureDate: firstGuest?.departure_date || "",
+      departureDate: toDateInput(firstGuest?.departure_date),
       departureTransport: firstGuest?.departure_transport || "",
       accommodationNotes: firstGuest?.accommodation_notes || "",
     };
@@ -385,7 +394,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       </div>
 
       {/* Submit Buttons */}
-      <div className="flex-shrink-0 flex gap-3 p-4 border-t border-border bg-background md:border-t-0 md:p-0 md:pt-4 md:bg-transparent">
+      <div className="shrink-0 flex gap-3 p-4 border-t border-border bg-background md:border-t-0 md:p-0 md:pt-4 md:bg-transparent">
         <Button
           type="button"
           variant="outline"
