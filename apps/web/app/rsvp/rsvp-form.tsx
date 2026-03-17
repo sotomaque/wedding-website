@@ -14,21 +14,19 @@ import {
 } from "@workspace/ui/components/select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import type { Database } from "@/lib/supabase/types";
 import {
   type MultiGuestRsvpFormData,
   multiGuestRsvpSchema,
 } from "@/lib/validations/rsvp";
+import type { RsvpGuest } from "./actions";
 import { submitMultiGuestRSVP } from "./actions";
 import { GuestRsvpCard } from "./guest-rsvp-card";
 
-type Guest = Database["public"]["Tables"]["guests"]["Row"];
-
 interface RSVPFormProps {
-  guests: Guest[];
+  guests: RsvpGuest[];
   inviteCode: string;
   onBack: () => void;
 }
@@ -47,8 +45,10 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
   const firstGuest = primaryGuests[0];
 
   // Find plus-one for a specific guest
-  const findPlusOneFor = (guestId: string) =>
-    plusOnes.find((p) => p.primary_guest_id === guestId);
+  const findPlusOneFor = useCallback(
+    (guestId: string) => plusOnes.find((p) => p.primary_guest_id === guestId),
+    [plusOnes],
+  );
 
   // Memoize initial values from DB to compare against current form values
   const initialValues = useMemo((): MultiGuestRsvpFormData => {
@@ -84,6 +84,11 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       preferredContactMethod:
         (firstGuest?.preferred_contact_method as MultiGuestRsvpFormData["preferredContactMethod"]) ||
         "",
+      arrivalDate: firstGuest?.arrival_date || "",
+      arrivalTransport: firstGuest?.arrival_transport || "",
+      departureDate: firstGuest?.departure_date || "",
+      departureTransport: firstGuest?.departure_transport || "",
+      accommodationNotes: firstGuest?.accommodation_notes || "",
     };
   }, [primaryGuests, firstGuest, plusOnes]);
 
@@ -101,55 +106,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
   // Watch all form values to detect changes
   const formValues = watch();
 
-  // Check if form has changed from initial DB values
-  const hasFormChanged = useMemo(() => {
-    // For new RSVPs, always allow submission
-    if (!hasRSVPd) return true;
-
-    // Deep compare guests array
-    const initialGuests = initialValues.guests;
-    const currentGuests = formValues.guests;
-
-    if (initialGuests.length !== currentGuests.length) return true;
-
-    for (let i = 0; i < initialGuests.length; i++) {
-      const initial = initialGuests[i];
-      const current = currentGuests[i];
-
-      if (!initial || !current) return true;
-
-      // Compare each field
-      if (
-        initial.firstName !== current.firstName ||
-        initial.lastName !== current.lastName ||
-        initial.attending !== current.attending ||
-        initial.dietaryRestrictions !== current.dietaryRestrictions ||
-        initial.under21 !== current.under21 ||
-        initial.threeAndUnder !== current.threeAndUnder ||
-        initial.plusOneAttending !== current.plusOneAttending ||
-        initial.plusOneFirstName !== current.plusOneFirstName ||
-        initial.plusOneLastName !== current.plusOneLastName ||
-        initial.plusOneDietaryRestrictions !==
-          current.plusOneDietaryRestrictions ||
-        initial.plusOneUnder21 !== current.plusOneUnder21 ||
-        initial.plusOneThreeAndUnder !== current.plusOneThreeAndUnder
-      ) {
-        return true;
-      }
-    }
-
-    // Compare contact info
-    if (
-      initialValues.mailingAddress !== formValues.mailingAddress ||
-      initialValues.phoneNumber !== formValues.phoneNumber ||
-      initialValues.whatsapp !== formValues.whatsapp ||
-      initialValues.preferredContactMethod !== formValues.preferredContactMethod
-    ) {
-      return true;
-    }
-
-    return false;
-  }, [formValues, initialValues, hasRSVPd]);
+  const canSubmit = !isSubmitting;
 
   async function onSubmit(data: MultiGuestRsvpFormData) {
     const result = await submitMultiGuestRSVP({
@@ -158,7 +115,12 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       mailingAddress: data.mailingAddress,
       phoneNumber: data.phoneNumber,
       whatsapp: data.whatsapp,
-      preferredContactMethod: data.preferredContactMethod || null,
+      preferredContactMethod: data.preferredContactMethod || undefined,
+      arrivalDate: data.arrivalDate,
+      arrivalTransport: data.arrivalTransport,
+      departureDate: data.departureDate,
+      departureTransport: data.departureTransport,
+      accommodationNotes: data.accommodationNotes,
     });
 
     if (result.success) {
@@ -178,6 +140,8 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       toast.error(result.error || "Failed to submit RSVP");
     }
   }
+
+  const anyAttending = formValues.guests.some((g) => g.attending);
 
   // Calculate attending summary
   const attendingCount = formValues.guests.filter((g) => g.attending).length;
@@ -332,6 +296,92 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
             </div>
           </div>
         </div>
+
+        {/* Travel Information Section - only when someone is attending */}
+        {anyAttending && (
+          <div className="pt-6 border-t border-border">
+            <h3 className="text-lg font-semibold mb-4">
+              Travel Information (Optional)
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Let us know when you're arriving so we can coordinate!
+            </p>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="arrival-date"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Arrival Date
+                  </label>
+                  <Input
+                    id="arrival-date"
+                    type="date"
+                    {...register("arrivalDate")}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="arrival-transport"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    How are you getting here?
+                  </label>
+                  <Input
+                    id="arrival-transport"
+                    {...register("arrivalTransport")}
+                    placeholder="e.g. SAN, LAX, Driving"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="departure-date"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Departure Date
+                  </label>
+                  <Input
+                    id="departure-date"
+                    type="date"
+                    {...register("departureDate")}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="departure-transport"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Departure Transport
+                  </label>
+                  <Input
+                    id="departure-transport"
+                    {...register("departureTransport")}
+                    placeholder="e.g. SAN, LAX, Driving"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="accommodation-notes"
+                  className="block text-sm font-medium mb-2"
+                >
+                  Where are you staying? (Optional)
+                </label>
+                <Input
+                  id="accommodation-notes"
+                  {...register("accommodationNotes")}
+                  placeholder="e.g. Airbnb in La Jolla, Hotel del Coronado"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Submit Buttons */}
@@ -346,7 +396,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
         </Button>
         <Button
           type="submit"
-          disabled={isSubmitting || !hasFormChanged}
+          disabled={isSubmitting || !canSubmit}
           className="flex-1"
         >
           {isSubmitting

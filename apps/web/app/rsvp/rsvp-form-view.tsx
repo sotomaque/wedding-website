@@ -6,16 +6,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
-import type { Database } from "@/lib/supabase/types";
 import { DETAILS_CONTENT, RSVP_CONTENT } from "../constants";
 import { NAVIGATION_CONFIG } from "../navigation-config";
+import type { RsvpGuest } from "./actions";
 import { linkClerkUserToGuestAction } from "./actions";
 import { RSVPForm } from "./rsvp-form";
 
-type Guest = Database["public"]["Tables"]["guests"]["Row"];
-
 interface RSVPFormViewProps {
-  guests: Guest[];
+  guests: RsvpGuest[];
   inviteCode: string;
 }
 
