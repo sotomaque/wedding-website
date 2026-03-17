@@ -97,7 +97,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
     handleSubmit,
     watch,
     setValue,
-    formState: { isSubmitting, errors, isDirty },
+    formState: { isSubmitting, errors },
   } = useForm<MultiGuestRsvpFormData>({
     resolver: zodResolver(multiGuestRsvpSchema),
     defaultValues: initialValues,
@@ -106,8 +106,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
   // Watch all form values to detect changes
   const formValues = watch();
 
-  // Allow submit if this is a new RSVP or if any field has changed
-  const canSubmit = !hasRSVPd || isDirty;
+  const canSubmit = !isSubmitting;
 
   async function onSubmit(data: MultiGuestRsvpFormData) {
     const result = await submitMultiGuestRSVP({
@@ -116,7 +115,7 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
       mailingAddress: data.mailingAddress,
       phoneNumber: data.phoneNumber,
       whatsapp: data.whatsapp,
-      preferredContactMethod: data.preferredContactMethod || null,
+      preferredContactMethod: data.preferredContactMethod || undefined,
       arrivalDate: data.arrivalDate,
       arrivalTransport: data.arrivalTransport,
       departureDate: data.departureDate,
