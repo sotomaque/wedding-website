@@ -45,6 +45,17 @@ import type { PartyOption } from "./actions";
 
 type Guest = Database["public"]["Tables"]["guests"]["Row"];
 
+// PostgreSQL date columns are returned as Date objects by the pg driver.
+// Convert to the "YYYY-MM-DD" string that <input type="date"> requires.
+function toDateInput(val: unknown): string {
+  if (!val) return "";
+  try {
+    return new Date(val as string | Date).toISOString().slice(0, 10);
+  } catch {
+    return "";
+  }
+}
+
 interface EditGuestSheetProps {
   guest: Guest;
   plusOne: Guest | null;
@@ -97,9 +108,9 @@ export function EditGuestSheet({
         | "maid_of_honor"
         | "",
       partyId: guest.party_id || "",
-      arrivalDate: guest.arrival_date || "",
+      arrivalDate: toDateInput(guest.arrival_date),
       arrivalTransport: guest.arrival_transport || "",
-      departureDate: guest.departure_date || "",
+      departureDate: toDateInput(guest.departure_date),
       departureTransport: guest.departure_transport || "",
       accommodationNotes: guest.accommodation_notes || "",
     }),
@@ -298,7 +309,7 @@ export function EditGuestSheet({
   return (
     <Sheet open onOpenChange={closeSheet}>
       <SheetContent className="sm:max-w-2xl w-full flex flex-col h-full">
-        <SheetHeader className="flex-shrink-0">
+        <SheetHeader className="shrink-0">
           <SheetTitle className="text-2xl font-serif">Edit Guest</SheetTitle>
         </SheetHeader>
 
@@ -722,7 +733,7 @@ export function EditGuestSheet({
           </div>
 
           {/* Footer with buttons - sticky on mobile */}
-          <div className="flex-shrink-0 space-y-4 pt-4 border-t bg-background">
+          <div className="shrink-0 space-y-4 pt-4 border-t bg-background">
             {/* Action Buttons */}
             <div className="flex gap-2">
               <Button
