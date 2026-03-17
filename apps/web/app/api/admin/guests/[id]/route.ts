@@ -138,6 +138,11 @@ export async function PATCH(
       gender,
       bridalPartyRole,
       partyId,
+      arrivalDate,
+      arrivalTransport,
+      departureDate,
+      departureTransport,
+      accommodationNotes,
     } = body;
 
     // Kysely query - fetch the current guest to check if they have a plus one
@@ -223,6 +228,26 @@ export async function PATCH(
             : currentGuest.bridal_party_role,
         party_id: newPartyId,
         invite_code: newInviteCode,
+        arrival_date:
+          arrivalDate !== undefined
+            ? arrivalDate || null
+            : currentGuest.arrival_date,
+        arrival_transport:
+          arrivalTransport !== undefined
+            ? arrivalTransport || null
+            : currentGuest.arrival_transport,
+        departure_date:
+          departureDate !== undefined
+            ? departureDate || null
+            : currentGuest.departure_date,
+        departure_transport:
+          departureTransport !== undefined
+            ? departureTransport || null
+            : currentGuest.departure_transport,
+        accommodation_notes:
+          accommodationNotes !== undefined
+            ? accommodationNotes || null
+            : currentGuest.accommodation_notes,
       })
       .where("id", "=", id)
       .returningAll()

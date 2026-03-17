@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@workspace/ui/components/button";
-import { Check, X } from "lucide-react";
+import { Check, Link, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
@@ -457,20 +457,36 @@ export function createColumns({
       accessorKey: "invite_code",
       header: "Invite Code",
       cell: ({ row }) => (
-        <button
-          type="button"
-          className="text-sm bg-secondary px-2 py-1 rounded cursor-pointer hover:bg-secondary/80 transition-colors font-mono"
-          onClick={() => {
-            const code = row.original.invite_code;
-            navigator.clipboard.writeText(code);
-            toast.success("Copied!", {
-              description: "Invite code copied to clipboard",
-            });
-          }}
-          title="Click to copy invite code"
-        >
-          {row.original.invite_code}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            className="text-sm bg-secondary px-2 py-1 rounded cursor-pointer hover:bg-secondary/80 transition-colors font-mono"
+            onClick={() => {
+              const code = row.original.invite_code;
+              navigator.clipboard.writeText(code);
+              toast.success("Copied!", {
+                description: "Invite code copied to clipboard",
+              });
+            }}
+            title="Click to copy invite code"
+          >
+            {row.original.invite_code}
+          </button>
+          <button
+            type="button"
+            className="p-1 rounded cursor-pointer hover:bg-secondary/80 transition-colors text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              const url = `${window.location.origin}/rsvp?code=${row.original.invite_code}`;
+              navigator.clipboard.writeText(url);
+              toast.success("RSVP link copied!", {
+                description: "Full RSVP URL copied to clipboard",
+              });
+            }}
+            title="Copy RSVP link"
+          >
+            <Link className="h-3.5 w-3.5" />
+          </button>
+        </div>
       ),
     },
     {

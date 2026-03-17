@@ -45,6 +45,11 @@ export interface GuestsTable {
   > | null;
   activities_email_resend_count: ColumnType<number, number | undefined, number>;
   party_id: string | null;
+  arrival_date: string | null;
+  arrival_transport: string | null;
+  departure_date: string | null;
+  departure_transport: string | null;
+  accommodation_notes: string | null;
   created_at: ColumnType<Date, string | undefined, never>;
 }
 

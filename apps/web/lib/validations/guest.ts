@@ -28,6 +28,11 @@ export const editGuestSchema = z
       .optional()
       .or(z.literal("")),
     partyId: z.string().optional().or(z.literal("")),
+    arrivalDate: z.string().optional(),
+    arrivalTransport: z.string().optional(),
+    departureDate: z.string().optional(),
+    departureTransport: z.string().optional(),
+    accommodationNotes: z.string().optional(),
   })
   .refine(
     (data) => {

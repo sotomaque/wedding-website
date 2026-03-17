@@ -47,6 +47,11 @@ export interface Database {
           activities_email_sent_at: string | null;
           activities_email_resend_count: number;
           party_id: string | null;
+          arrival_date: string | null;
+          arrival_transport: string | null;
+          departure_date: string | null;
+          departure_transport: string | null;
+          accommodation_notes: string | null;
           created_at: string;
         };
         Insert: {
@@ -89,6 +94,11 @@ export interface Database {
           activities_email_sent_at?: string | null;
           activities_email_resend_count?: number;
           party_id?: string | null;
+          arrival_date?: string | null;
+          arrival_transport?: string | null;
+          departure_date?: string | null;
+          departure_transport?: string | null;
+          accommodation_notes?: string | null;
           created_at?: string;
         };
         Update: {
@@ -131,6 +141,11 @@ export interface Database {
           activities_email_sent_at?: string | null;
           activities_email_resend_count?: number;
           party_id?: string | null;
+          arrival_date?: string | null;
+          arrival_transport?: string | null;
+          departure_date?: string | null;
+          departure_transport?: string | null;
+          accommodation_notes?: string | null;
           created_at?: string;
         };
       };
