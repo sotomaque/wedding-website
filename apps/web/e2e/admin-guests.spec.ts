@@ -328,7 +328,7 @@ test.describe("Guest Management - Email Actions", () => {
     // Should show success or send the email
     // Note: In a test environment, the actual email may not send but the API should respond
     await expect(
-      page.getByText(/email sent/i).or(page.getByText(/failed/i)),
+      page.getByText(/invitation email sent to/i).or(page.getByText(/failed/i)),
     ).toBeVisible({ timeout: 10000 });
 
     // Clean up - delete the guest

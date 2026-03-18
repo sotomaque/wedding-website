@@ -541,16 +541,30 @@ export function EditGuestSheet({
             <div className="border-t pt-4 mt-2 space-y-4">
               <h3 className="text-sm font-semibold">Admin Information</h3>
 
-              {/* Email Status Display */}
+              {/* Invite Email Status Display */}
               <div className="flex items-center justify-between">
-                <Label>Email Status</Label>
+                <Label>Invite Email Status</Label>
                 {guest.number_of_resends === 0 ? (
-                  <Badge variant="secondary">No email sent</Badge>
+                  <Badge variant="secondary">No invite email sent</Badge>
                 ) : guest.number_of_resends === 1 ? (
-                  <Badge variant="default">Email sent</Badge>
+                  <Badge variant="default">Invite email sent</Badge>
                 ) : (
                   <Badge variant="outline">
                     Sent {guest.number_of_resends} times
+                  </Badge>
+                )}
+              </div>
+
+              {/* Calendar Invite Status Display */}
+              <div className="flex items-center justify-between">
+                <Label>Calendar Invite Status</Label>
+                {!guest.calendar_invite_sent ? (
+                  <Badge variant="secondary">No calendar invite sent</Badge>
+                ) : guest.calendar_invite_resend_count === 1 ? (
+                  <Badge variant="default">Calendar invite sent</Badge>
+                ) : (
+                  <Badge variant="outline">
+                    Sent {guest.calendar_invite_resend_count} times
                   </Badge>
                 )}
               </div>
