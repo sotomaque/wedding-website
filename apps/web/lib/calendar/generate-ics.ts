@@ -50,6 +50,68 @@ function escapeIcsText(text: string): string {
 }
 
 /**
+ * Converts a "HH:MM" or "HH:MM:SS" string to "H:MM AM/PM".
+ */
+function formatTime(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  const hours = h ?? 0;
+  const minutes = m ?? 0;
+  const period = hours >= 12 ? "PM" : "AM";
+  const display = hours % 12 || 12;
+  return `${display}:${String(minutes).padStart(2, "0")} ${period}`;
+}
+
+/**
+ * Safely converts an event_date value (Date object or date string) to a Date.
+ */
+function toDate(value: Date | string | null | undefined): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  const d = new Date(`${value}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Builds the HTML body for a calendar invite email.
+ */
+export function buildCalendarEmailHtml(
+  events: CalendarEvent[],
+  guestFirstName: string,
+): string {
+  const eventLines = events
+    .map((e) => {
+      const date = toDate(e.event_date as Date | string | null);
+      const dateStr = date
+        ? date.toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        : "";
+      const timeStr = e.start_time
+        ? ` at ${formatTime(e.start_time)}${e.end_time ? ` – ${formatTime(e.end_time)}` : ""}`
+        : "";
+      const locationStr = e.location_name
+        ? `<br/><small>${e.location_name}${e.location_address ? `, ${e.location_address}` : ""}</small>`
+        : "";
+      return `<li><strong>${e.name}</strong> — ${dateStr}${timeStr}${locationStr}</li>`;
+    })
+    .join("");
+
+  return `
+    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #2d2d2d;">
+      <h2 style="font-weight: normal; color: #7c6a5e;">Your Calendar Invite 💕</h2>
+      <p>Hi ${guestFirstName},</p>
+      <p>We're so excited to celebrate with you! Please find attached a calendar invite for our wedding events.</p>
+      <ul style="line-height: 2;">${eventLines}</ul>
+      <p>Open the attached <strong>.ics file</strong> to add these events to your calendar.</p>
+      <p>With love,<br/>Helen &amp; Enrique</p>
+    </div>
+  `.trim();
+}
+
+/**
  * Generates an iCalendar (.ics) string for the given events.
  * Produces one VEVENT per event, wrapped in a VCALENDAR.
  */
