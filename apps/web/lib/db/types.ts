@@ -5,6 +5,19 @@
 
 import type { ColumnType, Generated } from "kysely";
 
+// Weddings table (top-level multi-tenancy entity)
+export interface WeddingsTable {
+  id: Generated<string>;
+  slug: string;
+  couple_name: string;
+  wedding_date: string;
+  rsvp_deadline: string | null;
+  timezone: string;
+  status: "draft" | "published" | "archived";
+  created_at: ColumnType<Date, string | undefined, never>;
+  updated_at: ColumnType<Date, string | undefined, string>;
+}
+
 // Guests table
 export interface GuestsTable {
   id: Generated<string>;
@@ -51,6 +64,7 @@ export interface GuestsTable {
   departure_transport: string | null;
   accommodation_notes: string | null;
   created_at: ColumnType<Date, string | undefined, never>;
+  wedding_id: string | null;
 }
 
 // Activities table
@@ -68,6 +82,7 @@ export interface ActivitiesTable {
   venue_type: "ceremony" | "reception" | null;
   display_order: number;
   created_at: ColumnType<Date, string | undefined, never>;
+  wedding_id: string | null;
 }
 
 // Guest Activity Interests junction table
@@ -79,6 +94,7 @@ export interface GuestActivityInterestsTable {
   planned_date: ColumnType<Date, string | undefined, string | undefined> | null;
   status: "interested" | "committed";
   created_at: ColumnType<Date, string | undefined, never>;
+  wedding_id: string | null;
 }
 
 // Photos table
@@ -90,6 +106,7 @@ export interface PhotosTable {
   display_order: number;
   is_active: boolean;
   created_at: ColumnType<Date, string | undefined, never>;
+  wedding_id: string | null;
 }
 
 // Events table
@@ -108,6 +125,7 @@ export interface EventsTable {
   is_default: boolean;
   display_order: number;
   created_at: ColumnType<Date, string | undefined, never>;
+  wedding_id: string | null;
 }
 
 // Guest Event Invites junction table
@@ -128,6 +146,7 @@ export interface GuestEventInvitesTable {
   > | null;
   email_resend_count: ColumnType<number, number | undefined, number>;
   created_at: ColumnType<Date, string | undefined, never>;
+  wedding_id: string | null;
 }
 
 // Seating Charts table
@@ -139,6 +158,7 @@ export interface SeatingChartsTable {
   notes: string | null;
   created_at: ColumnType<Date, string | undefined, never>;
   updated_at: ColumnType<Date, string | undefined, string>;
+  wedding_id: string | null;
 }
 
 // Seating Tables table
@@ -153,6 +173,7 @@ export interface SeatingTablesTable {
   shape: "round" | "rectangle" | "square";
   notes: string | null;
   created_at: ColumnType<Date, string | undefined, never>;
+  wedding_id: string | null;
 }
 
 // Guest Table Assignments junction table
@@ -162,6 +183,7 @@ export interface GuestTableAssignmentsTable {
   guest_id: string;
   seat_number: number | null;
   created_at: ColumnType<Date, string | undefined, never>;
+  wedding_id: string | null;
 }
 
 // Parties table (groups of guests who attend together)
@@ -175,6 +197,7 @@ export interface PartiesTable {
   notes: string | null;
   created_at: ColumnType<Date, string | undefined, never>;
   updated_at: ColumnType<Date, string | undefined, string>;
+  wedding_id: string | null;
 }
 
 // Gifts table (Stripe webhook data)
@@ -200,6 +223,7 @@ export interface GiftsTable {
   notes: string | null;
   created_at: ColumnType<Date, string | undefined, never>;
   updated_at: ColumnType<Date, string | undefined, string>;
+  wedding_id: string | null;
 }
 
 // Hotels table
@@ -220,6 +244,7 @@ export interface HotelsTable {
   display_order: ColumnType<number, number | undefined, number>;
   created_at: ColumnType<Date, string | undefined, never>;
   updated_at: ColumnType<Date, string | undefined, string>;
+  wedding_id: string | null;
 }
 
 // Guest Hotel Interests junction table
@@ -243,6 +268,7 @@ export interface GuestHotelInterestsTable {
   notes: string | null;
   created_at: ColumnType<Date, string | undefined, never>;
   updated_at: ColumnType<Date, string | undefined, string>;
+  wedding_id: string | null;
 }
 
 // Guest Photos table (guest-submitted photos from reception)
@@ -254,6 +280,7 @@ export interface GuestPhotosTable {
   uploaded_at: ColumnType<Date, string | undefined, never>;
   hidden_at: Date | null;
   hidden_by: string | null;
+  wedding_id: string | null;
 }
 
 // Wedding Todos table
@@ -264,10 +291,12 @@ export interface WeddingTodosTable {
   display_order: ColumnType<number, number | undefined, number>;
   created_at: ColumnType<Date, string | undefined, never>;
   updated_at: ColumnType<Date, string | undefined, string>;
+  wedding_id: string | null;
 }
 
 // Database interface
 export interface Database {
+  weddings: WeddingsTable;
   guests: GuestsTable;
   activities: ActivitiesTable;
   guest_activity_interests: GuestActivityInterestsTable;
