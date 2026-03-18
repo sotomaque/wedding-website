@@ -1,7 +1,10 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
-import { generateIcs } from "@/lib/calendar/generate-ics";
+import {
+  buildCalendarEmailHtml,
+  generateIcs,
+} from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email/resend-client";
 
@@ -101,37 +104,7 @@ export async function POST(
     }));
 
     const icsContent = generateIcs(eventsForIcs, guestName);
-
-    const eventLines = defaultEvents
-      .map((e) => {
-        const dateStr = e.event_date
-          ? new Date(`${e.event_date}T00:00:00`).toLocaleDateString("en-US", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })
-          : "";
-        const timeStr = e.start_time
-          ? ` at ${e.start_time}${e.end_time ? ` – ${e.end_time}` : ""}`
-          : "";
-        const locationStr = e.location_name
-          ? `<br/><small>${e.location_name}${e.location_address ? `, ${e.location_address}` : ""}</small>`
-          : "";
-        return `<li><strong>${e.name}</strong> — ${dateStr}${timeStr}${locationStr}</li>`;
-      })
-      .join("");
-
-    const html = `
-      <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #2d2d2d;">
-        <h2 style="font-weight: normal; color: #7c6a5e;">Your Calendar Invite 💕</h2>
-        <p>Hi ${guest.first_name},</p>
-        <p>We're so excited to celebrate with you! Please find attached a calendar invite for our wedding events.</p>
-        <ul style="line-height: 2;">${eventLines}</ul>
-        <p>Open the attached <strong>.ics file</strong> to add these events to your calendar.</p>
-        <p>With love,<br/>Helen &amp; Enrique</p>
-      </div>
-    `.trim();
+    const html = buildCalendarEmailHtml(eventsForIcs, guest.first_name);
 
     const result = await sendEmail({
       from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
