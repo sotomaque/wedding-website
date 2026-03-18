@@ -27,6 +27,11 @@ export function getResendClient(): Resend | null {
   return new Resend(env.RESEND_API_KEY);
 }
 
+type EmailAttachment = {
+  filename: string;
+  content: string;
+};
+
 // Email parameters type for HTML emails
 type HtmlEmailParams = {
   from: string;
@@ -34,6 +39,7 @@ type HtmlEmailParams = {
   subject: string;
   html: string;
   replyTo?: string;
+  attachments?: EmailAttachment[];
 };
 
 // Email parameters type for template emails
@@ -46,6 +52,7 @@ type TemplateEmailParams = {
     variables: Record<string, string>;
   };
   replyTo?: string;
+  attachments?: EmailAttachment[];
 };
 
 type EmailParams = HtmlEmailParams | TemplateEmailParams;

@@ -30,6 +30,7 @@ import {
 } from "@workspace/ui/components/table";
 import {
   AlertCircle,
+  CalendarCheck,
   Plus,
   RefreshCw,
   SearchX,
@@ -74,6 +75,7 @@ export function GuestsTable({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [isBulkSending, setIsBulkSending] = useState(false);
+  const [isBulkSendingCalendar, setIsBulkSendingCalendar] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -218,6 +220,7 @@ export function GuestsTable({
 
   const columns = createColumns({
     onEditGuest: handleEditGuest,
+    onSendCalendarInvite: handleSendCalendarInvite,
     currentSortBy,
     currentSortOrder,
     onSort: handleSort,
@@ -323,6 +326,86 @@ export function GuestsTable({
     }
   }
 
+  // Validation for bulk calendar invites
+  const allAttendingWithEmail = selectedGuests.every(
+    (g) => g.rsvp_status === "yes" && g.email?.includes("@"),
+  );
+  const canBulkSendCalendarInvites =
+    selectedGuests.length > 0 && allAttendingWithEmail;
+
+  function getBulkCalendarValidationMessage(): string | null {
+    if (selectedGuests.length === 0) return null;
+    const ineligible = selectedGuests.filter(
+      (g) => g.rsvp_status !== "yes" || !g.email?.includes("@"),
+    );
+    if (ineligible.length > 0) {
+      return `${ineligible.length} selected guest(s) are not attending or have no email`;
+    }
+    return null;
+  }
+
+  async function handleBulkSendCalendarInvites() {
+    if (!canBulkSendCalendarInvites) return;
+
+    setIsBulkSendingCalendar(true);
+    try {
+      const response = await fetch(
+        "/api/admin/guests/bulk-send-calendar-invites",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            guestIds: selectedGuests.map((g) => g.id),
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Calendar invites sent!", {
+          description: `Successfully sent calendar invites to ${data.sentCount} guest(s)`,
+        });
+        setRowSelection({});
+        router.refresh();
+      } else {
+        toast.error("Error", {
+          description: data.error || "Failed to send calendar invites",
+        });
+      }
+    } catch (error) {
+      console.error("Error sending bulk calendar invites:", error);
+      toast.error("Error", { description: "Failed to send calendar invites" });
+    } finally {
+      setIsBulkSendingCalendar(false);
+    }
+  }
+
+  async function handleSendCalendarInvite(guestId: string) {
+    try {
+      const response = await fetch(
+        `/api/admin/guests/${guestId}/send-calendar-invite`,
+        { method: "POST" },
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Calendar invite sent!", {
+          description: `Sent to ${data.email}`,
+        });
+        router.refresh();
+      } else {
+        toast.error("Error", {
+          description: data.error || "Failed to send calendar invite",
+        });
+      }
+    } catch (error) {
+      console.error("Error sending calendar invite:", error);
+      toast.error("Error", { description: "Failed to send calendar invite" });
+    }
+  }
+
   function refreshGuests() {
     router.refresh();
   }
@@ -420,9 +503,19 @@ export function GuestsTable({
             >
               {isBulkSending ? "Sending..." : "Send Email"}
             </Button>
-            {getBulkEmailValidationMessage() && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleBulkSendCalendarInvites}
+              disabled={!canBulkSendCalendarInvites || isBulkSendingCalendar}
+              title={getBulkCalendarValidationMessage() || undefined}
+            >
+              <CalendarCheck className="h-4 w-4 mr-1" />
+              {isBulkSendingCalendar ? "Sending..." : "Send Calendar Invites"}
+            </Button>
+            {getBulkCalendarValidationMessage() && (
               <span className="text-xs text-destructive">
-                {getBulkEmailValidationMessage()}
+                {getBulkCalendarValidationMessage()}
               </span>
             )}
           </div>

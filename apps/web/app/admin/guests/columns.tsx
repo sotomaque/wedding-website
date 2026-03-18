@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@workspace/ui/components/button";
-import { Check, Link, X } from "lucide-react";
+import { CalendarCheck, Check, Link, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
@@ -22,6 +22,7 @@ type SortableColumn =
 
 interface ColumnsConfig {
   onEditGuest: (guestId: string) => void;
+  onSendCalendarInvite: (guestId: string) => Promise<void>;
   currentSortBy?: string;
   currentSortOrder?: "asc" | "desc";
   onSort: (column: SortableColumn) => void;
@@ -373,6 +374,7 @@ function EditableFamilyCell({
 
 export function createColumns({
   onEditGuest,
+  onSendCalendarInvite,
   currentSortBy,
   currentSortOrder,
   onSort,
@@ -658,15 +660,32 @@ export function createColumns({
     {
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onEditGuest(row.original.id)}
-        >
-          Edit
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const guest = row.original;
+        const canSendCalendarInvite =
+          guest.rsvp_status === "yes" && !!guest.email;
+        return (
+          <div className="flex items-center gap-1">
+            {canSendCalendarInvite && (
+              <Button
+                variant="outline"
+                size="sm"
+                title="Send calendar invite"
+                onClick={() => onSendCalendarInvite(guest.id)}
+              >
+                <CalendarCheck className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEditGuest(guest.id)}
+            >
+              Edit
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 }

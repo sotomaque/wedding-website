@@ -57,6 +57,13 @@ export interface GuestsTable {
     string | undefined
   > | null;
   activities_email_resend_count: ColumnType<number, number | undefined, number>;
+  calendar_invite_sent: ColumnType<boolean, boolean | undefined, boolean>;
+  calendar_invite_sent_at: ColumnType<
+    Date,
+    string | undefined,
+    string | undefined
+  > | null;
+  calendar_invite_resend_count: ColumnType<number, number | undefined, number>;
   party_id: string | null;
   arrival_date: string | null;
   arrival_transport: string | null;

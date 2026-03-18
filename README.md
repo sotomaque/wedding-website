@@ -39,6 +39,17 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 - Admins can hide or permanently delete photos from `/admin/photos/guest`
 - Download all guest photos as a single ZIP archive from the admin dashboard
 
+### Calendar Invites
+
+- Attending guests with a valid email address automatically receive a `.ics` calendar invite immediately after submitting their RSVP — no extra action needed
+- The invite contains one `VEVENT` per default wedding event (ceremony + reception), with correct timezone (`America/New_York`), location, and a personalized description
+- Admins can also trigger sends manually from `/admin/guests`:
+  - **Per-guest:** a calendar icon button appears in each row for attending guests — click to send (or resend) instantly
+  - **Bulk:** select multiple attending guests and click "Send Calendar Invites" in the bulk actions bar
+- Send status is tracked per guest: `calendar_invite_sent`, `calendar_invite_sent_at`, `calendar_invite_resend_count`
+- The `.ics` file is generated server-side in pure TypeScript (`lib/calendar/generate-ics.ts`) — no third-party calendar library required
+- Resend delivers the invite as an HTML email with the `.ics` file attached (opens directly in Google Calendar, Apple Calendar, Outlook, etc.)
+
 ### Admin Dashboard (`/admin`)
 - Guest management with tier lists (A/B/C priority)
 - Real-time RSVP tracking and bulk email actions
@@ -257,7 +268,7 @@ SSL is configured explicitly with `rejectUnauthorized: false` to support Supabas
 
 ### Migrations
 
-Migrations live in [`supabase/migrations/`](supabase/migrations/) and are numbered sequentially (`000_`, `001_`, ..., `029_`).
+Migrations live in [`supabase/migrations/`](supabase/migrations/) and are numbered sequentially (`000_`, `001_`, ...).
 
 **How Supabase runs migrations:**
 

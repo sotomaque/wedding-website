@@ -1,6 +1,6 @@
 # Multi-Tenancy & Feature Roadmap
 
-> Last updated: 2026-03-11
+> Last updated: 2026-03-18
 
 This document outlines the roadmap for evolving this wedding website from a single-tenant application into a multi-tenant platform that other couples can use.
 
@@ -12,10 +12,14 @@ The biggest architectural change. Every table currently stores data globally; th
 
 ### 1.1 Wedding Entity & Data Isolation
 
-- [ ] Create a `weddings` table as the top-level entity
+> **Partially shipped (2026-03-18).** Schema + types done. Query updates and RLS policies remain.
+
+- [x] Create a `weddings` table as the top-level entity
   - Fields: `id`, `slug` (URL-friendly identifier), `couple_name`, `wedding_date`, `rsvp_deadline`, `timezone`, `status` (draft/published/archived), `created_at`, `updated_at`
-- [ ] Add `wedding_id` foreign key to all 14 existing tables (`guests`, `parties`, `events`, `activities`, `photos`, `gifts`, `seating_charts`, `hotels`, `wedding_todos`, etc.)
-- [ ] Write a migration to backfill existing data with a default `wedding_id`
+  - Seeded with default wedding row for Helen & Enrique (`slug: helen-and-enrique`)
+- [x] Add nullable `wedding_id` foreign key to all 15 existing tables (`guests`, `parties`, `events`, `activities`, `photos`, `gifts`, `seating_charts`, `hotels`, `wedding_todos`, etc.)
+- [x] Write a migration to backfill existing data with the default `wedding_id`
+- [x] Update Kysely types (`WeddingsTable`, `wedding_id` on all interfaces)
 - [ ] Update all Kysely queries to filter by `wedding_id` (this touches nearly every query in the app)
 - [ ] Add Supabase Row-Level Security (RLS) policies scoped to `wedding_id`
 
@@ -88,10 +92,12 @@ Features that improve the guest-facing experience across all weddings.
 
 ### 3.3 Improved RSVP Flow
 
+> **In progress.** Plus-one name collection already exists. Remaining items below.
+
 - [ ] Multi-event RSVP in a single form (currently requires separate flows)
 - [ ] Meal selection during RSVP (if applicable)
 - [ ] Song request field
-- [ ] Plus-one name collection during RSVP
+- [x] Plus-one name collection during RSVP
 - [ ] RSVP confirmation page with calendar invite download (.ics)
 
 ### 3.4 Photo Sharing
@@ -216,18 +222,19 @@ Lower priority features that add polish.
 
 If working toward multi-tenancy as the primary goal, the recommended order is:
 
-| Priority | Phase | Rationale |
-|----------|-------|-----------|
-| 1 | 1.1 Wedding Entity | Everything depends on this data model change |
-| 2 | 1.2 Scoped Routing | Can't serve multiple weddings without this |
-| 3 | 1.3 Admin Roles | Need per-wedding access control before onboarding others |
-| 4 | 1.4 Tenant Config | Remove hardcoded wedding-specific content |
-| 5 | 2.1 Signup Flow | First external couple can now sign up |
-| 6 | 3.3 Improved RSVP | High-value guest experience improvement |
-| 7 | 2.2 Themes | Visual differentiation between weddings |
-| 8 | 4.1 Analytics | Compelling value-add for admins |
-| 9 | ~~3.4 Photo Sharing~~ | **Shipped** |
-| 10 | 5.1 Pricing | Monetize once there's proven value |
+| Priority | Phase | Status | Rationale |
+|----------|-------|--------|-----------|
+| 1 | 1.1 Wedding Entity | **Partially shipped** (schema + types; queries + RLS pending) | Everything depends on this data model change |
+| 2 | 3.3 Improved RSVP | **In progress** (song request, meal selection, confirmation + .ics) | RSVP deadline March 30 — ship before guests respond |
+| 3 | 4.1 Analytics | Not started | High-value as RSVPs come in |
+| 4 | 1.1 Query + RLS | Not started | Complete the multi-tenancy foundation |
+| 5 | 1.2 Scoped Routing | Not started | Can't serve multiple weddings without this |
+| 6 | 1.3 Admin Roles | Not started | Need per-wedding access control before onboarding others |
+| 7 | 1.4 Tenant Config | Not started | Remove hardcoded wedding-specific content |
+| 8 | 2.1 Signup Flow | Not started | First external couple can now sign up |
+| 9 | 2.2 Themes | Not started | Visual differentiation between weddings |
+| 10 | 5.1 Pricing | Not started | Monetize once there's proven value |
+| — | ~~3.4 Photo Sharing~~ | **Shipped** | — |
 
 ---
 

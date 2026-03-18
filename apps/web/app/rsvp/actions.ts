@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 import { env } from "@/env";
+import { generateIcs } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
 import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
@@ -307,7 +308,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
         try {
           const updatedGuests = await db
             .selectFrom("guests")
-            .select(["first_name", "last_name", "email"])
+            .select(["id", "first_name", "last_name", "email", "rsvp_status"])
             .where(
               capturedParty ? "party_id" : "invite_code",
               "=",
@@ -353,6 +354,107 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
               },
             },
           });
+
+          // Send calendar invites to attending guests with an email address
+          const attendingWithEmail = updatedGuests.filter(
+            (g) => g.rsvp_status === "yes" && g.email?.includes("@"),
+          );
+          if (attendingWithEmail.length > 0) {
+            const defaultEvents = await db
+              .selectFrom("events")
+              .select([
+                "id",
+                "name",
+                "event_date",
+                "start_time",
+                "end_time",
+                "location_name",
+                "location_address",
+              ])
+              .where("is_default", "=", true)
+              .orderBy("display_order", "asc")
+              .execute();
+
+            if (defaultEvents.length > 0) {
+              const eventsForIcs = defaultEvents.map((e) => ({
+                ...e,
+                event_date:
+                  e.event_date instanceof Date
+                    ? e.event_date
+                    : e.event_date
+                      ? new Date(`${e.event_date}T00:00:00`)
+                      : null,
+              }));
+
+              const eventLines = defaultEvents
+                .map((e) => {
+                  const dateStr = e.event_date
+                    ? new Date(`${e.event_date}T00:00:00`).toLocaleDateString(
+                        "en-US",
+                        {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        },
+                      )
+                    : "";
+                  const timeStr = e.start_time
+                    ? ` at ${e.start_time}${e.end_time ? ` – ${e.end_time}` : ""}`
+                    : "";
+                  const locationStr = e.location_name
+                    ? `<br/><small>${e.location_name}${e.location_address ? `, ${e.location_address}` : ""}</small>`
+                    : "";
+                  return `<li><strong>${e.name}</strong> — ${dateStr}${timeStr}${locationStr}</li>`;
+                })
+                .join("");
+
+              for (const guest of attendingWithEmail) {
+                try {
+                  const guestName = `${guest.first_name}${guest.last_name ? ` ${guest.last_name}` : ""}`;
+                  const icsContent = generateIcs(eventsForIcs, guestName);
+                  const html = `
+                    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #2d2d2d;">
+                      <h2 style="font-weight: normal; color: #7c6a5e;">Your Calendar Invite 💕</h2>
+                      <p>Hi ${guest.first_name},</p>
+                      <p>We're so excited to celebrate with you! Please find attached a calendar invite for our wedding events.</p>
+                      <ul style="line-height: 2;">${eventLines}</ul>
+                      <p>Open the attached <strong>.ics file</strong> to add these events to your calendar.</p>
+                      <p>With love,<br/>Helen &amp; Enrique</p>
+                    </div>
+                  `.trim();
+
+                  await sendEmail({
+                    from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
+                    to: guest.email as string,
+                    subject:
+                      "Your Calendar Invite — Helen & Enrique's Wedding 💕",
+                    html,
+                    attachments: [
+                      {
+                        filename: "helen-and-enrique-wedding.ics",
+                        content: Buffer.from(icsContent).toString("base64"),
+                      },
+                    ],
+                  });
+
+                  await db
+                    .updateTable("guests")
+                    .set({
+                      calendar_invite_sent: true,
+                      calendar_invite_sent_at: new Date().toISOString(),
+                    })
+                    .where("id", "=", guest.id)
+                    .execute();
+                } catch (calendarError) {
+                  console.error(
+                    `Error sending calendar invite to guest ${guest.id}:`,
+                    calendarError,
+                  );
+                }
+              }
+            }
+          }
         } catch (emailError) {
           console.error("Error sending RSVP notification email:", emailError);
         }
@@ -600,7 +702,7 @@ export async function submitMultiGuestRSVP(
         try {
           const updatedGuests = await db
             .selectFrom("guests")
-            .select(["first_name", "last_name", "email", "rsvp_status"])
+            .select(["id", "first_name", "last_name", "email", "rsvp_status"])
             .where(
               capturedParty ? "party_id" : "invite_code",
               "=",
@@ -660,6 +762,106 @@ export async function submitMultiGuestRSVP(
               },
             },
           });
+          // Send calendar invites to attending guests with an email address
+          const attendingWithEmailMulti = updatedGuests.filter(
+            (g) => g.rsvp_status === "yes" && g.email?.includes("@"),
+          );
+          if (attendingWithEmailMulti.length > 0) {
+            const defaultEvents = await db
+              .selectFrom("events")
+              .select([
+                "id",
+                "name",
+                "event_date",
+                "start_time",
+                "end_time",
+                "location_name",
+                "location_address",
+              ])
+              .where("is_default", "=", true)
+              .orderBy("display_order", "asc")
+              .execute();
+
+            if (defaultEvents.length > 0) {
+              const eventsForIcs = defaultEvents.map((e) => ({
+                ...e,
+                event_date:
+                  e.event_date instanceof Date
+                    ? e.event_date
+                    : e.event_date
+                      ? new Date(`${e.event_date}T00:00:00`)
+                      : null,
+              }));
+
+              const eventLines = defaultEvents
+                .map((e) => {
+                  const dateStr = e.event_date
+                    ? new Date(`${e.event_date}T00:00:00`).toLocaleDateString(
+                        "en-US",
+                        {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        },
+                      )
+                    : "";
+                  const timeStr = e.start_time
+                    ? ` at ${e.start_time}${e.end_time ? ` – ${e.end_time}` : ""}`
+                    : "";
+                  const locationStr = e.location_name
+                    ? `<br/><small>${e.location_name}${e.location_address ? `, ${e.location_address}` : ""}</small>`
+                    : "";
+                  return `<li><strong>${e.name}</strong> — ${dateStr}${timeStr}${locationStr}</li>`;
+                })
+                .join("");
+
+              for (const guest of attendingWithEmailMulti) {
+                try {
+                  const guestName = `${guest.first_name}${guest.last_name ? ` ${guest.last_name}` : ""}`;
+                  const icsContent = generateIcs(eventsForIcs, guestName);
+                  const html = `
+                    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #2d2d2d;">
+                      <h2 style="font-weight: normal; color: #7c6a5e;">Your Calendar Invite 💕</h2>
+                      <p>Hi ${guest.first_name},</p>
+                      <p>We're so excited to celebrate with you! Please find attached a calendar invite for our wedding events.</p>
+                      <ul style="line-height: 2;">${eventLines}</ul>
+                      <p>Open the attached <strong>.ics file</strong> to add these events to your calendar.</p>
+                      <p>With love,<br/>Helen &amp; Enrique</p>
+                    </div>
+                  `.trim();
+
+                  await sendEmail({
+                    from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
+                    to: guest.email as string,
+                    subject:
+                      "Your Calendar Invite — Helen & Enrique's Wedding 💕",
+                    html,
+                    attachments: [
+                      {
+                        filename: "helen-and-enrique-wedding.ics",
+                        content: Buffer.from(icsContent).toString("base64"),
+                      },
+                    ],
+                  });
+
+                  await db
+                    .updateTable("guests")
+                    .set({
+                      calendar_invite_sent: true,
+                      calendar_invite_sent_at: new Date().toISOString(),
+                    })
+                    .where("id", "=", guest.id)
+                    .execute();
+                } catch (calendarError) {
+                  console.error(
+                    `Error sending calendar invite to guest ${guest.id}:`,
+                    calendarError,
+                  );
+                }
+              }
+            }
+          }
         } catch (emailError) {
           console.error("Error sending RSVP notification email:", emailError);
         }
