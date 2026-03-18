@@ -46,6 +46,9 @@ export interface Database {
           activities_email_sent: boolean;
           activities_email_sent_at: string | null;
           activities_email_resend_count: number;
+          calendar_invite_sent: boolean;
+          calendar_invite_sent_at: Date | string | null;
+          calendar_invite_resend_count: number;
           party_id: string | null;
           arrival_date: string | null;
           arrival_transport: string | null;
@@ -93,6 +96,9 @@ export interface Database {
           activities_email_sent?: boolean;
           activities_email_sent_at?: string | null;
           activities_email_resend_count?: number;
+          calendar_invite_sent?: boolean;
+          calendar_invite_sent_at?: string | null;
+          calendar_invite_resend_count?: number;
           party_id?: string | null;
           arrival_date?: string | null;
           arrival_transport?: string | null;
@@ -140,6 +146,9 @@ export interface Database {
           activities_email_sent?: boolean;
           activities_email_sent_at?: string | null;
           activities_email_resend_count?: number;
+          calendar_invite_sent?: boolean;
+          calendar_invite_sent_at?: string | null;
+          calendar_invite_resend_count?: number;
           party_id?: string | null;
           arrival_date?: string | null;
           arrival_transport?: string | null;
