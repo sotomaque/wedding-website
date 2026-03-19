@@ -338,6 +338,66 @@ export async function deleteParty(
 }
 
 /**
+ * Bulk delete empty parties
+ */
+export async function bulkDeleteParties(partyIds: string[]): Promise<{
+  success: boolean;
+  deletedCount: number;
+  skippedCount: number;
+  error?: string;
+}> {
+  try {
+    let deletedCount = 0;
+    let skippedCount = 0;
+
+    for (const partyId of partyIds) {
+      const result = await deleteParty(partyId);
+      if (result.success) {
+        deletedCount++;
+      } else {
+        skippedCount++;
+      }
+    }
+
+    revalidatePath("/admin/parties");
+    return { success: true, deletedCount, skippedCount };
+  } catch (error) {
+    console.error("Error bulk deleting parties:", error);
+    return {
+      success: false,
+      deletedCount: 0,
+      skippedCount: 0,
+      error: "Failed to delete parties",
+    };
+  }
+}
+
+/**
+ * Bulk merge parties — moves all guests from source parties into target, deletes sources
+ */
+export async function bulkMergeParties(
+  sourcePartyIds: string[],
+  targetPartyId: string,
+): Promise<{ success: boolean; mergedCount: number; error?: string }> {
+  try {
+    let mergedCount = 0;
+
+    for (const sourceId of sourcePartyIds) {
+      if (sourceId === targetPartyId) continue;
+      const result = await mergeParties(sourceId, targetPartyId);
+      if (result.success) mergedCount++;
+    }
+
+    revalidatePath("/admin/parties");
+    revalidatePath("/admin/guests");
+    return { success: true, mergedCount };
+  } catch (error) {
+    console.error("Error bulk merging parties:", error);
+    return { success: false, mergedCount: 0, error: "Failed to merge parties" };
+  }
+}
+
+/**
  * Generate a unique invite code
  */
 function generateInviteCode(): string {

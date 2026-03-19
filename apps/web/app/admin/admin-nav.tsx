@@ -35,6 +35,7 @@ const navItems: NavItem[] = [
     label: "Guests",
     links: [
       { href: "/admin/guests", label: "Management" },
+      { href: "/admin/parties", label: "Parties" },
       { href: "/admin/seating", label: "Seating" },
     ],
   },
