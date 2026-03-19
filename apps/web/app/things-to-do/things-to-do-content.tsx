@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { Activity, ActivityWithInterest } from "./actions";
 import { ActivityCard } from "./activity-card";
+import { GuestIdentifier } from "./guest-identifier";
 
 interface ThingsToDoContentProps {
   activities: ActivityWithInterest[];
@@ -60,12 +61,16 @@ export function ThingsToDoContent({
               From stunning beaches to world-class dining, discover the places
               we love.
             </p>
-            {inviteCode && (
+            {inviteCode ? (
               <div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm text-white border border-white/20 rounded-full text-sm font-medium">
                 <span>✨</span>
                 <span>
                   Mark your interest to see who else is planning to visit!
                 </span>
+              </div>
+            ) : (
+              <div className="mt-8">
+                <GuestIdentifier />
               </div>
             )}
           </div>

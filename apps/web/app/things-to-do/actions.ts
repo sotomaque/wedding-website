@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { getGuestParty } from "@/lib/auth/guest-session";
 import { db } from "@/lib/db";
 
@@ -275,4 +276,47 @@ export async function getBeaches(
       activity.emoji &&
       beachEmojis.includes(activity.emoji),
   );
+}
+
+/**
+ * Search guests by name for the guest identifier autocomplete
+ */
+export async function searchGuests(
+  query: string,
+): Promise<{ inviteCode: string; name: string }[]> {
+  if (!query || query.length < 2) return [];
+
+  const guests = await db
+    .selectFrom("guests")
+    .select(["first_name", "last_name", "invite_code"])
+    .where("is_plus_one", "=", false)
+    .where((eb) =>
+      eb.or([
+        eb("first_name", "ilike", `%${query}%`),
+        eb("last_name", "ilike", `%${query}%`),
+      ]),
+    )
+    .limit(10)
+    .execute();
+
+  return guests.map((g) => ({
+    inviteCode: g.invite_code,
+    name: `${g.first_name} ${g.last_name ?? ""}`.trim(),
+  }));
+}
+
+/**
+ * Set the invite_code cookie so unauthed users can interact with activities
+ */
+export async function setInviteCodeCookie(
+  inviteCode: string,
+): Promise<{ success: boolean }> {
+  const cookieStore = await cookies();
+  cookieStore.set("invite_code", inviteCode.toUpperCase(), {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    httpOnly: true,
+  });
+  revalidatePath("/things-to-do");
+  return { success: true };
 }

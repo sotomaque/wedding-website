@@ -5,27 +5,23 @@ import { cn } from "@workspace/ui/lib/utils";
 import * as React from "react";
 import {
   type ActivityPlan,
-  type GuestTravel,
   getStayBars,
   getWeeksInMonth,
   type PartyTravel,
-  type TravelEntry,
   toDateKey,
-} from "./utils";
+} from "@/app/admin/calendar/utils";
 
-// Types for data passed from server
 interface CalendarEvent {
   id: string;
   name: string;
-  event_date: string | null; // serialized Date → "YYYY-MM-DD"
+  event_date: string | null;
   start_time: string | null;
   end_time: string | null;
   location_name: string | null;
 }
 
-interface CalendarClientProps {
+interface TripPlannerClientProps {
   events: CalendarEvent[];
-  guests: GuestTravel[];
   parties: PartyTravel[];
   activityPlans: ActivityPlan[];
 }
@@ -58,10 +54,7 @@ const STAY_COLORS = [
 
 const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// ---------------------------------------------------------------------------
-// DotContext — lets DayButtonWithDots read dot sets without being re-created
-// on every render (fixes React unmounting the full day-button tree on toggle).
-// ---------------------------------------------------------------------------
+// Dot context for the calendar day buttons
 interface DotContextValue {
   eventDates: Set<string>;
   arrivalDates: Set<string>;
@@ -110,166 +103,27 @@ function DayButtonWithDots({
 
 const CALENDAR_COMPONENTS = { DayButton: DayButtonWithDots };
 
-function StayOverview({
-  month,
-  guests,
-  colorMap,
-}: {
-  month: Date;
-  guests: TravelEntry[];
-  colorMap: Map<string, string>;
-}) {
-  const year = month.getFullYear();
-  const monthIndex = month.getMonth();
-  const weeks = getWeeksInMonth(year, monthIndex);
-
-  const guestsWithBothDates = guests.filter(
-    (g) => g.arrival_date && g.departure_date,
-  );
-
-  if (guestsWithBothDates.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-24 rounded-lg border border-dashed text-muted-foreground text-sm">
-        No guests with complete travel dates to display.
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {/* Day-of-week header */}
-      <div className="grid grid-cols-7 gap-px text-center text-xs font-medium text-muted-foreground">
-        {DOW_LABELS.map((d) => (
-          <div key={d} className="py-1">
-            {d}
-          </div>
-        ))}
-      </div>
-
-      {/* Weeks */}
-      <div className="space-y-1">
-        {weeks.map((week) => {
-          const weekKey = toDateKey(week[0] as Date);
-          const bars = getStayBars(week, guestsWithBothDates, colorMap);
-
-          return (
-            <div key={weekKey} className="relative">
-              {/* Day numbers row */}
-              <div className="grid grid-cols-7 gap-px mb-1">
-                {week.map((day) => {
-                  const inMonth = day.getMonth() === monthIndex;
-                  return (
-                    <div
-                      key={toDateKey(day)}
-                      className={cn(
-                        "text-center text-xs py-0.5",
-                        inMonth
-                          ? "text-foreground"
-                          : "text-muted-foreground/40",
-                      )}
-                    >
-                      {day.getDate()}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Stay bars */}
-              {bars.length > 0 && (
-                <div className="grid grid-cols-7 gap-x-px space-y-0.5 pb-1">
-                  {bars.map((bar, bi) => (
-                    <div
-                      key={`${bar.guest.id}-${weekKey}-${bi}`}
-                      className={cn(
-                        "h-5 flex items-center px-1.5 text-xs font-medium truncate",
-                        bar.colorClass,
-                        bar.isStart && bar.isEnd
-                          ? "rounded-full"
-                          : bar.isStart
-                            ? "rounded-l-full"
-                            : bar.isEnd
-                              ? "rounded-r-full"
-                              : "",
-                      )}
-                      style={{
-                        gridColumn: `${bar.colStart} / ${bar.colEnd + 1}`,
-                      }}
-                      title={`${bar.guest.first_name} ${bar.guest.last_name ?? ""}`.trim()}
-                    >
-                      {bar.isStart && (
-                        <span className="truncate">
-                          {bar.guest.first_name} {bar.guest.last_name ?? ""}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Color legend */}
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-        {guestsWithBothDates.map((g) => (
-          <span
-            key={g.id}
-            className={cn(
-              "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full",
-              colorMap.get(g.id),
-            )}
-          >
-            {g.first_name} {g.last_name ?? ""}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function CalendarClient({
+export function TripPlannerClient({
   events,
-  guests,
   parties,
   activityPlans,
-}: CalendarClientProps) {
+}: TripPlannerClientProps) {
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>();
   const [month, setMonth] = React.useState<Date>(() => new Date());
   const [showEvents, setShowEvents] = React.useState(true);
-  const [showArrivals, setShowArrivals] = React.useState(true);
-  const [showDepartures, setShowDepartures] = React.useState(true);
   const [showStays, setShowStays] = React.useState(true);
   const [showActivities, setShowActivities] = React.useState(true);
-  const [sideFilter, setSideFilter] = React.useState<"all" | "bride" | "groom">(
-    "all",
-  );
-  const [groupMode, setGroupMode] = React.useState<"guests" | "parties">(
-    "guests",
-  );
 
-  // Pick individual guests or collapsed parties based on toggle
-  const baseList: TravelEntry[] = groupMode === "parties" ? parties : guests;
-
-  // Stable color assignment keyed to unfiltered list — prevents color shift on filter change
+  // Color map for stay bars
   const colorMap = React.useMemo(() => {
     const map = new Map<string, string>();
-    baseList.forEach((g, i) => {
-      map.set(g.id, STAY_COLORS[i % STAY_COLORS.length] as string);
+    parties.forEach((p, i) => {
+      map.set(p.id, STAY_COLORS[i % STAY_COLORS.length] as string);
     });
     return map;
-  }, [baseList]);
+  }, [parties]);
 
-  // Apply side filter
-  const filteredGuests = React.useMemo(
-    () =>
-      sideFilter === "all"
-        ? baseList
-        : baseList.filter((g) => g.side === sideFilter),
-    [baseList, sideFilter],
-  );
-
-  // Compute sets of "YYYY-MM-DD" keys per layer
+  // Dot date sets
   const eventDates = React.useMemo(() => {
     const set = new Set<string>();
     if (!showEvents) return set;
@@ -281,45 +135,36 @@ export function CalendarClient({
 
   const arrivalDates = React.useMemo(() => {
     const set = new Set<string>();
-    if (!showArrivals) return set;
-    for (const g of filteredGuests) {
-      if (g.arrival_date) set.add(normalizeKey(g.arrival_date));
+    for (const p of parties) {
+      if (p.arrival_date) set.add(normalizeKey(p.arrival_date));
     }
     return set;
-  }, [filteredGuests, showArrivals]);
+  }, [parties]);
 
   const departureDates = React.useMemo(() => {
     const set = new Set<string>();
-    if (!showDepartures) return set;
-    for (const g of filteredGuests) {
-      if (g.departure_date) set.add(normalizeKey(g.departure_date));
+    for (const p of parties) {
+      if (p.departure_date) set.add(normalizeKey(p.departure_date));
     }
     return set;
-  }, [filteredGuests, showDepartures]);
-
-  // Filter activity plans by side when a side filter is active
-  const filteredActivityPlans = React.useMemo(() => {
-    if (sideFilter === "all") return activityPlans;
-    // Build a set of guest IDs that pass the side filter
-    const guestIds = new Set(
-      filteredGuests.flatMap((g) => {
-        if (g.kind === "party") return g.members.map((m) => m.id);
-        return [g.id];
-      }),
-    );
-    return activityPlans.filter((ap) => guestIds.has(ap.guestId));
-  }, [activityPlans, sideFilter, filteredGuests]);
+  }, [parties]);
 
   const activityDates = React.useMemo(() => {
     const set = new Set<string>();
     if (!showActivities) return set;
-    for (const ap of filteredActivityPlans) {
-      set.add(ap.plannedDate);
+    // Deduplicate by inviteCode + activityId
+    const seen = new Set<string>();
+    for (const ap of activityPlans) {
+      const key = `${ap.inviteCode}:${ap.activityId}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        set.add(ap.plannedDate);
+      }
     }
     return set;
-  }, [filteredActivityPlans, showActivities]);
+  }, [activityPlans, showActivities]);
 
-  // Selected day detail data
+  // Day detail data
   const selectedKey = selectedDate ? toDateKey(selectedDate) : null;
 
   const dayEvents = React.useMemo(
@@ -334,34 +179,32 @@ export function CalendarClient({
 
   const dayArrivals = React.useMemo(
     () =>
-      selectedKey && showArrivals
-        ? filteredGuests.filter(
-            (g) =>
-              g.arrival_date && normalizeKey(g.arrival_date) === selectedKey,
+      selectedKey
+        ? parties.filter(
+            (p) =>
+              p.arrival_date && normalizeKey(p.arrival_date) === selectedKey,
           )
         : [],
-    [selectedKey, filteredGuests, showArrivals],
+    [selectedKey, parties],
   );
 
   const dayDepartures = React.useMemo(
     () =>
-      selectedKey && showDepartures
-        ? filteredGuests.filter(
-            (g) =>
-              g.departure_date &&
-              normalizeKey(g.departure_date) === selectedKey,
+      selectedKey
+        ? parties.filter(
+            (p) =>
+              p.departure_date &&
+              normalizeKey(p.departure_date) === selectedKey,
           )
         : [],
-    [selectedKey, filteredGuests, showDepartures],
+    [selectedKey, parties],
   );
 
-  // Group activity plans for the selected day by activity, deduplicating by invite code in party mode
   const dayActivities = React.useMemo(() => {
     if (!selectedKey || !showActivities) return [];
-    const plansForDay = filteredActivityPlans.filter(
+    const plansForDay = activityPlans.filter(
       (ap) => ap.plannedDate === selectedKey,
     );
-    // Group by activity
     const byActivity = new Map<
       string,
       {
@@ -370,103 +213,46 @@ export function CalendarClient({
         people: { name: string; status: "interested" | "committed" }[];
       }
     >();
-    const seen = new Set<string>(); // dedupe key
+    const seen = new Set<string>();
     for (const ap of plansForDay) {
-      // In party mode, deduplicate by inviteCode + activityId
-      const dedupeKey =
-        groupMode === "parties"
-          ? `${ap.inviteCode}:${ap.activityId}`
-          : `${ap.guestId}:${ap.activityId}`;
+      const dedupeKey = `${ap.inviteCode}:${ap.activityId}`;
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
-
       const entry = byActivity.get(ap.activityId) ?? {
         name: ap.activityName,
         emoji: ap.activityEmoji,
         people: [],
       };
       const displayName =
-        groupMode === "parties" && ap.partyName
-          ? ap.partyName
-          : `${ap.guestFirstName} ${ap.guestLastName ?? ""}`.trim();
+        ap.partyName ?? `${ap.guestFirstName} ${ap.guestLastName ?? ""}`.trim();
       entry.people.push({ name: displayName, status: ap.status });
       byActivity.set(ap.activityId, entry);
     }
     return Array.from(byActivity.values());
-  }, [selectedKey, filteredActivityPlans, showActivities, groupMode]);
+  }, [selectedKey, activityPlans, showActivities]);
 
   const dotContextValue = React.useMemo(
     () => ({ eventDates, arrivalDates, departureDates, activityDates }),
     [eventDates, arrivalDates, departureDates, activityDates],
   );
 
+  // Stay overview data
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth();
+  const weeks = getWeeksInMonth(year, monthIndex);
+  const partiesWithBothDates = parties.filter(
+    (p) => p.arrival_date && p.departure_date,
+  );
+
   return (
     <div className="space-y-6">
-      {/* Filters row */}
-      <div className="flex flex-wrap items-center gap-4">
-        {/* Side filter */}
-        <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 p-0.5 text-sm">
-          {(["all", "bride", "groom"] as const).map((val) => (
-            <button
-              key={val}
-              type="button"
-              onClick={() => setSideFilter(val)}
-              className={cn(
-                "rounded-full px-3 py-1 transition-colors capitalize",
-                sideFilter === val
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {val === "all"
-                ? "All Guests"
-                : val === "bride"
-                  ? "Bride's Side"
-                  : "Groom's Side"}
-            </button>
-          ))}
-        </div>
-
-        {/* Guests / Parties toggle */}
-        <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 p-0.5 text-sm">
-          {(["guests", "parties"] as const).map((val) => (
-            <button
-              key={val}
-              type="button"
-              onClick={() => setGroupMode(val)}
-              className={cn(
-                "rounded-full px-3 py-1 transition-colors capitalize",
-                groupMode === val
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {val === "guests" ? "Guests" : "Parties"}
-            </button>
-          ))}
-        </div>
-
-        {/* Divider */}
-        <div className="h-5 w-px bg-border hidden sm:block" />
-
-        {/* Layer Toggles */}
+      {/* Toggle row */}
+      <div className="flex flex-wrap items-center gap-3">
         <ToggleButton
           active={showEvents}
           onToggle={() => setShowEvents((v) => !v)}
           color="blue"
           label="Events"
-        />
-        <ToggleButton
-          active={showArrivals}
-          onToggle={() => setShowArrivals((v) => !v)}
-          color="green"
-          label="Arrivals"
-        />
-        <ToggleButton
-          active={showDepartures}
-          onToggle={() => setShowDepartures((v) => !v)}
-          color="orange"
-          label="Departures"
         />
         <ToggleButton
           active={showActivities}
@@ -505,18 +291,14 @@ export function CalendarClient({
                 Events
               </span>
             )}
-            {showArrivals && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
-                Arrivals
-              </span>
-            )}
-            {showDepartures && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
-                Departures
-              </span>
-            )}
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+              Arrivals
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
+              Departures
+            </span>
             {showActivities && (
               <span className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-cyan-500 inline-block" />
@@ -580,21 +362,13 @@ export function CalendarClient({
                         Arriving ({dayArrivals.length})
                       </h3>
                       <div className="space-y-1">
-                        {dayArrivals.map((g) =>
-                          g.kind === "party" && g.members.length > 1 ? (
-                            <PartyRow
-                              key={g.id}
-                              party={g}
-                              transport={g.arrival_transport}
-                            />
-                          ) : (
-                            <GuestRow
-                              key={g.id}
-                              name={`${g.first_name} ${g.last_name ?? ""}`.trim()}
-                              transport={g.arrival_transport}
-                            />
-                          ),
-                        )}
+                        {dayArrivals.map((p) => (
+                          <PartyRow
+                            key={p.id}
+                            party={p}
+                            transport={p.arrival_transport}
+                          />
+                        ))}
                       </div>
                     </section>
                   )}
@@ -606,21 +380,13 @@ export function CalendarClient({
                         Departing ({dayDepartures.length})
                       </h3>
                       <div className="space-y-1">
-                        {dayDepartures.map((g) =>
-                          g.kind === "party" && g.members.length > 1 ? (
-                            <PartyRow
-                              key={g.id}
-                              party={g}
-                              transport={g.departure_transport}
-                            />
-                          ) : (
-                            <GuestRow
-                              key={g.id}
-                              name={`${g.first_name} ${g.last_name ?? ""}`.trim()}
-                              transport={g.departure_transport}
-                            />
-                          ),
-                        )}
+                        {dayDepartures.map((p) => (
+                          <PartyRow
+                            key={p.id}
+                            party={p}
+                            transport={p.departure_transport}
+                          />
+                        ))}
                       </div>
                     </section>
                   )}
@@ -678,7 +444,7 @@ export function CalendarClient({
       </div>
 
       {/* Stay Overview */}
-      {showStays && (
+      {showStays && partiesWithBothDates.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-base font-semibold">
             Stay Overview —{" "}
@@ -687,29 +453,95 @@ export function CalendarClient({
               year: "numeric",
             })}
           </h2>
-          <StayOverview
-            month={month}
-            guests={filteredGuests}
-            colorMap={colorMap}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
+          <div className="space-y-3">
+            {/* Day-of-week header */}
+            <div className="grid grid-cols-7 gap-px text-center text-xs font-medium text-muted-foreground">
+              {DOW_LABELS.map((d) => (
+                <div key={d} className="py-1">
+                  {d}
+                </div>
+              ))}
+            </div>
 
-function GuestRow({
-  name,
-  transport,
-}: {
-  name: string;
-  transport: string | null;
-}) {
-  return (
-    <div className="rounded-md border px-3 py-2 text-sm flex items-center justify-between">
-      <span>{name}</span>
-      {transport && (
-        <span className="text-xs text-muted-foreground">{transport}</span>
+            {/* Weeks */}
+            <div className="space-y-1">
+              {weeks.map((week) => {
+                const weekKey = toDateKey(week[0] as Date);
+                const bars = getStayBars(week, partiesWithBothDates, colorMap);
+
+                return (
+                  <div key={weekKey} className="relative">
+                    <div className="grid grid-cols-7 gap-px mb-1">
+                      {week.map((day) => {
+                        const inMonth = day.getMonth() === monthIndex;
+                        return (
+                          <div
+                            key={toDateKey(day)}
+                            className={cn(
+                              "text-center text-xs py-0.5",
+                              inMonth
+                                ? "text-foreground"
+                                : "text-muted-foreground/40",
+                            )}
+                          >
+                            {day.getDate()}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {bars.length > 0 && (
+                      <div className="grid grid-cols-7 gap-x-px space-y-0.5 pb-1">
+                        {bars.map((bar, bi) => (
+                          <div
+                            key={`${bar.guest.id}-${weekKey}-${bi}`}
+                            className={cn(
+                              "h-5 flex items-center px-1.5 text-xs font-medium truncate",
+                              bar.colorClass,
+                              bar.isStart && bar.isEnd
+                                ? "rounded-full"
+                                : bar.isStart
+                                  ? "rounded-l-full"
+                                  : bar.isEnd
+                                    ? "rounded-r-full"
+                                    : "",
+                            )}
+                            style={{
+                              gridColumn: `${bar.colStart} / ${bar.colEnd + 1}`,
+                            }}
+                            title={`${bar.guest.first_name} ${bar.guest.last_name ?? ""}`.trim()}
+                          >
+                            {bar.isStart && (
+                              <span className="truncate">
+                                {bar.guest.first_name}{" "}
+                                {bar.guest.last_name ?? ""}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Color legend */}
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+              {partiesWithBothDates.map((p) => (
+                <span
+                  key={p.id}
+                  className={cn(
+                    "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full",
+                    colorMap.get(p.id),
+                  )}
+                >
+                  {p.first_name} {p.last_name ?? ""}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -731,16 +563,17 @@ function PartyRow({
           <span className="text-xs text-muted-foreground">{transport}</span>
         )}
       </div>
-      <div className="mt-1 text-xs text-muted-foreground">
-        {party.members
-          .map((m) => `${m.first_name} ${m.last_name ?? ""}`.trim())
-          .join(", ")}
-      </div>
+      {party.members.length > 1 && (
+        <div className="mt-1 text-xs text-muted-foreground">
+          {party.members
+            .map((m) => `${m.first_name} ${m.last_name ?? ""}`.trim())
+            .join(", ")}
+        </div>
+      )}
     </div>
   );
 }
 
-// Toggle button component
 function ToggleButton({
   active,
   onToggle,
@@ -749,15 +582,13 @@ function ToggleButton({
 }: {
   active: boolean;
   onToggle: () => void;
-  color: "blue" | "green" | "orange" | "purple" | "cyan";
+  color: "blue" | "cyan" | "purple";
   label: string;
 }) {
   const dotColor = {
     blue: "bg-blue-500",
-    green: "bg-green-500",
-    orange: "bg-orange-500",
-    purple: "bg-purple-500",
     cyan: "bg-cyan-500",
+    purple: "bg-purple-500",
   }[color];
 
   return (
