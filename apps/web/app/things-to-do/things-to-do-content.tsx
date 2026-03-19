@@ -24,8 +24,11 @@ export function ThingsToDoContent({
     Boolean,
   ) as Activity[];
 
-  // Get non-venue activities
-  const thingsToDoActivities = activities.filter((a) => !a.isVenue);
+  // Get non-venue, non-beach activities (beaches have their own section)
+  const beachIds = new Set(beaches.map((b) => b.id));
+  const thingsToDoActivities = activities.filter(
+    (a) => !a.isVenue && !beachIds.has(a.id),
+  );
 
   return (
     <>
