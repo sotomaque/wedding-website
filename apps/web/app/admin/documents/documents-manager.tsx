@@ -27,10 +27,10 @@ import { toast } from "sonner";
 import { UploadDropzone } from "@/lib/uploadthing-components";
 import {
   createDocument,
-  type Document,
   type DocumentCategory,
   deleteDocument,
   updateDocument,
+  type WeddingDocument,
 } from "./actions";
 
 const CATEGORIES: { value: DocumentCategory; label: string }[] = [
@@ -78,12 +78,13 @@ function fileIcon(type: string) {
 }
 
 interface DocumentsManagerProps {
-  initialDocuments: Document[];
+  initialDocuments: WeddingDocument[];
 }
 
 export function DocumentsManager({ initialDocuments }: DocumentsManagerProps) {
   const router = useRouter();
-  const [documents, setDocuments] = useState<Document[]>(initialDocuments);
+  const [documents, setDocuments] =
+    useState<WeddingDocument[]>(initialDocuments);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<
     DocumentCategory | "all"
@@ -124,7 +125,6 @@ export function DocumentsManager({ initialDocuments }: DocumentsManagerProps) {
       category: newCategory,
       uploaded_by: pendingUpload.uploadedBy,
     });
-
     setIsSaving(false);
 
     if (result.success) {
@@ -146,7 +146,7 @@ export function DocumentsManager({ initialDocuments }: DocumentsManagerProps) {
     setNewCategory("other");
   }
 
-  function startEdit(doc: Document) {
+  function startEdit(doc: WeddingDocument) {
     setEditState({
       id: doc.id,
       title: doc.title,

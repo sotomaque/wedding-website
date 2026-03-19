@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 
 export type ServiceLinkCategory =
@@ -11,7 +12,7 @@ export type ServiceLinkCategory =
   | "flowers"
   | "other";
 
-export interface ServiceLink {
+export type ServiceLink = {
   id: string;
   wedding_id: string | null;
   title: string;
@@ -21,7 +22,7 @@ export interface ServiceLink {
   sort_order: number;
   created_at: string;
   updated_at: string;
-}
+};
 
 export async function getServiceLinks(): Promise<ServiceLink[]> {
   try {
@@ -45,6 +46,10 @@ export async function createServiceLink(data: {
   description: string;
   category: ServiceLinkCategory;
 }): Promise<{ success: boolean; error?: string }> {
+  const auth = await isAdmin();
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
   try {
     const title = data.title.trim();
     const url = data.url.trim();
@@ -95,6 +100,10 @@ export async function updateServiceLink(
     category?: ServiceLinkCategory;
   },
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await isAdmin();
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
   try {
     if (data.url !== undefined) {
       try {
@@ -130,6 +139,10 @@ export async function updateServiceLink(
 export async function deleteServiceLink(
   id: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await isAdmin();
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
   try {
     await db.deleteFrom("service_links").where("id", "=", id).execute();
     revalidatePath("/admin/vendors");
@@ -144,6 +157,10 @@ export async function deleteServiceLink(
 export async function reorderServiceLinks(
   orderedIds: string[],
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await isAdmin();
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
   try {
     await Promise.all(
       orderedIds.map((id, index) =>

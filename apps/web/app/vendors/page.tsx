@@ -5,27 +5,13 @@ import { NAVIGATION_CONFIG } from "@/app/navigation-config";
 import { SITE_CONFIG } from "@/app/site-config";
 import type { ServiceLinkCategory } from "../admin/vendors/actions";
 import { getServiceLinks } from "../admin/vendors/actions";
-import { CATEGORIES } from "../admin/vendors/vendors-manager";
+import {
+  CATEGORIES,
+  CATEGORY_COLORS,
+  getFaviconUrl,
+} from "../admin/vendors/constants";
 
 export const dynamic = "force-dynamic";
-
-const CATEGORY_COLORS: Record<ServiceLinkCategory, string> = {
-  venue: "bg-amber-100 text-amber-800",
-  catering: "bg-green-100 text-green-800",
-  photography: "bg-blue-100 text-blue-800",
-  music: "bg-purple-100 text-purple-800",
-  flowers: "bg-pink-100 text-pink-800",
-  other: "bg-gray-100 text-gray-800",
-};
-
-function getFaviconUrl(url: string): string {
-  try {
-    const { hostname } = new URL(url);
-    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-  } catch {
-    return "";
-  }
-}
 
 export default async function VendorsPage() {
   const links = await getServiceLinks();
@@ -40,7 +26,7 @@ export default async function VendorsPage() {
   );
 
   const categoriesWithLinks = CATEGORIES.filter(
-    (cat) => grouped[cat.value].length > 0,
+    (cat) => (grouped[cat.value]?.length ?? 0) > 0,
   );
 
   return (
@@ -74,7 +60,7 @@ export default async function VendorsPage() {
                     {cat.label}
                   </h2>
                   <div className="space-y-3">
-                    {grouped[cat.value].map((link) => (
+                    {(grouped[cat.value] ?? []).map((link) => (
                       <a
                         key={link.id}
                         href={link.url}

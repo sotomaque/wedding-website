@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 
 export type DocumentCategory =
@@ -10,7 +11,7 @@ export type DocumentCategory =
   | "timeline"
   | "other";
 
-export interface Document {
+export type WeddingDocument = {
   id: string;
   wedding_id: string | null;
   title: string;
@@ -22,11 +23,11 @@ export interface Document {
   uploaded_by: string;
   created_at: string;
   updated_at: string;
-}
+};
 
 export async function getDocuments(
   category?: DocumentCategory,
-): Promise<Document[]> {
+): Promise<WeddingDocument[]> {
   try {
     let query = db
       .selectFrom("documents")
@@ -38,7 +39,7 @@ export async function getDocuments(
     }
 
     const rows = await query.execute();
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
+    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings when passed across the server/client boundary
     return rows as any;
   } catch (error) {
     console.error("Error fetching documents:", error);
@@ -55,6 +56,10 @@ export async function createDocument(data: {
   category: DocumentCategory;
   uploaded_by: string;
 }): Promise<{ success: boolean; error?: string }> {
+  const auth = await isAdmin();
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
   try {
     const title = data.title.trim();
     if (!title) return { success: false, error: "Title is required" };
@@ -90,6 +95,10 @@ export async function updateDocument(
     category?: DocumentCategory;
   },
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await isAdmin();
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
   try {
     await db
       .updateTable("documents")
@@ -115,6 +124,10 @@ export async function updateDocument(
 export async function deleteDocument(
   id: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await isAdmin();
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
   try {
     await db.deleteFrom("documents").where("id", "=", id).execute();
     revalidatePath("/admin/documents");

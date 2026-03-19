@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
-import { Textarea } from "@workspace/ui/components/textarea";
 import {
   ArrowDown,
   ArrowUp,
@@ -21,7 +20,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   createServiceLink,
@@ -31,33 +30,9 @@ import {
   type ServiceLinkCategory,
   updateServiceLink,
 } from "./actions";
+import { CATEGORIES, CATEGORY_COLORS, getFaviconUrl } from "./constants";
 
-export const CATEGORIES: { value: ServiceLinkCategory; label: string }[] = [
-  { value: "venue", label: "Venue" },
-  { value: "catering", label: "Catering" },
-  { value: "photography", label: "Photography" },
-  { value: "music", label: "Music / DJ" },
-  { value: "flowers", label: "Flowers" },
-  { value: "other", label: "Other" },
-];
-
-const CATEGORY_COLORS: Record<ServiceLinkCategory, string> = {
-  venue: "bg-amber-100 text-amber-800",
-  catering: "bg-green-100 text-green-800",
-  photography: "bg-blue-100 text-blue-800",
-  music: "bg-purple-100 text-purple-800",
-  flowers: "bg-pink-100 text-pink-800",
-  other: "bg-gray-100 text-gray-800",
-};
-
-function getFaviconUrl(url: string): string {
-  try {
-    const { hostname } = new URL(url);
-    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-  } catch {
-    return "";
-  }
-}
+export { CATEGORIES };
 
 type FormState = {
   title: string;
@@ -72,6 +47,65 @@ const EMPTY_FORM: FormState = {
   description: "",
   category: "other",
 };
+
+interface LinkFormFieldsProps {
+  form: FormState;
+  onChange: (patch: Partial<FormState>) => void;
+}
+
+function LinkFormFields({ form, onChange }: LinkFormFieldsProps) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="space-y-1">
+        <Label htmlFor="field-title">Title *</Label>
+        <Input
+          id="field-title"
+          value={form.title}
+          onChange={(e) => onChange({ title: e.target.value })}
+          placeholder="e.g. La Jolla Cove Venue"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="field-url">URL *</Label>
+        <Input
+          id="field-url"
+          value={form.url}
+          onChange={(e) => onChange({ url: e.target.value })}
+          placeholder="https://example.com"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="field-category">Category</Label>
+        <Select
+          value={form.category}
+          onValueChange={(v) =>
+            onChange({ category: v as ServiceLinkCategory })
+          }
+        >
+          <SelectTrigger id="field-category">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORIES.map((c) => (
+              <SelectItem key={c.value} value={c.value}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="field-description">Description</Label>
+        <Input
+          id="field-description"
+          value={form.description}
+          onChange={(e) => onChange({ description: e.target.value })}
+          placeholder="Short description (optional)"
+        />
+      </div>
+    </div>
+  );
+}
 
 interface VendorsManagerProps {
   initialLinks: ServiceLink[];
@@ -90,7 +124,7 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
   const [editForm, setEditForm] = useState<FormState>(EMPTY_FORM);
   const [isUpdating, setIsUpdating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isReordering, setIsReordering] = useState(false);
+  const [isReordering, startReorder] = useTransition();
 
   const filtered =
     categoryFilter === "all"
@@ -133,6 +167,7 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
 
   async function handleUpdate() {
     if (!editId) return;
+
     setIsUpdating(true);
     const result = await updateServiceLink(editId, editForm);
     setIsUpdating(false);
@@ -159,7 +194,7 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
     }
   }
 
-  async function moveLink(id: string, direction: "up" | "down") {
+  function moveLink(id: string, direction: "up" | "down") {
     const currentLinks = [...links];
     const idx = currentLinks.findIndex((l) => l.id === id);
     if (idx === -1) return;
@@ -167,19 +202,18 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= currentLinks.length) return;
 
-    // Swap
     const updated = [...currentLinks];
     [updated[idx], updated[swapIdx]] = [updated[swapIdx]!, updated[idx]!];
     setLinks(updated);
 
-    setIsReordering(true);
-    const result = await reorderServiceLinks(updated.map((l) => l.id));
-    setIsReordering(false);
+    startReorder(async () => {
+      const result = await reorderServiceLinks(updated.map((l) => l.id));
 
-    if (!result.success) {
-      setLinks(currentLinks); // Revert on failure
-      toast.error("Failed to reorder");
-    }
+      if (!result.success) {
+        setLinks(currentLinks);
+        toast.error("Failed to reorder");
+      }
+    });
   }
 
   return (
@@ -203,64 +237,10 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
       {showAddForm && (
         <div className="border rounded-lg p-4 space-y-4 bg-secondary/20">
           <p className="text-sm font-semibold">New Vendor Link</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="add-title">Title *</Label>
-              <Input
-                id="add-title"
-                value={addForm.title}
-                onChange={(e) =>
-                  setAddForm((f) => ({ ...f, title: e.target.value }))
-                }
-                placeholder="e.g. La Jolla Cove Venue"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="add-url">URL *</Label>
-              <Input
-                id="add-url"
-                value={addForm.url}
-                onChange={(e) =>
-                  setAddForm((f) => ({ ...f, url: e.target.value }))
-                }
-                placeholder="https://example.com"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="add-category">Category</Label>
-              <Select
-                value={addForm.category}
-                onValueChange={(v) =>
-                  setAddForm((f) => ({
-                    ...f,
-                    category: v as ServiceLinkCategory,
-                  }))
-                }
-              >
-                <SelectTrigger id="add-category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="add-description">Description</Label>
-              <Input
-                id="add-description"
-                value={addForm.description}
-                onChange={(e) =>
-                  setAddForm((f) => ({ ...f, description: e.target.value }))
-                }
-                placeholder="Short description (optional)"
-              />
-            </div>
-          </div>
+          <LinkFormFields
+            form={addForm}
+            onChange={(patch) => setAddForm((f) => ({ ...f, ...patch }))}
+          />
           <div className="flex gap-2">
             <Button onClick={handleAdd} disabled={isAdding}>
               {isAdding ? "Adding..." : "Add Link"}
@@ -314,61 +294,12 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
               {editId === link.id ? (
                 /* Inline edit form */
                 <div className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label>Title</Label>
-                      <Input
-                        value={editForm.title}
-                        onChange={(e) =>
-                          setEditForm((f) => ({ ...f, title: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>URL</Label>
-                      <Input
-                        value={editForm.url}
-                        onChange={(e) =>
-                          setEditForm((f) => ({ ...f, url: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Category</Label>
-                      <Select
-                        value={editForm.category}
-                        onValueChange={(v) =>
-                          setEditForm((f) => ({
-                            ...f,
-                            category: v as ServiceLinkCategory,
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CATEGORIES.map((c) => (
-                            <SelectItem key={c.value} value={c.value}>
-                              {c.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Description</Label>
-                      <Input
-                        value={editForm.description}
-                        onChange={(e) =>
-                          setEditForm((f) => ({
-                            ...f,
-                            description: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
+                  <LinkFormFields
+                    form={editForm}
+                    onChange={(patch) =>
+                      setEditForm((f) => ({ ...f, ...patch }))
+                    }
+                  />
                   <div className="flex gap-2">
                     <Button
                       size="sm"
