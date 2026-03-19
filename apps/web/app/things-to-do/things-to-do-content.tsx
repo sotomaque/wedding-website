@@ -33,7 +33,7 @@ export function ThingsToDoContent({
   return (
     <>
       {/* Hero Section */}
-      <section className="relative overflow-hidden h-[600px] flex items-center justify-center">
+      <section className="relative overflow-hidden h-150 flex items-center justify-center">
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
@@ -43,7 +43,7 @@ export function ThingsToDoContent({
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/60" />
+          <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/50 to-black/60" />
         </div>
 
         {/* Content */}
@@ -73,7 +73,7 @@ export function ThingsToDoContent({
       </section>
 
       {/* Wedding Venues Section */}
-      <section className="relative bg-gradient-to-b from-secondary/30 to-background">
+      <section className="relative bg-linear-to-b from-secondary/30 to-background">
         <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-12">
@@ -97,7 +97,7 @@ export function ThingsToDoContent({
       </section>
 
       {/* Things to Do Section */}
-      <section className="relative bg-gradient-to-b from-background to-secondary/20">
+      <section className="relative bg-linear-to-b from-background to-secondary/20">
         <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-12">
@@ -123,7 +123,7 @@ export function ThingsToDoContent({
       </section>
 
       {/* Beaches Section */}
-      <section className="relative bg-gradient-to-b from-secondary/20 to-background">
+      <section className="relative bg-linear-to-b from-secondary/20 to-background">
         <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-12">
@@ -149,7 +149,7 @@ export function ThingsToDoContent({
       </section>
 
       {/* Food & Drink Section */}
-      <section className="relative bg-gradient-to-br from-accent/5 via-card to-secondary/30">
+      <section className="relative bg-linear-to-br from-accent/5 via-card to-secondary/30">
         <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">

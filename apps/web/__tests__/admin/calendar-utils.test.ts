@@ -128,9 +128,11 @@ function makeGuest(
   departure: string | null,
 ): GuestTravel {
   return {
+    kind: "guest" as const,
     id,
     first_name: "Guest",
     last_name: id,
+    side: null,
     arrival_date: arrival,
     arrival_transport: null,
     departure_date: departure,

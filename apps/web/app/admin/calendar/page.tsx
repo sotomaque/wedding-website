@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { db } from "@/lib/db";
 import { CalendarClient } from "./calendar-client";
+import { type GuestTravel, groupByParty } from "./utils";
 
 /** Convert any date value (Date object or "YYYY-MM-DD" string) to a "YYYY-MM-DD" string */
 function toDateStr(val: unknown): string | null {
@@ -10,7 +12,29 @@ function toDateStr(val: unknown): string | null {
   return String(val).slice(0, 10);
 }
 
-export default async function CalendarPage() {
+export default function CalendarPage() {
+  return (
+    <div className="max-w-screen-2xl mx-auto px-4 md:px-6 lg:px-8 py-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-serif font-medium">Calendar</h1>
+        <p className="text-muted-foreground mt-1">
+          Wedding events and guest travel at a glance
+        </p>
+      </div>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center h-64 rounded-lg border border-dashed text-muted-foreground text-sm">
+            Loading calendar...
+          </div>
+        }
+      >
+        <CalendarData />
+      </Suspense>
+    </div>
+  );
+}
+
+async function CalendarData() {
   const [eventsRaw, guestsRaw] = await Promise.all([
     db
       .selectFrom("events")
@@ -26,20 +50,23 @@ export default async function CalendarPage() {
       .execute(),
     db
       .selectFrom("guests")
+      .leftJoin("parties", "parties.id", "guests.party_id")
       .select([
-        "id",
-        "first_name",
-        "last_name",
-        "side",
-        "arrival_date",
-        "arrival_transport",
-        "departure_date",
-        "departure_transport",
+        "guests.id",
+        "guests.first_name",
+        "guests.last_name",
+        "guests.side",
+        "guests.arrival_date",
+        "guests.arrival_transport",
+        "guests.departure_date",
+        "guests.departure_transport",
+        "guests.party_id",
+        "parties.name as party_name",
       ])
       .where((eb) =>
         eb.or([
-          eb("arrival_date", "is not", null),
-          eb("departure_date", "is not", null),
+          eb("guests.arrival_date", "is not", null),
+          eb("guests.departure_date", "is not", null),
         ]),
       )
       .execute(),
@@ -54,7 +81,9 @@ export default async function CalendarPage() {
     location_name: e.location_name,
   }));
 
-  const guests = guestsRaw.map((g) => ({
+  // Normalize dates and build GuestTravel[] (no party fields serialized)
+  const guests: GuestTravel[] = guestsRaw.map((g) => ({
+    kind: "guest" as const,
     id: g.id,
     first_name: g.first_name,
     last_name: g.last_name,
@@ -65,15 +94,21 @@ export default async function CalendarPage() {
     departure_transport: g.departure_transport,
   }));
 
-  return (
-    <div className="max-w-screen-2xl mx-auto px-4 md:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-serif font-medium">Calendar</h1>
-        <p className="text-muted-foreground mt-1">
-          Wedding events and guest travel at a glance
-        </p>
-      </div>
-      <CalendarClient events={events} guests={guests} />
-    </div>
+  // Group by party server-side so party_id/party_name aren't serialized to the client
+  const parties = groupByParty(
+    guestsRaw.map((g) => ({
+      id: g.id,
+      first_name: g.first_name,
+      last_name: g.last_name,
+      side: g.side,
+      arrival_date: toDateStr(g.arrival_date),
+      arrival_transport: g.arrival_transport,
+      departure_date: toDateStr(g.departure_date),
+      departure_transport: g.departure_transport,
+      party_id: g.party_id,
+      party_name: g.party_name,
+    })),
   );
+
+  return <CalendarClient events={events} guests={guests} parties={parties} />;
 }
