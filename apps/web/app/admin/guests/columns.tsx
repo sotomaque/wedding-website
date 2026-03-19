@@ -23,6 +23,10 @@ type SortableColumn =
 interface ColumnsConfig {
   onEditGuest: (guestId: string) => void;
   onSendCalendarInvite: (guestId: string) => Promise<void>;
+  onSetRsvp: (
+    guestId: string,
+    status: "yes" | "no" | "pending",
+  ) => Promise<void>;
   currentSortBy?: string;
   currentSortOrder?: "asc" | "desc";
   onSort: (column: SortableColumn) => void;
@@ -291,6 +295,99 @@ function EditableListCell({
   );
 }
 
+function EditableRsvpCell({
+  guest,
+  onSave,
+}: {
+  guest: Guest;
+  onSave: (guestId: string, status: "yes" | "no" | "pending") => Promise<void>;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [value, setValue] = useState<"yes" | "no" | "pending">(
+    guest.rsvp_status,
+  );
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      await onSave(guest.id, value);
+      setIsEditing(false);
+      toast.success("RSVP updated", {
+        description: "Guest RSVP status has been updated",
+      });
+    } catch {
+      toast.error("Error", { description: "Failed to update RSVP status" });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handleCancel() {
+    setValue(guest.rsvp_status);
+    setIsEditing(false);
+  }
+
+  const labels: Record<string, string> = {
+    pending: "Pending",
+    yes: "Confirmed",
+    no: "Declined",
+  };
+  const colors: Record<string, string> = {
+    pending: "bg-yellow-100 text-yellow-800",
+    yes: "bg-green-100 text-green-800",
+    no: "bg-red-100 text-red-800",
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1">
+        <select
+          value={value}
+          onChange={(e) => setValue(e.target.value as "yes" | "no" | "pending")}
+          className="text-xs border rounded px-2 py-1 bg-background"
+          disabled={isSaving}
+        >
+          <option value="pending">Pending</option>
+          <option value="yes">Confirmed</option>
+          <option value="no">Declined</option>
+        </select>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+            title="Save"
+          >
+            <Check className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={isSaving}
+            className="p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
+            title="Cancel"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setIsEditing(true)}
+      className={`px-2 py-1 rounded text-xs font-medium hover:opacity-80 transition-opacity ${colors[guest.rsvp_status]}`}
+      title="Click to change RSVP status"
+    >
+      {labels[guest.rsvp_status]}
+    </button>
+  );
+}
+
 function EditableFamilyCell({
   guest,
   onSave,
@@ -375,6 +472,7 @@ function EditableFamilyCell({
 export function createColumns({
   onEditGuest,
   onSendCalendarInvite,
+  onSetRsvp,
   currentSortBy,
   currentSortOrder,
   onSort,
@@ -538,26 +636,9 @@ export function createColumns({
           </button>
         );
       },
-      cell: ({ row }) => {
-        const status = row.original.rsvp_status;
-        const labels = {
-          pending: "Pending",
-          yes: "Confirmed",
-          no: "Denied",
-        };
-        const colors = {
-          pending: "bg-yellow-100 text-yellow-800",
-          yes: "bg-green-100 text-green-800",
-          no: "bg-red-100 text-red-800",
-        };
-        return (
-          <span
-            className={`px-2 py-1 rounded text-xs font-medium ${colors[status]}`}
-          >
-            {labels[status]}
-          </span>
-        );
-      },
+      cell: ({ row }) => (
+        <EditableRsvpCell guest={row.original} onSave={onSetRsvp} />
+      ),
     },
     {
       accessorKey: "number_of_resends",
