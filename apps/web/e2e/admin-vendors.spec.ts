@@ -67,7 +67,10 @@ test.describe("Admin Vendors Page", () => {
     page,
   }) => {
     await page.getByRole("button", { name: /add link/i }).click();
-    await page.getByRole("button", { name: /^add link$/i }).click();
+    await page
+      .getByRole("button", { name: /^add link$/i })
+      .last()
+      .click();
     await expect(page.getByText(/title is required/i)).toBeVisible();
   });
 
@@ -76,7 +79,10 @@ test.describe("Admin Vendors Page", () => {
   }) => {
     await page.getByRole("button", { name: /add link/i }).click();
     await page.getByLabel(/title/i).fill("My Vendor");
-    await page.getByRole("button", { name: /^add link$/i }).click();
+    await page
+      .getByRole("button", { name: /^add link$/i })
+      .last()
+      .click();
     await expect(page.getByText(/url is required/i)).toBeVisible();
   });
 
@@ -88,7 +94,10 @@ test.describe("Admin Vendors Page", () => {
     await page.getByLabel(/title \*/i).fill(title);
     await page.getByLabel(/url \*/i).fill("https://example.com");
 
-    await page.getByRole("button", { name: /^add link$/i }).click();
+    await page
+      .getByRole("button", { name: /^add link$/i })
+      .last()
+      .click();
 
     // Wait for success toast or form to close
     await Promise.race([
@@ -112,7 +121,10 @@ test.describe("Admin Vendors Page", () => {
     await page.getByRole("button", { name: /add link/i }).click();
     await page.getByLabel(/title \*/i).fill(title);
     await page.getByLabel(/url \*/i).fill("https://example.com");
-    await page.getByRole("button", { name: /^add link$/i }).click();
+    await page
+      .getByRole("button", { name: /^add link$/i })
+      .last()
+      .click();
 
     await Promise.race([
       expect(page.getByText(/link added/i)).toBeVisible({ timeout: 5000 }),
@@ -159,7 +171,10 @@ test.describe("Admin Vendors Page", () => {
     await page.getByRole("button", { name: /add link/i }).click();
     await page.getByLabel(/title \*/i).fill(title);
     await page.getByLabel(/url \*/i).fill("https://delete-me.example.com");
-    await page.getByRole("button", { name: /^add link$/i }).click();
+    await page
+      .getByRole("button", { name: /^add link$/i })
+      .last()
+      .click();
 
     await Promise.race([
       expect(page.getByText(/link added/i)).toBeVisible({ timeout: 5000 }),
@@ -201,7 +216,10 @@ test.describe("Admin Vendors Page", () => {
     // Category defaults to "other" — select "venue" via the select trigger
     await page.getByRole("combobox").click();
     await page.getByRole("option", { name: /venue/i }).click();
-    await page.getByRole("button", { name: /^add link$/i }).click();
+    await page
+      .getByRole("button", { name: /^add link$/i })
+      .last()
+      .click();
 
     await Promise.race([
       expect(page.getByText(/link added/i)).toBeVisible({ timeout: 5000 }),
