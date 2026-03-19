@@ -76,6 +76,7 @@ export function GuestsTable({
   const [showAddForm, setShowAddForm] = useState(false);
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [isBulkSendingCalendar, setIsBulkSendingCalendar] = useState(false);
+  const [isBulkSettingRsvp, setIsBulkSettingRsvp] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -221,6 +222,7 @@ export function GuestsTable({
   const columns = createColumns({
     onEditGuest: handleEditGuest,
     onSendCalendarInvite: handleSendCalendarInvite,
+    onSetRsvp: handleSetRsvp,
     currentSortBy,
     currentSortOrder,
     onSort: handleSort,
@@ -406,6 +408,65 @@ export function GuestsTable({
     }
   }
 
+  async function handleSetRsvp(
+    guestId: string,
+    status: "yes" | "no" | "pending",
+  ) {
+    const response = await fetch(`/api/admin/guests/${guestId}/set-rsvp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rsvpStatus: status }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || "Failed to update RSVP status");
+    }
+
+    router.refresh();
+  }
+
+  async function handleBulkSetRsvp(status: "yes" | "no" | "pending") {
+    if (selectedGuests.length === 0) return;
+
+    setIsBulkSettingRsvp(true);
+    try {
+      const response = await fetch("/api/admin/guests/bulk-set-rsvp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guestIds: selectedGuests.map((g) => g.id),
+          rsvpStatus: status,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const label =
+          status === "yes"
+            ? "attending"
+            : status === "no"
+              ? "declined"
+              : "pending";
+        toast.success("RSVP updated!", {
+          description: `Marked ${data.updatedCount} guest(s) as ${label}`,
+        });
+        setRowSelection({});
+        router.refresh();
+      } else {
+        toast.error("Error", {
+          description: data.error || "Failed to update RSVP status",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating bulk RSVP:", error);
+      toast.error("Error", { description: "Failed to update RSVP status" });
+    } finally {
+      setIsBulkSettingRsvp(false);
+    }
+  }
+
   function refreshGuests() {
     router.refresh();
   }
@@ -494,7 +555,31 @@ export function GuestsTable({
           <span className="text-sm font-medium">
             {selectedGuests.length} guest(s) selected
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleBulkSetRsvp("yes")}
+              disabled={isBulkSettingRsvp}
+            >
+              Mark Attending
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleBulkSetRsvp("no")}
+              disabled={isBulkSettingRsvp}
+            >
+              Mark Declined
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleBulkSetRsvp("pending")}
+              disabled={isBulkSettingRsvp}
+            >
+              Mark Pending
+            </Button>
             <Button
               size="sm"
               onClick={handleBulkSendEmail}

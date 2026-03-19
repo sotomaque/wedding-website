@@ -72,6 +72,8 @@ export function EditGuestSheet({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isSendingActivities, setIsSendingActivities] = useState(false);
+  const [isSettingRsvp, setIsSettingRsvp] = useState(false);
+  const [localRsvpStatus, setLocalRsvpStatus] = useState(guest.rsvp_status);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -178,6 +180,38 @@ export function EditGuestSheet({
     const params = new URLSearchParams(searchParams.toString());
     params.delete("edit");
     router.push(`/admin/guests?${params.toString()}`, { scroll: false });
+  }
+
+  async function handleSetRsvp(status: "yes" | "no" | "pending") {
+    setIsSettingRsvp(true);
+    try {
+      const response = await fetch(`/api/admin/guests/${guest.id}/set-rsvp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rsvpStatus: status }),
+      });
+
+      if (response.ok) {
+        setLocalRsvpStatus(status);
+        const label =
+          status === "yes"
+            ? "Attending"
+            : status === "no"
+              ? "Declined"
+              : "Pending";
+        toast.success("RSVP updated!", {
+          description: `${guest.first_name} marked as ${label}`,
+        });
+        router.refresh();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to update RSVP");
+      }
+    } catch {
+      toast.error("Failed to update RSVP");
+    } finally {
+      setIsSettingRsvp(false);
+    }
   }
 
   async function onSubmit(data: EditGuestFormData) {
@@ -540,6 +574,34 @@ export function EditGuestSheet({
             {/* Admin-Only Fields */}
             <div className="border-t pt-4 mt-2 space-y-4">
               <h3 className="text-sm font-semibold">Admin Information</h3>
+
+              {/* RSVP Status Override */}
+              <div className="space-y-2">
+                <Label>RSVP Status</Label>
+                <div className="flex gap-2">
+                  {(
+                    [
+                      { value: "pending", label: "Pending" },
+                      { value: "yes", label: "Attending" },
+                      { value: "no", label: "Declined" },
+                    ] as const
+                  ).map(({ value, label }) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      size="sm"
+                      variant={
+                        localRsvpStatus === value ? "default" : "outline"
+                      }
+                      onClick={() => handleSetRsvp(value)}
+                      disabled={isSettingRsvp || localRsvpStatus === value}
+                      className="flex-1"
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
 
               {/* Invite Email Status Display */}
               <div className="flex items-center justify-between">
