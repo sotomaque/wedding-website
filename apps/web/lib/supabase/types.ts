@@ -467,6 +467,115 @@ export interface Database {
           created_at?: string;
         };
       };
+      documents: {
+        Row: {
+          id: string;
+          wedding_id: string | null;
+          title: string;
+          description: string | null;
+          file_url: string;
+          file_type: string;
+          file_size: number | null;
+          category:
+            | "contract"
+            | "receipt"
+            | "floor_plan"
+            | "timeline"
+            | "other";
+          uploaded_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          wedding_id?: string | null;
+          title: string;
+          description?: string | null;
+          file_url: string;
+          file_type: string;
+          file_size?: number | null;
+          category?:
+            | "contract"
+            | "receipt"
+            | "floor_plan"
+            | "timeline"
+            | "other";
+          uploaded_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          wedding_id?: string | null;
+          title?: string;
+          description?: string | null;
+          file_url?: string;
+          file_type?: string;
+          file_size?: number | null;
+          category?:
+            | "contract"
+            | "receipt"
+            | "floor_plan"
+            | "timeline"
+            | "other";
+          uploaded_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      service_links: {
+        Row: {
+          id: string;
+          wedding_id: string | null;
+          title: string;
+          url: string;
+          description: string | null;
+          category:
+            | "venue"
+            | "catering"
+            | "photography"
+            | "music"
+            | "flowers"
+            | "other";
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          wedding_id?: string | null;
+          title: string;
+          url: string;
+          description?: string | null;
+          category?:
+            | "venue"
+            | "catering"
+            | "photography"
+            | "music"
+            | "flowers"
+            | "other";
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          wedding_id?: string | null;
+          title?: string;
+          url?: string;
+          description?: string | null;
+          category?:
+            | "venue"
+            | "catering"
+            | "photography"
+            | "music"
+            | "flowers"
+            | "other";
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

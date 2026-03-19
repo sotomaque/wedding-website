@@ -45,6 +45,25 @@ export const ourFileRouter: FileRouter = {
       return { uploadedBy: metadata.userId, url: file.ufsUrl };
     }),
 
+  // Document uploader for wedding document center (admin only)
+  documentUploader: f({
+    pdf: { maxFileSize: "32MB", maxFileCount: 5 },
+    image: { maxFileSize: "16MB", maxFileCount: 5 },
+  })
+    .middleware(async () => {
+      const user = await checkAdmin();
+      return { userId: user.userId, email: user.email };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      return {
+        uploadedBy: metadata.userId,
+        url: file.ufsUrl,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      };
+    }),
+
   // Guest photo uploader — no auth required, open to anyone with the link
   guestPhotoUploader: f({
     image: {
