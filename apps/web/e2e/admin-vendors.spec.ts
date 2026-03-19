@@ -145,14 +145,18 @@ test.describe("Admin Vendors Page", () => {
       .nth(2)
       .click();
 
-    // Inline edit form should appear
-    const titleInput = linkRow.getByLabel(/title/i);
+    // Inline edit form replaces row content (title moves into input value,
+    // so hasText no longer matches). Find the edit form by its Save button.
+    const editForm = page
+      .locator(".border.rounded-lg")
+      .filter({ has: page.getByRole("button", { name: /save/i }) });
+    const titleInput = editForm.getByLabel(/title/i);
     await expect(titleInput).toBeVisible({ timeout: 5000 });
 
     const editedTitle = `${title}-edited`;
     await titleInput.clear();
     await titleInput.fill(editedTitle);
-    await linkRow.getByRole("button", { name: /save/i }).click();
+    await editForm.getByRole("button", { name: /save/i }).click();
 
     await Promise.race([
       expect(page.getByText(/link updated/i)).toBeVisible({ timeout: 5000 }),
