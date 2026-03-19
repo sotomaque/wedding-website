@@ -1,5 +1,16 @@
 "use client";
 
+import {
+  type ColumnFiltersState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type RowSelectionState,
+  type SortingState,
+  useReactTable,
+} from "@tanstack/react-table";
 import { Button } from "@workspace/ui/components/button";
 import {
   Dialog,
@@ -9,36 +20,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu";
 import { Input } from "@workspace/ui/components/input";
 import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Edit,
-  Merge,
-  MoreHorizontal,
-  Trash2,
-  Users,
-  UsersRound,
-  X,
-} from "lucide-react";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@workspace/ui/components/table";
+import { Merge, Trash2, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
 import { toast } from "sonner";
 import type { PartyWithGuests } from "./actions";
-import { deleteParty, mergeParties, updateParty } from "./actions";
+import {
+  bulkDeleteParties,
+  bulkMergeParties,
+  deleteParty,
+  mergeParties,
+  updateParty,
+} from "./actions";
+import { createColumns } from "./columns";
 import { EditPartySheet } from "./edit-party-sheet";
 import { PartiesFilters } from "./parties-filters";
-
-const PAGE_SIZE = 10;
 
 interface PartiesTableProps {
   initialParties: PartyWithGuests[];
@@ -49,11 +55,18 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  // TanStack state
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  // Expanded rows (managed manually, not via TanStack)
   const [expandedParties, setExpandedParties] = useState<Set<string>>(
     new Set(),
   );
-  const [editingNameId, setEditingNameId] = useState<string | null>(null);
-  const [editingNameValue, setEditingNameValue] = useState("");
+
+  // Dialogs
   const [mergeDialog, setMergeDialog] = useState<{
     open: boolean;
     sourceParty: PartyWithGuests | null;
@@ -63,16 +76,13 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
     open: boolean;
     party: PartyWithGuests | null;
   }>({ open: false, party: null });
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
+  const [bulkMergeDialog, setBulkMergeDialog] = useState(false);
+  const [bulkMergeTargetId, setBulkMergeTargetId] = useState("");
 
-  // Pagination
   const currentPage = Number.parseInt(searchParams.get("page") || "0", 10);
-  const totalPages = Math.ceil(initialParties.length / PAGE_SIZE);
-  const paginatedParties = initialParties.slice(
-    currentPage * PAGE_SIZE,
-    (currentPage + 1) * PAGE_SIZE,
-  );
 
-  // Get party ID for editing from URL
+  // Edit sheet from URL
   const editPartyId = searchParams.get("edit");
   const editingParty = editPartyId
     ? initialParties.find((p) => p.id === editPartyId)
@@ -100,46 +110,26 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
     router.push(`/admin/parties?${params.toString()}`, { scroll: false });
   }
 
-  const toggleExpanded = (partyId: string) => {
+  function toggleExpanded(partyId: string) {
     setExpandedParties((prev) => {
       const next = new Set(prev);
-      if (next.has(partyId)) {
-        next.delete(partyId);
-      } else {
-        next.add(partyId);
-      }
+      if (next.has(partyId)) next.delete(partyId);
+      else next.add(partyId);
       return next;
     });
-  };
+  }
 
-  const startEditingName = (party: PartyWithGuests) => {
-    setEditingNameId(party.id);
-    setEditingNameValue(party.name || "");
-  };
+  async function handleSaveName(partyId: string, name: string | null) {
+    const result = await updateParty(partyId, { name });
+    if (result.success) {
+      toast.success("Party name updated");
+      router.refresh();
+    } else {
+      toast.error(result.error || "Failed to update party name");
+    }
+  }
 
-  const cancelEditingName = () => {
-    setEditingNameId(null);
-    setEditingNameValue("");
-  };
-
-  const savePartyName = async (partyId: string) => {
-    startTransition(async () => {
-      const result = await updateParty(partyId, {
-        name: editingNameValue.trim() || null,
-      });
-
-      if (result.success) {
-        toast.success("Party name updated");
-        setEditingNameId(null);
-        setEditingNameValue("");
-        router.refresh();
-      } else {
-        toast.error(result.error || "Failed to update party name");
-      }
-    });
-  };
-
-  const handleMerge = async () => {
+  function handleMerge() {
     const sourceParty = mergeDialog.sourceParty;
     if (!sourceParty || !mergeDialog.targetPartyId) return;
 
@@ -148,7 +138,6 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
         sourceParty.id,
         mergeDialog.targetPartyId,
       );
-
       if (result.success) {
         toast.success("Parties merged successfully");
         setMergeDialog({ open: false, sourceParty: null, targetPartyId: "" });
@@ -157,15 +146,14 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
         toast.error(result.error || "Failed to merge parties");
       }
     });
-  };
+  }
 
-  const handleDelete = async () => {
+  function handleDelete() {
     const party = deleteDialog.party;
     if (!party) return;
 
     startTransition(async () => {
       const result = await deleteParty(party.id);
-
       if (result.success) {
         toast.success("Party deleted successfully");
         setDeleteDialog({ open: false, party: null });
@@ -174,7 +162,91 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
         toast.error(result.error || "Failed to delete party");
       }
     });
-  };
+  }
+
+  const columns = createColumns({
+    onEditParty: openEditSheet,
+    onMerge: (party) =>
+      setMergeDialog({ open: true, sourceParty: party, targetPartyId: "" }),
+    onDelete: (party) => setDeleteDialog({ open: true, party }),
+    onSaveName: handleSaveName,
+    expandedParties,
+    onToggleExpand: toggleExpanded,
+  });
+
+  const table = useReactTable({
+    data: initialParties,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onSortingChange: setSorting,
+    onColumnFiltersChange: (updater) => {
+      setColumnFilters(updater);
+      if (currentPage > 0) handlePageChange(0);
+    },
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      rowSelection,
+      pagination: {
+        pageIndex: currentPage,
+        pageSize: 10,
+      },
+    },
+    manualPagination: false,
+  });
+
+  // Compute selected from table
+  const selectedPartyRows = table.getFilteredSelectedRowModel().rows;
+  const selectedPartyObjects = selectedPartyRows.map((r) => r.original);
+  const emptySelectedParties = selectedPartyObjects.filter(
+    (p) => p.guestCount === 0,
+  );
+  const nonEmptySelectedParties = selectedPartyObjects.filter(
+    (p) => p.guestCount > 0,
+  );
+
+  function handleBulkDelete() {
+    startTransition(async () => {
+      const ids = selectedPartyObjects.map((p) => p.id);
+      const result = await bulkDeleteParties(ids);
+      if (result.success) {
+        const msg =
+          result.skippedCount > 0
+            ? `Deleted ${result.deletedCount} party(ies). ${result.skippedCount} skipped (have guests).`
+            : `Deleted ${result.deletedCount} party(ies).`;
+        toast.success(msg);
+        setRowSelection({});
+        setBulkDeleteDialog(false);
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to delete parties");
+      }
+    });
+  }
+
+  function handleBulkMerge() {
+    if (!bulkMergeTargetId) return;
+
+    startTransition(async () => {
+      const sourceIds = selectedPartyObjects
+        .map((p) => p.id)
+        .filter((id) => id !== bulkMergeTargetId);
+      const result = await bulkMergeParties(sourceIds, bulkMergeTargetId);
+      if (result.success) {
+        toast.success(`Merged ${result.mergedCount} party(ies) successfully`);
+        setRowSelection({});
+        setBulkMergeDialog(false);
+        setBulkMergeTargetId("");
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to merge parties");
+      }
+    });
+  }
 
   if (error) {
     return (
@@ -218,202 +290,101 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="mb-4">
+      {/* Search + Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-4">
+        <Input
+          placeholder="Search by guest name..."
+          value={(table.getColumn("members")?.getFilterValue() as string) ?? ""}
+          onChange={(e) =>
+            table.getColumn("members")?.setFilterValue(e.target.value)
+          }
+          className="max-w-sm"
+        />
         <PartiesFilters />
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedPartyObjects.length > 0 && (
+        <div className="flex items-center gap-4 p-3 mb-4 bg-secondary/50 rounded-lg border">
+          <span className="text-sm font-medium">
+            {selectedPartyObjects.length} party(ies) selected
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setBulkDeleteDialog(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete Selected
+            </Button>
+            {selectedPartyObjects.length >= 2 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setBulkMergeTargetId("");
+                  setBulkMergeDialog(true);
+                }}
+              >
+                <Merge className="h-4 w-4 mr-1" />
+                Merge Selected
+              </Button>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setRowSelection({})}
+            className="ml-auto"
+          >
+            Clear selection
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="border border-border rounded-lg overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-secondary/50">
-            <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground w-8" />
-              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                Invite Code
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                Party Name
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                Guests
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                Side
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                List
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                Size
-              </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedParties.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={8}
-                  className="px-4 py-8 text-center text-muted-foreground"
-                >
-                  No parties found
-                </td>
-              </tr>
-            ) : (
-              paginatedParties.map((party) => {
+      <div className="-mx-2 sm:-mx-4 md:mx-0 md:rounded-md md:border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => {
+                const party = row.original;
                 const isExpanded = expandedParties.has(party.id);
-                const isEditingName = editingNameId === party.id;
                 return (
-                  <Fragment key={party.id}>
-                    <tr className="border-t border-border hover:bg-secondary/30">
-                      <td className="px-4 py-3">
-                        {party.guestCount > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => toggleExpanded(party.id)}
-                            className="p-1 hover:bg-secondary rounded"
-                          >
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-sm bg-secondary px-2 py-1 rounded">
-                          {party.invite_code}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {isEditingName ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={editingNameValue}
-                              onChange={(e) =>
-                                setEditingNameValue(e.target.value)
-                              }
-                              placeholder="Party name..."
-                              className="h-8 w-40"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  savePartyName(party.id);
-                                } else if (e.key === "Escape") {
-                                  cancelEditingName();
-                                }
-                              }}
-                            />
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={() => savePartyName(party.id)}
-                              disabled={isPending}
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={cancelEditingName}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => startEditingName(party)}
-                            className="text-left hover:underline cursor-pointer"
-                          >
-                            {party.name ? (
-                              <span className="font-medium">{party.name}</span>
-                            ) : (
-                              <span className="text-muted-foreground text-sm italic">
-                                Click to add name...
-                              </span>
-                            )}
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-muted-foreground text-sm">
-                          {party.guests
-                            .slice(0, 2)
-                            .map((g) => g.first_name)
-                            .join(", ")}
-                          {party.guestCount > 2 && ` +${party.guestCount - 2}`}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm capitalize">
-                          {party.side || "—"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-semibold uppercase">
-                          {party.list || "—"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1 text-sm">
-                          <Users className="h-3 w-3" />
-                          {party.guestCount}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => openEditSheet(party.id)}
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Party
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setMergeDialog({
-                                  open: true,
-                                  sourceParty: party,
-                                  targetPartyId: "",
-                                })
-                              }
-                            >
-                              <Merge className="h-4 w-4 mr-2" />
-                              Merge Into...
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() =>
-                                setDeleteDialog({ open: true, party })
-                              }
-                              disabled={party.guestCount > 0}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete Party
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
+                  <Fragment key={row.id}>
+                    <TableRow>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
                     {isExpanded && party.guests.length > 0 && (
-                      <tr
-                        key={`${party.id}-guests`}
-                        className="bg-secondary/20"
-                      >
-                        <td colSpan={8} className="px-4 py-3">
+                      <TableRow className="bg-secondary/20">
+                        <TableCell
+                          colSpan={columns.length}
+                          className="px-4 py-3"
+                        >
                           <div className="pl-8">
                             <p className="text-xs text-muted-foreground mb-2">
                               Party Members:
@@ -452,44 +423,51 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
                               ))}
                             </div>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
                   </Fragment>
                 );
               })
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No parties found
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between space-x-2 py-4">
-          <div className="text-sm text-muted-foreground">
-            Showing page {currentPage + 1} of {totalPages} (
-            {initialParties.length} parties total)
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 0}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages - 1}
-            >
-              Next
-            </Button>
-          </div>
+      <div className="flex items-center justify-between space-x-2 py-4">
+        <div className="text-sm text-muted-foreground">
+          Showing page {currentPage + 1} of {Math.max(table.getPageCount(), 1)}{" "}
+          ({table.getFilteredRowModel().rows.length} parties total)
         </div>
-      )}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
 
       {/* Edit Party Sheet */}
       {editingParty && (
@@ -500,7 +478,7 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
         />
       )}
 
-      {/* Merge Dialog */}
+      {/* Single Merge Dialog */}
       <Dialog
         open={mergeDialog.open}
         onOpenChange={(open) =>
@@ -570,7 +548,7 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
+      {/* Single Delete Dialog */}
       <Dialog
         open={deleteDialog.open}
         onOpenChange={(open) =>
@@ -598,6 +576,150 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
               disabled={isPending}
             >
               {isPending ? "Deleting..." : "Delete Party"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Dialog */}
+      <Dialog
+        open={bulkDeleteDialog}
+        onOpenChange={(open) => !open && setBulkDeleteDialog(false)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Selected Parties</DialogTitle>
+            <DialogDescription>
+              Only empty parties (no guests) can be deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            {emptySelectedParties.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">
+                  Will be deleted ({emptySelectedParties.length}):
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  {emptySelectedParties.map((p) => (
+                    <li key={p.id} className="font-mono">
+                      {p.invite_code}
+                      {p.name ? ` — ${p.name}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {nonEmptySelectedParties.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-orange-600 mb-1">
+                  Will be skipped — have guests (
+                  {nonEmptySelectedParties.length}
+                  ):
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  {nonEmptySelectedParties.map((p) => (
+                    <li key={p.id} className="font-mono">
+                      {p.invite_code}
+                      {p.name ? ` — ${p.name}` : ""} ({p.guestCount} guests)
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {emptySelectedParties.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                None of the selected parties are empty. Nothing will be deleted.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={isPending || emptySelectedParties.length === 0}
+            >
+              {isPending
+                ? "Deleting..."
+                : `Delete ${emptySelectedParties.length} Party(ies)`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Merge Dialog */}
+      <Dialog
+        open={bulkMergeDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBulkMergeDialog(false);
+            setBulkMergeTargetId("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Merge Selected Parties</DialogTitle>
+            <DialogDescription>
+              Choose which party to keep. All guests from the other selected
+              parties will be moved into the target, and those parties will be
+              deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-2">
+            {selectedPartyObjects.map((p) => (
+              <label
+                key={p.id}
+                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  bulkMergeTargetId === p.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-secondary/50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="merge-target"
+                  value={p.id}
+                  checked={bulkMergeTargetId === p.id}
+                  onChange={(e) => setBulkMergeTargetId(e.target.value)}
+                  className="h-4 w-4"
+                />
+                <div className="flex-1 min-w-0">
+                  <span className="font-mono text-sm bg-secondary px-2 py-0.5 rounded">
+                    {p.invite_code}
+                  </span>
+                  {p.name && (
+                    <span className="ml-2 text-sm font-medium">{p.name}</span>
+                  )}
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    ({p.guestCount} guests)
+                  </span>
+                </div>
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkMergeDialog(false);
+                setBulkMergeTargetId("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkMerge}
+              disabled={!bulkMergeTargetId || isPending}
+            >
+              {isPending
+                ? "Merging..."
+                : `Merge into ${bulkMergeTargetId ? initialParties.find((p) => p.id === bulkMergeTargetId)?.invite_code : "..."}`}
             </Button>
           </DialogFooter>
         </DialogContent>
