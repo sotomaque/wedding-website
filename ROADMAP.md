@@ -1,6 +1,6 @@
 # Multi-Tenancy & Feature Roadmap
 
-> Last updated: 2026-03-18
+> Last updated: 2026-03-19
 
 This document outlines the roadmap for evolving this wedding website from a single-tenant application into a multi-tenant platform that other couples can use.
 
@@ -170,6 +170,30 @@ Send real-world letters and postcards to guests directly from the admin dashboar
 - [ ] Vendor timeline/run-of-show view
 - [ ] Emergency contacts list
 - [ ] Real-time seating availability
+
+### 4.5 Document Center
+
+A central place for couples to upload, organize, and share important wedding-related documents (contracts, receipts, floor plans, timelines, etc.).
+
+- [ ] Create a `documents` table (`id`, `wedding_id`, `title`, `description`, `file_url`, `file_type`, `file_size`, `category`, `uploaded_by`, `created_at`, `updated_at`)
+- [ ] Define document categories (contract, receipt, floor_plan, timeline, other)
+- [ ] Build upload UI in admin dashboard with drag-and-drop support (UploadThing or Supabase Storage)
+- [ ] List view with filtering by category and search by title
+- [ ] Preview support for PDFs and images inline
+- [ ] Download individual files or bulk-download as ZIP
+- [ ] Optional: share specific documents with co-admins or vendors via expiring links
+
+### 4.6 Services & Links Manager
+
+A CRUD interface for couples to manually add, edit, and remove links in the services/vendors section — florists, photographers, venues, etc. — with optional descriptions.
+
+- [ ] Create a `service_links` table (`id`, `wedding_id`, `title`, `url`, `description` (nullable), `category` (nullable), `sort_order`, `created_at`, `updated_at`)
+- [ ] Admin CRUD UI: add, edit, reorder, and delete service links
+- [ ] Support optional description (short text) displayed alongside each link
+- [ ] Optional category grouping (venue, catering, photography, music, flowers, other)
+- [ ] Drag-and-drop reordering via `sort_order`
+- [ ] Render links on the public-facing services/vendors page, grouped by category
+- [ ] Validate URLs on save and show favicon or open-graph preview where available
 
 ---
 
