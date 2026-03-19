@@ -26,20 +26,23 @@ export default async function CalendarPage() {
       .execute(),
     db
       .selectFrom("guests")
+      .leftJoin("parties", "parties.id", "guests.party_id")
       .select([
-        "id",
-        "first_name",
-        "last_name",
-        "side",
-        "arrival_date",
-        "arrival_transport",
-        "departure_date",
-        "departure_transport",
+        "guests.id",
+        "guests.first_name",
+        "guests.last_name",
+        "guests.side",
+        "guests.arrival_date",
+        "guests.arrival_transport",
+        "guests.departure_date",
+        "guests.departure_transport",
+        "guests.party_id",
+        "parties.name as party_name",
       ])
       .where((eb) =>
         eb.or([
-          eb("arrival_date", "is not", null),
-          eb("departure_date", "is not", null),
+          eb("guests.arrival_date", "is not", null),
+          eb("guests.departure_date", "is not", null),
         ]),
       )
       .execute(),
@@ -63,6 +66,8 @@ export default async function CalendarPage() {
     arrival_transport: g.arrival_transport,
     departure_date: toDateStr(g.departure_date),
     departure_transport: g.departure_transport,
+    party_id: g.party_id,
+    party_name: g.party_name,
   }));
 
   return (

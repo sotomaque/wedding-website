@@ -7,6 +7,8 @@ import {
   type GuestTravel,
   getStayBars,
   getWeeksInMonth,
+  groupByParty,
+  type PartyTravel,
   toDateKey,
 } from "./utils";
 
@@ -229,23 +231,35 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
   const [sideFilter, setSideFilter] = React.useState<"all" | "bride" | "groom">(
     "all",
   );
+  const [groupMode, setGroupMode] = React.useState<"guests" | "parties">(
+    "guests",
+  );
 
-  // Stable color assignment keyed to unfiltered guests — prevents color shift on filter change
+  // Group guests into parties
+  const parties = React.useMemo(() => groupByParty(guests), [guests]);
+
+  // Pick individual guests or collapsed parties based on toggle
+  const baseList: GuestTravel[] = React.useMemo(
+    () => (groupMode === "parties" ? parties : guests),
+    [groupMode, parties, guests],
+  );
+
+  // Stable color assignment keyed to unfiltered list — prevents color shift on filter change
   const colorMap = React.useMemo(() => {
     const map = new Map<string, string>();
-    guests.forEach((g, i) => {
+    baseList.forEach((g, i) => {
       map.set(g.id, STAY_COLORS[i % STAY_COLORS.length] as string);
     });
     return map;
-  }, [guests]);
+  }, [baseList]);
 
-  // Apply side filter to guests
+  // Apply side filter
   const filteredGuests = React.useMemo(
     () =>
       sideFilter === "all"
-        ? guests
-        : guests.filter((g) => g.side === sideFilter),
-    [guests, sideFilter],
+        ? baseList
+        : baseList.filter((g) => g.side === sideFilter),
+    [baseList, sideFilter],
   );
 
   // Compute sets of "YYYY-MM-DD" keys per layer
@@ -340,6 +354,25 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
                 : val === "bride"
                   ? "Bride's Side"
                   : "Groom's Side"}
+            </button>
+          ))}
+        </div>
+
+        {/* Guests / Parties toggle */}
+        <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 p-0.5 text-sm">
+          {(["guests", "parties"] as const).map((val) => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => setGroupMode(val)}
+              className={cn(
+                "rounded-full px-3 py-1 transition-colors capitalize",
+                groupMode === val
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {val === "guests" ? "Guests" : "Parties"}
             </button>
           ))}
         </div>
@@ -466,19 +499,12 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
                       </h3>
                       <div className="space-y-1">
                         {dayArrivals.map((g) => (
-                          <div
+                          <GuestRow
                             key={g.id}
-                            className="rounded-md border px-3 py-2 text-sm flex items-center justify-between"
-                          >
-                            <span>
-                              {g.first_name} {g.last_name ?? ""}
-                            </span>
-                            {g.arrival_transport && (
-                              <span className="text-xs text-muted-foreground">
-                                {g.arrival_transport}
-                              </span>
-                            )}
-                          </div>
+                            guest={g}
+                            transport={g.arrival_transport}
+                            isPartyMode={groupMode === "parties"}
+                          />
                         ))}
                       </div>
                     </section>
@@ -492,19 +518,12 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
                       </h3>
                       <div className="space-y-1">
                         {dayDepartures.map((g) => (
-                          <div
+                          <GuestRow
                             key={g.id}
-                            className="rounded-md border px-3 py-2 text-sm flex items-center justify-between"
-                          >
-                            <span>
-                              {g.first_name} {g.last_name ?? ""}
-                            </span>
-                            {g.departure_transport && (
-                              <span className="text-xs text-muted-foreground">
-                                {g.departure_transport}
-                              </span>
-                            )}
-                          </div>
+                            guest={g}
+                            transport={g.departure_transport}
+                            isPartyMode={groupMode === "parties"}
+                          />
                         ))}
                       </div>
                     </section>
@@ -536,6 +555,51 @@ export function CalendarClient({ events, guests }: CalendarClientProps) {
             colorMap={colorMap}
           />
         </div>
+      )}
+    </div>
+  );
+}
+
+// Helper to check if a guest entry is a party with members
+function isPartyTravel(g: GuestTravel): g is PartyTravel {
+  return "members" in g;
+}
+
+// Renders a guest or party row in the day detail panel
+function GuestRow({
+  guest,
+  transport,
+  isPartyMode,
+}: {
+  guest: GuestTravel;
+  transport: string | null;
+  isPartyMode: boolean;
+}) {
+  const name = `${guest.first_name} ${guest.last_name ?? ""}`.trim();
+
+  if (isPartyMode && isPartyTravel(guest) && guest.members.length > 1) {
+    return (
+      <div className="rounded-md border px-3 py-2 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="font-medium">{name}</span>
+          {transport && (
+            <span className="text-xs text-muted-foreground">{transport}</span>
+          )}
+        </div>
+        <div className="mt-1 text-xs text-muted-foreground">
+          {guest.members
+            .map((m) => `${m.first_name} ${m.last_name ?? ""}`.trim())
+            .join(", ")}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border px-3 py-2 text-sm flex items-center justify-between">
+      <span>{name}</span>
+      {transport && (
+        <span className="text-xs text-muted-foreground">{transport}</span>
       )}
     </div>
   );

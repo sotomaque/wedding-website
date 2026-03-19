@@ -7,6 +7,25 @@ export interface GuestTravel {
   arrival_transport: string | null;
   departure_date: string | null;
   departure_transport: string | null;
+  party_id: string | null;
+  party_name: string | null;
+}
+
+/** A collapsed party view — merges travel windows for all guests in a party */
+export interface PartyTravel {
+  /** Uses party_id as the unique key */
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  side: string | null;
+  arrival_date: string | null;
+  arrival_transport: string | null;
+  departure_date: string | null;
+  departure_transport: string | null;
+  party_id: string | null;
+  party_name: string | null;
+  /** Individual guests in this party */
+  members: GuestTravel[];
 }
 
 export interface StayBar {
@@ -88,4 +107,86 @@ export function getStayBars(
   }
 
   return bars;
+}
+
+/** Group guests by party, merging travel windows (earliest arrival, latest departure) */
+export function groupByParty(guests: GuestTravel[]): PartyTravel[] {
+  const partyMap = new Map<string, GuestTravel[]>();
+  const ungrouped: GuestTravel[] = [];
+
+  for (const g of guests) {
+    if (g.party_id) {
+      const list = partyMap.get(g.party_id) ?? [];
+      list.push(g);
+      partyMap.set(g.party_id, list);
+    } else {
+      ungrouped.push(g);
+    }
+  }
+
+  const parties: PartyTravel[] = [];
+
+  for (const [partyId, members] of partyMap) {
+    // Find earliest arrival and latest departure
+    let earliestArrival: string | null = null;
+    let latestDeparture: string | null = null;
+    let arrivalTransport: string | null = null;
+    let departureTransport: string | null = null;
+    const side = members[0]?.side ?? null;
+    const partyName = members[0]?.party_name ?? null;
+
+    for (const m of members) {
+      if (
+        m.arrival_date &&
+        (!earliestArrival || m.arrival_date < earliestArrival)
+      ) {
+        earliestArrival = m.arrival_date;
+        arrivalTransport = m.arrival_transport;
+      }
+      if (
+        m.departure_date &&
+        (!latestDeparture || m.departure_date > latestDeparture)
+      ) {
+        latestDeparture = m.departure_date;
+        departureTransport = m.departure_transport;
+      }
+    }
+
+    // Build a display name: party name or list of first names
+    const displayName =
+      partyName ?? members.map((m) => m.first_name).join(" & ");
+
+    parties.push({
+      id: partyId,
+      first_name: displayName,
+      last_name: null,
+      side,
+      arrival_date: earliestArrival,
+      arrival_transport: arrivalTransport,
+      departure_date: latestDeparture,
+      departure_transport: departureTransport,
+      party_id: partyId,
+      party_name: partyName,
+      members,
+    });
+  }
+
+  // Ungrouped guests become single-member "parties"
+  for (const g of ungrouped) {
+    parties.push({
+      id: g.id,
+      first_name: g.first_name,
+      last_name: g.last_name,
+      side: g.side,
+      arrival_date: g.arrival_date,
+      arrival_transport: g.arrival_transport,
+      departure_date: g.departure_date,
+      departure_transport: g.departure_transport,
+      party_id: null,
+      party_name: null,
+      members: [g],
+    });
+  }
+
+  return parties;
 }
