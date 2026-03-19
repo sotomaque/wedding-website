@@ -301,6 +301,40 @@ export interface WeddingTodosTable {
   wedding_id: string | null;
 }
 
+// Documents table (Document Center)
+export interface DocumentsTable {
+  id: Generated<string>;
+  wedding_id: string | null;
+  title: string;
+  description: string | null;
+  file_url: string;
+  file_type: string;
+  file_size: number | null;
+  category: "contract" | "receipt" | "floor_plan" | "timeline" | "other";
+  uploaded_by: string;
+  created_at: ColumnType<Date, string | undefined, never>;
+  updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+// Service Links table (Services & Links Manager)
+export interface ServiceLinksTable {
+  id: Generated<string>;
+  wedding_id: string | null;
+  title: string;
+  url: string;
+  description: string | null;
+  category:
+    | "venue"
+    | "catering"
+    | "photography"
+    | "music"
+    | "flowers"
+    | "other";
+  sort_order: ColumnType<number, number | undefined, number>;
+  created_at: ColumnType<Date, string | undefined, never>;
+  updated_at: ColumnType<Date, string | undefined, string>;
+}
+
 // Database interface
 export interface Database {
   weddings: WeddingsTable;
@@ -319,4 +353,6 @@ export interface Database {
   guest_hotel_interests: GuestHotelInterestsTable;
   wedding_todos: WeddingTodosTable;
   guest_photos: GuestPhotosTable;
+  documents: DocumentsTable;
+  service_links: ServiceLinksTable;
 }
