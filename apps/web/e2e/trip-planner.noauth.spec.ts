@@ -52,9 +52,11 @@ test.describe("Trip Planner - Public Access", () => {
     await page.goto("/trip-planner");
     await waitForHydration(page);
 
-    await expect(page.getByText("Events")).toBeVisible();
-    await expect(page.getByText("Arrivals")).toBeVisible();
-    await expect(page.getByText("Departures")).toBeVisible();
+    // Scope to the legend container (spans with dot indicators, not toggle buttons)
+    const legend = page.locator(".flex.flex-wrap.gap-3.text-xs");
+    await expect(legend.getByText("Events")).toBeVisible();
+    await expect(legend.getByText("Arrivals")).toBeVisible();
+    await expect(legend.getByText("Departures")).toBeVisible();
   });
 
   test("clicking a day shows detail panel", async ({ page }) => {
