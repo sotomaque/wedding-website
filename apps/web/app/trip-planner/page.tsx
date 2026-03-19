@@ -1,32 +1,26 @@
-import { Suspense } from "react";
+import { Footer } from "@workspace/ui/components/footer";
+import { Navigation } from "@workspace/ui/components/navigation";
+import { cookies } from "next/headers";
+import {
+  type ActivityPlan,
+  groupByParty,
+  type PartyTravel,
+} from "@/app/admin/calendar/utils";
+import { NAVIGATION_CONFIG } from "@/app/navigation-config";
+import { SITE_CONFIG } from "@/app/site-config";
+import { GuestIdentifier } from "@/app/things-to-do/guest-identifier";
+import { getGuestParty } from "@/lib/auth/guest-session";
 import { toDateStr } from "@/lib/calendar/date-utils";
 import { db } from "@/lib/db";
-import { CalendarClient } from "./calendar-client";
-import { type ActivityPlan, type GuestTravel, groupByParty } from "./utils";
+import { TripPlannerClient } from "./trip-planner-client";
 
-export default function CalendarPage() {
-  return (
-    <div className="max-w-screen-2xl mx-auto px-4 md:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-serif font-medium">Calendar</h1>
-        <p className="text-muted-foreground mt-1">
-          Wedding events and guest travel at a glance
-        </p>
-      </div>
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center h-64 rounded-lg border border-dashed text-muted-foreground text-sm">
-            Loading calendar...
-          </div>
-        }
-      >
-        <CalendarData />
-      </Suspense>
-    </div>
-  );
-}
+export default async function TripPlannerPage() {
+  const cookieStore = await cookies();
+  const codeFromCookie = cookieStore.get("invite_code")?.value?.toUpperCase();
+  const party = await getGuestParty(codeFromCookie);
+  const inviteCode = party?.inviteCode || codeFromCookie;
 
-async function CalendarData() {
+  // Fetch events, guests with travel dates, and activity plans in parallel
   const [eventsRaw, guestsRaw, activityPlansRaw] = await Promise.all([
     db
       .selectFrom("events")
@@ -92,21 +86,8 @@ async function CalendarData() {
     location_name: e.location_name,
   }));
 
-  // Normalize dates and build GuestTravel[] (no party fields serialized)
-  const guests: GuestTravel[] = guestsRaw.map((g) => ({
-    kind: "guest" as const,
-    id: g.id,
-    first_name: g.first_name,
-    last_name: g.last_name,
-    side: g.side,
-    arrival_date: toDateStr(g.arrival_date),
-    arrival_transport: g.arrival_transport,
-    departure_date: toDateStr(g.departure_date),
-    departure_transport: g.departure_transport,
-  }));
-
-  // Group by party server-side so party_id/party_name aren't serialized to the client
-  const parties = groupByParty(
+  // Always group by party for the public view (privacy)
+  const parties: PartyTravel[] = groupByParty(
     guestsRaw.map((g) => ({
       id: g.id,
       first_name: g.first_name,
@@ -134,11 +115,37 @@ async function CalendarData() {
   }));
 
   return (
-    <CalendarClient
-      events={events}
-      guests={guests}
-      parties={parties}
-      activityPlans={activityPlans}
-    />
+    <div className="flex flex-col min-h-screen bg-background">
+      <Navigation
+        brandImage={NAVIGATION_CONFIG.brandImage}
+        leftLinks={NAVIGATION_CONFIG.leftLinks}
+        rightLinks={NAVIGATION_CONFIG.rightLinks}
+      />
+
+      <main className="grow">
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-6 lg:px-8 py-8">
+          <div className="mb-6">
+            <h1 className="text-3xl font-serif font-medium">Trip Planner</h1>
+            <p className="text-muted-foreground mt-1">
+              See when everyone is arriving and what they're planning to do
+            </p>
+          </div>
+
+          {!inviteCode && (
+            <div className="mb-8">
+              <GuestIdentifier />
+            </div>
+          )}
+
+          <TripPlannerClient
+            events={events}
+            parties={parties}
+            activityPlans={activityPlans}
+          />
+        </div>
+      </main>
+
+      <Footer email={SITE_CONFIG.email} coupleName={SITE_CONFIG.couple.name} />
+    </div>
   );
 }

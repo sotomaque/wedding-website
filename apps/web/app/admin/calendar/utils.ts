@@ -20,6 +20,20 @@ export interface PartyTravel extends Omit<GuestTravel, "kind"> {
 /** Either a single guest or a collapsed party */
 export type TravelEntry = GuestTravel | PartyTravel;
 
+/** A guest's plan to visit an activity — client-facing (pre-computed display name) */
+export interface ActivityPlan {
+  activityId: string;
+  activityName: string;
+  activityEmoji: string | null;
+  displayName: string;
+  /** Used for deduplication in party mode */
+  dedupeKey: string;
+  /** Guest's side — used for admin calendar side filtering */
+  side: string | null;
+  status: "interested" | "committed";
+  plannedDate: string; // "YYYY-MM-DD"
+}
+
 export interface StayBar {
   guest: TravelEntry;
   colorClass: string;
