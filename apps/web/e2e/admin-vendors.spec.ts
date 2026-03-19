@@ -44,7 +44,7 @@ test.describe("Admin Vendors Page", () => {
       "Venue",
       "Catering",
       "Photography",
-      "Music",
+      "Music / DJ",
       "Flowers",
       "Other",
     ];
