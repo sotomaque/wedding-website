@@ -45,7 +45,7 @@ export async function createServiceLink(data: {
   url: string;
   description: string;
   category: ServiceLinkCategory;
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{ success: boolean; link?: ServiceLink; error?: string }> {
   const auth = await isAdmin();
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -71,7 +71,7 @@ export async function createServiceLink(data: {
 
     const nextOrder = (Number(last?.max_order) || 0) + 1;
 
-    await db
+    const rows = await db
       .insertInto("service_links")
       .values({
         title,
@@ -80,11 +80,13 @@ export async function createServiceLink(data: {
         category: data.category,
         sort_order: nextOrder,
       })
+      .returningAll()
       .execute();
 
     revalidatePath("/admin/vendors");
     revalidatePath("/vendors");
-    return { success: true };
+    // biome-ignore lint/suspicious/noExplicitAny: Date objects serialize to strings across the server/client boundary
+    return { success: true, link: rows[0] as any as ServiceLink };
   } catch (error) {
     console.error("Error creating service link:", error);
     return { success: false, error: "Failed to create link" };
@@ -99,7 +101,7 @@ export async function updateServiceLink(
     description?: string;
     category?: ServiceLinkCategory;
   },
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; link?: ServiceLink; error?: string }> {
   const auth = await isAdmin();
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -113,7 +115,7 @@ export async function updateServiceLink(
       }
     }
 
-    await db
+    const rows = await db
       .updateTable("service_links")
       .set({
         ...(data.title !== undefined && { title: data.title.trim() }),
@@ -125,11 +127,13 @@ export async function updateServiceLink(
         updated_at: new Date().toISOString(),
       })
       .where("id", "=", id)
+      .returningAll()
       .execute();
 
     revalidatePath("/admin/vendors");
     revalidatePath("/vendors");
-    return { success: true };
+    // biome-ignore lint/suspicious/noExplicitAny: Date objects serialize to strings across the server/client boundary
+    return { success: true, link: rows[0] as any as ServiceLink };
   } catch (error) {
     console.error("Error updating service link:", error);
     return { success: false, error: "Failed to update link" };

@@ -19,7 +19,6 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -112,7 +111,6 @@ interface VendorsManagerProps {
 }
 
 export function VendorsManager({ initialLinks }: VendorsManagerProps) {
-  const router = useRouter();
   const [links, setLinks] = useState<ServiceLink[]>(initialLinks);
   const [categoryFilter, setCategoryFilter] = useState<
     ServiceLinkCategory | "all"
@@ -147,9 +145,9 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
 
     if (result.success) {
       toast.success("Link added");
+      if (result.link) setLinks((prev) => [...prev, result.link!]);
       setAddForm(EMPTY_FORM);
       setShowAddForm(false);
-      router.refresh();
     } else {
       toast.error(result.error || "Failed to add link");
     }
@@ -174,8 +172,12 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
 
     if (result.success) {
       toast.success("Link updated");
+      if (result.link) {
+        setLinks((prev) =>
+          prev.map((l) => (l.id === editId ? result.link! : l)),
+        );
+      }
       setEditId(null);
-      router.refresh();
     } else {
       toast.error(result.error || "Failed to update");
     }
