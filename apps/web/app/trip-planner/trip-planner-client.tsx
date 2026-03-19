@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, CalendarDayButton } from "@workspace/ui/components/calendar";
+import { Calendar } from "@workspace/ui/components/calendar";
 import { cn } from "@workspace/ui/lib/utils";
 import * as React from "react";
 import {
@@ -10,6 +10,15 @@ import {
   type PartyTravel,
   toDateKey,
 } from "@/app/admin/calendar/utils";
+import {
+  CALENDAR_COMPONENTS,
+  DotContext,
+  formatDateHeading,
+  normalizeKey,
+  PartyRow,
+  STAY_COLORS,
+  ToggleButton,
+} from "@/components/calendar/shared";
 
 interface CalendarEvent {
   id: string;
@@ -26,82 +35,7 @@ interface TripPlannerClientProps {
   activityPlans: ActivityPlan[];
 }
 
-function normalizeKey(raw: string): string {
-  return raw.slice(0, 10);
-}
-
-function formatDateHeading(dateStr: string): string {
-  const parts = dateStr.split("-").map(Number);
-  const d = new Date(parts[0] ?? 2026, (parts[1] ?? 1) - 1, parts[2] ?? 1);
-  return d.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-const STAY_COLORS = [
-  "bg-violet-200 text-violet-900 dark:bg-violet-800 dark:text-violet-100",
-  "bg-pink-200 text-pink-900 dark:bg-pink-800 dark:text-pink-100",
-  "bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100",
-  "bg-emerald-200 text-emerald-900 dark:bg-emerald-800 dark:text-emerald-100",
-  "bg-sky-200 text-sky-900 dark:bg-sky-800 dark:text-sky-100",
-  "bg-rose-200 text-rose-900 dark:bg-rose-800 dark:text-rose-100",
-  "bg-indigo-200 text-indigo-900 dark:bg-indigo-800 dark:text-indigo-100",
-  "bg-teal-200 text-teal-900 dark:bg-teal-800 dark:text-teal-100",
-];
-
 const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-// Dot context for the calendar day buttons
-interface DotContextValue {
-  eventDates: Set<string>;
-  arrivalDates: Set<string>;
-  departureDates: Set<string>;
-  activityDates: Set<string>;
-}
-
-const DotContext = React.createContext<DotContextValue>({
-  eventDates: new Set(),
-  arrivalDates: new Set(),
-  departureDates: new Set(),
-  activityDates: new Set(),
-});
-
-function DayButtonWithDots({
-  day,
-  modifiers,
-  children,
-  ...props
-}: React.ComponentPropsWithoutRef<typeof CalendarDayButton>) {
-  const { eventDates, arrivalDates, departureDates, activityDates } =
-    React.useContext(DotContext);
-  const key = toDateKey(day.date);
-  const hasEvent = eventDates.has(key);
-  const hasArrival = arrivalDates.has(key);
-  const hasDeparture = departureDates.has(key);
-  const hasActivity = activityDates.has(key);
-  const hasDots = hasEvent || hasArrival || hasDeparture || hasActivity;
-
-  return (
-    <CalendarDayButton day={day} modifiers={modifiers} {...props}>
-      {children}
-      {hasDots && (
-        <div className="flex gap-0.5 justify-center">
-          {hasEvent && <div className="h-1 w-1 rounded-full bg-blue-500" />}
-          {hasArrival && <div className="h-1 w-1 rounded-full bg-green-500" />}
-          {hasDeparture && (
-            <div className="h-1 w-1 rounded-full bg-orange-500" />
-          )}
-          {hasActivity && <div className="h-1 w-1 rounded-full bg-cyan-500" />}
-        </div>
-      )}
-    </CalendarDayButton>
-  );
-}
-
-const CALENDAR_COMPONENTS = { DayButton: DayButtonWithDots };
 
 export function TripPlannerClient({
   events,
@@ -152,12 +86,10 @@ export function TripPlannerClient({
   const activityDates = React.useMemo(() => {
     const set = new Set<string>();
     if (!showActivities) return set;
-    // Deduplicate by inviteCode + activityId
     const seen = new Set<string>();
     for (const ap of activityPlans) {
-      const key = `${ap.inviteCode}:${ap.activityId}`;
-      if (!seen.has(key)) {
-        seen.add(key);
+      if (!seen.has(ap.dedupeKey)) {
+        seen.add(ap.dedupeKey);
         set.add(ap.plannedDate);
       }
     }
@@ -208,6 +140,7 @@ export function TripPlannerClient({
     const byActivity = new Map<
       string,
       {
+        id: string;
         name: string;
         emoji: string | null;
         people: { name: string; status: "interested" | "committed" }[];
@@ -215,17 +148,15 @@ export function TripPlannerClient({
     >();
     const seen = new Set<string>();
     for (const ap of plansForDay) {
-      const dedupeKey = `${ap.inviteCode}:${ap.activityId}`;
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
+      if (seen.has(ap.dedupeKey)) continue;
+      seen.add(ap.dedupeKey);
       const entry = byActivity.get(ap.activityId) ?? {
+        id: ap.activityId,
         name: ap.activityName,
         emoji: ap.activityEmoji,
         people: [],
       };
-      const displayName =
-        ap.partyName ?? `${ap.guestFirstName} ${ap.guestLastName ?? ""}`.trim();
-      entry.people.push({ name: displayName, status: ap.status });
+      entry.people.push({ name: ap.displayName, status: ap.status });
       byActivity.set(ap.activityId, entry);
     }
     return Array.from(byActivity.values());
@@ -400,7 +331,7 @@ export function TripPlannerClient({
                       <div className="space-y-2">
                         {dayActivities.map((activity) => (
                           <div
-                            key={activity.name}
+                            key={activity.id}
                             className="rounded-md border px-3 py-2 text-sm"
                           >
                             <p className="font-medium">
@@ -544,66 +475,5 @@ export function TripPlannerClient({
         </div>
       )}
     </div>
-  );
-}
-
-function PartyRow({
-  party,
-  transport,
-}: {
-  party: PartyTravel;
-  transport: string | null;
-}) {
-  const name = `${party.first_name} ${party.last_name ?? ""}`.trim();
-  return (
-    <div className="rounded-md border px-3 py-2 text-sm">
-      <div className="flex items-center justify-between">
-        <span className="font-medium">{name}</span>
-        {transport && (
-          <span className="text-xs text-muted-foreground">{transport}</span>
-        )}
-      </div>
-      {party.members.length > 1 && (
-        <div className="mt-1 text-xs text-muted-foreground">
-          {party.members
-            .map((m) => `${m.first_name} ${m.last_name ?? ""}`.trim())
-            .join(", ")}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ToggleButton({
-  active,
-  onToggle,
-  color,
-  label,
-}: {
-  active: boolean;
-  onToggle: () => void;
-  color: "blue" | "cyan" | "purple";
-  label: string;
-}) {
-  const dotColor = {
-    blue: "bg-blue-500",
-    cyan: "bg-cyan-500",
-    purple: "bg-purple-500",
-  }[color];
-
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={cn(
-        "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors",
-        active
-          ? "border-border bg-background text-foreground"
-          : "border-border bg-muted/50 text-muted-foreground line-through opacity-60",
-      )}
-    >
-      <span className={cn("h-2 w-2 rounded-full", dotColor)} />
-      {label}
-    </button>
   );
 }

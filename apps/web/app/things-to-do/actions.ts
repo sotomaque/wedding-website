@@ -281,28 +281,38 @@ export async function getBeaches(
 /**
  * Search guests by name for the guest identifier autocomplete
  */
-export async function searchGuests(
-  query: string,
-): Promise<{ inviteCode: string; name: string }[]> {
-  if (!query || query.length < 2) return [];
+export async function searchGuests(query: string): Promise<{
+  success: boolean;
+  results: { inviteCode: string; name: string }[];
+  error?: string;
+}> {
+  try {
+    if (!query || query.length < 2) return { success: true, results: [] };
 
-  const guests = await db
-    .selectFrom("guests")
-    .select(["first_name", "last_name", "invite_code"])
-    .where("is_plus_one", "=", false)
-    .where((eb) =>
-      eb.or([
-        eb("first_name", "ilike", `%${query}%`),
-        eb("last_name", "ilike", `%${query}%`),
-      ]),
-    )
-    .limit(10)
-    .execute();
+    const guests = await db
+      .selectFrom("guests")
+      .select(["first_name", "last_name", "invite_code"])
+      .where("is_plus_one", "=", false)
+      .where((eb) =>
+        eb.or([
+          eb("first_name", "ilike", `%${query}%`),
+          eb("last_name", "ilike", `%${query}%`),
+        ]),
+      )
+      .limit(10)
+      .execute();
 
-  return guests.map((g) => ({
-    inviteCode: g.invite_code,
-    name: `${g.first_name} ${g.last_name ?? ""}`.trim(),
-  }));
+    return {
+      success: true,
+      results: guests.map((g) => ({
+        inviteCode: g.invite_code,
+        name: `${g.first_name} ${g.last_name ?? ""}`.trim(),
+      })),
+    };
+  } catch (error) {
+    console.error("Error searching guests:", error);
+    return { success: false, results: [], error: "Failed to search guests" };
+  }
 }
 
 /**
@@ -310,13 +320,33 @@ export async function searchGuests(
  */
 export async function setInviteCodeCookie(
   inviteCode: string,
-): Promise<{ success: boolean }> {
-  const cookieStore = await cookies();
-  cookieStore.set("invite_code", inviteCode.toUpperCase(), {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    httpOnly: true,
-  });
-  revalidatePath("/things-to-do");
-  return { success: true };
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!inviteCode)
+      return { success: false, error: "Invite code is required" };
+
+    // Validate the invite code exists
+    const party = await db
+      .selectFrom("guests")
+      .select("invite_code")
+      .where("invite_code", "=", inviteCode.toUpperCase())
+      .limit(1)
+      .executeTakeFirst();
+
+    if (!party) {
+      return { success: false, error: "Invalid invite code" };
+    }
+
+    const cookieStore = await cookies();
+    cookieStore.set("invite_code", inviteCode.toUpperCase(), {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      httpOnly: true,
+    });
+    revalidatePath("/things-to-do");
+    return { success: true };
+  } catch (error) {
+    console.error("Error setting invite code cookie:", error);
+    return { success: false, error: "Failed to set invite code" };
+  }
 }

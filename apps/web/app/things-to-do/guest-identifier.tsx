@@ -2,7 +2,7 @@
 
 import { Search, User, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { searchGuests, setInviteCodeCookie } from "./actions";
 
 interface GuestResult {
@@ -19,6 +19,13 @@ export function GuestIdentifier() {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const containerRef = useRef<HTMLFieldSetElement>(null);
 
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   function handleInput(value: string) {
     setQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -31,9 +38,11 @@ export function GuestIdentifier() {
 
     debounceRef.current = setTimeout(() => {
       startTransition(async () => {
-        const matches = await searchGuests(value);
-        setResults(matches);
-        setShowDropdown(matches.length > 0);
+        const res = await searchGuests(value);
+        if (res.success) {
+          setResults(res.results);
+          setShowDropdown(res.results.length > 0);
+        }
       });
     }, 300);
   }
@@ -41,8 +50,10 @@ export function GuestIdentifier() {
   async function handleSelect(guest: GuestResult) {
     setShowDropdown(false);
     setQuery(guest.name);
-    await setInviteCodeCookie(guest.inviteCode);
-    router.refresh();
+    const res = await setInviteCodeCookie(guest.inviteCode);
+    if (res.success) {
+      router.refresh();
+    }
   }
 
   return (

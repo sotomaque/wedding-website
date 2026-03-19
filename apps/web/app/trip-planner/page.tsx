@@ -10,17 +10,9 @@ import { NAVIGATION_CONFIG } from "@/app/navigation-config";
 import { SITE_CONFIG } from "@/app/site-config";
 import { GuestIdentifier } from "@/app/things-to-do/guest-identifier";
 import { getGuestParty } from "@/lib/auth/guest-session";
+import { toDateStr } from "@/lib/calendar/date-utils";
 import { db } from "@/lib/db";
 import { TripPlannerClient } from "./trip-planner-client";
-
-/** Convert any date value to "YYYY-MM-DD" string */
-function toDateStr(val: unknown): string | null {
-  if (!val) return null;
-  if (val instanceof Date) {
-    return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, "0")}-${String(val.getDate()).padStart(2, "0")}`;
-  }
-  return String(val).slice(0, 10);
-}
 
 export default async function TripPlannerPage() {
   const cookieStore = await cookies();
@@ -73,11 +65,10 @@ export default async function TripPlannerPage() {
         "gai.activity_id",
         "a.name as activity_name",
         "a.emoji as activity_emoji",
-        "gai.guest_id",
         "g.first_name",
         "g.last_name",
+        "g.side",
         "gai.invite_code",
-        "g.party_id",
         "p.name as party_name",
         "gai.status",
         "gai.planned_date",
@@ -115,12 +106,10 @@ export default async function TripPlannerPage() {
     activityId: ap.activity_id,
     activityName: ap.activity_name,
     activityEmoji: ap.activity_emoji,
-    guestId: ap.guest_id,
-    guestFirstName: ap.first_name,
-    guestLastName: ap.last_name,
-    inviteCode: ap.invite_code,
-    partyId: ap.party_id,
-    partyName: ap.party_name,
+    displayName:
+      ap.party_name ?? `${ap.first_name} ${ap.last_name ?? ""}`.trim(),
+    dedupeKey: `${ap.invite_code}:${ap.activity_id}`,
+    side: ap.side,
     status: ap.status,
     plannedDate: toDateStr(ap.planned_date) ?? "",
   }));
