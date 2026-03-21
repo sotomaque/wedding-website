@@ -3,7 +3,7 @@
 import { CalendarDayButton } from "@workspace/ui/components/calendar";
 import { cn } from "@workspace/ui/lib/utils";
 import * as React from "react";
-import { toDateKey } from "@/app/admin/calendar/utils";
+import { toDateKey } from "@/app/[slug]/admin/calendar/utils";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -135,7 +135,7 @@ export function ToggleButton({
 // PartyRow / GuestRow — detail panel rows
 // ---------------------------------------------------------------------------
 
-import type { PartyTravel } from "@/app/admin/calendar/utils";
+import type { PartyTravel } from "@/app/[slug]/admin/calendar/utils";
 
 export function PartyRow({
   party,

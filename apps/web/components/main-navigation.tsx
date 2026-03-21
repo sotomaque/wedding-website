@@ -3,11 +3,14 @@
 import { useUser } from "@clerk/nextjs";
 import { Navigation } from "@workspace/ui/components/navigation";
 import { useMemo } from "react";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
+import { getNavigationConfig } from "@/app/navigation-config";
 import { env } from "@/env";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 
 export function MainNavigation() {
   const { user } = useUser();
+  const slug = useWeddingSlug();
+  const navConfig = useMemo(() => getNavigationConfig(slug), [slug]);
 
   // Check if user is admin
   const isAdmin = useMemo(() => {
@@ -25,15 +28,15 @@ export function MainNavigation() {
   const rightLinks = useMemo(
     () =>
       isAdmin
-        ? [...NAVIGATION_CONFIG.rightLinks, { href: "/admin", label: "Admin" }]
-        : NAVIGATION_CONFIG.rightLinks,
-    [isAdmin],
+        ? [...navConfig.rightLinks, { href: `/${slug}/admin`, label: "Admin" }]
+        : navConfig.rightLinks,
+    [isAdmin, navConfig.rightLinks, slug],
   );
 
   return (
     <Navigation
-      brandImage={NAVIGATION_CONFIG.brandImage}
-      leftLinks={NAVIGATION_CONFIG.leftLinks}
+      brandImage={navConfig.brandImage}
+      leftLinks={navConfig.leftLinks}
       rightLinks={rightLinks}
     />
   );

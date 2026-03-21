@@ -335,6 +335,16 @@ export interface ServiceLinksTable {
   updated_at: ColumnType<Date, string | undefined, string>;
 }
 
+// Wedding Admins table (per-wedding admin access control)
+export interface WeddingAdminsTable {
+  id: Generated<string>;
+  wedding_id: string;
+  clerk_user_id: string | null;
+  email: string;
+  role: "owner" | "editor";
+  created_at: ColumnType<Date, string | undefined, never>;
+}
+
 // Database interface
 export interface Database {
   weddings: WeddingsTable;
@@ -355,4 +365,5 @@ export interface Database {
   guest_photos: GuestPhotosTable;
   documents: DocumentsTable;
   service_links: ServiceLinksTable;
+  wedding_admins: WeddingAdminsTable;
 }

@@ -6,7 +6,7 @@ import {
   groupByParty,
   parseLocalDate,
   toDateKey,
-} from "@/app/admin/calendar/utils";
+} from "@/app/[slug]/admin/calendar/utils";
 
 // ---------------------------------------------------------------------------
 // parseLocalDate

@@ -1,6 +1,6 @@
 # Multi-Tenancy & Feature Roadmap
 
-> Last updated: 2026-03-19
+> Last updated: 2026-03-21
 
 This document outlines the roadmap for evolving this wedding website from a single-tenant application into a multi-tenant platform that other couples can use.
 
@@ -12,37 +12,50 @@ The biggest architectural change. Every table currently stores data globally; th
 
 ### 1.1 Wedding Entity & Data Isolation
 
-> **Partially shipped (2026-03-18).** Schema + types done. Query updates and RLS policies remain.
+> **Schema shipped (2026-03-18).** Query updates and RLS policies remain — this is the critical next step.
 
 - [x] Create a `weddings` table as the top-level entity
   - Fields: `id`, `slug` (URL-friendly identifier), `couple_name`, `wedding_date`, `rsvp_deadline`, `timezone`, `status` (draft/published/archived), `created_at`, `updated_at`
   - Seeded with default wedding row for Helen & Enrique (`slug: helen-and-enrique`)
-- [x] Add nullable `wedding_id` foreign key to all 15 existing tables (`guests`, `parties`, `events`, `activities`, `photos`, `gifts`, `seating_charts`, `hotels`, `wedding_todos`, etc.)
+- [x] Add nullable `wedding_id` foreign key to all existing tables (`guests`, `parties`, `events`, `activities`, `photos`, `gifts`, `seating_charts`, `hotels`, `wedding_todos`, `guest_photos`, `documents`, `service_links`, plus junction tables)
 - [x] Write a migration to backfill existing data with the default `wedding_id`
 - [x] Update Kysely types (`WeddingsTable`, `wedding_id` on all interfaces)
-- [ ] Update all Kysely queries to filter by `wedding_id` (this touches nearly every query in the app)
-- [ ] Add Supabase Row-Level Security (RLS) policies scoped to `wedding_id`
+- [ ] **Update all Kysely queries to filter by `wedding_id`** (~39+ files, security-critical — without this, adding a second wedding leaks data)
+- [ ] Add Supabase Row-Level Security (RLS) policies scoped to `wedding_id` (current RLS is table-level read/write, not tenant-scoped)
+- [ ] Migration to make `wedding_id` columns NOT NULL (after queries are scoped)
 
-### 1.2 Wedding-Scoped Routing
+### 1.2 Wedding Context Resolution (NEW — prerequisite for routing)
+
+> Architectural decision needed: how does `wedding_id` propagate through the app?
+
+- [ ] Design the context pattern: middleware header, React context, server-side helper, or combination
+- [ ] Implement a `getWeddingId()` utility that all queries can call
+- [ ] Decide backward-compat strategy: does `/rsvp` keep working (default wedding) or redirect to `/helen-and-enrique/rsvp`?
+
+### 1.3 Wedding-Scoped Routing
 
 - [ ] Move public pages under a dynamic route: `app/[slug]/` (e.g., `/helen-and-enrique/rsvp`)
 - [ ] Move admin pages under: `app/[slug]/admin/`
 - [ ] Add middleware to resolve `slug` → `wedding_id` and inject into request context
 - [ ] Support custom domains per wedding (optional, via Vercel's domain API)
 
-### 1.3 Admin Roles & Permissions
+### 1.4 Admin Roles & Permissions
 
 - [ ] Create a `wedding_admins` table (`wedding_id`, `clerk_user_id`, `role`: owner/editor/viewer)
 - [ ] Replace the `ADMIN_EMAILS` environment variable with per-wedding admin assignments
 - [ ] Update `admin.ts` auth to check wedding-scoped admin access
 - [ ] Add an "invite co-admin" flow so couples can share admin access
 
-### 1.4 Tenant-Scoped Configuration
+### 1.5 Tenant-Scoped Configuration
 
 - [ ] Move hardcoded values from `site-config.ts` and `constants.ts` into the `weddings` table or a `wedding_settings` table
   - Couple names, wedding date, RSVP deadline, ceremony/reception details, schedule, story content
+  - 43 hero photos currently hardcoded in `HERO_PHOTOS` constant
 - [ ] Create an admin settings page for couples to configure their wedding details
 - [ ] Move static photos (`/our-photos/*`) to per-wedding storage (UploadThing or Supabase Storage)
+- [ ] Parameterize email templates with wedding context (couple name, slug-based RSVP links, venue details)
+  - RSVP invitations, calendar invites, activities emails, bulk emails, thank-you emails
+  - "From" address: shared domain with couple name in display name, or per-wedding domain config
 
 ---
 
@@ -92,17 +105,17 @@ Features that improve the guest-facing experience across all weddings.
 
 ### 3.3 Improved RSVP Flow
 
-> **In progress.** Plus-one name collection already exists. Remaining items below.
+> **Mostly shipped.** Plus-one collection, multi-event RSVP (`guest_event_invites`), and .ics calendar invites all working. Remaining items are enhancements.
 
-- [ ] Multi-event RSVP in a single form (currently requires separate flows)
+- [x] Plus-one name collection during RSVP (with dietary restrictions, age info)
+- [x] Multi-event RSVP via `guest_event_invites` table (per-event status tracking)
+- [x] RSVP confirmation with calendar invite download (.ics) — single + bulk send via email
 - [ ] Meal selection during RSVP (if applicable)
 - [ ] Song request field
-- [x] Plus-one name collection during RSVP
-- [ ] RSVP confirmation page with calendar invite download (.ics)
 
 ### 3.4 Photo Sharing
 
-> **Shipped.** Guests upload via QR code → `/photos/upload`, photos display immediately on `/slideshow`, admins moderate at `/admin/photos/guest` with ZIP download. See README for details.
+> **Shipped.** Guests upload via QR code → `/photos/upload`, photos display immediately on `/slideshow`, admins moderate at `/admin/photos/guest` with ZIP download.
 
 ---
 
@@ -125,9 +138,11 @@ Send real-world letters and postcards to guests directly from the admin dashboar
 - **ClickSend** — no minimums, simple setup, Zapier integration
 - **Print.one** — postcard/greeting-card focus, no subscription
 
+**Current state:** Guest table has a single `mailing_address` text field and a `physical_invite_sent` boolean. Address collection exists as optional RSVP field.
+
 **Proposed implementation**
-- [ ] Add mailing address fields to the guest record (`address_line1`, `address_line2`, `city`, `state`, `postal_code`, `country`)
-- [ ] Build an address collection flow: optional field on RSVP form, or admin bulk-import via CSV
+- [ ] Split `mailing_address` into structured fields (`address_line1`, `address_line2`, `city`, `state`, `postal_code`, `country`) or keep as-is with Lob address verification
+- [ ] Build an address collection flow: admin bulk-import via CSV
 - [ ] Create a "Physical Mail" section in the admin dashboard
   - Select recipient segment (all guests, attending only, specific party, individual)
   - Choose mail type (letter or postcard)
@@ -135,13 +150,6 @@ Send real-world letters and postcards to guests directly from the admin dashboar
   - Preview before sending
 - [ ] Server Action: pulls guest + address data from Supabase, calls Lob API, stores `lob_letter_id` and delivery status back on the guest record
 - [ ] Track delivery status via Lob webhooks → update guest record with `mail_status` (created / in_transit / delivered / returned)
-- [ ] (Optional) Trigger automatically: after RSVP confirmed, queue a thank-you letter via a Supabase Edge Function
-
-**Thank you letter use case (MVP)**
-1. Admin clicks "Send thank you letters" after the wedding
-2. App filters guests with `rsvp_status = attending` and a valid mailing address
-3. Single Lob API call per guest with a shared letter template + personalized merge vars
-4. Status tracked per guest; admin sees a delivery dashboard
 
 ### 4.1 Analytics Dashboard
 
@@ -152,9 +160,13 @@ Send real-world letters and postcards to guests directly from the admin dashboar
 
 ### 4.2 Communication Hub
 
-- [ ] Email blast to guest segments (all, attending, not responded, by event)
+> **Partially shipped.** Bulk email to guest segments, email templates (Resend), event invitation emails, calendar invite bulk-send all working. Remaining items below.
+
+- [x] Email blast to guest segments (bulk send via admin)
+- [x] Email templates with Resend integration (`/admin/templates/`)
+- [x] Event-specific invitation emails (`/api/admin/events/[id]/send-invites/`)
 - [ ] Email scheduling (send at a future date)
-- [ ] SMS/WhatsApp notifications via Twilio (guests already have phone/WhatsApp fields)
+- [ ] SMS/WhatsApp notifications via Twilio (guests have `phone_number`, `whatsapp`, `preferred_contact_method` fields)
 - [ ] Automated reminder emails for non-responders
 
 ### 4.3 Budget Tracker
@@ -173,11 +185,11 @@ Send real-world letters and postcards to guests directly from the admin dashboar
 
 ### 4.5 Document Center
 
-A central place for couples to upload, organize, and share important wedding-related documents (contracts, receipts, floor plans, timelines, etc.).
+> **Shipped.** Admin CRUD UI with UploadThing, categories (contract, receipt, floor_plan, timeline, other), file metadata tracking.
 
-- [ ] Create a `documents` table (`id`, `wedding_id`, `title`, `description`, `file_url`, `file_type`, `file_size`, `category`, `uploaded_by`, `created_at`, `updated_at`)
-- [ ] Define document categories (contract, receipt, floor_plan, timeline, other)
-- [ ] Build upload UI in admin dashboard with drag-and-drop support (UploadThing or Supabase Storage)
+- [x] Create a `documents` table (`id`, `wedding_id`, `title`, `description`, `file_url`, `file_type`, `file_size`, `category`, `uploaded_by`, `created_at`, `updated_at`)
+- [x] Define document categories (contract, receipt, floor_plan, timeline, other)
+- [x] Build upload UI in admin dashboard with UploadThing
 - [ ] List view with filtering by category and search by title
 - [ ] Preview support for PDFs and images inline
 - [ ] Download individual files or bulk-download as ZIP
@@ -185,14 +197,14 @@ A central place for couples to upload, organize, and share important wedding-rel
 
 ### 4.6 Services & Links Manager
 
-A CRUD interface for couples to manually add, edit, and remove links in the services/vendors section — florists, photographers, venues, etc. — with optional descriptions.
+> **Shipped.** Admin CRUD at `/admin/vendors/`, guest-facing display at `/vendors/`, categories, sort order.
 
-- [ ] Create a `service_links` table (`id`, `wedding_id`, `title`, `url`, `description` (nullable), `category` (nullable), `sort_order`, `created_at`, `updated_at`)
-- [ ] Admin CRUD UI: add, edit, reorder, and delete service links
-- [ ] Support optional description (short text) displayed alongside each link
-- [ ] Optional category grouping (venue, catering, photography, music, flowers, other)
+- [x] Create a `service_links` table (`id`, `wedding_id`, `title`, `url`, `description` (nullable), `category` (nullable), `sort_order`, `created_at`, `updated_at`)
+- [x] Admin CRUD UI: add, edit, reorder, and delete service links
+- [x] Support optional description (short text) displayed alongside each link
+- [x] Optional category grouping (venue, catering, photography, music, flowers, other)
+- [x] Render links on the public-facing services/vendors page, grouped by category
 - [ ] Drag-and-drop reordering via `sort_order`
-- [ ] Render links on the public-facing services/vendors page, grouped by category
 - [ ] Validate URLs on save and show favicon or open-graph preview where available
 
 ---
@@ -244,21 +256,24 @@ Lower priority features that add polish.
 
 ## Implementation Priority
 
-If working toward multi-tenancy as the primary goal, the recommended order is:
+Multi-tenancy focused priority order:
 
 | Priority | Phase | Status | Rationale |
 |----------|-------|--------|-----------|
-| 1 | 1.1 Wedding Entity | **Partially shipped** (schema + types; queries + RLS pending) | Everything depends on this data model change |
-| 2 | 3.3 Improved RSVP | **In progress** (song request, meal selection, confirmation + .ics) | RSVP deadline March 30 — ship before guests respond |
-| 3 | 4.1 Analytics | Not started | High-value as RSVPs come in |
-| 4 | 1.1 Query + RLS | Not started | Complete the multi-tenancy foundation |
-| 5 | 1.2 Scoped Routing | Not started | Can't serve multiple weddings without this |
-| 6 | 1.3 Admin Roles | Not started | Need per-wedding access control before onboarding others |
-| 7 | 1.4 Tenant Config | Not started | Remove hardcoded wedding-specific content |
-| 8 | 2.1 Signup Flow | Not started | First external couple can now sign up |
-| 9 | 2.2 Themes | Not started | Visual differentiation between weddings |
-| 10 | 5.1 Pricing | Not started | Monetize once there's proven value |
+| 1 | 1.1 Query scoping | Not started | **Security-critical** — without this, a second wedding leaks all data |
+| 2 | 1.1 RLS + NOT NULL | Not started | Defense-in-depth + schema enforcement |
+| 3 | 1.2 Wedding context | Not started | Architectural prerequisite — how `wedding_id` flows through the app |
+| 4 | 1.3 Scoped routing | Not started | Can't serve multiple weddings without slug-based URLs |
+| 5 | 1.4 Admin roles | Not started | Need per-wedding access control before onboarding others |
+| 6 | 1.5 Tenant config | Not started | Remove hardcoded couple/venue/date content from constants |
+| 7 | 2.1 Signup flow | Not started | First external couple can sign up and create a wedding |
+| 8 | 2.2 Themes | Not started | Visual differentiation between weddings |
+| 9 | 5.1 Pricing | Not started | Monetize once there's proven value |
 | — | ~~3.4 Photo Sharing~~ | **Shipped** | — |
+| — | ~~4.5 Document Center~~ | **Shipped** | — |
+| — | ~~4.6 Service Links~~ | **Shipped** | — |
+| — | ~~4.2 Communication (email)~~ | **Shipped** (email portion) | SMS/WhatsApp remain |
+| — | ~~3.3 RSVP core~~ | **Shipped** (plus-ones, multi-event, .ics) | Meal selection + song requests remain |
 
 ---
 
@@ -267,7 +282,8 @@ If working toward multi-tenancy as the primary goal, the recommended order is:
 To avoid breaking the existing live wedding site during the transition:
 
 1. **Feature-flag the multi-tenant code path** — existing site continues to work as-is
-2. **Add `wedding_id` columns as nullable first**, backfill, then make non-null
-3. **Deploy routing changes behind a flag** — old routes redirect to new `[slug]` routes
-4. **Keep the existing Clerk + email admin auth working** until per-wedding roles are ready
-5. **Run both old and new admin UIs in parallel** during transition
+2. ~~**Add `wedding_id` columns as nullable first**, backfill, then make non-null~~ ✅ Done (nullable + backfilled)
+3. **Next: scope all queries**, then make columns NOT NULL
+4. **Deploy routing changes behind a flag** — old routes redirect to new `[slug]` routes
+5. **Keep the existing Clerk + email admin auth working** until per-wedding roles are ready
+6. **Run both old and new admin UIs in parallel** during transition

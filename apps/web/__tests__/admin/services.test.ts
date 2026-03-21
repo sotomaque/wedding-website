@@ -15,7 +15,7 @@ import {
   SERVICE_CATEGORIES,
   SERVICES,
   type Service,
-} from "@/app/admin/services/constants";
+} from "@/app/[slug]/admin/services/constants";
 
 describe("Admin Services - Service URLs", () => {
   it("should have GitHub service with valid URL", () => {

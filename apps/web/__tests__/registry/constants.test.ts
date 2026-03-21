@@ -11,7 +11,10 @@ mock.module("@/env", () => ({
 }));
 
 // Import after mocking
-import { REGISTRY_CONTENT, type RegistryGift } from "@/app/registry/constants";
+import {
+  REGISTRY_CONTENT,
+  type RegistryGift,
+} from "@/app/[slug]/registry/constants";
 
 describe("Registry - Content Structure", () => {
   it("should have title defined", () => {

@@ -1,9 +1,13 @@
+"use client";
+
 import { Button } from "@workspace/ui/components/button";
 import Image from "next/image";
 import Link from "next/link";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import { RSVP_CONTENT } from "../app/constants";
 
 export function RSVPSection() {
+  const slug = useWeddingSlug();
   return (
     <section id="rsvp" className="py-24 px-6 bg-secondary scroll-mt-24">
       <div className="max-w-6xl mx-auto">
@@ -45,7 +49,7 @@ export function RSVPSection() {
                 </p>
               </div>
 
-              <Link href="/rsvp">
+              <Link href={`/${slug}/rsvp`}>
                 <Button size="lg" className="w-full font-semibold">
                   Go to RSVP Page
                 </Button>
