@@ -34,6 +34,7 @@
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tanstack/react-table": "^8.21.3",
     "@uploadthing/react": "^7.3.3",
+    "@prisma/client": "~6.9.0",
     "@workspace/db": "workspace:*",
     "@workspace/ui": "workspace:*",
     "ai": "^6.0.6",
