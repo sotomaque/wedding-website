@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { UploadClient } from "./upload-client";
 
 export const metadata = {
@@ -5,7 +7,11 @@ export const metadata = {
   description: "Upload photos from the wedding for everyone to enjoy",
 };
 
-export default function UploadPage() {
+export default async function UploadPage() {
+  const settings = await getWeddingSettings();
+
+  if (!settings.featureToggles.guestPhotos) notFound();
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-start px-4 py-12 bg-background">
       <div className="w-full max-w-md flex flex-col gap-8">

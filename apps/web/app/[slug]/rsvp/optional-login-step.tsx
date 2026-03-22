@@ -2,11 +2,10 @@
 
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { Button } from "@workspace/ui/components/button";
-import { Navigation } from "@workspace/ui/components/navigation";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
+import { MainNavigation } from "@/components/main-navigation";
 import { linkClerkUserToGuestAction } from "./actions";
 
 interface OptionalLoginStepProps {
@@ -50,11 +49,7 @@ export function OptionalLoginStep({ inviteCode }: OptionalLoginStepProps) {
           />
           <div className="absolute inset-0 bg-black/20" />
         </div>
-        <Navigation
-          brandImage={NAVIGATION_CONFIG.brandImage}
-          leftLinks={NAVIGATION_CONFIG.leftLinks}
-          rightLinks={NAVIGATION_CONFIG.rightLinks}
-        />
+        <MainNavigation />
         <section className="py-24 px-6">
           <div className="max-w-md mx-auto bg-card p-8 md:p-12 rounded-lg shadow-sm border border-border text-center">
             <div className="animate-pulse">
@@ -82,11 +77,7 @@ export function OptionalLoginStep({ inviteCode }: OptionalLoginStepProps) {
       </div>
 
       {/* Navigation */}
-      <Navigation
-        brandImage={NAVIGATION_CONFIG.brandImage}
-        leftLinks={NAVIGATION_CONFIG.leftLinks}
-        rightLinks={NAVIGATION_CONFIG.rightLinks}
-      />
+      <MainNavigation />
 
       {/* Content */}
       <section className="py-24 px-6">

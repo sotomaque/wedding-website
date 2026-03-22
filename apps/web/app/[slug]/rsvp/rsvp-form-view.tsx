@@ -1,13 +1,12 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { Navigation } from "@workspace/ui/components/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { DETAILS_CONTENT, RSVP_CONTENT } from "@/app/constants";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
+import { MainNavigation } from "@/components/main-navigation";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { RsvpGuest } from "./actions";
 import { linkClerkUserToGuestAction } from "./actions";
@@ -42,11 +41,7 @@ export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
       <div className="md:hidden h-dvh fixed inset-0 flex flex-col bg-background overflow-hidden overscroll-none">
         {/* Navigation */}
         <div className="flex-shrink-0">
-          <Navigation
-            brandImage={NAVIGATION_CONFIG.brandImage}
-            leftLinks={NAVIGATION_CONFIG.leftLinks}
-            rightLinks={NAVIGATION_CONFIG.rightLinks}
-          />
+          <MainNavigation />
         </div>
 
         {/* Header */}
@@ -95,11 +90,7 @@ export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
         </div>
 
         {/* Navigation */}
-        <Navigation
-          brandImage={NAVIGATION_CONFIG.brandImage}
-          leftLinks={NAVIGATION_CONFIG.leftLinks}
-          rightLinks={NAVIGATION_CONFIG.rightLinks}
-        />
+        <MainNavigation />
 
         {/* Content */}
         <section className="py-12 px-6">

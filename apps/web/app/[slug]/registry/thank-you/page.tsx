@@ -1,8 +1,8 @@
 import { Footer } from "@workspace/ui/components/footer";
-import { Navigation } from "@workspace/ui/components/navigation";
 import Link from "next/link";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
-import { SITE_CONFIG } from "@/app/site-config";
+import { notFound } from "next/navigation";
+import { MainNavigation } from "@/components/main-navigation";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 
 export default async function RegistryThankYouPage({
   params,
@@ -10,13 +10,13 @@ export default async function RegistryThankYouPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const settings = await getWeddingSettings();
+
+  if (!settings.featureToggles.registry) notFound();
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Navigation
-        brandImage={NAVIGATION_CONFIG.brandImage}
-        leftLinks={NAVIGATION_CONFIG.leftLinks}
-        rightLinks={NAVIGATION_CONFIG.rightLinks}
-      />
+      <MainNavigation />
 
       <main className="grow flex items-center justify-center">
         <section className="relative overflow-hidden">
@@ -54,7 +54,7 @@ export default async function RegistryThankYouPage({
                   </Link>
 
                   <Link
-                    href="/#schedule"
+                    href={`/${slug}#schedule`}
                     className="inline-flex items-center justify-center px-6 py-3 bg-secondary text-secondary-foreground font-semibold rounded-lg hover:bg-secondary/80 transition-colors border border-border"
                   >
                     View Wedding Schedule
@@ -63,7 +63,7 @@ export default async function RegistryThankYouPage({
 
                 <div className="pt-8">
                   <Link
-                    href="/"
+                    href={`/${slug}`}
                     className="text-accent hover:text-accent/80 hover:underline transition-colors"
                   >
                     ← Back to Home
@@ -75,7 +75,10 @@ export default async function RegistryThankYouPage({
         </section>
       </main>
 
-      <Footer email={SITE_CONFIG.email} coupleName={SITE_CONFIG.couple.name} />
+      <Footer
+        email={settings.contactEmail ?? undefined}
+        coupleName={settings.coupleName}
+      />
     </div>
   );
 }

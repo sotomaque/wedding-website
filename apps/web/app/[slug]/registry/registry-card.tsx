@@ -2,10 +2,16 @@
 
 import { Button } from "@workspace/ui/components/button";
 import Image from "next/image";
-import type { RegistryGift } from "./constants";
 
 interface RegistryCardProps {
-  gift: RegistryGift;
+  gift: {
+    id: string;
+    title: string;
+    description: string | null;
+    imageUrl: string | null;
+    emoji: string | null;
+    stripeUrl: string | null;
+  };
   index: number;
 }
 
@@ -18,24 +24,28 @@ export function RegistryCard({ gift, index }: RegistryCardProps) {
         animate-fade-in-up"
       style={{ animationDelay: `${(index + 1) * 100}ms` }}
     >
-      <div className="relative w-full h-64">
-        <Image
-          src={gift.image}
-          alt={gift.title}
-          fill
-          className="object-cover"
-        />
-      </div>
+      {gift.imageUrl && (
+        <div className="relative w-full h-64">
+          <Image
+            src={gift.imageUrl}
+            alt={gift.title}
+            fill
+            className="object-cover"
+          />
+        </div>
+      )}
 
       <div className="p-8">
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-3xl">{gift.emoji}</span>
+          {gift.emoji && <span className="text-3xl">{gift.emoji}</span>}
           <h3 className="text-2xl font-serif text-foreground">{gift.title}</h3>
         </div>
 
-        <p className="text-muted-foreground mb-6 leading-relaxed">
-          {gift.description}
-        </p>
+        {gift.description && (
+          <p className="text-muted-foreground mb-6 leading-relaxed">
+            {gift.description}
+          </p>
+        )}
 
         {gift.stripeUrl ? (
           <a

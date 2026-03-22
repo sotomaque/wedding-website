@@ -1,17 +1,17 @@
 import { Footer } from "@workspace/ui/components/footer";
-import { Navigation } from "@workspace/ui/components/navigation";
 import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
 import {
   type ActivityPlan,
   groupByParty,
   type PartyTravel,
 } from "@/app/[slug]/admin/calendar/utils";
 import { GuestIdentifier } from "@/app/[slug]/things-to-do/guest-identifier";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
-import { SITE_CONFIG } from "@/app/site-config";
+import { MainNavigation } from "@/components/main-navigation";
 import { getGuestParty } from "@/lib/auth/guest-session";
 import { toDateStr } from "@/lib/calendar/date-utils";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { TripPlannerClient } from "./trip-planner-client";
 
@@ -21,7 +21,12 @@ export default async function TripPlannerPage() {
   const party = await getGuestParty(codeFromCookie);
   const inviteCode = party?.inviteCode || codeFromCookie;
 
-  const weddingId = await getWeddingId();
+  const [weddingId, settings] = await Promise.all([
+    getWeddingId(),
+    getWeddingSettings(),
+  ]);
+
+  if (!settings.featureToggles.tripPlanner) notFound();
 
   // Fetch events, guests with travel dates, and activity plans in parallel
   const [eventsRaw, guestsRaw, activityPlansRaw] = await Promise.all([
@@ -125,11 +130,7 @@ export default async function TripPlannerPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Navigation
-        brandImage={NAVIGATION_CONFIG.brandImage}
-        leftLinks={NAVIGATION_CONFIG.leftLinks}
-        rightLinks={NAVIGATION_CONFIG.rightLinks}
-      />
+      <MainNavigation />
 
       <main className="grow">
         <div className="max-w-screen-2xl mx-auto px-4 md:px-6 lg:px-8 py-8">
@@ -154,7 +155,10 @@ export default async function TripPlannerPage() {
         </div>
       </main>
 
-      <Footer email={SITE_CONFIG.email} coupleName={SITE_CONFIG.couple.name} />
+      <Footer
+        email={settings.contactEmail ?? undefined}
+        coupleName={settings.coupleName}
+      />
     </div>
   );
 }

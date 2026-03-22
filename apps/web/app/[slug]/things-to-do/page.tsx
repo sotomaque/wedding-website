@@ -1,9 +1,9 @@
 import { Footer } from "@workspace/ui/components/footer";
-import { Navigation } from "@workspace/ui/components/navigation";
 import { cookies } from "next/headers";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
-import { SITE_CONFIG } from "@/app/site-config";
+import { notFound } from "next/navigation";
+import { MainNavigation } from "@/components/main-navigation";
 import { getGuestParty } from "@/lib/auth/guest-session";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getActivities, getBeaches, getVenues } from "./actions";
 import { ThingsToDoContent } from "./things-to-do-content";
 
@@ -45,19 +45,18 @@ export default async function ThingsToDoPage({
   const heroImage = getRandomSdImage();
 
   // Fetch data from database
-  const [activities, venues, beaches] = await Promise.all([
+  const [activities, venues, beaches, settings] = await Promise.all([
     getActivities(inviteCode),
     getVenues(),
     getBeaches(inviteCode),
+    getWeddingSettings(),
   ]);
+
+  if (!settings.featureToggles.thingsToDo) notFound();
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Navigation
-        brandImage={NAVIGATION_CONFIG.brandImage}
-        leftLinks={NAVIGATION_CONFIG.leftLinks}
-        rightLinks={NAVIGATION_CONFIG.rightLinks}
-      />
+      <MainNavigation />
 
       <main className="grow">
         <ThingsToDoContent
@@ -69,7 +68,10 @@ export default async function ThingsToDoPage({
         />
       </main>
 
-      <Footer email={SITE_CONFIG.email} coupleName={SITE_CONFIG.couple.name} />
+      <Footer
+        email={settings.contactEmail ?? undefined}
+        coupleName={settings.coupleName}
+      />
     </div>
   );
 }

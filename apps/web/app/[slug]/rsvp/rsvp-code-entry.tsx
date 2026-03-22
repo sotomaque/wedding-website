@@ -1,13 +1,12 @@
 "use client";
 
-import { Navigation } from "@workspace/ui/components/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { DETAILS_CONTENT, RSVP_CONTENT } from "@/app/constants";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
+import { MainNavigation } from "@/components/main-navigation";
 import { CodeEntry } from "./code-entry";
 
 interface RSVPCodeEntryProps {
@@ -47,11 +46,7 @@ export function RSVPCodeEntry({ invalidCode }: RSVPCodeEntryProps) {
       </div>
 
       {/* Navigation */}
-      <Navigation
-        brandImage={NAVIGATION_CONFIG.brandImage}
-        leftLinks={NAVIGATION_CONFIG.leftLinks}
-        rightLinks={NAVIGATION_CONFIG.rightLinks}
-      />
+      <MainNavigation />
 
       {/* Content */}
       <section className="py-24 px-6">

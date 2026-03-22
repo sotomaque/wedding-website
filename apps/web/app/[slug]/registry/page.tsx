@@ -1,18 +1,27 @@
 import { Footer } from "@workspace/ui/components/footer";
-import { Navigation } from "@workspace/ui/components/navigation";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
-import { SITE_CONFIG } from "@/app/site-config";
-import { REGISTRY_CONTENT } from "./constants";
+import { notFound } from "next/navigation";
+import { MainNavigation } from "@/components/main-navigation";
+import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { RegistryCard } from "./registry-card";
 
-export default function RegistryPage() {
+export default async function RegistryPage() {
+  const [weddingId, settings] = await Promise.all([
+    getWeddingId(),
+    getWeddingSettings(),
+  ]);
+
+  if (!settings.featureToggles.registry) notFound();
+
+  const registryItems = await db.registryItem.findMany({
+    where: { weddingId, isActive: true },
+    orderBy: { displayOrder: "asc" },
+  });
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Navigation
-        brandImage={NAVIGATION_CONFIG.brandImage}
-        leftLinks={NAVIGATION_CONFIG.leftLinks}
-        rightLinks={NAVIGATION_CONFIG.rightLinks}
-      />
+      <MainNavigation />
 
       <main className="grow">
         {/* Hero Section */}
@@ -20,14 +29,17 @@ export default function RegistryPage() {
           <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
             <div className="max-w-4xl mx-auto text-center">
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif text-foreground mb-6 animate-fade-in-up">
-                {REGISTRY_CONTENT.title}
+                Gift Registry
               </h1>
               <p className="text-xl md:text-2xl text-muted-foreground mb-4 animate-fade-in-up animation-delay-100">
-                {REGISTRY_CONTENT.subtitle}
+                Your presence is the greatest gift, but if you wish to celebrate
+                with us...
               </p>
               <div className="w-24 h-1 bg-accent mx-auto mb-8 animate-fade-in-up animation-delay-200" />
               <p className="text-lg text-muted-foreground leading-relaxed animate-fade-in-up animation-delay-300">
-                {REGISTRY_CONTENT.intro}
+                We're grateful to have everything we need to start our life
+                together. If you'd like to give a gift, please consider
+                contributing to one of these meaningful funds.
               </p>
             </div>
           </div>
@@ -38,7 +50,7 @@ export default function RegistryPage() {
           <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-24">
             <div className="max-w-5xl mx-auto">
               <div className="grid md:grid-cols-3 gap-8">
-                {REGISTRY_CONTENT.gifts.map((gift, index) => (
+                {registryItems.map((gift, index) => (
                   <RegistryCard key={gift.id} gift={gift} index={index} />
                 ))}
               </div>
@@ -59,7 +71,10 @@ export default function RegistryPage() {
         </section>
       </main>
 
-      <Footer email={SITE_CONFIG.email} coupleName={SITE_CONFIG.couple.name} />
+      <Footer
+        email={settings.contactEmail ?? undefined}
+        coupleName={settings.coupleName}
+      />
     </div>
   );
 }

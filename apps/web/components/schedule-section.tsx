@@ -1,15 +1,19 @@
-import { SCHEDULE_CONTENT } from "../app/constants";
+import type { ScheduleContent } from "@/lib/validations/wedding-content";
 
-export function ScheduleSection() {
+interface ScheduleSectionProps {
+  content?: ScheduleContent;
+}
+
+export function ScheduleSection({ content }: ScheduleSectionProps) {
   return (
     <section id="schedule" className="py-24 px-6 bg-card scroll-mt-24">
       <div className="max-w-3xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-serif text-center mb-16 text-foreground">
-          {SCHEDULE_CONTENT.title}
+          {content?.title ?? "Schedule"}
         </h2>
         <div className="w-24 h-1 bg-accent mx-auto mb-16 -mt-12" />
         <div className="space-y-8">
-          {SCHEDULE_CONTENT.events.map((item) => (
+          {(content?.events ?? []).map((item) => (
             <div
               key={item.id}
               className="flex gap-6 items-start border-l-2 border-border pl-6"

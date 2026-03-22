@@ -10,4 +10,4 @@ export {
   STORY_CONTENT,
 } from "@/app/constants";
 
-export { NAVIGATION_CONFIG } from "@/app/navigation-config";
+export { getNavigationConfig } from "@/app/navigation-config";

@@ -11,13 +11,18 @@ import {
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { HERO_CONTENT, type HeroPhoto } from "../app/constants";
+export interface HeroPhoto {
+  src: string;
+  alt: string;
+  description: string;
+}
 
 interface HeroSectionProps {
   photos: HeroPhoto[];
+  title?: string;
 }
 
-export function HeroSection({ photos }: HeroSectionProps) {
+export function HeroSection({ photos, title }: HeroSectionProps) {
   const [api, setApi] = useState<CarouselApi>();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -96,7 +101,7 @@ export function HeroSection({ photos }: HeroSectionProps) {
           {/* Overlay with title */}
           <div className="absolute inset-0 flex flex-col items-center text-center justify-center bg-black/30 pointer-events-none">
             <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-serif text-white uppercase opacity-50 drop-shadow-lg tracking-widest">
-              {HERO_CONTENT.title}
+              {title}
             </h1>
           </div>
         </div>

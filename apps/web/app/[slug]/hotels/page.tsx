@@ -1,9 +1,9 @@
 import { Footer } from "@workspace/ui/components/footer";
-import { Navigation } from "@workspace/ui/components/navigation";
 import { cookies } from "next/headers";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
-import { SITE_CONFIG } from "@/app/site-config";
+import { notFound } from "next/navigation";
+import { MainNavigation } from "@/components/main-navigation";
 import { getGuestParty } from "@/lib/auth/guest-session";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getHotels } from "./actions";
 import { HotelsContent } from "./hotels-content";
 
@@ -42,16 +42,17 @@ export default async function HotelsPage({ searchParams }: HotelsPageProps) {
   // Select random hero image on server
   const heroImage = getRandomSdImage();
 
-  // Fetch hotels from database
-  const hotels = await getHotels(inviteCode);
+  // Fetch hotels and settings from database
+  const [hotels, settings] = await Promise.all([
+    getHotels(inviteCode),
+    getWeddingSettings(),
+  ]);
+
+  if (!settings.featureToggles.hotels) notFound();
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Navigation
-        brandImage={NAVIGATION_CONFIG.brandImage}
-        leftLinks={NAVIGATION_CONFIG.leftLinks}
-        rightLinks={NAVIGATION_CONFIG.rightLinks}
-      />
+      <MainNavigation />
 
       <main className="grow">
         <HotelsContent
@@ -61,7 +62,10 @@ export default async function HotelsPage({ searchParams }: HotelsPageProps) {
         />
       </main>
 
-      <Footer email={SITE_CONFIG.email} coupleName={SITE_CONFIG.couple.name} />
+      <Footer
+        email={settings.contactEmail ?? undefined}
+        coupleName={settings.coupleName}
+      />
     </div>
   );
 }

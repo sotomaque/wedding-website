@@ -1,8 +1,8 @@
 import { Footer } from "@workspace/ui/components/footer";
-import { Navigation } from "@workspace/ui/components/navigation";
 import { ExternalLink } from "lucide-react";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
-import { SITE_CONFIG } from "@/app/site-config";
+import { notFound } from "next/navigation";
+import { MainNavigation } from "@/components/main-navigation";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import type { ServiceLinkCategory } from "../admin/vendors/actions";
 import { getServiceLinks } from "../admin/vendors/actions";
 import {
@@ -14,7 +14,12 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function VendorsPage() {
-  const links = await getServiceLinks();
+  const [links, settings] = await Promise.all([
+    getServiceLinks(),
+    getWeddingSettings(),
+  ]);
+
+  if (!settings.featureToggles.vendors) notFound();
 
   // Group by category, preserving sort_order within each group
   const grouped = CATEGORIES.reduce<Record<ServiceLinkCategory, typeof links>>(
@@ -31,11 +36,7 @@ export default async function VendorsPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Navigation
-        brandImage={NAVIGATION_CONFIG.brandImage}
-        leftLinks={NAVIGATION_CONFIG.leftLinks}
-        rightLinks={NAVIGATION_CONFIG.rightLinks}
-      />
+      <MainNavigation />
 
       <main className="grow">
         <div className="max-w-3xl mx-auto px-4 py-12 md:py-16">
@@ -108,7 +109,10 @@ export default async function VendorsPage() {
         </div>
       </main>
 
-      <Footer email={SITE_CONFIG.email} coupleName={SITE_CONFIG.couple.name} />
+      <Footer
+        email={settings.contactEmail ?? undefined}
+        coupleName={settings.coupleName}
+      />
     </div>
   );
 }

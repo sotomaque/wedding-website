@@ -1,5 +1,4 @@
-import { Navigation } from "@workspace/ui/components/navigation";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
+import { MainNavigation } from "@/components/main-navigation";
 
 export function RSVPLoadingSkeleton() {
   return (
@@ -12,11 +11,7 @@ export function RSVPLoadingSkeleton() {
 
       {/* Navigation */}
       <div className="relative z-10">
-        <Navigation
-          brandImage={NAVIGATION_CONFIG.brandImage}
-          leftLinks={NAVIGATION_CONFIG.leftLinks}
-          rightLinks={NAVIGATION_CONFIG.rightLinks}
-        />
+        <MainNavigation />
       </div>
 
       {/* Content */}

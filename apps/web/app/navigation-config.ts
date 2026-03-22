@@ -1,10 +1,39 @@
-export function getNavigationConfig(slug: string) {
+import type { FeatureToggles } from "@/lib/validations/wedding-content";
+
+export function getNavigationConfig(
+  slug: string,
+  options?: {
+    brandImage?: { url: string | null; alt: string | null };
+    featureToggles?: FeatureToggles;
+  },
+) {
   const base = `/${slug}`;
+
+  const rightLinks: { href: string; label: string }[] = [];
+
+  const toggles = options?.featureToggles;
+
+  if (toggles?.thingsToDo !== false) {
+    rightLinks.push({ href: `${base}/things-to-do`, label: "Things To Do" });
+  }
+  if (toggles?.tripPlanner !== false) {
+    rightLinks.push({ href: `${base}/trip-planner`, label: "Trip Planner" });
+  }
+  if (toggles?.hotels !== false) {
+    rightLinks.push({ href: `${base}/hotels`, label: "Hotels" });
+  }
+  if (toggles?.vendors !== false) {
+    rightLinks.push({ href: `${base}/vendors`, label: "Vendors" });
+  }
+  if (toggles?.registry !== false) {
+    rightLinks.push({ href: `${base}/registry`, label: "Registry" });
+  }
+  rightLinks.push({ href: `${base}#rsvp`, label: "RSVP" });
 
   return {
     brandImage: {
-      src: "/nav.png",
-      alt: "H & E",
+      src: options?.brandImage?.url ?? "/nav.png",
+      alt: options?.brandImage?.alt ?? "Wedding",
       width: 200,
       height: 100,
     },
@@ -13,16 +42,6 @@ export function getNavigationConfig(slug: string) {
       { href: `${base}#details`, label: "Details" },
       { href: `${base}#schedule`, label: "Schedule" },
     ],
-    rightLinks: [
-      { href: `${base}/things-to-do`, label: "Things To Do" },
-      { href: `${base}/trip-planner`, label: "Trip Planner" },
-      { href: `${base}/hotels`, label: "Hotels" },
-      { href: `${base}/vendors`, label: "Vendors" },
-      { href: `${base}/registry`, label: "Registry" },
-      { href: `${base}#rsvp`, label: "RSVP" },
-    ],
+    rightLinks,
   };
 }
-
-/** @deprecated Use getNavigationConfig(slug) instead */
-export const NAVIGATION_CONFIG = getNavigationConfig("helen-and-enrique");

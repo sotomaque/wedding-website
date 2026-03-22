@@ -1,13 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import {
   DETAILS_CONTENT,
+  getNavigationConfig,
   HERO_CONTENT,
   HERO_PHOTOS,
-  NAVIGATION_CONFIG,
   RSVP_CONTENT,
   SCHEDULE_CONTENT,
   STORY_CONTENT,
 } from "./test-constants";
+
+const NAVIGATION_CONFIG = getNavigationConfig("test-wedding");
 
 describe("Static Site - Photos", () => {
   it("should have photos defined in HERO_PHOTOS", () => {

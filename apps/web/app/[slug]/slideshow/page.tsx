@@ -1,5 +1,7 @@
+import { notFound } from "next/navigation";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { SlideshowClient } from "./slideshow-client";
 
@@ -10,7 +12,12 @@ export const metadata = {
 };
 
 export default async function SlideshowPage() {
-  const weddingId = await getWeddingId();
+  const [weddingId, settings] = await Promise.all([
+    getWeddingId(),
+    getWeddingSettings(),
+  ]);
+
+  if (!settings.featureToggles.slideshow) notFound();
 
   const photos = await db.guestPhoto.findMany({
     where: { isVisible: true, weddingId },
