@@ -1,10 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { getEmailFromAddress } from "@/lib/email/helpers";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getEventInvitationEmail } from "@/lib/email/templates/event-invitation";
+import { weddingUrl } from "@/lib/url";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -100,7 +102,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const settings = await getWeddingSettings();
+    const appUrl = weddingUrl(settings.slug);
 
     // Format event time if available
     let eventTime: string | null = null;
@@ -139,7 +142,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const errors: { guest: string; error: string }[] = [];
 
     for (const invite of invites) {
-      const rsvpUrl = `${appUrl}/events/rsvp?code=${invite.guest.inviteCode}&event=${eventId}`;
+      const rsvpUrl = `${weddingUrl(settings.slug, "/events/rsvp")}?code=${invite.guest.inviteCode}&event=${eventId}`;
 
       try {
         let result: { error: Error | null };
@@ -147,7 +150,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         if (templateId) {
           // Use Resend template with variables
           result = await sendEmail({
-            from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
+            from: getEmailFromAddress(settings),
             to: invite.guest.email as string,
             subject: customSubject || `You're Invited to the ${event.name}!`,
             template: {
@@ -184,7 +187,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           });
 
           result = await sendEmail({
-            from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
+            from: getEmailFromAddress(settings),
             to: invite.guest.email as string,
             subject: `You're Invited to the ${event.name}!`,
             html: emailHtml,

@@ -19,6 +19,52 @@ mock.module("@clerk/nextjs/server", () => ({
     }),
 }));
 
+// Mock wedding settings (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-content-data", () => ({
+  getWeddingSettings: mock(() =>
+    Promise.resolve({
+      id: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      person1Name: "Person1",
+      person2Name: "Person2",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+      contactEmail: "test@example.com",
+      notificationEmails: "admin@example.com",
+      emailFromName: "Test Couple",
+      emailFromAddress: "rsvp@test-wedding.com",
+      brandImageUrl: null,
+      brandImageAlt: null,
+      featureToggles: {
+        hotels: true,
+        vendors: true,
+        thingsToDo: true,
+        tripPlanner: true,
+        registry: true,
+        guestPhotos: true,
+        slideshow: true,
+      },
+    }),
+  ),
+  getWeddingContentSections: mock(() => Promise.resolve({})),
+}));
+
+// Mock URL helper
+mock.module("@/lib/url", () => ({
+  weddingUrl: mock(
+    (slug: string, path: string) => `http://localhost:3000/${slug}${path}`,
+  ),
+}));
+
+// Mock email helpers
+mock.module("@/lib/email/helpers", () => ({
+  getEmailFromAddress: mock(() => "Test Couple <rsvp@test-wedding.com>"),
+  getNotificationRecipients: mock(() => ["admin@example.com"]),
+}));
+
 // Mock wedding context (must be before @/lib/db mock)
 mock.module("@/lib/db/wedding-context", () => ({
   getWeddingId: mock(() => Promise.resolve("test-wedding-id")),

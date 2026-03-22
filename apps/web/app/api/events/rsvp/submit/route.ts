@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import {
+  getEmailFromAddress,
+  getNotificationRecipients,
+} from "@/lib/email/helpers";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getEventRsvpNotificationEmail } from "@/lib/email/templates/event-rsvp-notification";
 
@@ -78,9 +82,9 @@ export async function POST(request: NextRequest) {
 
     // Send notification email to admins
     try {
-      if (getResendClient() && env.RSVP_EMAIL) {
-        const adminEmails = env.RSVP_EMAIL.split(",").map((e) => e.trim());
-
+      const settings = await getWeddingSettings();
+      const adminEmails = getNotificationRecipients(settings);
+      if (getResendClient() && adminEmails.length > 0) {
         const submittedAt = new Date().toLocaleString("en-US", {
           timeZone: "America/Los_Angeles",
           weekday: "short",
@@ -105,7 +109,7 @@ export async function POST(request: NextRequest) {
         });
 
         await sendEmail({
-          from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
+          from: getEmailFromAddress(settings, "Wedding RSVP"),
           to: adminEmails,
           subject: `Event RSVP: ${guest.firstName} ${attending ? "is attending" : "declined"} ${event.name}`,
           html: emailHtml,

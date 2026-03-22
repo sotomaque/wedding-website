@@ -5,7 +5,9 @@ import {
   generateIcs,
 } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { getEmailFromAddress } from "@/lib/email/helpers";
 import { sendEmail } from "@/lib/email/resend-client";
 
 /**
@@ -106,14 +108,15 @@ export async function POST(
     const icsContent = generateIcs(eventsForIcs, guestName);
     const html = buildCalendarEmailHtml(eventsForIcs, guest.firstName);
 
+    const settings = await getWeddingSettings();
     const result = await sendEmail({
-      from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
+      from: getEmailFromAddress(settings),
       to: guest.email,
-      subject: "Your Calendar Invite — Helen & Enrique's Wedding 💕",
+      subject: `Your Calendar Invite \u2014 ${settings.coupleName}'s Wedding \uD83D\uDC95`,
       html,
       attachments: [
         {
-          filename: "helen-and-enrique-wedding.ics",
+          filename: `${settings.slug}-wedding.ics`,
           content: Buffer.from(icsContent).toString("base64"),
         },
       ],

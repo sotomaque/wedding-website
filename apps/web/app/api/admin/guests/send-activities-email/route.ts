@@ -1,10 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import {
+  getEmailFromAddress,
+  getNotificationRecipients,
+} from "@/lib/email/helpers";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getActivitiesInvitationEmail } from "@/lib/email/templates/activities-invitation";
+import { weddingUrl } from "@/lib/url";
 
 /**
  * Send activities email
@@ -68,15 +73,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email is configured
-    if (!getResendClient() || !env.RSVP_EMAIL) {
+    const settings = await getWeddingSettings();
+    const notificationRecipients = getNotificationRecipients(settings);
+    if (!getResendClient() || notificationRecipients.length === 0) {
       return NextResponse.json(
         { error: "Email not configured" },
         { status: 500 },
       );
     }
 
-    const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const thingsToDoUrl = `${appUrl}/things-to-do?code=${guest.inviteCode}`;
+    const appUrl = weddingUrl(settings.slug);
+    const thingsToDoUrl = `${weddingUrl(settings.slug, "/things-to-do")}?code=${guest.inviteCode}`;
 
     try {
       let result: { error: Error | null };
@@ -84,7 +91,7 @@ export async function POST(request: NextRequest) {
       if (templateId) {
         // Use Resend template with variables
         result = await sendEmail({
-          from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
+          from: getEmailFromAddress(settings),
           to: recipientEmail,
           subject:
             customSubject ||
@@ -111,7 +118,7 @@ export async function POST(request: NextRequest) {
         });
 
         result = await sendEmail({
-          from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
+          from: getEmailFromAddress(settings),
           to: recipientEmail,
           subject: "Explore San Diego - Things to Do Before the Wedding! 🌴",
           html: emailHtml,

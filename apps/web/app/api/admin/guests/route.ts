@@ -1,10 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
+import {
+  getEmailFromAddress,
+  getNotificationRecipients,
+} from "@/lib/email/helpers";
 import { sendEmail } from "@/lib/email/resend-client";
+import { weddingUrl } from "@/lib/url";
 import { generateInviteCode } from "@/lib/utils/invite-code";
 
 /**
@@ -212,9 +217,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email if requested
-    if (shouldSendEmail && env.RSVP_EMAIL) {
-      const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const rsvpUrl = `${appUrl}/rsvp?code=${inviteCode}`;
+    const settings = await getWeddingSettings();
+    const notificationRecipients = getNotificationRecipients(settings);
+    if (shouldSendEmail && notificationRecipients.length > 0) {
+      const rsvpUrl = `${weddingUrl(settings.slug, "/rsvp")}?code=${inviteCode}`;
+      const appUrl = weddingUrl(settings.slug);
 
       // Fetch wedding date from the Wedding Ceremony event
       let weddingDate = "";
@@ -246,7 +253,7 @@ export async function POST(request: NextRequest) {
 
       try {
         await sendEmail({
-          from: "Wedding Invitation <rsvp@helen-and-enrique.com>",
+          from: getEmailFromAddress(settings, "Wedding Invitation"),
           to: email,
           subject: "You're Invited to Our Wedding! 💕",
           template: {

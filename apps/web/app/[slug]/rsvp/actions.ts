@@ -3,14 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
-import { env } from "@/env";
 import {
   buildCalendarEmailHtml,
   generateIcs,
 } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
+import {
+  getEmailFromAddress,
+  getNotificationRecipients,
+} from "@/lib/email/helpers";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { multiGuestRsvpSchema } from "@/lib/validations/rsvp";
 
@@ -295,12 +299,18 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
     }
 
     // Fire-and-forget: send notification email after response
-    const rsvpEmail = env.RSVP_EMAIL;
-    if (getResendClient() && rsvpEmail) {
+    // Capture settings before after() since headers aren't available inside after()
+    const settings = await getWeddingSettings();
+    const recipients = getNotificationRecipients(settings);
+    if (getResendClient() && recipients.length > 0) {
       const capturedParty = party;
       const capturedInviteCode = inviteCode;
       const capturedAttending = attending;
       const capturedDietary = dietaryRestrictions;
+      const capturedFromAddress = getEmailFromAddress(settings, "Wedding RSVP");
+      const capturedCalendarFromAddress = getEmailFromAddress(settings);
+      const capturedCoupleName = settings.coupleName;
+      const capturedSlug = settings.slug;
       after(async () => {
         try {
           const updatedGuests = await db.guest.findMany({
@@ -324,9 +334,8 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
             .map((g) => g.email)
             .join(", ");
 
-          const recipients = rsvpEmail.split(",").map((e) => e.trim());
           await sendEmail({
-            from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
+            from: capturedFromAddress,
             to: recipients,
             template: {
               id: RSVP_NOTIFICATION_TEMPLATE_ALIAS,
@@ -404,14 +413,13 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                   );
 
                   await sendEmail({
-                    from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
+                    from: capturedCalendarFromAddress,
                     to: guest.email as string,
-                    subject:
-                      "Your Calendar Invite \u2014 Helen & Enrique's Wedding \uD83D\uDC95",
+                    subject: `Your Calendar Invite \u2014 ${capturedCoupleName}'s Wedding \uD83D\uDC95`,
                     html,
                     attachments: [
                       {
-                        filename: "helen-and-enrique-wedding.ics",
+                        filename: `${capturedSlug}-wedding.ics`,
                         content: Buffer.from(icsContent).toString("base64"),
                       },
                     ],
@@ -664,11 +672,20 @@ export async function submitMultiGuestRSVP(
     );
 
     // Fire-and-forget: send notification email after response
-    const rsvpEmailMulti = env.RSVP_EMAIL;
-    if (getResendClient() && rsvpEmailMulti) {
+    // Capture settings before after() since headers aren't available inside after()
+    const settingsMulti = await getWeddingSettings();
+    const recipientsMulti = getNotificationRecipients(settingsMulti);
+    if (getResendClient() && recipientsMulti.length > 0) {
       const capturedParty = party;
       const capturedInviteCode = inviteCode;
       const capturedGuestRsvps = guestRsvps;
+      const capturedFromAddress = getEmailFromAddress(
+        settingsMulti,
+        "Wedding RSVP",
+      );
+      const capturedCalendarFromAddress = getEmailFromAddress(settingsMulti);
+      const capturedCoupleName = settingsMulti.coupleName;
+      const capturedSlug = settingsMulti.slug;
       after(async () => {
         try {
           const updatedGuests = await db.guest.findMany({
@@ -705,10 +722,9 @@ export async function submitMultiGuestRSVP(
             .join(", ");
           const anyAttending = attendingGuests.length > 0;
 
-          const recipients = rsvpEmailMulti.split(",").map((e) => e.trim());
           await sendEmail({
-            from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
-            to: recipients,
+            from: capturedFromAddress,
+            to: recipientsMulti,
             template: {
               id: RSVP_NOTIFICATION_TEMPLATE_ALIAS,
               variables: {
@@ -785,14 +801,13 @@ export async function submitMultiGuestRSVP(
                   );
 
                   await sendEmail({
-                    from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
+                    from: capturedCalendarFromAddress,
                     to: guest.email as string,
-                    subject:
-                      "Your Calendar Invite \u2014 Helen & Enrique's Wedding \uD83D\uDC95",
+                    subject: `Your Calendar Invite \u2014 ${capturedCoupleName}'s Wedding \uD83D\uDC95`,
                     html,
                     attachments: [
                       {
-                        filename: "helen-and-enrique-wedding.ics",
+                        filename: `${capturedSlug}-wedding.ics`,
                         content: Buffer.from(icsContent).toString("base64"),
                       },
                     ],

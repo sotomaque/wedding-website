@@ -1,10 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
+import {
+  getEmailFromAddress,
+  getNotificationRecipients,
+} from "@/lib/email/helpers";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
+import { weddingUrl } from "@/lib/url";
 
 /**
  * Bulk send invitation emails
@@ -32,7 +37,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email is configured
-    if (!getResendClient() || !env.RSVP_EMAIL) {
+    const settings = await getWeddingSettings();
+    const notificationRecipients = getNotificationRecipients(settings);
+    if (!getResendClient() || notificationRecipients.length === 0) {
       return NextResponse.json(
         { error: "Email not configured" },
         { status: 500 },
@@ -71,7 +78,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = weddingUrl(settings.slug);
 
     // Fetch wedding date from the Wedding Ceremony event
     let weddingDate = "";
@@ -107,14 +114,14 @@ export async function POST(request: NextRequest) {
     const errors: { guest: string; error: string }[] = [];
 
     for (const guest of guests) {
-      const rsvpUrl = `${appUrl}/rsvp?code=${guest.inviteCode}`;
+      const rsvpUrl = `${weddingUrl(settings.slug, "/rsvp")}?code=${guest.inviteCode}`;
 
       try {
         // Use Resend template (default: wedding-invitation template)
         const templateToUse = templateId || WEDDING_INVITATION_TEMPLATE_ALIAS;
 
         const result = await sendEmail({
-          from: "Wedding Invitation <rsvp@helen-and-enrique.com>",
+          from: getEmailFromAddress(settings, "Wedding Invitation"),
           to: guest.email as string,
           subject: customSubject || "You're Invited to Our Wedding!",
           template: {
