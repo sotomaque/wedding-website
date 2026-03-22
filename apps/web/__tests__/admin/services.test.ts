@@ -74,7 +74,7 @@ describe("Admin Services - Supabase URL", () => {
 
     // Re-import with new mock
     const { getSupabaseConsole: getSupabase } = await import(
-      "@/app/admin/services/constants"
+      "@/app/[slug]/admin/services/constants"
     );
 
     // Note: Due to module caching, this may still use the old value

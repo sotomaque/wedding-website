@@ -1,5 +1,22 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
+// Mock wedding context - must be before any imports that use getWeddingId
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: () => Promise.resolve("test-wedding-id"),
+  getWeddingContext: () =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: "2026-07-30",
+      rsvpDeadline: null,
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  getWeddingBySlug: () => Promise.resolve(null),
+  getWeddingById: () => Promise.resolve(null),
+}));
+
 // Mock env
 mock.module("@/env", () => ({
   env: {
@@ -78,34 +95,24 @@ const sampleGifts = [
   },
 ];
 
+// Chainable db mock
+function createChainableDb(terminals: Record<string, unknown> = {}) {
+  const handler: ProxyHandler<Record<string, unknown>> = {
+    get: (_, prop: string) => {
+      if (prop in terminals) return terminals[prop];
+      return (...args: unknown[]) => new Proxy({}, handler);
+    },
+  };
+  return new Proxy({}, handler);
+}
+
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => ({
-      leftJoin: () => ({
-        select: () => ({
-          where: () => ({
-            where: () => ({
-              orderBy: () => ({
-                execute: mockExecute,
-              }),
-            }),
-            orderBy: () => ({
-              execute: mockExecute,
-            }),
-          }),
-          orderBy: () => ({
-            execute: mockExecute,
-          }),
-        }),
+    selectFrom: () =>
+      createChainableDb({
+        execute: mockExecute,
+        executeTakeFirst: mockExecuteTakeFirst,
       }),
-      select: () => ({
-        where: () => ({
-          groupBy: () => ({
-            execute: mockExecute,
-          }),
-        }),
-      }),
-    }),
     fn: {
       sum: () => ({
         as: () => "total_cents",
@@ -125,7 +132,7 @@ describe("Admin Gifts - getGifts", () => {
   });
 
   it("should return all gifts with default params", async () => {
-    const { getGifts } = await import("@/app/admin/gifts/actions");
+    const { getGifts } = await import("@/app/[slug]/admin/gifts/actions");
 
     const gifts = await getGifts();
 
@@ -134,7 +141,7 @@ describe("Admin Gifts - getGifts", () => {
   });
 
   it("should include joined guest data", async () => {
-    const { getGifts } = await import("@/app/admin/gifts/actions");
+    const { getGifts } = await import("@/app/[slug]/admin/gifts/actions");
 
     const gifts = await getGifts();
     const giftWithGuest = gifts.find((g) => g.guest_id !== null);
@@ -146,7 +153,7 @@ describe("Admin Gifts - getGifts", () => {
   });
 
   it("should return gifts with all required fields", async () => {
-    const { getGifts } = await import("@/app/admin/gifts/actions");
+    const { getGifts } = await import("@/app/[slug]/admin/gifts/actions");
 
     const gifts = await getGifts();
 
@@ -187,7 +194,7 @@ describe("Admin Gifts - getGiftStats", () => {
       },
     ]);
 
-    const { getGiftStats } = await import("@/app/admin/gifts/actions");
+    const { getGiftStats } = await import("@/app/[slug]/admin/gifts/actions");
 
     const stats = await getGiftStats();
 
@@ -215,7 +222,7 @@ describe("Admin Gifts - getGiftStats", () => {
       },
     ]);
 
-    const { getGiftStats } = await import("@/app/admin/gifts/actions");
+    const { getGiftStats } = await import("@/app/[slug]/admin/gifts/actions");
 
     const stats = await getGiftStats();
 
@@ -230,7 +237,7 @@ describe("Admin Gifts - getGiftStats", () => {
   it("should throw error on database failure", async () => {
     mockExecute.mockRejectedValue(new Error("Database error"));
 
-    const { getGiftStats } = await import("@/app/admin/gifts/actions");
+    const { getGiftStats } = await import("@/app/[slug]/admin/gifts/actions");
 
     await expect(getGiftStats()).rejects.toThrow("Database error");
   });
@@ -240,7 +247,7 @@ describe("Admin Gifts - getGiftStats", () => {
       { gift_type: null, status: "completed", total_cents: 3000, count: 1 },
     ]);
 
-    const { getGiftStats } = await import("@/app/admin/gifts/actions");
+    const { getGiftStats } = await import("@/app/[slug]/admin/gifts/actions");
 
     const stats = await getGiftStats();
 

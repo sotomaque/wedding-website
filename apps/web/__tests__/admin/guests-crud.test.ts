@@ -1,5 +1,22 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
+// Mock wedding context - must be before any imports that use getWeddingId
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: () => Promise.resolve("test-wedding-id"),
+  getWeddingContext: () =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: "2026-07-30",
+      rsvpDeadline: null,
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  getWeddingBySlug: () => Promise.resolve(null),
+  getWeddingById: () => Promise.resolve(null),
+}));
+
 // Mock env
 mock.module("@/env", () => ({
   env: {
@@ -30,73 +47,54 @@ const mockDeleteWhere = mock(() => {});
 // Mock for party creation - returns a party with id
 const mockPartyId = "party-123";
 
-mock.module("@/lib/db", () => ({
-  db: {
-    selectFrom: (table: string) => ({
-      selectAll: () => ({
-        orderBy: () => ({
-          execute: mockExecute,
-        }),
-        where: () => ({
-          execute: mockExecute,
-          executeTakeFirst: mockExecuteTakeFirst,
-          where: () => ({
-            executeTakeFirst: mockExecuteTakeFirst,
-          }),
-        }),
-      }),
-      select: () => ({
-        where: () => ({
-          executeTakeFirst:
-            table === "parties"
-              ? mock(() => Promise.resolve(null)) // No existing party with that invite code
-              : mockExecuteTakeFirst,
-        }),
-      }),
-    }),
-    insertInto: (table: string) => ({
+// Chainable db mock - any method call returns the proxy, terminal methods return mock fns
+function createChainableDb(terminals: Record<string, unknown> = {}) {
+  const handler: ProxyHandler<Record<string, unknown>> = {
+    get: (_, prop: string) => {
+      if (prop in terminals) return terminals[prop];
+      return (...args: unknown[]) => new Proxy({}, handler);
+    },
+  };
+  return new Proxy({}, handler);
+}
+
+const selectTerminals = {
+  execute: mockExecute,
+  executeTakeFirst: mockExecuteTakeFirst,
+  executeTakeFirstOrThrow: mockExecuteTakeFirstOrThrow,
+};
+
+const mockDb = {
+  selectFrom: () => createChainableDb(selectTerminals),
+  insertInto: () =>
+    createChainableDb({
+      ...selectTerminals,
       values: (data: unknown) => {
         mockInsertValues(data);
-        return {
-          returningAll: () => ({
-            executeTakeFirstOrThrow: mockExecuteTakeFirstOrThrow,
-            executeTakeFirst: mockExecuteTakeFirst,
-          }),
-          returning: () => ({
-            executeTakeFirstOrThrow:
-              table === "parties"
-                ? mock(() => Promise.resolve({ id: mockPartyId }))
-                : mockExecuteTakeFirstOrThrow,
-          }),
-          execute: mockExecute,
-        };
+        return createChainableDb(selectTerminals);
       },
     }),
-    updateTable: () => ({
+  updateTable: () =>
+    createChainableDb({
+      ...selectTerminals,
       set: (data: unknown) => {
         mockUpdateSet(data);
-        return {
-          where: () => ({
-            execute: mockExecute,
-            returningAll: () => ({
-              executeTakeFirst: mockExecuteTakeFirst,
-            }),
-          }),
-        };
+        return createChainableDb(selectTerminals);
       },
     }),
-    deleteFrom: () => ({
+  deleteFrom: () =>
+    createChainableDb({
+      ...selectTerminals,
       where: (field: string, op: string, value: string) => {
         mockDeleteWhere(field, op, value);
-        return {
-          execute: mockExecute,
-          where: () => ({
-            execute: mockExecute,
-          }),
-        };
+        return createChainableDb(selectTerminals);
       },
     }),
-  },
+};
+
+mock.module("@/lib/db", () => ({ db: mockDb }));
+mock.module("@/lib/db/scoped", () => ({
+  forWedding: () => mockDb,
 }));
 
 // Note: Email sending now uses Resend templates directly, no local template mock needed

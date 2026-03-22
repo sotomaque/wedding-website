@@ -1,5 +1,22 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
+// Mock wedding context - must be before any imports that use getWeddingId
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: () => Promise.resolve("test-wedding-id"),
+  getWeddingContext: () =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: "2026-07-30",
+      rsvpDeadline: null,
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  getWeddingBySlug: () => Promise.resolve(null),
+  getWeddingById: () => Promise.resolve(null),
+}));
+
 // Mock next/cache
 mock.module("next/cache", () => ({
   revalidatePath: mock(() => {}),
@@ -63,18 +80,21 @@ function createChainableMock(terminal: ReturnType<typeof mock>) {
   return chain;
 }
 
-mock.module("@/lib/db", () => ({
-  db: {
-    selectFrom: () => createChainableMock(mockExecute),
-    insertInto: () => createChainableMock(mockExecute),
-    updateTable: () => createChainableMock(mockExecute),
-    deleteFrom: () => createChainableMock(mockExecute),
-    fn: {
-      max: () => ({
-        as: () => "max_order",
-      }),
-    },
+const mockDb = {
+  selectFrom: () => createChainableMock(mockExecute),
+  insertInto: () => createChainableMock(mockExecute),
+  updateTable: () => createChainableMock(mockExecute),
+  deleteFrom: () => createChainableMock(mockExecute),
+  fn: {
+    max: () => ({
+      as: () => "max_order",
+    }),
   },
+};
+
+mock.module("@/lib/db", () => ({ db: mockDb }));
+mock.module("@/lib/db/scoped", () => ({
+  forWedding: () => mockDb,
 }));
 
 describe("Admin Todos - getTodos", () => {
@@ -85,7 +105,7 @@ describe("Admin Todos - getTodos", () => {
   });
 
   it("should return all todos", async () => {
-    const { getTodos } = await import("@/app/admin/todos/actions");
+    const { getTodos } = await import("@/app/[slug]/admin/todos/actions");
 
     const todos = await getTodos();
 
@@ -94,7 +114,7 @@ describe("Admin Todos - getTodos", () => {
   });
 
   it("should return todos with all required fields", async () => {
-    const { getTodos } = await import("@/app/admin/todos/actions");
+    const { getTodos } = await import("@/app/[slug]/admin/todos/actions");
 
     const todos = await getTodos();
 
@@ -111,7 +131,7 @@ describe("Admin Todos - getTodos", () => {
   it("should throw on database error", async () => {
     mockExecute.mockRejectedValue(new Error("Database error"));
 
-    const { getTodos } = await import("@/app/admin/todos/actions");
+    const { getTodos } = await import("@/app/[slug]/admin/todos/actions");
 
     await expect(getTodos()).rejects.toThrow("Database error");
   });
@@ -126,7 +146,7 @@ describe("Admin Todos - addTodo", () => {
   });
 
   it("should add a todo successfully", async () => {
-    const { addTodo } = await import("@/app/admin/todos/actions");
+    const { addTodo } = await import("@/app/[slug]/admin/todos/actions");
 
     const result = await addTodo("Order wedding cake");
 
@@ -135,7 +155,7 @@ describe("Admin Todos - addTodo", () => {
   });
 
   it("should reject empty titles", async () => {
-    const { addTodo } = await import("@/app/admin/todos/actions");
+    const { addTodo } = await import("@/app/[slug]/admin/todos/actions");
 
     const result = await addTodo("");
 
@@ -144,7 +164,7 @@ describe("Admin Todos - addTodo", () => {
   });
 
   it("should reject whitespace-only titles", async () => {
-    const { addTodo } = await import("@/app/admin/todos/actions");
+    const { addTodo } = await import("@/app/[slug]/admin/todos/actions");
 
     const result = await addTodo("   ");
 
@@ -155,7 +175,7 @@ describe("Admin Todos - addTodo", () => {
   it("should return error on database failure", async () => {
     mockExecute.mockRejectedValue(new Error("DB error"));
 
-    const { addTodo } = await import("@/app/admin/todos/actions");
+    const { addTodo } = await import("@/app/[slug]/admin/todos/actions");
 
     const result = await addTodo("Some task");
 
@@ -171,7 +191,7 @@ describe("Admin Todos - toggleTodo", () => {
   });
 
   it("should toggle a todo to completed", async () => {
-    const { toggleTodo } = await import("@/app/admin/todos/actions");
+    const { toggleTodo } = await import("@/app/[slug]/admin/todos/actions");
 
     const result = await toggleTodo("todo-1", true);
 
@@ -179,7 +199,7 @@ describe("Admin Todos - toggleTodo", () => {
   });
 
   it("should toggle a todo to incomplete", async () => {
-    const { toggleTodo } = await import("@/app/admin/todos/actions");
+    const { toggleTodo } = await import("@/app/[slug]/admin/todos/actions");
 
     const result = await toggleTodo("todo-3", false);
 
@@ -189,7 +209,7 @@ describe("Admin Todos - toggleTodo", () => {
   it("should return error on database failure", async () => {
     mockExecute.mockRejectedValue(new Error("DB error"));
 
-    const { toggleTodo } = await import("@/app/admin/todos/actions");
+    const { toggleTodo } = await import("@/app/[slug]/admin/todos/actions");
 
     const result = await toggleTodo("todo-1", true);
 
@@ -205,7 +225,7 @@ describe("Admin Todos - deleteTodo", () => {
   });
 
   it("should delete a todo successfully", async () => {
-    const { deleteTodo } = await import("@/app/admin/todos/actions");
+    const { deleteTodo } = await import("@/app/[slug]/admin/todos/actions");
 
     const result = await deleteTodo("todo-1");
 
@@ -215,7 +235,7 @@ describe("Admin Todos - deleteTodo", () => {
   it("should return error on database failure", async () => {
     mockExecute.mockRejectedValue(new Error("DB error"));
 
-    const { deleteTodo } = await import("@/app/admin/todos/actions");
+    const { deleteTodo } = await import("@/app/[slug]/admin/todos/actions");
 
     const result = await deleteTodo("todo-1");
 
@@ -231,7 +251,9 @@ describe("Admin Todos - updateTodoTitle", () => {
   });
 
   it("should update a todo title successfully", async () => {
-    const { updateTodoTitle } = await import("@/app/admin/todos/actions");
+    const { updateTodoTitle } = await import(
+      "@/app/[slug]/admin/todos/actions"
+    );
 
     const result = await updateTodoTitle("todo-1", "Updated title");
 
@@ -239,7 +261,9 @@ describe("Admin Todos - updateTodoTitle", () => {
   });
 
   it("should reject empty titles", async () => {
-    const { updateTodoTitle } = await import("@/app/admin/todos/actions");
+    const { updateTodoTitle } = await import(
+      "@/app/[slug]/admin/todos/actions"
+    );
 
     const result = await updateTodoTitle("todo-1", "");
 
@@ -248,7 +272,9 @@ describe("Admin Todos - updateTodoTitle", () => {
   });
 
   it("should reject whitespace-only titles", async () => {
-    const { updateTodoTitle } = await import("@/app/admin/todos/actions");
+    const { updateTodoTitle } = await import(
+      "@/app/[slug]/admin/todos/actions"
+    );
 
     const result = await updateTodoTitle("todo-1", "   ");
 
@@ -259,7 +285,9 @@ describe("Admin Todos - updateTodoTitle", () => {
   it("should return error on database failure", async () => {
     mockExecute.mockRejectedValue(new Error("DB error"));
 
-    const { updateTodoTitle } = await import("@/app/admin/todos/actions");
+    const { updateTodoTitle } = await import(
+      "@/app/[slug]/admin/todos/actions"
+    );
 
     const result = await updateTodoTitle("todo-1", "New title");
 
