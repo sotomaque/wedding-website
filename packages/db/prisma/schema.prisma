@@ -94,8 +94,10 @@ model Gift {
   updatedAt                DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   notes                    String?
   weddingId                String?   @map("wedding_id") @db.Uuid
+  registryItemId           String?   @map("registry_item_id") @db.Uuid
   guest                    Guest?    @relation(fields: [guestId], references: [id], onUpdate: NoAction)
   wedding                  Wedding?  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  registryItem             RegistryItem? @relation(fields: [registryItemId], references: [id], onUpdate: NoAction)
 
   @@index([createdAt(sort: Desc)], map: "idx_gifts_created_at")
   @@index([donorEmail], map: "idx_gifts_donor_email")
@@ -106,6 +108,7 @@ model Gift {
   @@index([stripePaymentIntentId], map: "idx_gifts_stripe_payment_intent")
   @@index([stripeCheckoutSessionId], map: "idx_gifts_stripe_session")
   @@index([weddingId], map: "idx_gifts_wedding_id")
+  @@index([registryItemId], map: "idx_gifts_registry_item_id")
   @@map("gifts")
 }
 
@@ -418,6 +421,25 @@ model Wedding {
   status                WeddingStatus           @default(published)
   createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  // Contact & email
+  contactEmail          String?                @map("contact_email")
+  notificationEmails    String?                @map("notification_emails")
+  emailFromName         String?                @map("email_from_name")
+  emailFromAddress      String?                @map("email_from_address")
+
+  // Couple details
+  person1Name           String?                @map("person1_name")
+  person2Name           String?                @map("person2_name")
+
+  // Branding
+  brandImageUrl         String?                @map("brand_image_url")
+  brandImageAlt         String?                @map("brand_image_alt")
+
+  // Feature toggles
+  featureToggles        Json                   @default("{}") @map("feature_toggles") @db.JsonB
+
+  // Relations
   activities            Activity[]
   documents             Document[]
   events                Event[]
@@ -431,14 +453,50 @@ model Wedding {
   hotels                Hotel[]
   parties               Party[]
   photos                Photo[]
+  registryItems         RegistryItem[]
   seatingCharts         SeatingChart[]
   seatingTables         SeatingTable[]
   serviceLinks          ServiceLink[]
   weddingAdmins         WeddingAdmin[]
+  weddingContent        WeddingContent[]
   weddingTodos          WeddingTodo[]
 
   @@index([slug], map: "idx_weddings_slug")
   @@map("weddings")
+}
+
+model WeddingContent {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId String   @map("wedding_id") @db.Uuid
+  section   String
+  content   Json     @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  wedding   Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+
+  @@unique([weddingId, section])
+  @@index([weddingId], map: "idx_wedding_content_wedding_id")
+  @@map("wedding_content")
+}
+
+model RegistryItem {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId       String   @map("wedding_id") @db.Uuid
+  title           String
+  description     String?
+  imageUrl        String?  @map("image_url")
+  emoji           String?
+  stripeUrl       String?  @map("stripe_url")
+  stripeProductId String?  @map("stripe_product_id")
+  displayOrder    Int      @default(0) @map("display_order")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  wedding         Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  gifts           Gift[]
+
+  @@index([weddingId, displayOrder], map: "idx_registry_items_wedding_order")
+  @@map("registry_items")
 }
 
 model WeddingAdmin {
