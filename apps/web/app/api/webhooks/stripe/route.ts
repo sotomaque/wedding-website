@@ -14,6 +14,22 @@ const stripe = new Stripe(env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2025-12-15.clover",
 });
 
+/** Resolve a weddingId for gift records — from guest match or default wedding */
+async function resolveGiftWeddingId(
+  guestWeddingId?: string | null,
+): Promise<string> {
+  if (guestWeddingId) return guestWeddingId;
+  const defaultWedding = await db.wedding.findFirst({
+    where: {
+      slug: process.env.DEFAULT_WEDDING_SLUG || "helen-and-enrique",
+    },
+    select: { id: true },
+  });
+  if (!defaultWedding)
+    throw new Error("No default wedding found for gift creation");
+  return defaultWedding.id;
+}
+
 // Log prefix for easy filtering
 const LOG_PREFIX = "[Stripe Webhook]";
 
@@ -561,6 +577,7 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
         currency: currency,
         giftType: giftType,
         guestId: guestId,
+        weddingId: await resolveGiftWeddingId(guest?.weddingId),
         status: "completed",
         thankYouEmailSent: false,
       },
@@ -727,6 +744,7 @@ async function handleChargeFailed(charge: Stripe.Charge) {
         currency: currency,
         giftType: null,
         guestId: null,
+        weddingId: await resolveGiftWeddingId(),
         status: "failed",
         thankYouEmailSent: false,
       },
@@ -927,6 +945,7 @@ async function handleChargePending(charge: Stripe.Charge) {
         currency: currency,
         giftType: giftType,
         guestId: guestId,
+        weddingId: await resolveGiftWeddingId(guest?.weddingId),
         status: "pending",
         thankYouEmailSent: false,
       },

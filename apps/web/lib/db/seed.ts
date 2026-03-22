@@ -84,6 +84,14 @@ async function truncateAll() {
  * Seed the database with deterministic E2E test data.
  */
 async function seedData() {
+  // Get the default wedding ID
+  const wedding = await db.wedding.findFirst({
+    where: { slug: process.env.DEFAULT_WEDDING_SLUG || "helen-and-enrique" },
+    select: { id: true },
+  });
+  if (!wedding) throw new Error("Default wedding not found for seeding");
+  const weddingId = wedding.id;
+
   // Events first (needed before guests, since guest insert trigger creates invites for default events)
   await db.event.createMany({
     data: [
@@ -93,6 +101,7 @@ async function seedData() {
         description: "Wedding ceremony",
         isDefault: true,
         displayOrder: 1,
+        weddingId,
       },
       {
         id: SEED.events.reception.id,
@@ -100,6 +109,7 @@ async function seedData() {
         description: "Wedding reception",
         isDefault: true,
         displayOrder: 2,
+        weddingId,
       },
     ],
   });
@@ -113,6 +123,7 @@ async function seedData() {
         name: "Alice Solo",
         side: "bride",
         list: "a",
+        weddingId,
       },
       {
         id: SEED.parties.family.id,
@@ -120,6 +131,7 @@ async function seedData() {
         name: "Bob Family",
         side: "groom",
         list: "a",
+        weddingId,
       },
     ],
   });
@@ -144,6 +156,7 @@ async function seedData() {
         under21: false,
         threeAndUnder: false,
         partyId: SEED.parties.single.id,
+        weddingId,
       },
       {
         id: SEED.guests.bob.id,
@@ -162,6 +175,7 @@ async function seedData() {
         under21: false,
         threeAndUnder: false,
         partyId: SEED.parties.family.id,
+        weddingId,
       },
       {
         id: SEED.guests.carol.id,
@@ -180,6 +194,7 @@ async function seedData() {
         under21: true,
         threeAndUnder: false,
         partyId: SEED.parties.family.id,
+        weddingId,
       },
     ],
   });
@@ -200,12 +215,14 @@ async function seedData() {
         url: "https://utfs.io/f/e2e-photo-1.jpg",
         uploaderName: "E2E-Guest",
         isVisible: true,
+        weddingId,
       },
       {
         id: SEED.guestPhotos.visible2.id,
         url: "https://utfs.io/f/e2e-photo-2.jpg",
         uploaderName: null,
         isVisible: true,
+        weddingId,
       },
       {
         id: SEED.guestPhotos.hidden1.id,
@@ -214,12 +231,14 @@ async function seedData() {
         isVisible: false,
         hiddenAt: new Date("2026-01-15T10:00:00Z"),
         hiddenBy: "admin@example.com",
+        weddingId,
       },
       {
         id: SEED.guestPhotos.deletable.id,
         url: "https://utfs.io/f/e2e-photo-4.jpg",
         uploaderName: "E2E-Delete-Me",
         isVisible: true,
+        weddingId,
       },
     ],
   });
@@ -230,15 +249,18 @@ async function seedData() {
       {
         title: "Book the florist",
         displayOrder: 1,
+        weddingId,
       },
       {
         title: "Order wedding cake",
         displayOrder: 2,
+        weddingId,
       },
       {
         title: "Finalize seating chart",
         isCompleted: true,
         displayOrder: 3,
+        weddingId,
       },
     ],
   });

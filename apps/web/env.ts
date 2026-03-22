@@ -3,21 +3,20 @@ import { z } from "zod";
 
 export const env = createEnv({
   /**
-   * Specify your server-side environment variables schema here. This way you can ensure the app
-   * isn't built with invalid env vars.
+   * Server-side environment variables.
    */
   server: {
     RESEND_API_KEY: z.string().optional(),
-    RSVP_EMAIL: z.string().optional(), // Comma-separated list of emails
+    RSVP_EMAIL: z.string().optional(), // Fallback notification emails (per-wedding config preferred)
     CLERK_SECRET_KEY: z.string().optional(),
-    ADMIN_EMAILS: z.string().optional(),
-    POSTGRES_URL: z.string().optional(), // Supabase Vercel integration
-    DATABASE_URL: z.string().optional(), // Local dev fallback
+    ADMIN_EMAILS: z.string().optional(), // Superadmin fallback (per-wedding admins preferred)
+    POSTGRES_URL: z.string().optional(),
+    DATABASE_URL: z.string().optional(),
     UPLOADTHING_TOKEN: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
-    STRIPE_PRODUCT_BABY_FUND: z.string().optional(),
+    STRIPE_PRODUCT_BABY_FUND: z.string().optional(), // Fallback (per-wedding registry_items preferred)
     STRIPE_PRODUCT_HONEYMOON: z.string().optional(),
     STRIPE_PRODUCT_STUDENT_LOANS: z.string().optional(),
     DEFAULT_WEDDING_SLUG: z.string().optional(),
@@ -28,22 +27,15 @@ export const env = createEnv({
   },
 
   /**
-   * Specify your client-side environment variables schema here. This way you can ensure the app
-   * isn't built with invalid env vars. To expose them to the client, prefix them with
-   * `NEXT_PUBLIC_`.
+   * Client-side environment variables (prefixed with NEXT_PUBLIC_).
    */
   client: {
-    NEXT_PUBLIC_RSVP_EMAIL: z.email().optional(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
     NEXT_PUBLIC_APP_URL: z.url().optional(),
-    NEXT_PUBLIC_STRIPE_LINK_BABY_FUND: z.url().optional(),
-    NEXT_PUBLIC_STRIPE_LINK_HONEYMOON: z.url().optional(),
-    NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS: z.url().optional(),
   },
 
   /**
-   * You can't destruct `process.env` as a regular object in the Next.js edge runtimes (e.g.
-   * middlewares) or client-side so we need to destruct manually.
+   * Runtime env destructuring.
    */
   runtimeEnv: {
     RESEND_API_KEY: process.env.RESEND_API_KEY,
@@ -64,25 +56,11 @@ export const env = createEnv({
     E2E_RESET_SECRET: process.env.E2E_RESET_SECRET,
     LOCAL_E2E_MODE: process.env.LOCAL_E2E_MODE,
     VERCEL_ENV: process.env.VERCEL_ENV,
-    NEXT_PUBLIC_RSVP_EMAIL: process.env.NEXT_PUBLIC_RSVP_EMAIL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_STRIPE_LINK_BABY_FUND:
-      process.env.NEXT_PUBLIC_STRIPE_LINK_BABY_FUND,
-    NEXT_PUBLIC_STRIPE_LINK_HONEYMOON:
-      process.env.NEXT_PUBLIC_STRIPE_LINK_HONEYMOON,
-    NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS:
-      process.env.NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS,
   },
-  /**
-   * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
-   * useful for Docker builds.
-   */
+
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
-  /**
-   * Makes it so that empty strings are treated as undefined. `SOME_VAR: z.string()` and
-   * `SOME_VAR=''` will throw an error.
-   */
   emptyStringAsUndefined: true,
 });
