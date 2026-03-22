@@ -204,15 +204,15 @@ The core multi-tenancy infrastructure is **complete**. A second couple can sign 
 
 | Priority | Item | Status | Notes |
 |----------|------|--------|-------|
-| 1 | **E2E test with second wedding** | Not started | Create a test wedding, verify full isolation |
+| 1 | ~~**E2E test with second wedding**~~ | **Done** | Multi-tenancy data isolation tests |
 | 2 | ~~**`wedding_id` NOT NULL migration**~~ | **Done** | Migration 041 |
-| 3 | **RLS policies scoped to `wedding_id`** | Not started | Defense-in-depth at DB level |
-| 4 | **Platform admin panel** | Not started | `/platform-admin` — manage all weddings, users, metrics |
-| 5 | **Invite co-admin flow** | Not started | Email invite → WeddingAdmin row |
+| 3 | ~~**RLS policies**~~ | **Done** | Migration 042 — RLS on all new tables |
+| 4 | ~~**Platform admin panel**~~ | **Done** | `/platform-admin` — wedding list, stats, status management, delete |
+| 5 | ~~**Invite co-admin flow**~~ | **Done** | Admins tab in settings — invite by email, remove, role management |
 | 6 | **Stripe webhook wedding resolution** | Partial | `resolveGiftWeddingId()` uses guest match or default wedding |
 | 7 | ~~**Delete deprecated files**~~ | **Done** | `constants.ts`, `site-config.ts`, `registry/constants.ts` deleted |
 | 8 | ~~**Remove migrated env vars**~~ | **Done** | Client-side Stripe/RSVP vars removed; server-side kept as fallback |
-| 9 | **Theme system** | Not started | Visual differentiation between weddings |
+| 9 | ~~**Theme system**~~ | **Done** | 5 preset themes with CSS variable injection |
 | 10 | **Custom domains** | Not started | Vercel domain API |
 
 ---
