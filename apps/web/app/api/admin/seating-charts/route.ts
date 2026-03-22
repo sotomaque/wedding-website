@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
@@ -13,15 +13,9 @@ import { getWeddingId } from "@/lib/db/wedding-context";
  */
 export async function GET() {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
-
     const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const charts = await db.seatingChart.findMany({
       where: { weddingId },
@@ -49,13 +43,9 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const body = await request.json();
     const { name, defaultSeatsPerTable, notes } = body;
@@ -66,8 +56,6 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-
-    const weddingId = await getWeddingId();
 
     const chart = await db.seatingChart.create({
       data: {

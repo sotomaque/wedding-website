@@ -73,6 +73,9 @@ mock.module("@/lib/db", () => ({
       create: mockPhotoCreate,
       aggregate: mockPhotoAggregate,
     },
+    weddingAdmin: {
+      findFirst: mock(() => Promise.resolve(null)),
+    },
   },
 }));
 

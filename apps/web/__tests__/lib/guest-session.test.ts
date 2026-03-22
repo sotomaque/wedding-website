@@ -54,6 +54,9 @@ mock.module("@/lib/db", () => ({
       findFirst: mockGuestFindFirst,
       update: mockGuestUpdate,
     },
+    weddingAdmin: {
+      findFirst: mock(() => Promise.resolve(null)),
+    },
   },
 }));
 

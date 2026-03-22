@@ -1,6 +1,6 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
@@ -17,21 +17,9 @@ import { getResendClient, sendEmail } from "@/lib/email/resend-client";
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await currentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-      e.trim().toLowerCase(),
-    );
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-
-    if (!adminEmails?.includes(userEmail || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const body = await request.json();
     const { guestId, email: emailOverride } = body;
@@ -77,8 +65,6 @@ export async function POST(request: NextRequest) {
 
     const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const rsvpUrl = `${appUrl}/rsvp?code=${guest.inviteCode}`;
-
-    const weddingId = await getWeddingId();
 
     // Fetch wedding date from the Wedding Ceremony event
     let weddingDate = "";

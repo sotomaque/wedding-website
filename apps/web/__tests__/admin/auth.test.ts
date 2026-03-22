@@ -54,6 +54,9 @@ mock.module("@/lib/db", () => ({
     event: {
       findFirst: mock(() => Promise.resolve(null)),
     },
+    weddingAdmin: {
+      findFirst: mock(() => Promise.resolve(null)),
+    },
   },
 }));
 

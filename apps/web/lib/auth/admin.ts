@@ -1,4 +1,5 @@
 import { currentUser } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
 
@@ -35,20 +36,48 @@ export async function isAdmin(weddingId?: string): Promise<AdminAuthResult> {
     return { authorized: true, error: null, role: "superadmin" };
   }
 
-  // Per-wedding check: wedding_admins table (raw query — model not yet in Prisma schema)
+  // Per-wedding check: wedding_admins table
   if (weddingId) {
-    const admins = await db.$queryRaw<
-      { role: string }[]
-    >`SELECT role FROM wedding_admins WHERE wedding_id = ${weddingId}::uuid AND (email = ${userEmail} OR clerk_user_id = ${user.id}) LIMIT 1`;
+    const admin = await db.weddingAdmin.findFirst({
+      where: {
+        weddingId,
+        OR: [{ email: userEmail }, { clerkUserId: user.id }],
+      },
+      select: { role: true },
+    });
 
-    if (admins.length > 0) {
+    if (admin) {
       return {
         authorized: true,
         error: null,
-        role: admins[0]!.role as "owner" | "editor",
+        role: admin.role as "owner" | "editor",
       };
     }
   }
 
   return { authorized: false, error: "Forbidden", role: null };
+}
+
+/**
+ * Convenience helper for API routes. Returns a NextResponse error
+ * if the user is not an admin, or the auth result if they are.
+ *
+ * Usage:
+ *   const auth = await requireAdmin(weddingId)
+ *   if ("status" in auth) return auth
+ *   // auth.role is available here
+ */
+export async function requireAdmin(
+  weddingId?: string,
+): Promise<
+  NextResponse | { authorized: true; role: "owner" | "editor" | "superadmin" }
+> {
+  const result = await isAdmin(weddingId);
+  if (!result.authorized) {
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.error === "Unauthorized" ? 401 : 403 },
+    );
+  }
+  return { authorized: true, role: result.role! };
 }

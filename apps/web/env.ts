@@ -36,7 +36,6 @@ export const env = createEnv({
     NEXT_PUBLIC_RSVP_EMAIL: z.email().optional(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
     NEXT_PUBLIC_APP_URL: z.url().optional(),
-    NEXT_PUBLIC_ADMIN_EMAILS: z.string().optional(),
     NEXT_PUBLIC_STRIPE_LINK_BABY_FUND: z.url().optional(),
     NEXT_PUBLIC_STRIPE_LINK_HONEYMOON: z.url().optional(),
     NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS: z.url().optional(),
@@ -69,7 +68,6 @@ export const env = createEnv({
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_ADMIN_EMAILS: process.env.NEXT_PUBLIC_ADMIN_EMAILS,
     NEXT_PUBLIC_STRIPE_LINK_BABY_FUND:
       process.env.NEXT_PUBLIC_STRIPE_LINK_BABY_FUND,
     NEXT_PUBLIC_STRIPE_LINK_HONEYMOON:

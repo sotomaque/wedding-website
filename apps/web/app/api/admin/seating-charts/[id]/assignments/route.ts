@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { isValidUUID } from "@/lib/utils/uuid";
@@ -19,13 +19,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id: chartId } = await params;
     const body = await request.json();
@@ -37,8 +33,6 @@ export async function POST(
         { status: 400 },
       );
     }
-
-    const weddingId = await getWeddingId();
 
     // Verify the chart exists and get its tables
     const tables = await db.seatingTable.findMany({
@@ -132,19 +126,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id: chartId } = await params;
     const { searchParams } = new URL(request.url);
     const guestIdsParam = searchParams.get("guestIds");
-
-    const weddingId = await getWeddingId();
 
     // Get all tables for this chart
     const tables = await db.seatingTable.findMany({

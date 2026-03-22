@@ -81,6 +81,9 @@ mock.module("@/lib/db", () => ({
       delete: mock(() => Promise.resolve({})),
       deleteMany: mockGuestTableAssignmentDeleteMany,
     },
+    weddingAdmin: {
+      findFirst: mock(() => Promise.resolve(null)),
+    },
   },
 }));
 

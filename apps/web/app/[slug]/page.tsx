@@ -7,10 +7,16 @@ import { MainNavigation } from "@/components/main-navigation";
 import { RSVPSection } from "@/components/rsvp-section";
 import { ScheduleSection } from "@/components/schedule-section";
 import { StorySection } from "@/components/story-section";
+import { isAdmin } from "@/lib/auth/admin";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { getAllPhotos } from "@/lib/photos";
 
 export default async function Page() {
-  const photos = await getAllPhotos();
+  const [photos, weddingId] = await Promise.all([
+    getAllPhotos(),
+    getWeddingId(),
+  ]);
+  const adminResult = await isAdmin(weddingId);
 
   // Shuffle photos on the server to avoid hydration mismatch
   const heroPhotos = shuffleArray([...photos]);
@@ -18,8 +24,7 @@ export default async function Page() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {/* Client Component - uses Clerk hooks for admin detection */}
-      <MainNavigation />
+      <MainNavigation isAdmin={adminResult.authorized} />
 
       <main className="grow">
         {/* Client Component - uses useState/useEffect for carousel */}

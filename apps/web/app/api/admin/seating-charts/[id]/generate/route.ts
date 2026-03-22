@@ -6,7 +6,7 @@ import {
   buildSeatingPrompt,
   formatGuestForSeating,
 } from "@/lib/ai/seating-prompt";
-import { isAdmin } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import type {
@@ -30,13 +30,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     if (!env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -68,8 +64,6 @@ export async function POST(
     if (!chart) {
       return NextResponse.json({ error: "Chart not found" }, { status: 404 });
     }
-
-    const weddingId = await getWeddingId();
 
     // Fetch tables for this chart
     const tables = await db.seatingTable.findMany({

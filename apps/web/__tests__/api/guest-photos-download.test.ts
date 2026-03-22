@@ -32,6 +32,9 @@ mock.module("@/lib/db", () => ({
     guestPhoto: {
       findMany: mockGuestPhotoFindMany,
     },
+    weddingAdmin: {
+      findFirst: mock(() => Promise.resolve(null)),
+    },
   },
 }));
 

@@ -434,10 +434,27 @@ model Wedding {
   seatingCharts         SeatingChart[]
   seatingTables         SeatingTable[]
   serviceLinks          ServiceLink[]
+  weddingAdmins         WeddingAdmin[]
   weddingTodos          WeddingTodo[]
 
   @@index([slug], map: "idx_weddings_slug")
   @@map("weddings")
+}
+
+model WeddingAdmin {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId   String   @map("wedding_id") @db.Uuid
+  clerkUserId String?  @map("clerk_user_id")
+  email       String
+  role        String   @default("owner")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  wedding     Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+
+  @@unique([weddingId, email])
+  @@index([weddingId], map: "idx_wedding_admins_wedding_id")
+  @@index([clerkUserId], map: "idx_wedding_admins_clerk_user_id")
+  @@index([email], map: "idx_wedding_admins_email")
+  @@map("wedding_admins")
 }
 
 enum ActivityInterestStatus {

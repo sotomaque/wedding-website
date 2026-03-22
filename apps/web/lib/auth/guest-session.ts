@@ -1,5 +1,5 @@
 import { currentUser } from "@clerk/nextjs/server";
-import { env } from "@/env";
+import { isAdmin as checkIsAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
@@ -37,10 +37,7 @@ export async function getGuestParty(
   const weddingId = await getWeddingId();
 
   // Check if user is admin
-  const adminEmails =
-    env.ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) || [];
-  const userEmail = user?.emailAddresses[0]?.emailAddress?.toLowerCase();
-  const isAdmin = userEmail ? adminEmails.includes(userEmail) : false;
+  const { authorized: isAdmin } = await checkIsAdmin(weddingId);
 
   // Try to find guest by Clerk user ID first (if logged in)
   if (user) {
@@ -59,6 +56,7 @@ export async function getGuestParty(
     }
 
     // If no clerk_user_id link, try to find guest by email and auto-link
+    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
     if (userEmail) {
       const guestByEmail = await db.guest.findFirst({
         where: {

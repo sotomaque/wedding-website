@@ -38,6 +38,9 @@ mock.module("@/lib/db", () => ({
       update: mockGuestPhotoUpdate,
       delete: mockGuestPhotoDelete,
     },
+    weddingAdmin: {
+      findFirst: mock(() => Promise.resolve(null)),
+    },
   },
 }));
 
