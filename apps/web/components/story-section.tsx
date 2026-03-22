@@ -36,9 +36,17 @@ export function StorySection({ photos, content }: StorySectionProps) {
             </div>
           </div>
           <div className="space-y-6 text-muted-foreground leading-relaxed">
-            {(content?.paragraphs ?? []).map((paragraph) => (
-              <p key={paragraph.substring(0, 20)}>{paragraph}</p>
-            ))}
+            {content?.bodyHtml ? (
+              <div
+                className="prose prose-sm max-w-none [&_p]:my-2 [&_h2]:text-xl [&_h2]:font-serif [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-1 text-muted-foreground"
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side by admin via Tiptap editor
+                dangerouslySetInnerHTML={{ __html: content.bodyHtml }}
+              />
+            ) : (
+              (content?.paragraphs ?? []).map((paragraph) => (
+                <p key={paragraph.substring(0, 20)}>{paragraph}</p>
+              ))
+            )}
           </div>
         </div>
         <div className="grid md:grid-cols-2 gap-8">

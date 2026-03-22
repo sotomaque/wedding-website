@@ -17,7 +17,8 @@ export const storyContentSchema = z.object({
   title: z.string(),
   subtitle: z.string().optional(),
   subtitleCaption: z.string().optional(),
-  paragraphs: z.array(z.string()),
+  paragraphs: z.array(z.string()), // backward compat — plain text
+  bodyHtml: z.string().optional(), // rich text (Tiptap HTML output)
   photos: z.array(storyPhotoSchema).optional(),
 });
 export type StoryContent = z.infer<typeof storyContentSchema>;

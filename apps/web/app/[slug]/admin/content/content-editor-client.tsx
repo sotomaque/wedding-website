@@ -6,6 +6,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import type {
   DetailsContent,
   HeroContent,
@@ -113,27 +114,26 @@ function HeroEditor({ initial }: { initial?: HeroContent }) {
 function StoryEditor({ initial }: { initial?: StoryContent }) {
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(initial?.title ?? "");
-  const [paragraphs, setParagraphs] = useState<string[]>(
-    initial?.paragraphs ?? [""],
-  );
 
-  function addParagraph() {
-    setParagraphs((prev) => [...prev, ""]);
-  }
-
-  function removeParagraph(index: number) {
-    setParagraphs((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function updateParagraph(index: number, value: string) {
-    setParagraphs((prev) => prev.map((p, i) => (i === index ? value : p)));
-  }
+  // Convert legacy paragraphs to HTML if no bodyHtml exists
+  const initialHtml =
+    initial?.bodyHtml ??
+    (initial?.paragraphs ?? []).map((p) => `<p>${p}</p>`).join("");
+  const [bodyHtml, setBodyHtml] = useState(initialHtml);
 
   function handleSave() {
+    // Extract plain text paragraphs from HTML for backward compat
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = bodyHtml;
+    const paragraphs = Array.from(tempDiv.querySelectorAll("p"))
+      .map((p) => p.textContent?.trim() ?? "")
+      .filter((p) => p.length > 0);
+
     startTransition(async () => {
       const result = await updateWeddingContent("story", {
         title,
-        paragraphs: paragraphs.filter((p) => p.trim() !== ""),
+        bodyHtml,
+        paragraphs,
       });
       if (result.success) {
         toast.success("Story content saved");
@@ -144,7 +144,7 @@ function StoryEditor({ initial }: { initial?: StoryContent }) {
   }
 
   return (
-    <div className="space-y-4 max-w-lg">
+    <div className="space-y-4 max-w-2xl">
       <div>
         <Label htmlFor="story-title">Title</Label>
         <Input
@@ -156,45 +156,18 @@ function StoryEditor({ initial }: { initial?: StoryContent }) {
         />
       </div>
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <Label>Paragraphs</Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addParagraph}
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Add
-          </Button>
+        <Label>Story</Label>
+        <div className="mt-1">
+          <RichTextEditor
+            content={bodyHtml}
+            onChange={setBodyHtml}
+            placeholder="Tell your love story..."
+          />
         </div>
-        <div className="space-y-2">
-          {paragraphs.map((p, i) => (
-            <div
-              key={`paragraph-${i}-${p.slice(0, 10)}`}
-              className="flex gap-2"
-            >
-              <textarea
-                value={p}
-                onChange={(e) => updateParagraph(i, e.target.value)}
-                placeholder={`Paragraph ${i + 1}`}
-                rows={3}
-                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
-              />
-              {paragraphs.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeParagraph(i)}
-                  className="shrink-0 text-destructive hover:text-destructive/80"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
+        <p className="text-xs text-muted-foreground mt-1.5">
+          Use the toolbar to format text with headings, bold, italic, lists, and
+          more.
+        </p>
       </div>
       <Button onClick={handleSave} disabled={isPending}>
         {isPending ? "Saving..." : "Save Story"}
