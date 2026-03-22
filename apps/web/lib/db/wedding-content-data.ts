@@ -37,6 +37,7 @@ export interface WeddingSettings {
   emailFromAddress: string | null;
   brandImageUrl: string | null;
   brandImageAlt: string | null;
+  themeId: string | null;
   featureToggles: FeatureToggles;
 }
 
@@ -60,6 +61,7 @@ export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
       emailFromAddress: true,
       brandImageUrl: true,
       brandImageAlt: true,
+      themeId: true,
       featureToggles: true,
     },
   });

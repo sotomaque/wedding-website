@@ -436,6 +436,9 @@ model Wedding {
   brandImageUrl         String?                @map("brand_image_url")
   brandImageAlt         String?                @map("brand_image_alt")
 
+  // Theme
+  themeId               String?                @map("theme_id")
+
   // Feature toggles
   featureToggles        Json                   @default("{}") @map("feature_toggles") @db.JsonB
 

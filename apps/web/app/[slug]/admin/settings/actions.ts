@@ -124,6 +124,27 @@ export async function updateFeatureToggles(data: Record<string, boolean>) {
   }
 }
 
+export async function updateTheme(themeId: string) {
+  const auth = await isAdmin();
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
+  try {
+    const weddingId = await getWeddingId();
+
+    await db.wedding.update({
+      where: { id: weddingId },
+      data: { themeId },
+    });
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating theme:", error);
+    return { success: false, error: "Failed to update theme" };
+  }
+}
+
 export async function inviteAdmin(data: { email: string; role: string }) {
   const weddingId = await getWeddingId();
   const auth = await isAdmin(weddingId);

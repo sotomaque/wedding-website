@@ -7,6 +7,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Switch } from "@workspace/ui/components/switch";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { THEME_PRESETS } from "@/lib/themes";
 import {
   inviteAdmin,
   removeAdmin,
@@ -14,14 +15,22 @@ import {
   updateFeatureToggles,
   updateGeneralSettings,
   updateNotificationSettings,
+  updateTheme,
 } from "./actions";
 
-type Tab = "general" | "notifications" | "branding" | "features" | "admins";
+type Tab =
+  | "general"
+  | "notifications"
+  | "branding"
+  | "theme"
+  | "features"
+  | "admins";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "general", label: "General" },
   { key: "notifications", label: "Notifications" },
   { key: "branding", label: "Branding" },
+  { key: "theme", label: "Theme" },
   { key: "features", label: "Features" },
   { key: "admins", label: "Admins" },
 ];
@@ -75,6 +84,7 @@ export function SettingsClient({ wedding, admins }: SettingsClientProps) {
         <NotificationsSection wedding={wedding} />
       )}
       {activeTab === "branding" && <BrandingSection wedding={wedding} />}
+      {activeTab === "theme" && <ThemeSection wedding={wedding} />}
       {activeTab === "features" && <FeaturesSection wedding={wedding} />}
       {activeTab === "admins" && <AdminsSection admins={admins} />}
     </div>
@@ -337,6 +347,70 @@ function BrandingSection({ wedding }: { wedding: Wedding }) {
       <Button onClick={handleSave} disabled={isPending}>
         {isPending ? "Saving..." : "Save Branding Settings"}
       </Button>
+    </div>
+  );
+}
+
+function ThemeSection({ wedding }: { wedding: Wedding }) {
+  const [isPending, startTransition] = useTransition();
+  const currentThemeId = (wedding.themeId as string) ?? "warm-gold";
+
+  function handleSelect(themeId: string) {
+    startTransition(async () => {
+      const result = await updateTheme(themeId);
+      if (result.success) {
+        toast.success("Theme updated");
+      } else {
+        toast.error(result.error ?? "Failed to update theme");
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <p className="text-sm text-muted-foreground">
+        Choose a color theme for your wedding site. The theme affects all
+        public-facing pages.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {THEME_PRESETS.map((theme) => (
+          <button
+            key={theme.id}
+            type="button"
+            onClick={() => handleSelect(theme.id)}
+            disabled={isPending}
+            className={`text-left p-4 rounded-lg border-2 transition-all ${
+              currentThemeId === theme.id
+                ? "border-accent shadow-md"
+                : "border-border hover:border-accent/40"
+            }`}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex gap-1">
+                <div
+                  className="w-5 h-5 rounded-full border border-border"
+                  style={{ backgroundColor: theme.preview.background }}
+                />
+                <div
+                  className="w-5 h-5 rounded-full border border-border"
+                  style={{ backgroundColor: theme.preview.primary }}
+                />
+                <div
+                  className="w-5 h-5 rounded-full border border-border"
+                  style={{ backgroundColor: theme.preview.accent }}
+                />
+              </div>
+              {currentThemeId === theme.id && (
+                <span className="text-xs font-medium text-accent">Active</span>
+              )}
+            </div>
+            <p className="text-sm font-medium">{theme.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {theme.description}
+            </p>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
