@@ -11,7 +11,7 @@ This is a wedding website built with Next.js 16 (App Router), React 19, and Type
 - **Package Manager**: Bun (not npm/yarn)
 - **Styling**: Tailwind CSS 4
 - **Components**: shadcn/ui (Radix UI based)
-- **Database**: Supabase (PostgreSQL) with Kysely ORM
+- **Database**: Supabase (PostgreSQL) with Prisma ORM
 - **Auth**: Clerk
 - **Email**: Resend with templates
 - **Payments**: Stripe
@@ -30,16 +30,18 @@ This is a wedding website built with Next.js 16 (App Router), React 19, and Type
 - **Functions/Utils**: camelCase (`generateInviteCode`)
 - **Types/Interfaces**: PascalCase (`Gift`, `Photo`)
 - **Constants**: UPPER_SNAKE_CASE (`HERO_PHOTOS`)
-- **Database columns**: snake_case (`thank_you_email_sent`)
+- **Database columns**: snake_case in SQL (`thank_you_email_sent`), camelCase in Prisma models (`thankYouEmailSent`)
 
 ### File Structure
 ```
 apps/web/
 ├── app/           # Next.js App Router pages and API routes
 ├── components/    # Reusable React components
-├── lib/           # Utilities, DB, auth, email, validations
+├── lib/           # Utilities, DB bridge, auth, email, validations
 ├── __tests__/     # Unit tests (Bun test)
 └── e2e/           # E2E tests (Playwright)
+packages/db/       # Prisma schema & client
+packages/ui/       # Shared UI components (shadcn/ui)
 ```
 
 ## Key Patterns
@@ -55,15 +57,18 @@ apps/web/
 - Return `{ success: boolean, error?: string }` pattern
 
 ### Database Queries
-- Use Kysely for all database operations (type-safe)
-- Never use raw SQL strings
-- Chain methods: `db.selectFrom().select().where().execute()`
+- Use Prisma for all database operations (type-safe)
+- Import `db` from `@/lib/db` (re-exports from `@workspace/db`)
+- Use Prisma methods: `db.guest.findMany()`, `db.guest.create()`, etc.
+- Use `include` for relations instead of manual JOINs
+- Use `$executeRawUnsafe()` only for TRUNCATE or operations Prisma doesn't support
 
 ### Type Safety
 - Never use `any` type - use proper interfaces
 - Use Zod for runtime validation
 - All component props must be typed with interfaces
 - Environment variables validated in `env.ts`
+- Prefer Prisma-generated types from `@prisma/client` for DB entities
 
 ### Email
 - Use Resend templates (not inline HTML)
@@ -77,6 +82,7 @@ apps/web/
 - Framework: Bun test
 - Run: `bun run test`
 - Cover edge cases (empty arrays, nulls, type variations)
+- Mock `@/lib/db` with Prisma-style model mocks (e.g., `db.guest.findMany`)
 
 ### E2E Tests
 - Location: `e2e/**/*.spec.ts`
@@ -91,7 +97,7 @@ When reviewing PRs, check for:
 1. **Type Safety**: No `any` types, proper interfaces
 2. **Error Handling**: Try-catch in server actions, meaningful error messages
 3. **Server/Client Boundary**: Correct use of directives
-4. **Database**: Using Kysely, not raw SQL
+4. **Database**: Using Prisma, not raw SQL
 5. **Testing**: Unit tests for utils, E2E for user flows
 6. **Security**: No exposed secrets, proper input validation
 7. **Performance**: No unnecessary re-renders, proper memoization
@@ -113,7 +119,9 @@ bun run test:e2e     # E2E tests
 ## Important Notes
 
 - Always use `bun` (not npm/yarn)
-- Path alias `@/*` maps to project root
+- Path alias `@/*` maps to `apps/web/` root
 - Path alias `@workspace/ui/*` maps to shared UI package
+- Path alias `@workspace/db` maps to Prisma client package
 - Client env vars must be prefixed with `NEXT_PUBLIC_`
-- Database types are auto-generated in `lib/db/types.ts`
+- Prisma schema lives in `packages/db/prisma/schema.prisma`
+- After schema changes, run `cd packages/db && bun run db:generate`

@@ -28,33 +28,33 @@ function getCountdown(targetDate: Date) {
 
 async function getGuestStats() {
   // Get count of accepted A-list guests (not plus-ones)
-  const acceptedAListCount = await db
-    .selectFrom("guests")
-    .select((eb) => eb.fn.count("id").as("count"))
-    .where("list", "=", "a")
-    .where("rsvp_status", "=", "yes")
-    .where("is_plus_one", "=", false)
-    .executeTakeFirst();
+  const acceptedAListCount = await db.guest.count({
+    where: {
+      list: "a",
+      rsvpStatus: "yes",
+      isPlusOne: false,
+    },
+  });
 
   // Get total A-list guests (not plus-ones)
-  const totalAListCount = await db
-    .selectFrom("guests")
-    .select((eb) => eb.fn.count("id").as("count"))
-    .where("list", "=", "a")
-    .where("is_plus_one", "=", false)
-    .executeTakeFirst();
+  const totalAListCount = await db.guest.count({
+    where: {
+      list: "a",
+      isPlusOne: false,
+    },
+  });
 
   // Get total accepted guests (including plus-ones)
-  const totalAcceptedCount = await db
-    .selectFrom("guests")
-    .select((eb) => eb.fn.count("id").as("count"))
-    .where("rsvp_status", "=", "yes")
-    .executeTakeFirst();
+  const totalAcceptedCount = await db.guest.count({
+    where: {
+      rsvpStatus: "yes",
+    },
+  });
 
   return {
-    acceptedAList: Number(acceptedAListCount?.count || 0),
-    totalAList: Number(totalAListCount?.count || 0),
-    totalAccepted: Number(totalAcceptedCount?.count || 0),
+    acceptedAList: acceptedAListCount,
+    totalAList: totalAListCount,
+    totalAccepted: totalAcceptedCount,
   };
 }
 

@@ -1,45 +1,41 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 // Mock db
-const mockExecute = mock(() => Promise.resolve([]));
+const mockFindMany = mock(() => Promise.resolve([]));
 
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => ({
-      selectAll: () => ({
-        where: () => ({
-          execute: mockExecute,
-        }),
-      }),
-    }),
+    guest: {
+      findMany: mockFindMany,
+    },
   },
 }));
 
 describe("RSVP - Verify Invite Code", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
+    mockFindMany.mockClear();
   });
 
   it("should verify a valid invite code", async () => {
-    mockExecute.mockResolvedValue([
+    mockFindMany.mockResolvedValue([
       {
         id: "guest-123",
-        first_name: "John",
-        last_name: "Doe",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        rsvp_status: "pending",
-        plus_one_allowed: true,
+        firstName: "John",
+        lastName: "Doe",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        rsvpStatus: "pending",
+        plusOneAllowed: true,
       },
       {
         id: "guest-456",
-        first_name: "John",
-        last_name: "- Plus One",
-        invite_code: "ABCD-1234",
-        is_plus_one: true,
-        rsvp_status: "pending",
-        plus_one_allowed: false,
-        primary_guest_id: "guest-123",
+        firstName: "John",
+        lastName: "- Plus One",
+        inviteCode: "ABCD-1234",
+        isPlusOne: true,
+        rsvpStatus: "pending",
+        plusOneAllowed: false,
+        primaryGuestId: "guest-123",
       },
     ]);
 
@@ -58,12 +54,12 @@ describe("RSVP - Verify Invite Code", () => {
   });
 
   it("should handle case-insensitive invite codes", async () => {
-    mockExecute.mockResolvedValue([
+    mockFindMany.mockResolvedValue([
       {
         id: "guest-123",
-        first_name: "John",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
+        firstName: "John",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
       },
     ]);
 
@@ -79,7 +75,7 @@ describe("RSVP - Verify Invite Code", () => {
   });
 
   it("should return 404 for invalid invite code", async () => {
-    mockExecute.mockResolvedValue([]);
+    mockFindMany.mockResolvedValue([]);
 
     const { GET } = await import("@/app/api/rsvp/verify/route");
 
@@ -109,17 +105,17 @@ describe("RSVP - Verify Invite Code", () => {
 
 describe("RSVP - Deeplink", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
+    mockFindMany.mockClear();
   });
 
   it("should accept code from query parameter", async () => {
-    mockExecute.mockResolvedValue([
+    mockFindMany.mockResolvedValue([
       {
         id: "guest-123",
-        first_name: "John",
-        invite_code: "DEEP-LINK",
-        is_plus_one: false,
-        rsvp_status: "pending",
+        firstName: "John",
+        inviteCode: "DEEP-LINK",
+        isPlusOne: false,
+        rsvpStatus: "pending",
       },
     ]);
 
@@ -134,6 +130,6 @@ describe("RSVP - Deeplink", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.guests[0].invite_code).toBe("DEEP-LINK");
+    expect(data.guests[0].inviteCode).toBe("DEEP-LINK");
   });
 });

@@ -6,34 +6,33 @@ import { SeatingClient } from "./seating-client";
 export const dynamic = "force-dynamic";
 
 async function getSeatingCharts() {
-  const charts = await db
-    .selectFrom("seating_charts")
-    .selectAll()
-    .orderBy("updated_at", "desc")
-    .execute();
+  const charts = await db.seatingChart.findMany({
+    orderBy: { updatedAt: "desc" },
+  });
 
-  // Convert dates to strings for client component
+  // Convert to the shape the client expects (snake_case SeatingChart type from Supabase)
   return charts.map((chart) => ({
-    ...chart,
+    id: chart.id,
+    name: chart.name,
+    default_seats_per_table: chart.defaultSeatsPerTable,
+    is_active: chart.isActive,
+    notes: chart.notes,
     created_at:
-      chart.created_at instanceof Date
-        ? chart.created_at.toISOString()
-        : String(chart.created_at),
+      chart.createdAt instanceof Date
+        ? chart.createdAt.toISOString()
+        : String(chart.createdAt),
     updated_at:
-      chart.updated_at instanceof Date
-        ? chart.updated_at.toISOString()
-        : String(chart.updated_at),
+      chart.updatedAt instanceof Date
+        ? chart.updatedAt.toISOString()
+        : String(chart.updatedAt),
+    wedding_id: chart.weddingId,
   }));
 }
 
 async function getConfirmedGuestsCount() {
-  const result = await db
-    .selectFrom("guests")
-    .select((eb) => eb.fn.count("id").as("count"))
-    .where("rsvp_status", "=", "yes")
-    .executeTakeFirst();
-
-  return Number(result?.count || 0);
+  return db.guest.count({
+    where: { rsvpStatus: "yes" },
+  });
 }
 
 export default async function AdminSeatingPage() {

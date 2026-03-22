@@ -5,17 +5,13 @@ mock.module("@/env", () => ({
   env: { ADMIN_EMAILS: "admin@example.com" },
 }));
 
-const mockExecute = mock(() => Promise.resolve([]));
+const mockGuestPhotoFindMany = mock(() => Promise.resolve([]));
 
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => ({
-      selectAll: () => ({
-        where: () => ({
-          orderBy: () => ({ execute: mockExecute }),
-        }),
-      }),
-    }),
+    guestPhoto: {
+      findMany: mockGuestPhotoFindMany,
+    },
   },
 }));
 
@@ -25,30 +21,30 @@ const MOCK_PHOTOS = [
   {
     id: "photo-1",
     url: "https://utfs.io/f/a.jpg",
-    uploader_name: "Alice",
-    is_visible: true,
-    uploaded_at: new Date().toISOString(),
-    hidden_at: null,
-    hidden_by: null,
+    uploaderName: "Alice",
+    isVisible: true,
+    uploadedAt: new Date().toISOString(),
+    hiddenAt: null,
+    hiddenBy: null,
   },
   {
     id: "photo-2",
     url: "https://utfs.io/f/b.jpg",
-    uploader_name: null,
-    is_visible: true,
-    uploaded_at: new Date().toISOString(),
-    hidden_at: null,
-    hidden_by: null,
+    uploaderName: null,
+    isVisible: true,
+    uploadedAt: new Date().toISOString(),
+    hiddenAt: null,
+    hiddenBy: null,
   },
 ];
 
 describe("GET /api/guest-photos", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
+    mockGuestPhotoFindMany.mockClear();
   });
 
   it("returns 200 with photos array when visible photos exist", async () => {
-    mockExecute.mockResolvedValueOnce(MOCK_PHOTOS);
+    mockGuestPhotoFindMany.mockResolvedValueOnce(MOCK_PHOTOS);
 
     const { GET } = await import("@/app/api/guest-photos/route");
     const response = await GET();
@@ -62,7 +58,7 @@ describe("GET /api/guest-photos", () => {
   });
 
   it("returns 200 with empty array when no visible photos exist", async () => {
-    mockExecute.mockResolvedValueOnce([]);
+    mockGuestPhotoFindMany.mockResolvedValueOnce([]);
 
     const { GET } = await import("@/app/api/guest-photos/route");
     const response = await GET();
@@ -74,7 +70,9 @@ describe("GET /api/guest-photos", () => {
   });
 
   it("returns 500 on database error", async () => {
-    mockExecute.mockRejectedValueOnce(new Error("DB connection failed"));
+    mockGuestPhotoFindMany.mockRejectedValueOnce(
+      new Error("DB connection failed"),
+    );
 
     const { GET } = await import("@/app/api/guest-photos/route");
     const response = await GET();
@@ -85,7 +83,7 @@ describe("GET /api/guest-photos", () => {
   });
 
   it("returns photos array (not a nested object)", async () => {
-    mockExecute.mockResolvedValueOnce(MOCK_PHOTOS);
+    mockGuestPhotoFindMany.mockResolvedValueOnce(MOCK_PHOTOS);
 
     const { GET } = await import("@/app/api/guest-photos/route");
     const response = await GET();

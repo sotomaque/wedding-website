@@ -26,8 +26,8 @@ export function TodoList({ initialTodos }: { initialTodos: WeddingTodo[] }) {
   const [editingTitle, setEditingTitle] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  const pendingTodos = initialTodos.filter((t) => !t.is_completed);
-  const completedTodos = initialTodos.filter((t) => t.is_completed);
+  const pendingTodos = initialTodos.filter((t) => !t.isCompleted);
+  const completedTodos = initialTodos.filter((t) => t.isCompleted);
 
   function handleAdd() {
     if (!newTitle.trim()) return;
@@ -184,10 +184,10 @@ function TodoItem({
   return (
     <li className="flex items-center gap-3 rounded-md border border-border px-3 py-2 group hover:bg-secondary/30 transition-colors">
       <Checkbox
-        checked={todo.is_completed}
-        onCheckedChange={() => onToggle(todo.id, todo.is_completed)}
+        checked={todo.isCompleted}
+        onCheckedChange={() => onToggle(todo.id, todo.isCompleted)}
         disabled={isPending}
-        aria-label={`Mark "${todo.title}" as ${todo.is_completed ? "incomplete" : "complete"}`}
+        aria-label={`Mark "${todo.title}" as ${todo.isCompleted ? "incomplete" : "complete"}`}
       />
 
       {isEditing ? (
@@ -229,7 +229,7 @@ function TodoItem({
           <span
             className={cn(
               "flex-1 text-sm",
-              todo.is_completed && "line-through text-muted-foreground",
+              todo.isCompleted && "line-through text-muted-foreground",
             )}
           >
             {todo.title}

@@ -44,22 +44,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const guests = await db
-      .selectFrom("guests")
-      .select([
-        "id",
-        "first_name",
-        "last_name",
-        "email",
-        "rsvp_status",
-        "calendar_invite_resend_count",
-      ])
-      .where("id", "in", guestIds)
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { id: { in: guestIds } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        rsvpStatus: true,
+        calendarInviteResendCount: true,
+      },
+    });
 
     // Only send to attending guests with a valid email
     const eligible = guests.filter(
-      (g) => g.rsvp_status === "yes" && g.email?.includes("@"),
+      (g) => g.rsvpStatus === "yes" && g.email?.includes("@"),
     );
 
     if (eligible.length === 0) {
@@ -73,20 +72,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch default events once — shared across all guests
-    const defaultEvents = await db
-      .selectFrom("events")
-      .select([
-        "id",
-        "name",
-        "event_date",
-        "start_time",
-        "end_time",
-        "location_name",
-        "location_address",
-      ])
-      .where("is_default", "=", true)
-      .orderBy("display_order", "asc")
-      .execute();
+    const defaultEvents = await db.event.findMany({
+      where: { isDefault: true },
+      select: {
+        id: true,
+        name: true,
+        eventDate: true,
+        startTime: true,
+        endTime: true,
+        locationName: true,
+        locationAddress: true,
+      },
+      orderBy: { displayOrder: "asc" },
+    });
 
     if (defaultEvents.length === 0) {
       return NextResponse.json(
@@ -96,13 +94,26 @@ export async function POST(request: NextRequest) {
     }
 
     const eventsForIcs = defaultEvents.map((e) => ({
-      ...e,
+      id: e.id,
+      name: e.name,
       event_date:
-        e.event_date instanceof Date
-          ? e.event_date
-          : e.event_date
-            ? new Date(`${e.event_date}T00:00:00`)
+        e.eventDate instanceof Date
+          ? e.eventDate
+          : e.eventDate
+            ? new Date(`${e.eventDate}T00:00:00`)
             : null,
+      start_time: e.startTime
+        ? e.startTime instanceof Date
+          ? e.startTime.toISOString()
+          : String(e.startTime)
+        : null,
+      end_time: e.endTime
+        ? e.endTime instanceof Date
+          ? e.endTime.toISOString()
+          : String(e.endTime)
+        : null,
+      location_name: e.locationName,
+      location_address: e.locationAddress,
     }));
 
     let sentCount = 0;
@@ -110,9 +121,9 @@ export async function POST(request: NextRequest) {
 
     for (const guest of eligible) {
       try {
-        const guestName = `${guest.first_name}${guest.last_name ? ` ${guest.last_name}` : ""}`;
+        const guestName = `${guest.firstName}${guest.lastName ? ` ${guest.lastName}` : ""}`;
         const icsContent = generateIcs(eventsForIcs, guestName);
-        const html = buildCalendarEmailHtml(eventsForIcs, guest.first_name);
+        const html = buildCalendarEmailHtml(eventsForIcs, guest.firstName);
 
         const result = await sendEmail({
           from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
@@ -132,16 +143,15 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        await db
-          .updateTable("guests")
-          .set({
-            calendar_invite_sent: true,
-            calendar_invite_sent_at: new Date().toISOString(),
-            calendar_invite_resend_count:
-              (guest.calendar_invite_resend_count || 0) + 1,
-          })
-          .where("id", "=", guest.id)
-          .execute();
+        await db.guest.update({
+          where: { id: guest.id },
+          data: {
+            calendarInviteSent: true,
+            calendarInviteSentAt: new Date().toISOString(),
+            calendarInviteResendCount:
+              (guest.calendarInviteResendCount || 0) + 1,
+          },
+        });
 
         sentCount++;
       } catch (guestError) {

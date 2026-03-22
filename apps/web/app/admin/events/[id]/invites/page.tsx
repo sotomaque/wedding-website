@@ -36,7 +36,7 @@ interface GuestData {
   firstName: string;
   lastName: string | null;
   email: string | null;
-  inviteCode: string;
+  inviteCode: string | null;
   mainRsvpStatus: "pending" | "yes" | "no";
   side: "bride" | "groom" | "both" | null;
   list: "a" | "b" | "c";
@@ -51,28 +51,30 @@ interface GuestData {
 
 async function getEventWithInvites(eventId: string, filters: SearchParams) {
   // Verify event exists and is not a default event
-  const event = await db
-    .selectFrom("events")
-    .selectAll()
-    .where("id", "=", eventId)
-    .executeTakeFirst();
+  const event = await db.event.findUnique({
+    where: { id: eventId },
+  });
 
   if (!event) {
     return null;
   }
 
-  if (event.is_default) {
+  if (event.isDefault) {
     return {
       event: {
         id: event.id,
         name: event.name,
-        eventDate: event.event_date
-          ? event.event_date instanceof Date
-            ? (event.event_date.toISOString().split("T")[0] ?? null)
-            : String(event.event_date)
+        eventDate: event.eventDate
+          ? event.eventDate instanceof Date
+            ? (event.eventDate.toISOString().split("T")[0] ?? null)
+            : String(event.eventDate)
           : null,
-        startTime: event.start_time,
-        locationName: event.location_name,
+        startTime: event.startTime
+          ? event.startTime instanceof Date
+            ? event.startTime.toISOString()
+            : String(event.startTime)
+          : null,
+        locationName: event.locationName,
       },
       isDefault: true,
       guests: [] as GuestData[],
@@ -80,61 +82,46 @@ async function getEventWithInvites(eventId: string, filters: SearchParams) {
     };
   }
 
-  // Get all guests with their invite status for this event
-  const guests = await db
-    .selectFrom("guests")
-    .leftJoin("guest_event_invites", (join) =>
-      join
-        .onRef("guests.id", "=", "guest_event_invites.guest_id")
-        .on("guest_event_invites.event_id", "=", eventId),
-    )
-    .select([
-      "guests.id",
-      "guests.first_name",
-      "guests.last_name",
-      "guests.email",
-      "guests.invite_code",
-      "guests.rsvp_status as main_rsvp_status",
-      "guests.side",
-      "guests.list",
-      "guests.family",
-      "guests.bridal_party_role",
-      "guest_event_invites.id as invite_id",
-      "guest_event_invites.rsvp_status as event_rsvp_status",
-      "guest_event_invites.email_sent",
-      "guest_event_invites.email_sent_at",
-      "guest_event_invites.email_resend_count",
-    ])
-    .where("guests.is_plus_one", "=", false) // Only show primary guests
-    .orderBy("guests.first_name", "asc")
-    .execute();
+  // Get all guests (non-plus-ones) with their invite status for this event
+  const guests = await db.guest.findMany({
+    where: { isPlusOne: false },
+    include: {
+      guestEventInvites: {
+        where: { eventId },
+      },
+    },
+    orderBy: { firstName: "asc" },
+  });
 
   // Transform the data
-  const allGuests: GuestData[] = guests.map((guest) => ({
-    id: guest.id,
-    firstName: guest.first_name,
-    lastName: guest.last_name,
-    email: guest.email,
-    inviteCode: guest.invite_code,
-    mainRsvpStatus: guest.main_rsvp_status as "pending" | "yes" | "no",
-    side: guest.side as "bride" | "groom" | "both" | null,
-    list: guest.list as "a" | "b" | "c",
-    family: guest.family ?? false,
-    bridalPartyRole: guest.bridal_party_role as BridalPartyRole,
-    isInvited: guest.invite_id !== null,
-    eventRsvpStatus: (guest.event_rsvp_status || null) as
-      | "pending"
-      | "yes"
-      | "no"
-      | null,
-    emailSent: guest.email_sent || false,
-    emailSentAt: guest.email_sent_at
-      ? guest.email_sent_at instanceof Date
-        ? guest.email_sent_at.toISOString()
-        : String(guest.email_sent_at)
-      : null,
-    emailResendCount: guest.email_resend_count || 0,
-  }));
+  const allGuests: GuestData[] = guests.map((guest) => {
+    const invite = guest.guestEventInvites[0] ?? null;
+    return {
+      id: guest.id,
+      firstName: guest.firstName,
+      lastName: guest.lastName,
+      email: guest.email,
+      inviteCode: guest.inviteCode,
+      mainRsvpStatus: guest.rsvpStatus as "pending" | "yes" | "no",
+      side: guest.side as "bride" | "groom" | "both" | null,
+      list: guest.list as "a" | "b" | "c",
+      family: guest.family ?? false,
+      bridalPartyRole: guest.bridalPartyRole as BridalPartyRole,
+      isInvited: invite !== null,
+      eventRsvpStatus: (invite?.rsvpStatus || null) as
+        | "pending"
+        | "yes"
+        | "no"
+        | null,
+      emailSent: invite?.emailSent || false,
+      emailSentAt: invite?.emailSentAt
+        ? invite.emailSentAt instanceof Date
+          ? invite.emailSentAt.toISOString()
+          : String(invite.emailSentAt)
+        : null,
+      emailResendCount: invite?.emailResendCount || 0,
+    };
+  });
 
   // Apply filters
   let filteredGuests = allGuests;
@@ -191,13 +178,17 @@ async function getEventWithInvites(eventId: string, filters: SearchParams) {
     event: {
       id: event.id,
       name: event.name,
-      eventDate: event.event_date
-        ? event.event_date instanceof Date
-          ? (event.event_date.toISOString().split("T")[0] ?? null)
-          : String(event.event_date)
+      eventDate: event.eventDate
+        ? event.eventDate instanceof Date
+          ? (event.eventDate.toISOString().split("T")[0] ?? null)
+          : String(event.eventDate)
         : null,
-      startTime: event.start_time,
-      locationName: event.location_name,
+      startTime: event.startTime
+        ? event.startTime instanceof Date
+          ? event.startTime.toISOString()
+          : String(event.startTime)
+        : null,
+      locationName: event.locationName,
     },
     isDefault: false,
     guests: filteredGuests,

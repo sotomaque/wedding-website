@@ -28,11 +28,9 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Fetch all guests with this invite code
-    const guests = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("invite_code", "=", inviteCode)
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { inviteCode },
+    });
 
     if (guests.length === 0) {
       return NextResponse.json(
@@ -42,23 +40,20 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Update all guests with this invite code (primary + plus one)
-    await db
-      .updateTable("guests")
-      .set({
-        mailing_address: mailingAddress || null,
-        phone_number: phoneNumber || null,
+    await db.guest.updateMany({
+      where: { inviteCode },
+      data: {
+        mailingAddress: mailingAddress || null,
+        phoneNumber: phoneNumber || null,
         whatsapp: whatsapp || null,
-        preferred_contact_method: preferredContactMethod || null,
-      })
-      .where("invite_code", "=", inviteCode)
-      .execute();
+        preferredContactMethod: preferredContactMethod || null,
+      },
+    });
 
     // Fetch updated guests
-    const updatedGuests = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("invite_code", "=", inviteCode)
-      .execute();
+    const updatedGuests = await db.guest.findMany({
+      where: { inviteCode },
+    });
 
     return NextResponse.json({ guests: updatedGuests });
   } catch (error) {

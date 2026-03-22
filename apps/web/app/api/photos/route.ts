@@ -10,12 +10,10 @@ import { db } from "@/lib/db";
  */
 export async function GET() {
   try {
-    const photos = await db
-      .selectFrom("photos")
-      .selectAll()
-      .where("is_active", "=", true)
-      .orderBy("display_order", "asc")
-      .execute();
+    const photos = await db.photo.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: "asc" },
+    });
 
     return NextResponse.json({ photos });
   } catch (error) {

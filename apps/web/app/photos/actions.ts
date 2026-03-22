@@ -7,14 +7,13 @@ export async function saveGuestPhoto(
   uploaderName: string | null,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await db
-      .insertInto("guest_photos")
-      .values({
+    await db.guestPhoto.create({
+      data: {
         url,
-        uploader_name: uploaderName || null,
-        is_visible: true,
-      })
-      .execute();
+        uploaderName: uploaderName || null,
+        isVisible: true,
+      },
+    });
 
     return { success: true };
   } catch (error) {

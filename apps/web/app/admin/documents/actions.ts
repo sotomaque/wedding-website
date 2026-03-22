@@ -13,34 +13,27 @@ export type DocumentCategory =
 
 export type WeddingDocument = {
   id: string;
-  wedding_id: string | null;
+  weddingId: string | null;
   title: string;
   description: string | null;
-  file_url: string;
-  file_type: string;
-  file_size: number | null;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number | null;
   category: DocumentCategory;
-  uploaded_by: string;
-  created_at: string;
-  updated_at: string;
+  uploadedBy: string;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export async function getDocuments(
   category?: DocumentCategory,
 ): Promise<WeddingDocument[]> {
   try {
-    let query = db
-      .selectFrom("documents")
-      .selectAll()
-      .orderBy("created_at", "desc");
-
-    if (category) {
-      query = query.where("category", "=", category);
-    }
-
-    const rows = await query.execute();
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings when passed across the server/client boundary
-    return rows as any;
+    const rows = await db.document.findMany({
+      where: category ? { category } : undefined,
+      orderBy: { createdAt: "desc" },
+    });
+    return rows as WeddingDocument[];
   } catch (error) {
     console.error("Error fetching documents:", error);
     throw error;
@@ -66,18 +59,17 @@ export async function createDocument(data: {
     if (!data.file_url)
       return { success: false, error: "File URL is required" };
 
-    await db
-      .insertInto("documents")
-      .values({
+    await db.document.create({
+      data: {
         title,
         description: data.description.trim() || null,
-        file_url: data.file_url,
-        file_type: data.file_type,
-        file_size: data.file_size,
+        fileUrl: data.file_url,
+        fileType: data.file_type,
+        fileSize: data.file_size,
         category: data.category,
-        uploaded_by: data.uploaded_by,
-      })
-      .execute();
+        uploadedBy: data.uploaded_by,
+      },
+    });
 
     revalidatePath("/admin/documents");
     return { success: true };
@@ -100,18 +92,16 @@ export async function updateDocument(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db
-      .updateTable("documents")
-      .set({
+    await db.document.update({
+      where: { id },
+      data: {
         ...(data.title !== undefined && { title: data.title.trim() }),
         ...(data.description !== undefined && {
           description: data.description.trim() || null,
         }),
         ...(data.category !== undefined && { category: data.category }),
-        updated_at: new Date().toISOString(),
-      })
-      .where("id", "=", id)
-      .execute();
+      },
+    });
 
     revalidatePath("/admin/documents");
     return { success: true };
@@ -129,7 +119,7 @@ export async function deleteDocument(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db.deleteFrom("documents").where("id", "=", id).execute();
+    await db.document.delete({ where: { id } });
     revalidatePath("/admin/documents");
     return { success: true };
   } catch (error) {

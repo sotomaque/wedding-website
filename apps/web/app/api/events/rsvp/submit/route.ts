@@ -28,12 +28,12 @@ export async function POST(request: NextRequest) {
     const normalizedCode = inviteCode.toUpperCase().trim();
 
     // Find guest with this invite code
-    const guest = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("invite_code", "=", normalizedCode)
-      .where("is_plus_one", "=", false) // Only match primary guests
-      .executeTakeFirst();
+    const guest = await db.guest.findFirst({
+      where: {
+        inviteCode: normalizedCode,
+        isPlusOne: false, // Only match primary guests
+      },
+    });
 
     if (!guest) {
       return NextResponse.json(
@@ -43,23 +43,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify event exists
-    const event = await db
-      .selectFrom("events")
-      .selectAll()
-      .where("id", "=", eventId)
-      .executeTakeFirst();
+    const event = await db.event.findUnique({
+      where: { id: eventId },
+    });
 
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
     // Check if guest is invited to this event
-    const invite = await db
-      .selectFrom("guest_event_invites")
-      .selectAll()
-      .where("guest_id", "=", guest.id)
-      .where("event_id", "=", eventId)
-      .executeTakeFirst();
+    const invite = await db.guestEventInvite.findFirst({
+      where: {
+        guestId: guest.id,
+        eventId: eventId,
+      },
+    });
 
     if (!invite) {
       return NextResponse.json(
@@ -70,11 +68,10 @@ export async function POST(request: NextRequest) {
 
     // Update the RSVP status
     const rsvpStatus = attending ? "yes" : "no";
-    await db
-      .updateTable("guest_event_invites")
-      .set({ rsvp_status: rsvpStatus })
-      .where("id", "=", invite.id)
-      .execute();
+    await db.guestEventInvite.update({
+      where: { id: invite.id },
+      data: { rsvpStatus },
+    });
 
     // Send notification email to admins
     try {
@@ -94,11 +91,11 @@ export async function POST(request: NextRequest) {
 
         const emailHtml = getEventRsvpNotificationEmail({
           guest: {
-            firstName: guest.first_name,
-            lastName: guest.last_name,
+            firstName: guest.firstName,
+            lastName: guest.lastName,
             email: guest.email,
           },
-          inviteCode: guest.invite_code,
+          inviteCode: guest.inviteCode ?? "",
           eventName: event.name,
           attending,
           submittedAt,
@@ -107,7 +104,7 @@ export async function POST(request: NextRequest) {
         await sendEmail({
           from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
           to: adminEmails,
-          subject: `Event RSVP: ${guest.first_name} ${attending ? "is attending" : "declined"} ${event.name}`,
+          subject: `Event RSVP: ${guest.firstName} ${attending ? "is attending" : "declined"} ${event.name}`,
           html: emailHtml,
         });
       }

@@ -40,22 +40,22 @@ import { GiftsFilters } from "./gifts-filters";
 
 interface Gift {
   id: string;
-  stripe_checkout_session_id: string | null;
-  stripe_payment_intent_id: string | null;
-  stripe_payment_link_id: string | null;
-  stripe_charge_id: string | null;
-  donor_email: string | null;
-  donor_name: string | null;
-  amount_cents: number;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
+  stripePaymentLinkId: string | null;
+  stripeChargeId: string | null;
+  donorEmail: string | null;
+  donorName: string | null;
+  amountCents: number;
   currency: string;
-  gift_type: "baby_fund" | "honeymoon" | "student_loans" | null;
-  guest_id: string | null;
+  giftType: "baby_fund" | "honeymoon" | "student_loans" | null;
+  guestId: string | null;
   status: "pending" | "completed" | "refunded" | "failed";
-  thank_you_email_sent: boolean;
-  thank_you_email_sent_at: string | null;
+  thankYouEmailSent: boolean;
+  thankYouEmailSentAt: string | null;
   notes: string | null;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
   guest_first_name?: string | null;
   guest_last_name?: string | null;
   guest_email?: string | null;
@@ -287,10 +287,10 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
           <Input
             placeholder="Filter by donor name..."
             value={
-              (table.getColumn("donor_name")?.getFilterValue() as string) ?? ""
+              (table.getColumn("donorName")?.getFilterValue() as string) ?? ""
             }
             onChange={(e) =>
-              table.getColumn("donor_name")?.setFilterValue(e.target.value)
+              table.getColumn("donorName")?.setFilterValue(e.target.value)
             }
             className="max-w-sm"
           />

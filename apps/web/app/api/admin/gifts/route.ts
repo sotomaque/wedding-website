@@ -20,32 +20,27 @@ export async function GET() {
       );
     }
 
-    // Get all gifts with guest information via left join
-    const gifts = await db
-      .selectFrom("gifts")
-      .leftJoin("guests", "gifts.guest_id", "guests.id")
-      .select([
-        "gifts.id",
-        "gifts.stripe_checkout_session_id",
-        "gifts.stripe_payment_intent_id",
-        "gifts.stripe_payment_link_id",
-        "gifts.donor_email",
-        "gifts.donor_name",
-        "gifts.amount_cents",
-        "gifts.currency",
-        "gifts.gift_type",
-        "gifts.guest_id",
-        "gifts.status",
-        "gifts.thank_you_email_sent",
-        "gifts.thank_you_email_sent_at",
-        "gifts.created_at",
-        "gifts.updated_at",
-        "guests.first_name as guest_first_name",
-        "guests.last_name as guest_last_name",
-        "guests.invite_code as guest_invite_code",
-      ])
-      .orderBy("gifts.created_at", "desc")
-      .execute();
+    // Get all gifts with guest information via include relation
+    const gifts = await db.gift.findMany({
+      include: {
+        guest: {
+          select: {
+            firstName: true,
+            lastName: true,
+            inviteCode: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Flatten guest info onto each gift for backwards compatibility
+    const giftsWithGuest = gifts.map((gift) => ({
+      ...gift,
+      guest_first_name: gift.guest?.firstName ?? null,
+      guest_last_name: gift.guest?.lastName ?? null,
+      guest_invite_code: gift.guest?.inviteCode ?? null,
+    }));
 
     // Calculate totals
     const totals = {
@@ -62,25 +57,25 @@ export async function GET() {
 
     for (const gift of gifts) {
       if (gift.status === "completed") {
-        totals.total_amount_cents += gift.amount_cents;
+        totals.total_amount_cents += gift.amountCents;
 
-        if (gift.gift_type === "baby_fund") {
-          totals.by_type.baby_fund += gift.amount_cents;
-        } else if (gift.gift_type === "honeymoon") {
-          totals.by_type.honeymoon += gift.amount_cents;
-        } else if (gift.gift_type === "student_loans") {
-          totals.by_type.student_loans += gift.amount_cents;
+        if (gift.giftType === "baby_fund") {
+          totals.by_type.baby_fund += gift.amountCents;
+        } else if (gift.giftType === "honeymoon") {
+          totals.by_type.honeymoon += gift.amountCents;
+        } else if (gift.giftType === "student_loans") {
+          totals.by_type.student_loans += gift.amountCents;
         } else {
-          totals.by_type.unknown += gift.amount_cents;
+          totals.by_type.unknown += gift.amountCents;
         }
 
-        if (gift.guest_id) {
+        if (gift.guestId) {
           totals.matched_to_guests++;
         }
       }
     }
 
-    return NextResponse.json({ gifts, totals });
+    return NextResponse.json({ gifts: giftsWithGuest, totals });
   } catch (error) {
     console.error("Error in GET /api/admin/gifts:", error);
     return NextResponse.json(
@@ -121,34 +116,34 @@ export async function PATCH(request: NextRequest) {
 
     // Build update object
     const updates: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     if (thank_you_email_sent !== undefined) {
-      updates.thank_you_email_sent = thank_you_email_sent;
+      updates.thankYouEmailSent = thank_you_email_sent;
       if (thank_you_email_sent) {
-        updates.thank_you_email_sent_at = new Date().toISOString();
+        updates.thankYouEmailSentAt = new Date().toISOString();
       }
     }
 
     if (guest_id !== undefined) {
-      updates.guest_id = guest_id;
+      updates.guestId = guest_id;
     }
 
     if (notes !== undefined) {
       updates.notes = notes;
     }
 
-    const updatedGift = await db
-      .updateTable("gifts")
-      .set(updates)
-      .where("id", "=", id)
-      .returningAll()
-      .executeTakeFirst();
-
-    if (!updatedGift) {
+    // Check if gift exists first
+    const existing = await db.gift.findUnique({ where: { id } });
+    if (!existing) {
       return NextResponse.json({ error: "Gift not found" }, { status: 404 });
     }
+
+    const updatedGift = await db.gift.update({
+      where: { id },
+      data: updates,
+    });
 
     return NextResponse.json({ gift: updatedGift });
   } catch (error) {

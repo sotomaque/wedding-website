@@ -45,20 +45,20 @@ export async function PATCH(
     const body = await request.json();
     const { is_visible } = body as { is_visible: boolean };
 
-    const photo = await db
-      .updateTable("guest_photos")
-      .set({
-        is_visible,
-        hidden_at: is_visible ? null : new Date(),
-        hidden_by: is_visible ? null : auth.email,
-      })
-      .where("id", "=", id)
-      .returningAll()
-      .executeTakeFirst();
-
-    if (!photo) {
+    // Check if photo exists first
+    const existing = await db.guestPhoto.findUnique({ where: { id } });
+    if (!existing) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
+
+    const photo = await db.guestPhoto.update({
+      where: { id },
+      data: {
+        isVisible: is_visible,
+        hiddenAt: is_visible ? null : new Date(),
+        hiddenBy: is_visible ? null : auth.email,
+      },
+    });
 
     return NextResponse.json({ photo });
   } catch (error) {
@@ -88,15 +88,12 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const photo = await db
-      .deleteFrom("guest_photos")
-      .where("id", "=", id)
-      .returningAll()
-      .executeTakeFirst();
-
-    if (!photo) {
+    const existing = await db.guestPhoto.findUnique({ where: { id } });
+    if (!existing) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
+
+    const photo = await db.guestPhoto.delete({ where: { id } });
 
     return NextResponse.json({ photo });
   } catch (error) {

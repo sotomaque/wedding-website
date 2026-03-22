@@ -9,12 +9,10 @@ export const metadata = {
 };
 
 export default async function SlideshowPage() {
-  const photos = await db
-    .selectFrom("guest_photos")
-    .selectAll()
-    .where("is_visible", "=", true)
-    .orderBy("uploaded_at", "desc")
-    .execute();
+  const photos = await db.guestPhoto.findMany({
+    where: { isVisible: true },
+    orderBy: { uploadedAt: "desc" },
+  });
 
   const appUrl = env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -23,8 +21,8 @@ export default async function SlideshowPage() {
       photos={photos.map((p) => ({
         id: p.id,
         url: p.url,
-        uploader_name: p.uploader_name,
-        uploaded_at: p.uploaded_at.toISOString(),
+        uploader_name: p.uploaderName,
+        uploaded_at: p.uploadedAt.toISOString(),
       }))}
       uploadUrl={`${appUrl}/photos/upload`}
     />

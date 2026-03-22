@@ -38,11 +38,10 @@ export async function POST(
     }
 
     // Verify the chart exists and get its tables
-    const tables = await db
-      .selectFrom("seating_tables")
-      .select(["id"])
-      .where("seating_chart_id", "=", chartId)
-      .execute();
+    const tables = await db.seatingTable.findMany({
+      where: { seatingChartId: chartId },
+      select: { id: true },
+    });
 
     const validTableIds = new Set(tables.map((t) => t.id));
 
@@ -82,25 +81,21 @@ export async function POST(
 
     // Only delete if we have valid UUIDs
     if (guestIds.length > 0) {
-      await db
-        .deleteFrom("guest_table_assignments")
-        .where("guest_id", "in", guestIds)
-        .execute();
+      await db.guestTableAssignment.deleteMany({
+        where: { guestId: { in: guestIds } },
+      });
     }
 
     // Insert new assignments
-    const insertValues = uniqueAssignments.map(
-      (a: { guestId: string; tableId: string; seatNumber?: number }) => ({
-        guest_id: a.guestId,
-        seating_table_id: a.tableId,
-        seat_number: a.seatNumber || null,
-      }),
-    );
-
-    await db
-      .insertInto("guest_table_assignments")
-      .values(insertValues)
-      .execute();
+    await db.guestTableAssignment.createMany({
+      data: uniqueAssignments.map(
+        (a: { guestId: string; tableId: string; seatNumber?: number }) => ({
+          guestId: a.guestId,
+          seatingTableId: a.tableId,
+          seatNumber: a.seatNumber || null,
+        }),
+      ),
+    });
 
     return NextResponse.json({
       success: true,
@@ -146,11 +141,10 @@ export async function DELETE(
     const guestIdsParam = searchParams.get("guestIds");
 
     // Get all tables for this chart
-    const tables = await db
-      .selectFrom("seating_tables")
-      .select(["id"])
-      .where("seating_chart_id", "=", chartId)
-      .execute();
+    const tables = await db.seatingTable.findMany({
+      where: { seatingChartId: chartId },
+      select: { id: true },
+    });
 
     const tableIds = tables.map((t) => t.id);
 
@@ -161,17 +155,17 @@ export async function DELETE(
     if (guestIdsParam) {
       // Delete specific guest assignments
       const guestIds = guestIdsParam.split(",");
-      await db
-        .deleteFrom("guest_table_assignments")
-        .where("seating_table_id", "in", tableIds)
-        .where("guest_id", "in", guestIds)
-        .execute();
+      await db.guestTableAssignment.deleteMany({
+        where: {
+          seatingTableId: { in: tableIds },
+          guestId: { in: guestIds },
+        },
+      });
     } else {
       // Delete all assignments for this chart's tables
-      await db
-        .deleteFrom("guest_table_assignments")
-        .where("seating_table_id", "in", tableIds)
-        .execute();
+      await db.guestTableAssignment.deleteMany({
+        where: { seatingTableId: { in: tableIds } },
+      });
     }
 
     return NextResponse.json({ success: true });

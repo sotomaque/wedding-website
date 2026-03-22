@@ -42,12 +42,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Kysely query - fetch guest details
-    const guest = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("id", "=", guestId)
-      .executeTakeFirst();
+    // Fetch guest details
+    const guest = await db.guest.findUnique({
+      where: { id: guestId },
+    });
 
     if (!guest) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
@@ -77,20 +75,19 @@ export async function POST(request: NextRequest) {
     }
 
     const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const rsvpUrl = `${appUrl}/rsvp?code=${guest.invite_code}`;
+    const rsvpUrl = `${appUrl}/rsvp?code=${guest.inviteCode}`;
 
     // Fetch wedding date from the Wedding Ceremony event
     let weddingDate = "";
     try {
-      const ceremonyEvent = await db
-        .selectFrom("events")
-        .select(["event_date"])
-        .where("name", "=", "Wedding Ceremony")
-        .executeTakeFirst();
+      const ceremonyEvent = await db.event.findFirst({
+        where: { name: "Wedding Ceremony" },
+        select: { eventDate: true },
+      });
 
-      if (ceremonyEvent?.event_date) {
-        // event_date can be a Date object or string depending on the driver
-        const dateValue = ceremonyEvent.event_date;
+      if (ceremonyEvent?.eventDate) {
+        // eventDate can be a Date object or string depending on the driver
+        const dateValue = ceremonyEvent.eventDate;
         const dateObj =
           dateValue instanceof Date
             ? dateValue
@@ -118,9 +115,9 @@ export async function POST(request: NextRequest) {
         template: {
           id: WEDDING_INVITATION_TEMPLATE_ALIAS,
           variables: {
-            FIRST_NAME: guest.first_name || "",
-            LAST_NAME: guest.last_name || "",
-            INVITE_CODE: guest.invite_code,
+            FIRST_NAME: guest.firstName || "",
+            LAST_NAME: guest.lastName || "",
+            INVITE_CODE: guest.inviteCode ?? "",
             RSVP_URL: rsvpUrl,
             APP_URL: appUrl,
             WEDDING_DATE: weddingDate,
@@ -136,14 +133,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Increment number_of_resends
-      await db
-        .updateTable("guests")
-        .set({
-          number_of_resends: (guest.number_of_resends || 0) + 1,
-        })
-        .where("id", "=", guestId)
-        .execute();
+      // Increment numberOfResends
+      await db.guest.update({
+        where: { id: guestId },
+        data: {
+          numberOfResends: (guest.numberOfResends || 0) + 1,
+        },
+      });
 
       return NextResponse.json({
         success: true,

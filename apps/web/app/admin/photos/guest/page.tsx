@@ -16,11 +16,9 @@ export default async function GuestPhotosAdminPage() {
   const { authorized } = await isAdmin();
   if (!authorized) redirect("/unauthorized");
 
-  const photos = await db
-    .selectFrom("guest_photos")
-    .selectAll()
-    .orderBy("uploaded_at", "desc")
-    .execute();
+  const photos = await db.guestPhoto.findMany({
+    orderBy: { uploadedAt: "desc" },
+  });
 
   const appUrl = env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const uploadUrl = `${appUrl}/photos/upload`;
@@ -39,9 +37,9 @@ export default async function GuestPhotosAdminPage() {
         photos={photos.map((p) => ({
           id: p.id,
           url: p.url,
-          uploader_name: p.uploader_name,
-          is_visible: p.is_visible,
-          uploaded_at: p.uploaded_at.toISOString(),
+          uploader_name: p.uploaderName,
+          is_visible: p.isVisible,
+          uploaded_at: p.uploadedAt.toISOString(),
         }))}
         uploadUrl={uploadUrl}
       />

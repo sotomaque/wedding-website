@@ -4,22 +4,183 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 
 ## Tech Stack
 
-| Layer          | Technology                          |
-| -------------- | ----------------------------------- |
-| Framework      | Next.js 16 (App Router)             |
-| Language       | TypeScript 5.7+ (strict)            |
-| Package Mgr    | Bun                                 |
-| Styling        | Tailwind CSS 4                      |
-| Components     | shadcn/ui (Radix UI)                |
-| Database       | Supabase (PostgreSQL) + Kysely ORM  |
-| Auth           | Clerk                               |
-| Email          | Resend (templates)                  |
-| Payments       | Stripe                              |
-| File Uploads   | UploadThing                         |
-| Linting        | Biome                               |
-| API Docs       | next-openapi-gen + Swagger UI       |
-| CI             | GitHub Actions                      |
-| Hosting        | Vercel                              |
+| Layer          | Technology                                    |
+| -------------- | --------------------------------------------- |
+| Runtime        | [Bun](https://bun.sh)                         |
+| Framework      | [Next.js 16](https://nextjs.org) (App Router), React 19 |
+| Database       | PostgreSQL via [Supabase](https://supabase.com) + [Prisma](https://prisma.io) |
+| Auth           | [Clerk](https://clerk.com)                    |
+| Styling        | [Tailwind CSS 4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) |
+| Email          | [Resend](https://resend.com) (templates)      |
+| Payments       | [Stripe](https://stripe.com)                  |
+| File Uploads   | [UploadThing](https://uploadthing.com)        |
+| Quality        | Biome · Knip · Lefthook · Playwright E2E      |
+| Hosting        | [Vercel](https://vercel.com)                  |
+
+---
+
+## Project structure
+
+```
+apps/web/          → Next.js frontend + API routes
+packages/db/       → Prisma schema & client
+packages/ui/       → Shared UI components (shadcn/ui)
+supabase/          → Migrations + seed SQL
+```
+
+---
+
+## Getting started
+
+```bash
+bun install
+cp apps/web/.env.example apps/web/.env.local   # fill in your keys
+bun dev                                        # start dev server
+```
+
+See [Environment file layout](#environment-file-layout) for detailed configuration.
+
+---
+
+## Development workflows
+
+### Running local dev
+
+1. Copy the example env and fill in your keys:
+   ```bash
+   cp apps/web/.env.example apps/web/.env.local
+   ```
+2. Add your database URLs to `packages/db/.env` (Prisma reads connection strings from there).
+3. Generate the Prisma client and start the dev server:
+   ```bash
+   cd packages/db && bun run db:generate
+   bun dev
+   ```
+
+The app runs at `http://localhost:3000` with Turbopack HMR.
+
+### Running against local Supabase
+
+For fully offline development with seeded test data:
+
+1. Start the local Supabase stack (PostgreSQL, Auth, Storage in Docker):
+   ```bash
+   bunx supabase start
+   ```
+2. Switch your environment to local:
+   ```bash
+   cd apps/web && bun run env:local
+   ```
+3. Reset the local database to apply all migrations and seed data:
+   ```bash
+   bunx supabase db reset
+   ```
+4. Generate the Prisma client (if not already done):
+   ```bash
+   cd packages/db && bun run db:generate
+   ```
+5. Start the dev server:
+   ```bash
+   bun dev
+   ```
+
+The local Supabase database runs on `localhost:54322` with seed data from `supabase/seed.sql`. Auth still goes through Clerk cloud, so you need valid Clerk dev keys.
+
+### Running locally against production
+
+To switch to the production database:
+
+```bash
+cd apps/web && bun run env:prod
+```
+
+This copies `apps/web/.env.local.prod` → `.env.local` and `packages/db/.env.prod` → `packages/db/.env`.
+
+> **Tip:** The toggle scripts update both the web app env and the Prisma CLI env, so `prisma studio` and `prisma db push` will also point at the correct database.
+
+### Switching back to local
+
+```bash
+cd apps/web && bun run env:local
+```
+
+### Environment file layout
+
+```
+apps/web/
+  .env.local          ← active env for current session — gitignored, swapped by toggle scripts
+  .env.local.local    ← local Supabase config — gitignored
+  .env.local.prod     ← production config — gitignored
+  .env.example        ← template with all required keys — committed
+
+packages/db/
+  .env                ← DB URLs for Prisma CLI — gitignored, swapped by toggle scripts
+  .env.local-template ← local Supabase DB URLs — committed
+  .env.prod           ← production DB URLs — gitignored
+```
+
+---
+
+## Database (Supabase + Prisma)
+
+The project uses **Supabase** for PostgreSQL with **Prisma** as the ORM. Schema changes go through Supabase migrations (not `prisma migrate`), and Prisma is used only for client generation and type-safe queries.
+
+### How it works
+
+- **Prisma schema** lives at `packages/db/prisma/schema.prisma` with PascalCase models (`Guest`, `Event`, `SeatingChart`) mapped to snake_case tables via `@@map()`
+- **Prisma client** is generated into `node_modules/@prisma/client` and exported from `packages/db/src/index.ts` as `db`
+- **Supabase migrations** in `supabase/migrations/` are the source of truth for schema changes
+- **Connection**: Prisma reads `POSTGRES_PRISMA_URL` (pooled, port 6543) and `POSTGRES_URL_NON_POOLING` (direct, port 5432) from `packages/db/.env`
+
+### Making schema changes
+
+1. Edit `packages/db/prisma/schema.prisma`
+2. Apply to local/dev DB: `cd packages/db && bunx prisma db push`
+3. Generate migration: `cd packages/db && bun run db:migrate:new <descriptive_name>`
+4. Verify: `bunx supabase db reset` (replays all migrations + seed)
+5. Generate Prisma client: `cd packages/db && bun run db:generate`
+6. Commit both `schema.prisma` and the new `supabase/migrations/<timestamp>_<name>.sql`
+
+### Key commands
+
+| Command | Description |
+|---------|-------------|
+| `cd packages/db && bun run db:generate` | Regenerate Prisma client |
+| `cd packages/db && bun run db:push` | Push schema to local DB |
+| `cd packages/db && bun run db:pull` | Pull schema from DB into schema.prisma |
+| `cd packages/db && bun run db:migrate:new <name>` | Generate a new migration from schema diff |
+| `cd packages/db && bun run db:reset` | Drop & recreate DB from migrations + seed |
+| `cd packages/db && bun run db:studio` | Open Prisma Studio |
+
+### Migrations
+
+Migrations live in `supabase/migrations/` and are numbered sequentially (`000_`, `001_`, ...).
+
+- Supabase tracks applied migrations in `supabase_migrations.schema_migrations`
+- Each migration runs exactly once, in order, and is never re-run
+- On preview branches, ALL migrations run from scratch on a fresh database
+- On production, only new (unapplied) migrations run
+- **Never modify** an existing migration that has already run on production
+
+### Preview environments & deployment pipeline
+
+The project uses **Supabase Branching** + **Vercel Previews** for a fully automated PR-to-production pipeline.
+
+**When a PR is opened:**
+
+1. **Supabase** creates an isolated preview database, runs all migrations, then applies `supabase/seed.sql`
+2. **Vercel** deploys a preview of the app with the Supabase-provided preview DB env vars injected automatically
+3. **CI** runs lint, typecheck, and unit tests; then E2E tests run against the Vercel preview URL
+
+**When a PR is merged to `main`:**
+
+1. **Supabase** deletes the preview branch database
+2. **Supabase** applies any **new** migration files to the production database automatically
+3. **Vercel** deploys to production (with production DB env vars)
+
+> **Important:** Production migrations come from the `.sql` files in `supabase/migrations/`, not from Prisma's `db push`. The `db push` command does a direct schema diff and is only safe for local development.
+
+---
 
 ## Features
 
@@ -30,25 +191,16 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 - Gift registry via Stripe payment links
 - Hotels page with interest tracking
 - Things to do recommendations
-- Dark/light mode, responsive design, SEO optimized
+- Dark/light mode, responsive design
 
 ### Guest Photo Sharing
-- Guests scan a QR code at the reception and upload photos from their phones at `/photos/upload` (no login required)
-- Photos appear immediately on a live `/slideshow` page with crossfade transitions, uploader name attribution, and auto-refresh every 30 seconds
-- The slideshow displays a QR code in the corner so guests watching can upload directly
-- Admins can hide or permanently delete photos from `/admin/photos/guest`
-- Download all guest photos as a single ZIP archive from the admin dashboard
+- Guests scan a QR code at the reception and upload photos from their phones
+- Photos appear immediately on a live slideshow page with crossfade transitions
+- Admins can hide or permanently delete photos; download all as a ZIP archive
 
 ### Calendar Invites
-
-- Attending guests with a valid email address automatically receive a `.ics` calendar invite immediately after submitting their RSVP — no extra action needed
-- The invite contains one `VEVENT` per default wedding event (ceremony + reception), with correct timezone (`America/New_York`), location, and a personalized description
-- Admins can also trigger sends manually from `/admin/guests`:
-  - **Per-guest:** a calendar icon button appears in each row for attending guests — click to send (or resend) instantly
-  - **Bulk:** select multiple attending guests and click "Send Calendar Invites" in the bulk actions bar
-- Send status is tracked per guest: `calendar_invite_sent`, `calendar_invite_sent_at`, `calendar_invite_resend_count`
-- The `.ics` file is generated server-side in pure TypeScript (`lib/calendar/generate-ics.ts`) — no third-party calendar library required
-- Resend delivers the invite as an HTML email with the `.ics` file attached (opens directly in Google Calendar, Apple Calendar, Outlook, etc.)
+- Attending guests automatically receive `.ics` calendar invites after RSVP
+- Admins can trigger sends manually (per-guest or bulk)
 
 ### Admin Dashboard (`/admin`)
 - Guest management with tier lists (A/B/C priority)
@@ -59,404 +211,97 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 - Hotel management
 - Wedding todo list
 - Guest photo moderation with bulk ZIP download
-- Service links dashboard (GitHub, Vercel, Supabase, Clerk, Stripe, Resend)
-
-### API Documentation (`/admin/api-docs`)
-
-Interactive API documentation powered by [next-openapi-gen](https://github.com/nicobao/next-openapi-gen) and [Swagger UI](https://swagger.io/tools/swagger-ui/). The OpenAPI spec is auto-generated from JSDoc annotations across all 30 API route handlers.
-
-- **Swagger UI** - Browse and test every endpoint from the browser
-- **Quick API Tester** - Built-in panel with pre-configured sample requests for health checks, RSVP, guests, events, gifts, and more
-- **Regenerate the spec** with `bun run generate:openapi` (outputs `public/openapi.json`)
-
-## Monorepo Structure
-
-```
-apps/web/                  Next.js frontend + API routes
-  app/                     App Router pages and routes
-  app/admin/               Admin dashboard
-  app/api/                 API routes (RSVP, webhooks, admin, e2e)
-  components/              Reusable React components
-  lib/                     Utilities, DB client, auth, email, validations
-  __tests__/               Unit tests (Bun test)
-  e2e/                     E2E tests (Playwright)
-packages/ui/               Shared UI components (shadcn/ui)
-packages/typescript-config/ Shared TS configs
-supabase/
-  config.toml              Supabase CLI configuration
-  migrations/              Numbered SQL migration files (000-030)
-  seed.sql                 Local development seed data
-.github/workflows/         CI pipeline
-```
-
-## Getting Started
-
-```bash
-bun install                                     # Install dependencies
-cp apps/web/.env.example apps/web/.env          # Copy env template
-# Fill in your .env values (see Environment Variables below)
-bun run dev                                     # Start dev server at localhost:3000
-```
-
-## Commands
-
-```bash
-bun run dev            # Start dev server (Turborepo)
-bun run build          # Production build
-bun run lint           # Biome lint check
-bun run lint:fix       # Biome auto-fix
-bun run typecheck      # TypeScript type check
-bun run test           # Unit tests (Bun test)
-bun run test:e2e       # E2E tests (Playwright)
-bun run knip           # Dead code / unused dependency detection
-```
 
 ---
 
-## Local Development (with Local Supabase)
-
-By default, `.env` points to the production Supabase database. For local development and safe E2E testing, you can run the app against a local Supabase instance.
-
-### Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (required by the Supabase CLI)
-- Supabase CLI (installed as a dev dependency — no global install needed)
-
-### Setup
+## Scripts reference
 
 ```bash
-# 1. Start local Supabase (spins up Postgres, Auth, Storage in Docker)
-bun run supabase:start
-
-# 2. Create your local env override (gitignored)
-cp apps/web/.env.local.example apps/web/.env.local   # if example exists, else create manually
+bun run dev                        # start all workspaces
+bun run build                      # production build
 ```
 
-Your `apps/web/.env.local` should contain:
-
-```bash
-# Local Supabase
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
-
-# Unlock /api/e2e/reset for local E2E testing
-LOCAL_E2E_MODE=true
-E2E_TEST_MODE=true
-E2E_RESET_SECRET=local-dev-secret
-```
-
-```bash
-# 3. Apply migrations to local DB
-bun run supabase:reset
-
-# 4. Start the dev server (picks up .env.local automatically)
-bun run dev
-```
-
-### Local vs Production
-
-| Setting              | Local                                        | Production (Vercel)             |
-| -------------------- | -------------------------------------------- | ------------------------------- |
-| `DATABASE_URL`       | `postgresql://postgres:postgres@127.0.0.1:54322/postgres` | Supabase cloud connection string |
-| Supabase Studio      | `http://127.0.0.1:54323`                    | Supabase dashboard              |
-| Clerk auth           | Same dev instance (shared `.env`)            | Same dev instance               |
-| UploadThing          | Same dev token (uploads to UploadThing cloud)| Same                            |
-| `/api/e2e/reset`     | Enabled via `LOCAL_E2E_MODE=true`            | Enabled on preview branches only |
-
-### Running E2E Tests Locally
-
-```bash
-# Make sure local Supabase is running and .env.local is configured
-bun run supabase:start
-
-# Run the full E2E suite (auto-starts dev server)
-bun run test:e2e
-
-# Or run a specific spec
-bunx playwright test e2e/admin-guest-photos.spec.ts
-```
-
-The E2E tests call `POST /api/e2e/reset` in `beforeAll` to reset and seed the local database before each spec runs. This is safe because Guard 2 in the reset endpoint prevents it from ever running against the production database URL.
-
-### Switching Back to Production
-
-Remove or rename `.env.local` and restart the dev server:
-
-```bash
-mv apps/web/.env.local apps/web/.env.local.bak
-bun run dev
-```
-
-### Supabase Convenience Scripts
-
-```bash
-bun run supabase:start   # Start local Supabase
-bun run supabase:stop    # Stop local Supabase
-bun run supabase:reset   # Re-apply all migrations (wipes local data)
-bun run supabase:status  # Show connection info and local URLs
-```
-
----
-
-## Git Hooks (Lefthook)
-
-Git hooks are managed by [Lefthook](https://github.com/evilmartians/lefthook) (not Husky). Hooks install automatically via the `prepare` script on `bun install`.
-
-| Hook         | What it does                                          |
-| ------------ | ----------------------------------------------------- |
-| `pre-commit` | Biome check + auto-fix on staged files                |
-| `pre-push`   | Typecheck and unit tests in parallel                  |
-
-Configuration: [`lefthook.yml`](lefthook.yml)
-
-If hooks aren't firing:
-
-```bash
-git config --get core.hooksPath   # should return nothing
-bunx lefthook install              # re-install if needed
-```
-
----
-
-## Environment Variables
-
-Validated at build time via `@t3-oss/env-nextjs` in [`apps/web/env.ts`](apps/web/env.ts). See [`apps/web/.env.example`](apps/web/.env.example) for a full template.
-
-### Server-side
-
-| Variable                          | Required | Description                                        |
-| --------------------------------- | -------- | -------------------------------------------------- |
-| `POSTGRES_URL`                    | Yes*     | Supabase connection string (auto-set by Supabase Vercel integration) |
-| `DATABASE_URL`                    | Yes*     | Local dev fallback for database connection          |
-| `CLERK_SECRET_KEY`                | Yes      | Clerk authentication secret                         |
-| `ADMIN_EMAILS`                    | Yes      | Comma-separated admin email allowlist               |
-| `RESEND_API_KEY`                  | No       | Resend email API key                                |
-| `RSVP_EMAIL`                      | No       | Comma-separated RSVP notification recipients        |
-| `UPLOADTHING_TOKEN`               | No       | UploadThing file upload token                       |
-| `OPENAI_API_KEY`                  | No       | OpenAI key for AI seating chart generation          |
-| `STRIPE_SECRET_KEY`               | No       | Stripe payments secret key                          |
-| `STRIPE_WEBHOOK_SECRET`           | No       | Stripe webhook verification secret                  |
-| `STRIPE_PRODUCT_*`                | No       | Stripe product IDs for gift registry                |
-| `E2E_TEST_MODE`                   | No       | `"true"` skips real email sending (default: `"false"`) |
-| `E2E_RESET_SECRET`                | No       | Shared secret for the database reset endpoint       |
-| `VERCEL_ENV`                      | No       | Auto-set by Vercel (`production` / `preview` / `development`) |
-
-*At least one of `POSTGRES_URL` or `DATABASE_URL` must be set. On Vercel, `POSTGRES_URL` is auto-injected by the Supabase integration per environment. For local dev, set `DATABASE_URL` in `.env`.
-
-### Client-side (`NEXT_PUBLIC_`)
-
-| Variable                                | Description                              |
-| --------------------------------------- | ---------------------------------------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`     | Clerk publishable key                    |
-| `NEXT_PUBLIC_APP_URL`                   | App URL for email links                  |
-| `NEXT_PUBLIC_RSVP_EMAIL`               | Display email in footer                  |
-| `NEXT_PUBLIC_ADMIN_EMAILS`             | Client-side admin check                  |
-| `NEXT_PUBLIC_STRIPE_LINK_*`            | Stripe payment links for registry        |
-
-### Turborepo Env Passthrough
-
-All env vars consumed at build time must be declared in [`turbo.json`](turbo.json) under `tasks.build.env`. If you add a new build-time env var, add it there or Vercel builds won't see it.
-
----
-
-## Database & Supabase
-
-### Connection
-
-The app connects to Supabase PostgreSQL via [Kysely](https://kysely.dev/) with the `pg` library ([`apps/web/lib/db/index.ts`](apps/web/lib/db/index.ts)). The connection prefers `POSTGRES_URL` (set by the Supabase Vercel integration per environment) and falls back to `DATABASE_URL` (for local dev).
-
-SSL is configured explicitly with `rejectUnauthorized: false` to support Supabase preview branch certificates. The `sslmode` parameter is stripped from the connection string to prevent the `pg` library from overriding this.
-
-### Migrations
-
-Migrations live in [`supabase/migrations/`](supabase/migrations/) and are numbered sequentially (`000_`, `001_`, ...).
-
-**How Supabase runs migrations:**
-
-- Supabase tracks applied migrations in `supabase_migrations.schema_migrations`
-- Each migration runs exactly once, in order, and is never re-run
-- On preview branches, ALL migrations run from scratch on a fresh database
-- On production, only new (unapplied) migrations run
-
-**Writing new migrations:**
-
-1. Create a new file: `supabase/migrations/NNN_description.sql` (next sequential number)
-2. **All statements must be idempotent** (safe to re-run). Use these patterns:
-
-   ```sql
-   -- Tables
-   CREATE TABLE IF NOT EXISTS my_table (...);
-
-   -- Columns
-   ALTER TABLE my_table ADD COLUMN IF NOT EXISTS my_col TEXT;
-
-   -- Indexes
-   CREATE INDEX IF NOT EXISTS idx_name ON my_table(col);
-
-   -- Constraints (no IF NOT EXISTS in PostgreSQL — use DO block)
-   DO $$ BEGIN
-     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'my_constraint') THEN
-       ALTER TABLE my_table ADD CONSTRAINT my_constraint CHECK (...);
-     END IF;
-   END $$;
-
-   -- Policies (drop + recreate)
-   DROP POLICY IF EXISTS "my_policy" ON my_table;
-   CREATE POLICY "my_policy" ON my_table FOR SELECT USING (true);
-
-   -- Triggers (drop + recreate)
-   DROP TRIGGER IF EXISTS my_trigger ON my_table;
-   CREATE TRIGGER my_trigger ...;
-
-   -- Functions (always idempotent)
-   CREATE OR REPLACE FUNCTION my_func() ...;
-
-   -- Seed data (use WHERE NOT EXISTS or ON CONFLICT)
-   INSERT INTO my_table (name) SELECT 'value'
-     WHERE NOT EXISTS (SELECT 1 FROM my_table WHERE name = 'value');
-   ```
-
-3. **Never modify** an existing migration that has already run on production
-4. Test by pushing your branch and verifying the Supabase preview branch applies cleanly
-
-**Base schema:** Migration `000_initial_schema.sql` creates the foundational tables (`guests`, `activities`, `guest_activity_interests`, `photos`, `parties`) that existed before migration history was introduced. All subsequent migrations build on these.
-
-### Ephemeral Preview Databases (Supabase Branching)
-
-When you push a branch with a PR, Supabase automatically creates an **ephemeral preview database**:
-
-1. A fresh PostgreSQL instance is provisioned for the branch
-2. All migrations run from `000` to latest on the empty database
-3. The Supabase Vercel integration injects `POSTGRES_URL` pointing to this preview database (not production)
-4. The preview database is cleaned up when the branch is deleted
-
-This means:
-- Every PR gets its own isolated database
-- Preview deployments never touch the production database
-- Destructive migrations can be safely tested on preview
-- The E2E pipeline resets and seeds the preview database before each test run
-
-### Row Level Security (RLS)
-
-All tables have RLS enabled (see `029_enable_rls_all_tables.sql`). The app connects using credentials that bypass RLS, so this is a defense-in-depth measure against direct `anon` key access.
-
-| Table                      | Public Read | Public Write | Notes                         |
-| -------------------------- | ----------- | ------------ | ----------------------------- |
-| `guests`                   | Yes         | Yes          | RSVP flow                     |
-| `parties`                  | Yes         | Yes          | RSVP flow                     |
-| `activities`               | Yes         | No           | Display only                  |
-| `guest_activity_interests` | Yes         | Yes          | Activity signup               |
-| `photos`                   | Yes         | No           | Gallery display               |
-| `events`                   | Yes         | No           | RSVP page display             |
-| `hotels`                   | Yes         | No           | Hotels page display           |
-| `guest_event_invites`      | Yes         | Update only  | RSVP flow                     |
-| `guest_hotel_interests`    | Yes         | Full CRUD    | Hotel interest flow           |
-| `gifts`                    | No          | No           | Admin only (service_role)     |
-| `seating_charts`           | No          | No           | Admin only (service_role)     |
-| `seating_tables`           | No          | No           | Admin only (service_role)     |
-| `guest_table_assignments`  | No          | No           | Admin only (service_role)     |
-| `wedding_todos`            | No          | No           | Admin only (service_role)     |
-| `guest_photos`             | Yes (visible only) | Yes   | Guest photo uploads; public read filtered by `is_visible = true` |
-
-Admin-only tables have RLS enabled with no public policies. All admin operations use `service_role` which bypasses RLS.
-
-When adding new tables, always enable RLS and add appropriate policies in the same migration.
-
----
-
-## CI Pipeline
-
-Defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
-
-### Jobs
-
-| Job        | Trigger        | What it does                                          |
-| ---------- | -------------- | ----------------------------------------------------- |
-| `lint`     | Push + PR      | Biome linter                                          |
-| `knip`     | Push + PR      | Unused code and dependency detection                  |
-| `typecheck`| Push + PR      | TypeScript type checking                              |
-| `test`     | Push + PR      | Bun unit tests                                        |
-| `e2e`      | PR only        | Playwright E2E tests against Vercel preview           |
-
-### E2E Pipeline Flow
-
-The `e2e` job runs only on PRs and depends on all other jobs passing:
-
-```
-lint + knip + typecheck + test  -->  e2e
-```
-
-1. **Wait for Vercel preview** - Polls until the preview deployment is ready (uses `VERCEL_AUTOMATION_BYPASS_SECRET` to bypass deployment protection)
-2. **Reset preview database** - POSTs to `/api/e2e/reset` to truncate and re-seed with deterministic test data
-3. **Run Playwright tests** - Authenticated (admin) and unauthenticated test suites
-4. **Upload artifacts** - Playwright HTML report for debugging failures
-
-### Required GitHub Actions Secrets
-
-| Secret                              | Used by                    |
-| ----------------------------------- | -------------------------- |
-| `CLERK_SECRET_KEY`                  | E2E auth setup             |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | E2E auth setup             |
-| `TEST_ADMIN_EMAIL`                  | E2E admin login            |
-| `TEST_ADMIN_PASSWORD`               | E2E admin login            |
-| `ADMIN_EMAILS`                      | E2E admin check            |
-| `NEXT_PUBLIC_ADMIN_EMAILS`          | E2E admin check            |
-| `E2E_RESET_SECRET`                  | DB reset endpoint          |
-| `VERCEL_AUTOMATION_BYPASS_SECRET`   | Deployment protection      |
-
-### Required Vercel Env Vars (Preview only)
-
-| Variable            | Value    | Notes                                          |
-| ------------------- | -------- | ---------------------------------------------- |
-| `E2E_TEST_MODE`     | `true`   | Skips real email sending on preview             |
-| `E2E_RESET_SECRET`  | (secret) | Must match the GitHub Actions secret            |
-| `POSTGRES_URL`      | (auto)   | Auto-injected by Supabase Vercel integration    |
-
-### Database Reset Safety Guards
-
-The `/api/e2e/reset` endpoint has triple protection against accidental production resets:
-
-1. **Environment check** - Only responds when `VERCEL_ENV=preview`
-2. **Project ref check** - Refuses if the database URL contains the production Supabase project ref
-3. **Shared secret** - Requires `x-e2e-reset-token` header matching `E2E_RESET_SECRET`
+| Command | Description |
+|---------|-------------|
+| `bun run lint` | Lint with Biome |
+| `bun run typecheck` | TypeScript type-check |
+| `bun run test` | Run unit tests |
+| `bun run test:e2e` | Run E2E tests |
+| `bun run knip` | Check for dead code and unused dependencies |
+| `cd apps/web && bun run env:local` | Switch local env to local Supabase |
+| `cd apps/web && bun run env:prod` | Switch local env to production DB |
 
 ---
 
 ## Testing
 
-### Unit Tests
+### Unit tests
 
-- **Location:** `apps/web/__tests__/`
-- **Framework:** Bun test
-- **Run:** `bun run test`
-
-### E2E Tests
-
-- **Location:** `apps/web/e2e/`
-- **Framework:** Playwright
-- **Run:** `bun run test:e2e`
-- Locally: runs against the local dev server (starts automatically)
-- CI: runs against the Vercel preview deployment
-
-**Running locally against a preview deployment:**
-
-The Vercel preview URL follows the pattern:
-`https://wedding-website-web-git-<branch>-<vercel-scope>.vercel.app`
-
-You can find it in the PR's deployment status or the Vercel dashboard.
+Unit tests use `bun:test` and live in `apps/web/__tests__/`.
 
 ```bash
-# Run all E2E tests against a preview deployment:
-PLAYWRIGHT_TEST_BASE_URL=https://wedding-website-web-git-feat-xxx-enriques-projects-b7c71f69.vercel.app \
-CI=1 \
-bun run test:e2e
-
-# Run a specific test by name:
-PLAYWRIGHT_TEST_BASE_URL=https://wedding-website-web-git-feat-xxx-enriques-projects-b7c71f69.vercel.app \
-CI=1 \
-bun run test:e2e -- --grep "attendance summary"
+bun run test              # run all unit tests
 ```
 
-Setting `CI=1` prevents Playwright from starting a local dev server and enables retries. Requires Clerk and admin env vars in `apps/web/.env`.
+### E2E tests
+
+E2E tests use [Playwright](https://playwright.dev) with [Clerk Testing Tokens](https://clerk.com/docs/testing/playwright).
+
+```bash
+bun run test:e2e          # headless
+bun run test:e2e:ui       # Playwright UI mode
+bun run test:e2e:headed   # headed browser
+```
+
+---
+
+## Code quality
+
+### Git hooks (Lefthook)
+
+[Lefthook](https://lefthook.dev) manages git hooks. Installed automatically on `bun install`.
+
+| Hook | What runs |
+|------|-----------|
+| `pre-commit` | Biome check + auto-fix on staged files |
+| `pre-push` | TypeScript typecheck and unit tests in parallel |
+
+---
+
+## Environment Variables
+
+Validated at build time via `@t3-oss/env-nextjs` in `apps/web/env.ts`. See `apps/web/.env.example` for a full template.
+
+### Server-side
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CLERK_SECRET_KEY` | Yes | Clerk authentication secret |
+| `ADMIN_EMAILS` | Yes | Comma-separated admin email allowlist |
+| `DATABASE_URL` | No | Legacy fallback (Prisma uses `packages/db/.env` instead) |
+| `RESEND_API_KEY` | No | Resend email API key |
+| `RSVP_EMAIL` | No | Comma-separated RSVP notification recipients |
+| `UPLOADTHING_TOKEN` | No | UploadThing file upload token |
+| `OPENAI_API_KEY` | No | OpenAI key for AI seating chart generation |
+| `STRIPE_SECRET_KEY` | No | Stripe payments secret key |
+| `STRIPE_WEBHOOK_SECRET` | No | Stripe webhook verification secret |
+
+### Prisma (packages/db/.env)
+
+| Variable | Description |
+|----------|-------------|
+| `POSTGRES_PRISMA_URL` | Pooled connection via PgBouncer (port 6543) — used at runtime |
+| `POSTGRES_URL_NON_POOLING` | Direct connection (port 5432) — used by Prisma CLI |
+
+### Client-side (`NEXT_PUBLIC_`)
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `NEXT_PUBLIC_APP_URL` | App URL for email links |
+| `NEXT_PUBLIC_RSVP_EMAIL` | Display email in footer |
+| `NEXT_PUBLIC_ADMIN_EMAILS` | Client-side admin check |
+| `NEXT_PUBLIC_STRIPE_LINK_*` | Stripe payment links for registry |
 
 ---
 
@@ -466,7 +311,6 @@ Setting `CI=1` prevents Playwright from starting a local dev server and enables 
 - **Site config:** `apps/web/app/site-config.ts` (metadata, dates)
 - **Navigation:** `apps/web/app/navigation-config.ts`
 - **Theme/colors:** `packages/ui/src/styles/globals.css`
-- **Photos:** Place in `apps/web/public/our-photos/` and update `HERO_PHOTOS` in constants
 
 ## Adding shadcn/ui Components
 

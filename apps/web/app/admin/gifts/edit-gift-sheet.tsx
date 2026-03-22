@@ -28,22 +28,22 @@ import { type EditGiftFormData, editGiftSchema } from "@/lib/validations/gift";
 
 interface Gift {
   id: string;
-  stripe_checkout_session_id: string | null;
-  stripe_payment_intent_id: string | null;
-  stripe_payment_link_id: string | null;
-  stripe_charge_id: string | null;
-  donor_email: string | null;
-  donor_name: string | null;
-  amount_cents: number;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
+  stripePaymentLinkId: string | null;
+  stripeChargeId: string | null;
+  donorEmail: string | null;
+  donorName: string | null;
+  amountCents: number;
   currency: string;
-  gift_type: "baby_fund" | "honeymoon" | "student_loans" | null;
-  guest_id: string | null;
+  giftType: "baby_fund" | "honeymoon" | "student_loans" | null;
+  guestId: string | null;
   status: "pending" | "completed" | "refunded" | "failed";
-  thank_you_email_sent: boolean;
-  thank_you_email_sent_at: string | null;
+  thankYouEmailSent: boolean;
+  thankYouEmailSentAt: string | null;
   notes: string | null;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
   guest_first_name?: string | null;
   guest_last_name?: string | null;
   guest_email?: string | null;
@@ -51,8 +51,8 @@ interface Gift {
 
 interface GuestOption {
   id: string;
-  first_name: string;
-  last_name: string | null;
+  firstName: string;
+  lastName: string | null;
   email: string | null;
 }
 
@@ -109,8 +109,8 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
 
   const initialValues = useMemo(
     (): EditGiftFormData => ({
-      guestId: gift.guest_id,
-      thankYouEmailSent: gift.thank_you_email_sent,
+      guestId: gift.guestId,
+      thankYouEmailSent: gift.thankYouEmailSent,
       notes: gift.notes || "",
     }),
     [gift],
@@ -152,7 +152,7 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
     const query = guestSearchQuery.toLowerCase();
     return guestOptions.filter((guest) => {
       const fullName =
-        `${guest.first_name} ${guest.last_name || ""}`.toLowerCase();
+        `${guest.firstName} ${guest.lastName || ""}`.toLowerCase();
       const email = guest.email?.toLowerCase() || "";
       return fullName.includes(query) || email.includes(query);
     });
@@ -217,18 +217,18 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
                 <div className="space-y-1">
                   <Label className="text-muted-foreground">Amount</Label>
                   <p className="text-xl font-semibold text-green-600 dark:text-green-400">
-                    {formatCurrency(gift.amount_cents, gift.currency)}
+                    {formatCurrency(gift.amountCents, gift.currency)}
                   </p>
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-muted-foreground">Fund Type</Label>
                   <div>
-                    {gift.gift_type ? (
+                    {gift.giftType ? (
                       <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${giftTypeColors[gift.gift_type] || ""}`}
+                        className={`px-2 py-1 rounded text-xs font-medium ${giftTypeColors[gift.giftType] || ""}`}
                       >
-                        {giftTypeLabels[gift.gift_type] || gift.gift_type}
+                        {giftTypeLabels[gift.giftType] || gift.giftType}
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground italic">
@@ -253,7 +253,7 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
 
                 <div className="space-y-1">
                   <Label className="text-muted-foreground">Date</Label>
-                  <p className="text-sm">{formatDate(gift.created_at)}</p>
+                  <p className="text-sm">{formatDate(gift.createdAt)}</p>
                 </div>
               </div>
 
@@ -261,22 +261,22 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
                 <Label className="text-muted-foreground">Donor</Label>
                 <div className="flex flex-col">
                   <span className="font-medium">
-                    {gift.donor_name || "Anonymous"}
+                    {gift.donorName || "Anonymous"}
                   </span>
-                  {gift.donor_email && (
+                  {gift.donorEmail && (
                     <span className="text-sm text-muted-foreground">
-                      {gift.donor_email}
+                      {gift.donorEmail}
                     </span>
                   )}
                 </div>
               </div>
 
-              {gift.stripe_payment_intent_id && (
+              {gift.stripePaymentIntentId && (
                 <div className="space-y-1">
                   <Label className="text-muted-foreground">Stripe</Label>
                   <div>
                     <a
-                      href={`https://dashboard.stripe.com/payments/${gift.stripe_payment_intent_id}`}
+                      href={`https://dashboard.stripe.com/payments/${gift.stripePaymentIntentId}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
@@ -308,8 +308,8 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
                     <SelectValue placeholder="Select a guest...">
                       {selectedGuestId && selectedGuest ? (
                         <span>
-                          {selectedGuest.first_name}{" "}
-                          {selectedGuest.last_name || ""}
+                          {selectedGuest.firstName}{" "}
+                          {selectedGuest.lastName || ""}
                           {selectedGuest.email && (
                             <span className="text-muted-foreground ml-1">
                               ({selectedGuest.email})
@@ -341,7 +341,7 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
                       <SelectItem key={guest.id} value={guest.id}>
                         <div className="flex flex-col">
                           <span>
-                            {guest.first_name} {guest.last_name || ""}
+                            {guest.firstName} {guest.lastName || ""}
                           </span>
                           {guest.email && (
                             <span className="text-xs text-muted-foreground">
@@ -369,9 +369,9 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
                   <Label htmlFor="thankYouEmailSent">
                     Thank You Email Sent
                   </Label>
-                  {gift.thank_you_email_sent_at && (
+                  {gift.thankYouEmailSentAt && (
                     <p className="text-xs text-muted-foreground">
-                      Sent on {formatDate(gift.thank_you_email_sent_at)}
+                      Sent on {formatDate(gift.thankYouEmailSentAt)}
                     </p>
                   )}
                 </div>
@@ -400,9 +400,9 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
             </div>
 
             {/* Current Match Info */}
-            {gift.guest_id &&
+            {gift.guestId &&
               gift.guest_first_name &&
-              selectedGuestId !== gift.guest_id && (
+              selectedGuestId !== gift.guestId && (
                 <div className="border-t pt-4">
                   <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">

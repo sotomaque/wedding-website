@@ -64,7 +64,7 @@ interface Guest {
   firstName: string;
   lastName: string | null;
   email: string | null;
-  inviteCode: string;
+  inviteCode: string | null;
   mainRsvpStatus: "pending" | "yes" | "no";
   side: "bride" | "groom" | "both" | null;
   list: "a" | "b" | "c";

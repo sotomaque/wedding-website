@@ -19,12 +19,10 @@ export interface Photo {
 export async function getAllPhotos(): Promise<HeroPhoto[]> {
   try {
     // Fetch active photos from database, ordered by display_order
-    const dbPhotos = await db
-      .selectFrom("photos")
-      .selectAll()
-      .where("is_active", "=", true)
-      .orderBy("display_order", "asc")
-      .execute();
+    const dbPhotos = await db.photo.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: "asc" },
+    });
 
     // Convert DB photos to HeroPhoto format
     const convertedDbPhotos: HeroPhoto[] = dbPhotos.map((photo) => ({
@@ -47,12 +45,9 @@ export async function getAllPhotos(): Promise<HeroPhoto[]> {
  * Server-side function that directly queries the database
  */
 export async function getAdminPhotos(): Promise<Photo[]> {
-  const photos = await db
-    .selectFrom("photos")
-    .selectAll()
-    .orderBy("display_order", "asc")
-    .orderBy("created_at", "desc")
-    .execute();
+  const photos = await db.photo.findMany({
+    orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }],
+  });
 
-  return photos;
+  return photos as unknown as Photo[];
 }

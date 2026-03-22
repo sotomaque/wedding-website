@@ -27,11 +27,10 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const photos = await db
-      .selectFrom("guest_photos")
-      .select(["id", "url", "uploader_name", "uploaded_at"])
-      .orderBy("uploaded_at", "asc")
-      .execute();
+    const photos = await db.guestPhoto.findMany({
+      select: { id: true, url: true, uploaderName: true, uploadedAt: true },
+      orderBy: { uploadedAt: "asc" },
+    });
 
     if (photos.length === 0) {
       return NextResponse.json(
@@ -60,8 +59,8 @@ export async function GET(_request: NextRequest) {
                 ? "gif"
                 : "jpg";
 
-          const uploaderSlug = photo.uploader_name
-            ? `_${photo.uploader_name.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`
+          const uploaderSlug = photo.uploaderName
+            ? `_${photo.uploaderName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`
             : "";
           const filename = `photo-${String(i + 1).padStart(3, "0")}${uploaderSlug}.${ext}`;
 

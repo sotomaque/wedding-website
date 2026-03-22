@@ -8,7 +8,9 @@ node_modules
 # Local env files
 .env
 .env.local
-.env*.local
+.env.local.*
+.env.prod
+.env.preview
 .env*.local.bak
 
 # Testing

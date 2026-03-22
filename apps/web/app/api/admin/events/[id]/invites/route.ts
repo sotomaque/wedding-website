@@ -34,17 +34,15 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
 
     // Verify event exists and is not a default event
-    const event = await db
-      .selectFrom("events")
-      .selectAll()
-      .where("id", "=", eventId)
-      .executeTakeFirst();
+    const event = await db.event.findUnique({
+      where: { id: eventId },
+    });
 
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    if (event.is_default) {
+    if (event.isDefault) {
       return NextResponse.json(
         { error: "Cannot manage invites for default events" },
         { status: 400 },
@@ -52,49 +50,51 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
 
     // Get all guests with their invite status for this event
-    const guests = await db
-      .selectFrom("guests")
-      .leftJoin("guest_event_invites", (join) =>
-        join
-          .onRef("guests.id", "=", "guest_event_invites.guest_id")
-          .on("guest_event_invites.event_id", "=", eventId),
-      )
-      .select([
-        "guests.id",
-        "guests.first_name",
-        "guests.last_name",
-        "guests.email",
-        "guests.invite_code",
-        "guests.rsvp_status as main_rsvp_status",
-        "guests.is_plus_one",
-        "guests.side",
-        "guests.list",
-        "guest_event_invites.id as invite_id",
-        "guest_event_invites.rsvp_status as event_rsvp_status",
-        "guest_event_invites.email_sent",
-        "guest_event_invites.email_sent_at",
-        "guest_event_invites.email_resend_count",
-      ])
-      .where("guests.is_plus_one", "=", false) // Only show primary guests
-      .orderBy("guests.first_name", "asc")
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { isPlusOne: false },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        inviteCode: true,
+        rsvpStatus: true,
+        isPlusOne: true,
+        side: true,
+        list: true,
+        guestEventInvites: {
+          where: { eventId },
+          select: {
+            id: true,
+            rsvpStatus: true,
+            emailSent: true,
+            emailSentAt: true,
+            emailResendCount: true,
+          },
+        },
+      },
+      orderBy: { firstName: "asc" },
+    });
 
     // Transform the data
-    const guestsWithInviteStatus = guests.map((guest) => ({
-      id: guest.id,
-      firstName: guest.first_name,
-      lastName: guest.last_name,
-      email: guest.email,
-      inviteCode: guest.invite_code,
-      mainRsvpStatus: guest.main_rsvp_status,
-      side: guest.side,
-      list: guest.list,
-      isInvited: guest.invite_id !== null,
-      eventRsvpStatus: guest.event_rsvp_status || null,
-      emailSent: guest.email_sent || false,
-      emailSentAt: guest.email_sent_at || null,
-      emailResendCount: guest.email_resend_count || 0,
-    }));
+    const guestsWithInviteStatus = guests.map((guest) => {
+      const invite = guest.guestEventInvites[0] || null;
+      return {
+        id: guest.id,
+        firstName: guest.firstName,
+        lastName: guest.lastName,
+        email: guest.email,
+        inviteCode: guest.inviteCode,
+        mainRsvpStatus: guest.rsvpStatus,
+        side: guest.side,
+        list: guest.list,
+        isInvited: invite !== null,
+        eventRsvpStatus: invite?.rsvpStatus || null,
+        emailSent: invite?.emailSent || false,
+        emailSentAt: invite?.emailSentAt || null,
+        emailResendCount: invite?.emailResendCount || 0,
+      };
+    });
 
     // Get counts
     const invitedCount = guestsWithInviteStatus.filter(
@@ -114,9 +114,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       event: {
         id: event.id,
         name: event.name,
-        eventDate: event.event_date,
-        startTime: event.start_time,
-        locationName: event.location_name,
+        eventDate: event.eventDate,
+        startTime: event.startTime,
+        locationName: event.locationName,
       },
       guests: guestsWithInviteStatus,
       counts: {
@@ -177,44 +177,33 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Verify event exists and is not a default event
-    const event = await db
-      .selectFrom("events")
-      .selectAll()
-      .where("id", "=", eventId)
-      .executeTakeFirst();
+    const event = await db.event.findUnique({
+      where: { id: eventId },
+    });
 
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    if (event.is_default) {
+    if (event.isDefault) {
       return NextResponse.json(
         { error: "Cannot manage invites for default events" },
         { status: 400 },
       );
     }
 
-    // Create invite records for each guest
-    let addedCount = 0;
-    for (const guestId of guestIds) {
-      try {
-        await db
-          .insertInto("guest_event_invites")
-          .values({
-            guest_id: guestId,
-            event_id: eventId,
-          })
-          .onConflict((oc) => oc.columns(["guest_id", "event_id"]).doNothing())
-          .execute();
-        addedCount++;
-      } catch (err) {
-        console.error(`Error adding guest ${guestId} to event:`, err);
-      }
-    }
+    // Create invite records for each guest (skip duplicates)
+    const result = await db.guestEventInvite.createMany({
+      data: guestIds.map((guestId: string) => ({
+        guestId,
+        eventId,
+      })),
+      skipDuplicates: true,
+    });
 
     return NextResponse.json({
       success: true,
-      addedCount,
+      addedCount: result.count,
       totalRequested: guestIds.length,
     });
   } catch (error) {
@@ -266,17 +255,15 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // Verify event exists and is not a default event
-    const event = await db
-      .selectFrom("events")
-      .selectAll()
-      .where("id", "=", eventId)
-      .executeTakeFirst();
+    const event = await db.event.findUnique({
+      where: { id: eventId },
+    });
 
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    if (event.is_default) {
+    if (event.isDefault) {
       return NextResponse.json(
         { error: "Cannot manage invites for default events" },
         { status: 400 },
@@ -284,15 +271,16 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // Delete invite records
-    const result = await db
-      .deleteFrom("guest_event_invites")
-      .where("event_id", "=", eventId)
-      .where("guest_id", "in", guestIds)
-      .execute();
+    const result = await db.guestEventInvite.deleteMany({
+      where: {
+        eventId,
+        guestId: { in: guestIds },
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      removedCount: Number(result[0]?.numDeletedRows || 0),
+      removedCount: result.count,
     });
   } catch (error) {
     console.error("Error in DELETE /api/admin/events/[id]/invites:", error);

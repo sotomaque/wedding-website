@@ -1,9 +1,6 @@
 "use server";
 
 import { db } from "@/lib/db";
-import type { Database } from "@/lib/supabase/types";
-
-type Guest = Database["public"]["Tables"]["guests"]["Row"];
 
 interface GetGuestsParams {
   side?: "bride" | "groom";
@@ -31,70 +28,77 @@ interface GetGuestsParams {
   sortOrder?: "asc" | "desc";
 }
 
-export async function getGuests(
-  params: GetGuestsParams = {},
-): Promise<Guest[]> {
-  try {
-    let query = db.selectFrom("guests").selectAll();
+const sortByMap: Record<string, string> = {
+  first_name: "firstName",
+  email: "email",
+  side: "side",
+  list: "list",
+  rsvp_status: "rsvpStatus",
+  number_of_resends: "numberOfResends",
+  created_at: "createdAt",
+};
 
-    // Apply filters
+export async function getGuests(params: GetGuestsParams = {}) {
+  try {
+    // Build where clause
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic filter building
+    const where: any = {};
+
     if (params.side) {
-      query = query.where("side", "=", params.side);
+      where.side = params.side;
     }
 
     if (params.rsvpStatus) {
-      query = query.where("rsvp_status", "=", params.rsvpStatus);
+      where.rsvpStatus = params.rsvpStatus;
     }
 
     if (params.list) {
-      query = query.where("list", "=", params.list as "a" | "b");
+      where.list = params.list;
     }
 
     if (params.family !== undefined) {
-      query = query.where("family", "=", params.family === "true");
+      where.family = params.family === "true";
     }
 
     if (params.isPlusOne !== undefined) {
-      query = query.where("is_plus_one", "=", params.isPlusOne === "true");
+      where.isPlusOne = params.isPlusOne === "true";
     }
 
     if (params.emailStatus) {
       if (params.emailStatus === "not_sent") {
-        query = query.where("number_of_resends", "=", 0);
+        where.numberOfResends = 0;
       } else if (params.emailStatus === "sent") {
-        query = query.where("number_of_resends", "=", 1);
+        where.numberOfResends = 1;
       } else if (params.emailStatus === "resent") {
-        query = query.where("number_of_resends", ">", 1);
+        where.numberOfResends = { gt: 1 };
       }
     }
 
     if (params.under21 !== undefined) {
-      query = query.where("under_21", "=", params.under21 === "true");
+      where.under21 = params.under21 === "true";
     }
 
     if (params.threeAndUnder !== undefined) {
-      query = query.where(
-        "three_and_under",
-        "=",
-        params.threeAndUnder === "true",
-      );
+      where.threeAndUnder = params.threeAndUnder === "true";
     }
 
     if (params.bridalParty) {
       if (params.bridalParty === "any") {
-        query = query.where("bridal_party_role", "is not", null);
+        where.bridalPartyRole = { not: null };
       } else {
-        query = query.where("bridal_party_role", "=", params.bridalParty);
+        where.bridalPartyRole = params.bridalParty;
       }
     }
 
     // Apply sorting
-    const sortBy = params.sortBy || "created_at";
+    const sortBy = sortByMap[params.sortBy || "created_at"] || "createdAt";
     const sortOrder = params.sortOrder || "desc";
-    query = query.orderBy(sortBy, sortOrder);
 
-    const guests = await query.execute();
-    // Kysely returns Date objects which get serialized to strings when sent to client
+    const guests = await db.guest.findMany({
+      where,
+      orderBy: { [sortBy]: sortOrder },
+    });
+
     // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
     return guests as any;
   } catch (error) {
@@ -105,23 +109,21 @@ export async function getGuests(
 
 export async function getGuestWithPlusOne(guestId: string) {
   try {
-    const guest = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("id", "=", guestId)
-      .executeTakeFirst();
+    const guest = await db.guest.findUnique({
+      where: { id: guestId },
+    });
 
     if (!guest) {
       return { guest: null, plusOne: null };
     }
 
     // Fetch plus-one if exists
-    const plusOne = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("primary_guest_id", "=", guestId)
-      .where("is_plus_one", "=", true)
-      .executeTakeFirst();
+    const plusOne = await db.guest.findFirst({
+      where: {
+        primaryGuestId: guestId,
+        isPlusOne: true,
+      },
+    });
 
     // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
     return { guest: guest as any, plusOne: (plusOne || null) as any };
@@ -144,30 +146,27 @@ export interface PartyOption {
  */
 export async function getPartiesForSelect(): Promise<PartyOption[]> {
   try {
-    const parties = await db
-      .selectFrom("parties")
-      .selectAll()
-      .orderBy("created_at", "desc")
-      .execute();
+    const parties = await db.party.findMany({
+      orderBy: { createdAt: "desc" },
+    });
 
     // Fetch guest counts and names for each party
     const partiesWithInfo = await Promise.all(
       parties.map(async (party) => {
-        const guests = await db
-          .selectFrom("guests")
-          .select(["first_name", "last_name"])
-          .where("party_id", "=", party.id)
-          .orderBy("is_plus_one", "asc")
-          .execute();
+        const guests = await db.guest.findMany({
+          where: { partyId: party.id },
+          select: { firstName: true, lastName: true },
+          orderBy: { isPlusOne: "asc" },
+        });
 
         const guestNames = guests
           .slice(0, 3)
-          .map((g) => g.first_name)
+          .map((g) => g.firstName)
           .join(", ");
 
         return {
           id: party.id,
-          invite_code: party.invite_code,
+          invite_code: party.inviteCode,
           name: party.name,
           guestNames:
             guests.length > 3

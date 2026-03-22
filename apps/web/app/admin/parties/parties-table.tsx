@@ -397,25 +397,25 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
                                   className="inline-flex items-center gap-2 bg-card border border-border px-3 py-1.5 rounded-md text-sm hover:bg-secondary transition-colors"
                                 >
                                   <span>
-                                    {guest.first_name} {guest.last_name}
+                                    {guest.firstName} {guest.lastName}
                                   </span>
-                                  {guest.is_plus_one && (
+                                  {guest.isPlusOne && (
                                     <span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 px-1.5 py-0.5 rounded">
                                       +1
                                     </span>
                                   )}
                                   <span
                                     className={`text-xs px-1.5 py-0.5 rounded ${
-                                      guest.rsvp_status === "yes"
+                                      guest.rsvpStatus === "yes"
                                         ? "bg-green-100 text-green-800"
-                                        : guest.rsvp_status === "no"
+                                        : guest.rsvpStatus === "no"
                                           ? "bg-red-100 text-red-800"
                                           : "bg-yellow-100 text-yellow-800"
                                     }`}
                                   >
-                                    {guest.rsvp_status === "yes"
+                                    {guest.rsvpStatus === "yes"
                                       ? "Confirmed"
-                                      : guest.rsvp_status === "no"
+                                      : guest.rsvpStatus === "no"
                                         ? "Declined"
                                         : "Pending"}
                                   </span>
@@ -490,7 +490,7 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
           <DialogHeader>
             <DialogTitle>Merge Party</DialogTitle>
             <DialogDescription>
-              Merge "{mergeDialog.sourceParty?.invite_code}" into another party.
+              Merge "{mergeDialog.sourceParty?.inviteCode}" into another party.
               All guests will be moved to the target party.
             </DialogDescription>
           </DialogHeader>
@@ -517,9 +517,9 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
                 .filter((p) => p.id !== mergeDialog.sourceParty?.id)
                 .map((party) => (
                   <option key={party.id} value={party.id}>
-                    {party.invite_code} -{" "}
+                    {party.inviteCode} -{" "}
                     {party.name ||
-                      party.guests.map((g) => g.first_name).join(", ")}{" "}
+                      party.guests.map((g) => g.firstName).join(", ")}{" "}
                     ({party.guestCount} guests)
                   </option>
                 ))}
@@ -560,7 +560,7 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
             <DialogTitle>Delete Party</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete party "
-              {deleteDialog.party?.invite_code}"? This action cannot be undone.
+              {deleteDialog.party?.inviteCode}"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -602,7 +602,7 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
                 <ul className="text-sm text-muted-foreground space-y-1">
                   {emptySelectedParties.map((p) => (
                     <li key={p.id} className="font-mono">
-                      {p.invite_code}
+                      {p.inviteCode}
                       {p.name ? ` — ${p.name}` : ""}
                     </li>
                   ))}
@@ -619,7 +619,7 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
                 <ul className="text-sm text-muted-foreground space-y-1">
                   {nonEmptySelectedParties.map((p) => (
                     <li key={p.id} className="font-mono">
-                      {p.invite_code}
+                      {p.inviteCode}
                       {p.name ? ` — ${p.name}` : ""} ({p.guestCount} guests)
                     </li>
                   ))}
@@ -691,7 +691,7 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
                 />
                 <div className="flex-1 min-w-0">
                   <span className="font-mono text-sm bg-secondary px-2 py-0.5 rounded">
-                    {p.invite_code}
+                    {p.inviteCode}
                   </span>
                   {p.name && (
                     <span className="ml-2 text-sm font-medium">{p.name}</span>
@@ -719,7 +719,7 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
             >
               {isPending
                 ? "Merging..."
-                : `Merge into ${bulkMergeTargetId ? initialParties.find((p) => p.id === bulkMergeTargetId)?.invite_code : "..."}`}
+                : `Merge into ${bulkMergeTargetId ? initialParties.find((p) => p.id === bulkMergeTargetId)?.inviteCode : "..."}`}
             </Button>
           </DialogFooter>
         </DialogContent>
