@@ -12,6 +12,7 @@ interface ActivityCardProps {
   inviteCode?: string;
   isVenue?: boolean;
   index?: number;
+  weddingDate?: Date;
 }
 
 function isActivityWithInterest(
@@ -25,6 +26,7 @@ export function ActivityCard({
   inviteCode,
   isVenue,
   index = 0,
+  weddingDate,
 }: ActivityCardProps) {
   const [isPending, startTransition] = useTransition();
   const [modalOpen, setModalOpen] = useState(false);
@@ -250,6 +252,7 @@ export function ActivityCard({
           interestedParties={activity.interestedParties}
           onConfirm={handleModalConfirm}
           isPending={isPending}
+          weddingDate={weddingDate ?? new Date()}
         />
       )}
     </>

@@ -23,6 +23,8 @@ const RESERVED_PATHS = new Set([
   "favicon.ico",
   "robots.txt",
   "sitemap.xml",
+  "dashboard",
+  "onboarding",
 ]);
 
 /** Legacy flat paths that should redirect to /[slug]/... */
@@ -40,7 +42,11 @@ const LEGACY_PATHS = new Set([
   "unauthorized",
 ]);
 
-const isProtectedRoute = createRouteMatcher(["/(.*)/admin(.*)"]);
+const isProtectedRoute = createRouteMatcher([
+  "/(.*)/admin(.*)",
+  "/dashboard(.*)",
+  "/onboarding(.*)",
+]);
 
 function getSlugFromPath(pathname: string): string | null {
   // pathname is like /helen-and-enrique/admin/guests or /helen-and-enrique/rsvp

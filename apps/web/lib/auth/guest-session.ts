@@ -45,7 +45,7 @@ export async function getGuestParty(
       where: { clerkUserId: user.id, weddingId },
     });
 
-    if (guestByClerk && guestByClerk.inviteCode) {
+    if (guestByClerk?.inviteCode) {
       // Found guest by Clerk ID - get their party
       return await getPartyByInviteCode(
         guestByClerk.inviteCode,
@@ -66,7 +66,7 @@ export async function getGuestParty(
         },
       });
 
-      if (guestByEmail && guestByEmail.inviteCode) {
+      if (guestByEmail?.inviteCode) {
         // Auto-link the Clerk user to this guest for future lookups
         await db.guest.update({
           where: { id: guestByEmail.id },

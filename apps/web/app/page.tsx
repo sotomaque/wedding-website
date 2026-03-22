@@ -25,6 +25,12 @@ export default function LandingPage() {
             Sign In
           </Link>
         </div>
+        <Link
+          href="/helen-and-enrique"
+          className="text-sm text-muted-foreground hover:text-accent transition-colors"
+        >
+          View example site →
+        </Link>
       </div>
     </div>
   );

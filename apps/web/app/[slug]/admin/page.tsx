@@ -3,14 +3,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { Button } from "@workspace/ui/components/button";
 import { Calendar, Clock, Code, Heart, Mail, Users } from "lucide-react";
 import Link from "next/link";
-import {
-  RSVP_DEADLINE,
-  RSVP_DEADLINE_FORMATTED,
-  WEDDING_DATE,
-  WEDDING_DATE_FORMATTED,
-} from "@/app/constants";
 import { db } from "@/lib/db";
-import { getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 
 function getCountdown(targetDate: Date) {
   const now = new Date();
@@ -27,9 +21,7 @@ function getCountdown(targetDate: Date) {
   return { days, hours, minutes, isPast: false };
 }
 
-async function getGuestStats() {
-  const weddingId = await getWeddingId();
-
+async function getGuestStats(weddingId: string) {
   // Get count of accepted A-list guests (not plus-ones)
   const acceptedAListCount = await db.guest.count({
     where: {
@@ -65,10 +57,31 @@ async function getGuestStats() {
 }
 
 export default async function AdminPage() {
-  const user = await currentUser();
-  const weddingCountdown = getCountdown(WEDDING_DATE);
-  const rsvpCountdown = getCountdown(RSVP_DEADLINE);
-  const stats = await getGuestStats();
+  const [user, settings] = await Promise.all([
+    currentUser(),
+    getWeddingSettings(),
+  ]);
+
+  const weddingCountdown = getCountdown(settings.weddingDate);
+  const rsvpDeadline = settings.rsvpDeadline
+    ? new Date(settings.rsvpDeadline)
+    : settings.weddingDate;
+  const rsvpCountdown = getCountdown(rsvpDeadline);
+  const rsvpDeadlineFormatted = rsvpDeadline.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const weddingDateFormatted = settings.weddingDate.toLocaleDateString(
+    "en-US",
+    {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    },
+  );
+  const stats = await getGuestStats(settings.id);
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -127,7 +140,7 @@ export default async function AdminPage() {
                       </span>
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {RSVP_DEADLINE_FORMATTED}
+                      {rsvpDeadlineFormatted}
                     </p>
                   </>
                 )}
@@ -153,7 +166,7 @@ export default async function AdminPage() {
                       </span>
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {WEDDING_DATE_FORMATTED}
+                      {weddingDateFormatted}
                     </p>
                   </>
                 )}

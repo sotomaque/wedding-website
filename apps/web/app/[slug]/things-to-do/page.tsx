@@ -65,6 +65,7 @@ export default async function ThingsToDoPage({
           beaches={beaches}
           inviteCode={inviteCode}
           heroImage={heroImage}
+          weddingDate={settings.weddingDate}
         />
       </main>
 

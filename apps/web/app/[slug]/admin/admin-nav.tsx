@@ -56,12 +56,14 @@ function getNavItems(slug: string): NavItem[] {
     { type: "link", href: `${base}/admin/gifts`, label: "Gifts" },
     { type: "link", href: `${base}/admin/vendors`, label: "Vendors" },
     { type: "link", href: `${base}/admin/documents`, label: "Documents" },
+    { type: "link", href: `${base}/admin/content`, label: "Content" },
     { type: "link", href: `${base}/admin/templates`, label: "Templates" },
     { type: "link", href: `${base}/admin/todos`, label: "Todos" },
     {
       type: "group",
       label: "Admin",
       links: [
+        { href: `${base}/admin/settings`, label: "Settings" },
         { href: `${base}/admin/services`, label: "Services" },
         { href: `${base}/admin/api-docs`, label: "API Docs" },
       ],

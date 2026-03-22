@@ -5,15 +5,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { DETAILS_CONTENT, RSVP_CONTENT } from "@/app/constants";
 import { MainNavigation } from "@/components/main-navigation";
 import { CodeEntry } from "./code-entry";
 
 interface RSVPCodeEntryProps {
   invalidCode?: string;
+  rsvpTitle: string;
+  weddingDateFormatted: string;
+  rsvpDeadlineText?: string;
 }
 
-export function RSVPCodeEntry({ invalidCode }: RSVPCodeEntryProps) {
+export function RSVPCodeEntry({
+  invalidCode,
+  rsvpTitle,
+  weddingDateFormatted,
+  rsvpDeadlineText,
+}: RSVPCodeEntryProps) {
   const router = useRouter();
 
   // Show error toast if an invalid code was provided
@@ -53,14 +60,14 @@ export function RSVPCodeEntry({ invalidCode }: RSVPCodeEntryProps) {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <h1 className="text-4xl md:text-5xl font-serif text-center mb-4 text-white drop-shadow-lg">
-            {RSVP_CONTENT.title}
+            {rsvpTitle}
           </h1>
           <p className="text-xl md:text-2xl text-center text-white/90 mb-2 drop-shadow-md">
-            {DETAILS_CONTENT.date}
+            {weddingDateFormatted}
           </p>
           <div className="w-24 h-1 bg-white/80 mx-auto mb-4" />
           <p className="text-white/80 text-center mb-4 drop-shadow-md">
-            {RSVP_CONTENT.deadline}
+            {rsvpDeadlineText}
           </p>
           <p className="text-center mb-12">
             <Link
@@ -75,12 +82,7 @@ export function RSVPCodeEntry({ invalidCode }: RSVPCodeEntryProps) {
           <div className="grid md:grid-cols-2 gap-8 items-center">
             {/* Image - Left Side */}
             <div className="relative aspect-[4/5] rounded-lg overflow-hidden order-2 md:order-1">
-              <Image
-                src={RSVP_CONTENT.image.src}
-                alt={RSVP_CONTENT.image.alt}
-                fill
-                className="object-cover"
-              />
+              <Image src="/rsvp.png" alt="RSVP" fill className="object-cover" />
             </div>
 
             {/* Form - Right Side */}

@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { DETAILS_CONTENT, RSVP_CONTENT } from "@/app/constants";
 import { MainNavigation } from "@/components/main-navigation";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { RsvpGuest } from "./actions";
@@ -15,9 +14,18 @@ import { RSVPForm } from "./rsvp-form";
 interface RSVPFormViewProps {
   guests: RsvpGuest[];
   inviteCode: string;
+  rsvpTitle: string;
+  weddingDateFormatted: string;
+  rsvpDeadlineText?: string;
 }
 
-export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
+export function RSVPFormView({
+  guests,
+  inviteCode,
+  rsvpTitle,
+  weddingDateFormatted,
+  rsvpDeadlineText,
+}: RSVPFormViewProps) {
   const router = useRouter();
   const slug = useWeddingSlug();
   const { user, isLoaded } = useUser();
@@ -46,14 +54,12 @@ export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
 
         {/* Header */}
         <div className="flex-shrink-0 pt-6 pb-4 px-4 border-b border-border bg-card">
-          <h1 className="text-2xl font-serif text-center mb-2">
-            {RSVP_CONTENT.title}
-          </h1>
+          <h1 className="text-2xl font-serif text-center mb-2">{rsvpTitle}</h1>
           <p className="text-sm text-center text-muted-foreground mb-1">
-            {DETAILS_CONTENT.date}
+            {weddingDateFormatted}
           </p>
           <p className="text-xs text-center text-muted-foreground">
-            {RSVP_CONTENT.deadline}
+            {rsvpDeadlineText}
           </p>
           <p className="text-center mt-2">
             <Link
@@ -97,14 +103,14 @@ export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
           <div className="max-w-6xl mx-auto">
             {/* Header */}
             <h1 className="text-4xl md:text-5xl font-serif text-center mb-4 text-white drop-shadow-lg">
-              {RSVP_CONTENT.title}
+              {rsvpTitle}
             </h1>
             <p className="text-xl md:text-2xl text-center text-white/90 mb-2 drop-shadow-md">
-              {DETAILS_CONTENT.date}
+              {weddingDateFormatted}
             </p>
             <div className="w-24 h-1 bg-white/80 mx-auto mb-4" />
             <p className="text-white/80 text-center mb-4 drop-shadow-md">
-              {RSVP_CONTENT.deadline}
+              {rsvpDeadlineText}
             </p>
             <p className="text-center mb-8">
               <Link
@@ -120,8 +126,8 @@ export function RSVPFormView({ guests, inviteCode }: RSVPFormViewProps) {
               {/* Image - Left Side */}
               <div className="relative aspect-[4/5] rounded-lg overflow-hidden max-h-[600px]">
                 <Image
-                  src={RSVP_CONTENT.image.src}
-                  alt={RSVP_CONTENT.image.alt}
+                  src="/rsvp.png"
+                  alt="RSVP"
                   fill
                   className="object-cover"
                 />

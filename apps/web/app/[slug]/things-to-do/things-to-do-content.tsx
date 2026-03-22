@@ -9,6 +9,7 @@ interface ThingsToDoContentProps {
   beaches: ActivityWithInterest[];
   inviteCode?: string;
   heroImage: string;
+  weddingDate: Date;
 }
 
 export function ThingsToDoContent({
@@ -17,6 +18,7 @@ export function ThingsToDoContent({
   beaches,
   inviteCode,
   heroImage,
+  weddingDate,
 }: ThingsToDoContentProps) {
   // Separate venues by type
   const ceremonyVenue = venues.find((v) => v.venueType === "ceremony");
@@ -120,6 +122,7 @@ export function ThingsToDoContent({
                   activity={activity}
                   inviteCode={inviteCode}
                   index={index}
+                  weddingDate={weddingDate}
                 />
               ))}
             </div>
@@ -146,6 +149,7 @@ export function ThingsToDoContent({
                   activity={beach}
                   inviteCode={inviteCode}
                   index={index}
+                  weddingDate={weddingDate}
                 />
               ))}
             </div>

@@ -10,7 +10,6 @@ import {
   SheetTitle,
 } from "@workspace/ui/components/sheet";
 import { useState } from "react";
-import { WEDDING_DATE } from "@/app/constants";
 import type { ActivityWithInterest } from "./actions";
 
 interface InterestCalendarModalProps {
@@ -22,6 +21,7 @@ interface InterestCalendarModalProps {
   interestedParties: ActivityWithInterest["interestedParties"];
   onConfirm: (date: string | null) => void;
   isPending: boolean;
+  weddingDate: Date;
 }
 
 export function InterestCalendarModal({
@@ -33,6 +33,7 @@ export function InterestCalendarModal({
   interestedParties,
   onConfirm,
   isPending,
+  weddingDate,
 }: InterestCalendarModalProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     currentDate ? new Date(currentDate) : undefined,
@@ -87,7 +88,7 @@ export function InterestCalendarModal({
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              defaultMonth={WEDDING_DATE}
+              defaultMonth={weddingDate}
               modifiers={{
                 hasInterest: datesWithInterest,
               }}
