@@ -19,20 +19,11 @@ The biggest architectural change. Every table currently stores data globally; th
   - Seeded with default wedding row for Helen & Enrique (`slug: helen-and-enrique`)
 - [x] Add nullable `wedding_id` foreign key to all existing tables (`guests`, `parties`, `events`, `activities`, `photos`, `gifts`, `seating_charts`, `hotels`, `wedding_todos`, `guest_photos`, `documents`, `service_links`, plus junction tables)
 - [x] Write a migration to backfill existing data with the default `wedding_id`
-- [x] Update Kysely types (`WeddingsTable`, `wedding_id` on all interfaces)
-- [ ] **Update all Kysely queries to filter by `wedding_id`** (~39+ files, security-critical — without this, adding a second wedding leaks data)
-- [ ] Add Supabase Row-Level Security (RLS) policies scoped to `wedding_id` (current RLS is table-level read/write, not tenant-scoped)
-- [ ] Migration to make `wedding_id` columns NOT NULL (after queries are scoped)
+- [x] Update Prisma schema with `weddingId` on all models
+- [ ] Update all Prisma queries to filter by `weddingId` (this touches nearly every query in the app)
+- [ ] Add Supabase Row-Level Security (RLS) policies scoped to `wedding_id`
 
-### 1.2 Wedding Context Resolution (NEW — prerequisite for routing)
-
-> Architectural decision needed: how does `wedding_id` propagate through the app?
-
-- [ ] Design the context pattern: middleware header, React context, server-side helper, or combination
-- [ ] Implement a `getWeddingId()` utility that all queries can call
-- [ ] Decide backward-compat strategy: does `/rsvp` keep working (default wedding) or redirect to `/helen-and-enrique/rsvp`?
-
-### 1.3 Wedding-Scoped Routing
+### 1.2 Wedding-Scoped Routing
 
 - [ ] Move public pages under a dynamic route: `app/[slug]/` (e.g., `/helen-and-enrique/rsvp`)
 - [ ] Move admin pages under: `app/[slug]/admin/`

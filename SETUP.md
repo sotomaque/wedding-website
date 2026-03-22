@@ -211,7 +211,7 @@ bun run test:e2e     # E2E tests (Playwright)
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript (strict) |
 | Styling | Tailwind CSS 4 + shadcn/ui |
-| Database | Supabase (PostgreSQL) + Kysely ORM |
+| Database | Supabase (PostgreSQL) + Prisma ORM |
 | Auth | Clerk |
 | Email | Resend (template-based) |
 | Payments | Stripe |
