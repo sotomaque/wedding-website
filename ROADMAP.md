@@ -19,8 +19,8 @@ The biggest architectural change. Every table currently stores data globally; th
   - Seeded with default wedding row for Helen & Enrique (`slug: helen-and-enrique`)
 - [x] Add nullable `wedding_id` foreign key to all 15 existing tables (`guests`, `parties`, `events`, `activities`, `photos`, `gifts`, `seating_charts`, `hotels`, `wedding_todos`, etc.)
 - [x] Write a migration to backfill existing data with the default `wedding_id`
-- [x] Update Kysely types (`WeddingsTable`, `wedding_id` on all interfaces)
-- [ ] Update all Kysely queries to filter by `wedding_id` (this touches nearly every query in the app)
+- [x] Update Prisma schema with `weddingId` on all models
+- [ ] Update all Prisma queries to filter by `weddingId` (this touches nearly every query in the app)
 - [ ] Add Supabase Row-Level Security (RLS) policies scoped to `wedding_id`
 
 ### 1.2 Wedding-Scoped Routing
