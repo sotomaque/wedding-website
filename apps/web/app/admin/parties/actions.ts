@@ -257,8 +257,8 @@ export async function createPartyFromGuests(
       data: {
         inviteCode: newInviteCode,
         name: partyName || null,
-        side: firstGuest.side,
-        list: firstGuest.list,
+        side: firstGuest.side ?? undefined,
+        list: firstGuest.list ?? undefined,
       },
       select: { id: true },
     });

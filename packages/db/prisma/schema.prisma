@@ -20,7 +20,7 @@ model Activity {
   latitude               Decimal?                @db.Decimal(10, 7)
   longitude              Decimal?                @db.Decimal(10, 7)
   isVenue                Boolean?                @default(false) @map("is_venue")
-  venueType              String?                 @map("venue_type")
+  venueType              VenueType?              @map("venue_type")
   displayOrder           Int?                    @default(0) @map("display_order")
   weddingId              String?                 @map("wedding_id") @db.Uuid
   wedding                Wedding?                @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -40,8 +40,8 @@ model Document {
   fileUrl     String   @map("file_url")
   fileType    String   @map("file_type")
   fileSize    Int?     @map("file_size")
-  category    String   @default("other")
-  uploadedBy  String   @map("uploaded_by")
+  category    DocumentCategory @default(other)
+  uploadedBy  String           @map("uploaded_by")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
   wedding     Wedding? @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -85,9 +85,9 @@ model Gift {
   donorName                String?   @map("donor_name")
   amountCents              Int       @map("amount_cents")
   currency                 String    @default("usd")
-  giftType                 String?   @map("gift_type")
+  giftType                 GiftType? @map("gift_type")
   guestId                  String?   @map("guest_id") @db.Uuid
-  status                   String    @default("completed")
+  status                   GiftStatus @default(completed)
   thankYouEmailSent        Boolean   @default(false) @map("thank_you_email_sent")
   thankYouEmailSentAt      DateTime? @map("thank_you_email_sent_at") @db.Timestamptz(6)
   createdAt                DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -116,7 +116,7 @@ model GuestActivityInterest {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   inviteCode  String?  @map("invite_code")
   plannedDate DateTime? @map("planned_date") @db.Date
-  status      String?  @default("interested")
+  status      ActivityInterestStatus? @default(interested)
   weddingId   String?  @map("wedding_id") @db.Uuid
   activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   guest       Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -132,7 +132,7 @@ model GuestEventInvite {
   id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   guestId          String    @map("guest_id") @db.Uuid
   eventId          String    @map("event_id") @db.Uuid
-  rsvpStatus       String?   @default("pending") @map("rsvp_status")
+  rsvpStatus       RsvpStatus? @default(pending) @map("rsvp_status")
   createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   emailSent        Boolean?  @default(false) @map("email_sent")
   emailSentAt      DateTime? @map("email_sent_at") @db.Timestamptz(6)
@@ -151,21 +151,21 @@ model GuestEventInvite {
 }
 
 model GuestHotelInterest {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  guestId        String?   @map("guest_id") @db.Uuid
-  hotelId        String?   @map("hotel_id") @db.Uuid
-  inviteCode     String    @map("invite_code")
-  status         String
-  checkInDate    DateTime? @map("check_in_date") @db.Date
-  checkOutDate   DateTime? @map("check_out_date") @db.Date
-  numberOfRooms  Int?      @map("number_of_rooms")
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  guestId        String?             @map("guest_id") @db.Uuid
+  hotelId        String?             @map("hotel_id") @db.Uuid
+  inviteCode     String              @map("invite_code")
+  status         HotelInterestStatus
+  checkInDate    DateTime?           @map("check_in_date") @db.Date
+  checkOutDate   DateTime?           @map("check_out_date") @db.Date
+  numberOfRooms  Int?                @map("number_of_rooms")
   notes          String?
-  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt      DateTime? @default(now()) @map("updated_at") @db.Timestamp(6)
-  weddingId      String?   @map("wedding_id") @db.Uuid
-  guest          Guest?    @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  hotel          Hotel?    @relation(fields: [hotelId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  wedding        Wedding?  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  createdAt      DateTime?           @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime?           @default(now()) @map("updated_at") @db.Timestamp(6)
+  weddingId      String?             @map("wedding_id") @db.Uuid
+  guest          Guest?              @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  hotel          Hotel?              @relation(fields: [hotelId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding        Wedding?            @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([guestId, hotelId])
   @@index([guestId], map: "idx_guest_hotel_interests_guest_id")
@@ -213,18 +213,18 @@ model Guest {
   id                                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                               String?
   inviteCode                          String?                 @map("invite_code")
-  rsvpStatus                          String                  @default("pending") @map("rsvp_status")
+  rsvpStatus                          RsvpStatus              @default(pending) @map("rsvp_status")
   plusOneAllowed                       Boolean                 @default(false) @map("plus_one_allowed")
   dietaryRestrictions                  String?                 @map("dietary_restrictions")
   numberOfResends                     Int                     @default(0) @map("number_of_resends")
   mailingAddress                      String?                 @map("mailing_address")
-  physicalInviteSent                  Boolean                 @default(false) @map("physical_invite_sent")
+  physicalInviteSent                   Boolean                 @default(false) @map("physical_invite_sent")
   phoneNumber                         String?                 @map("phone_number")
   whatsapp                            String?
-  preferredContactMethod              String?                 @map("preferred_contact_method")
+  preferredContactMethod              PreferredContactMethod? @map("preferred_contact_method")
   createdAt                           DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  side                                String?
-  list                                String                  @default("a")
+  side                                GuestSide?
+  list                                GuestList               @default(a)
   isPlusOne                           Boolean                 @default(false) @map("is_plus_one")
   primaryGuestId                      String?                 @map("primary_guest_id") @db.Uuid
   firstName                           String                  @map("first_name")
@@ -236,8 +236,8 @@ model Guest {
   activitiesEmailSent                 Boolean?                @default(false) @map("activities_email_sent")
   activitiesEmailSentAt               DateTime?               @map("activities_email_sent_at") @db.Timestamptz(6)
   activitiesEmailResendCount          Int?                    @default(0) @map("activities_email_resend_count")
-  gender                              String?
-  bridalPartyRole                     String?                 @map("bridal_party_role")
+  gender                              Gender?
+  bridalPartyRole                     BridalPartyRole?        @map("bridal_party_role")
   partyId                             String?                 @map("party_id") @db.Uuid
   threeAndUnder                       Boolean                 @default(false) @map("three_and_under")
   hotelRecommendationEmailSent        Boolean?                @default(false) @map("hotel_recommendation_email_sent")
@@ -286,7 +286,7 @@ model Hotel {
   imageUrl            String?              @map("image_url")
   latitude            Decimal?             @db.Decimal(10, 7)
   longitude           Decimal?             @db.Decimal(10, 7)
-  hotelType           String?              @map("hotel_type")
+  hotelType           HotelType?           @map("hotel_type")
   distanceToVenue     String?              @map("distance_to_venue")
   parkingInfo         String?              @map("parking_info")
   amenities           String?
@@ -304,18 +304,18 @@ model Hotel {
 }
 
 model Party {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  inviteCode String    @unique @map("invite_code") @db.VarChar(10)
-  name       String?   @db.VarChar(255)
-  side       String?   @db.VarChar(20)
-  list       String?   @db.VarChar(20)
-  family     String?   @db.VarChar(100)
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inviteCode String     @unique @map("invite_code") @db.VarChar(10)
+  name       String?    @db.VarChar(255)
+  side       GuestSide?
+  list       GuestList?
+  family     String?    @db.VarChar(100)
   notes      String?
-  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
-  weddingId  String?   @map("wedding_id") @db.Uuid
+  createdAt  DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime?  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  weddingId  String?    @map("wedding_id") @db.Uuid
   guests     Guest[]
-  wedding    Wedding?  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding    Wedding?   @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([inviteCode], map: "idx_parties_invite_code")
   @@index([weddingId], map: "idx_parties_wedding_id")
@@ -362,7 +362,7 @@ model SeatingTable {
   capacityOverride      Int?                   @map("capacity_override")
   positionX             Float?                 @default(0) @map("position_x")
   positionY             Float?                 @default(0) @map("position_y")
-  shape                 String?                @default("round")
+  shape                 SeatingShape?          @default(round)
   notes                 String?
   createdAt             DateTime?              @default(now()) @map("created_at") @db.Timestamptz(6)
   weddingId             String?                @map("wedding_id") @db.Uuid
@@ -382,8 +382,8 @@ model ServiceLink {
   title       String
   url         String
   description String?
-  category    String   @default("other")
-  sortOrder   Int      @default(0) @map("sort_order")
+  category    ServiceLinkCategory @default(other)
+  sortOrder   Int                 @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
   wedding     Wedding? @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -415,7 +415,7 @@ model Wedding {
   weddingDate           DateTime               @map("wedding_date") @db.Date
   rsvpDeadline          String?                @map("rsvp_deadline")
   timezone              String                 @default("America/New_York")
-  status                String                 @default("published")
+  status                WeddingStatus           @default(published)
   createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
   activities            Activity[]
@@ -438,4 +438,136 @@ model Wedding {
 
   @@index([slug], map: "idx_weddings_slug")
   @@map("weddings")
+}
+
+enum ActivityInterestStatus {
+  interested
+  committed
+
+  @@map("activity_interest_status")
+}
+
+enum BridalPartyRole {
+  groomsman
+  best_man
+  bridesmaid
+  maid_of_honor
+
+  @@map("bridal_party_role")
+}
+
+enum DocumentCategory {
+  contract
+  receipt
+  floor_plan
+  timeline
+  other
+
+  @@map("document_category")
+}
+
+enum Gender {
+  male
+  female
+
+  @@map("gender")
+}
+
+enum GiftStatus {
+  pending
+  completed
+  refunded
+  failed
+
+  @@map("gift_status")
+}
+
+enum GiftType {
+  baby_fund
+  honeymoon
+  student_loans
+
+  @@map("gift_type")
+}
+
+enum GuestList {
+  a
+  b
+  c
+
+  @@map("guest_list")
+}
+
+enum GuestSide {
+  bride
+  groom
+  both
+
+  @@map("guest_side")
+}
+
+enum HotelInterestStatus {
+  interested
+  booked
+
+  @@map("hotel_interest_status")
+}
+
+enum HotelType {
+  luxury
+  moderate
+  budget
+
+  @@map("hotel_type")
+}
+
+enum PreferredContactMethod {
+  email
+  text
+  whatsapp
+  phone_call
+
+  @@map("preferred_contact_method")
+}
+
+enum RsvpStatus {
+  pending
+  yes
+  no
+
+  @@map("rsvp_status")
+}
+
+enum SeatingShape {
+  round
+  rectangle
+  square
+
+  @@map("seating_shape")
+}
+
+enum ServiceLinkCategory {
+  venue
+  catering
+  photography
+  music
+  flowers
+  other
+
+  @@map("service_link_category")
+}
+
+enum VenueType {
+  ceremony
+  reception
+
+  @@map("venue_type")
+}
+
+enum WeddingStatus {
+  draft
+  published
+  archived
+
+  @@map("wedding_status")
 }
