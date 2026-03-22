@@ -134,7 +134,7 @@ function EditableSideCell({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState<"bride" | "groom" | "both">(
-    (guest.side as "bride" | "groom" | "both") || "bride",
+    guest.side || "bride",
   );
   const [isSaving, setIsSaving] = useState(false);
 
@@ -219,9 +219,7 @@ function EditableListCell({
   onSave: (guestId: string, list: "a" | "b" | "c") => Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState<"a" | "b" | "c">(
-    guest.list as "a" | "b" | "c",
-  );
+  const [value, setValue] = useState<"a" | "b" | "c">(guest.list);
   const [isSaving, setIsSaving] = useState(false);
 
   async function handleSave() {
@@ -304,7 +302,7 @@ function EditableRsvpCell({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState<"yes" | "no" | "pending">(
-    guest.rsvpStatus as "yes" | "no" | "pending",
+    guest.rsvpStatus,
   );
   const [isSaving, setIsSaving] = useState(false);
 
