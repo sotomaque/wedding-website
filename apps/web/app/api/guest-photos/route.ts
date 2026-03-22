@@ -13,13 +13,10 @@ export async function GET() {
   try {
     const weddingId = await getWeddingId();
 
-    const photos = await db
-      .selectFrom("guest_photos")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("is_visible", "=", true)
-      .orderBy("uploaded_at", "desc")
-      .execute();
+    const photos = await db.guestPhoto.findMany({
+      where: { isVisible: true, weddingId },
+      orderBy: { uploadedAt: "desc" },
+    });
 
     return NextResponse.json({ photos });
   } catch (error) {

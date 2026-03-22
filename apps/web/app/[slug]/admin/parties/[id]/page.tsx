@@ -44,7 +44,7 @@ export default async function PartyDetailPage({ params }: PageProps) {
               <p className="text-sm text-muted-foreground">
                 Invite Code:{" "}
                 <span className="font-mono bg-secondary px-2 py-0.5 rounded">
-                  {party.invite_code}
+                  {party.inviteCode}
                 </span>
               </p>
             </div>

@@ -9,8 +9,7 @@ import {
   generateIcs,
 } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
-import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { multiGuestRsvpSchema } from "@/lib/validations/rsvp";
@@ -21,59 +20,59 @@ import { multiGuestRsvpSchema } from "@/lib/validations/rsvp";
 // ---------------------------------------------------------------------------
 export interface RsvpGuest {
   id: string;
-  first_name: string;
-  last_name: string | null;
-  rsvp_status: string | null;
-  is_plus_one: boolean | null;
-  plus_one_allowed: boolean | null;
-  primary_guest_id: string | null;
-  dietary_restrictions: string | null;
-  under_21: boolean | null;
-  three_and_under: boolean | null;
-  mailing_address: string | null;
-  phone_number: string | null;
+  firstName: string;
+  lastName: string | null;
+  rsvpStatus: string | null;
+  isPlusOne: boolean | null;
+  plusOneAllowed: boolean | null;
+  primaryGuestId: string | null;
+  dietaryRestrictions: string | null;
+  under21: boolean | null;
+  threeAndUnder: boolean | null;
+  mailingAddress: string | null;
+  phoneNumber: string | null;
   whatsapp: string | null;
-  preferred_contact_method: string | null;
-  arrival_date: string | null;
-  arrival_transport: string | null;
-  departure_date: string | null;
-  departure_transport: string | null;
-  accommodation_notes: string | null;
+  preferredContactMethod: string | null;
+  arrivalDate: string | null;
+  arrivalTransport: string | null;
+  departureDate: string | null;
+  departureTransport: string | null;
+  accommodationNotes: string | null;
 }
 
-// Columns sent to the client
-const RSVP_GUEST_COLUMNS = [
-  "id",
-  "first_name",
-  "last_name",
-  "rsvp_status",
-  "is_plus_one",
-  "plus_one_allowed",
-  "primary_guest_id",
-  "dietary_restrictions",
-  "under_21",
-  "three_and_under",
-  "mailing_address",
-  "phone_number",
-  "whatsapp",
-  "preferred_contact_method",
-  "arrival_date",
-  "arrival_transport",
-  "departure_date",
-  "departure_transport",
-  "accommodation_notes",
-] as const;
+// Columns sent to the client (Prisma select object)
+const RSVP_GUEST_SELECT = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  rsvpStatus: true,
+  isPlusOne: true,
+  plusOneAllowed: true,
+  primaryGuestId: true,
+  dietaryRestrictions: true,
+  under21: true,
+  threeAndUnder: true,
+  mailingAddress: true,
+  phoneNumber: true,
+  whatsapp: true,
+  preferredContactMethod: true,
+  arrivalDate: true,
+  arrivalTransport: true,
+  departureDate: true,
+  departureTransport: true,
+  accommodationNotes: true,
+} as const;
 
 // Superset needed internally for insert/update logic (not sent to client)
-const PARTY_GUEST_COLUMNS = [
-  ...RSVP_GUEST_COLUMNS,
-  "email",
-  "invite_code",
-  "party_id",
-  "side",
-  "list",
-  "family",
-] as const;
+const PARTY_GUEST_SELECT = {
+  ...RSVP_GUEST_SELECT,
+  email: true,
+  inviteCode: true,
+  partyId: true,
+  side: true,
+  list: true,
+  family: true,
+} as const;
 
 // ---------------------------------------------------------------------------
 // verifyInviteCode
@@ -84,27 +83,22 @@ export async function verifyInviteCode(code: string): Promise<{
   error?: string;
 }> {
   try {
+    const weddingId = await getWeddingId();
     if (!code) {
       return { success: false, error: "Invite code is required" };
     }
 
-    const weddingId = await getWeddingId();
-
-    const party = await db
-      .selectFrom("parties")
-      .select(["id", "invite_code"])
-      .where("wedding_id", "=", weddingId)
-      .where("invite_code", "=", code.toUpperCase())
-      .executeTakeFirst();
+    const party = await db.party.findFirst({
+      where: { inviteCode: code.toUpperCase(), weddingId },
+      select: { id: true, inviteCode: true },
+    });
 
     if (!party) {
       // Fallback: check guests table directly for backwards compatibility
-      const guestsByCode = await db
-        .selectFrom("guests")
-        .select(RSVP_GUEST_COLUMNS)
-        .where("wedding_id", "=", weddingId)
-        .where("invite_code", "=", code.toUpperCase())
-        .execute();
+      const guestsByCode = await db.guest.findMany({
+        where: { inviteCode: code.toUpperCase(), weddingId },
+        select: RSVP_GUEST_SELECT,
+      });
 
       if (!guestsByCode || guestsByCode.length === 0) {
         return { success: false, error: "Invalid invite code" };
@@ -113,12 +107,10 @@ export async function verifyInviteCode(code: string): Promise<{
       return { success: true, guests: guestsByCode as RsvpGuest[] };
     }
 
-    const guests = await db
-      .selectFrom("guests")
-      .select(RSVP_GUEST_COLUMNS)
-      .where("wedding_id", "=", weddingId)
-      .where("party_id", "=", party.id)
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { partyId: party.id, weddingId },
+      select: RSVP_GUEST_SELECT,
+    });
 
     if (!guests || guests.length === 0) {
       return { success: false, error: "No guests found for this party" };
@@ -197,118 +189,108 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
-    const party = await db
-      .selectFrom("parties")
-      .select(["id", "invite_code"])
-      .where("wedding_id", "=", weddingId)
-      .where("invite_code", "=", inviteCode.toUpperCase())
-      .executeTakeFirst();
+    const party = await db.party.findFirst({
+      where: { inviteCode: inviteCode.toUpperCase(), weddingId },
+      select: { id: true, inviteCode: true },
+    });
 
-    const guestsQuery = party
-      ? db
-          .selectFrom("guests")
-          .select(PARTY_GUEST_COLUMNS)
-          .where("wedding_id", "=", weddingId)
-          .where("party_id", "=", party.id)
-      : db
-          .selectFrom("guests")
-          .select(PARTY_GUEST_COLUMNS)
-          .where("wedding_id", "=", weddingId)
-          .where("invite_code", "=", inviteCode.toUpperCase());
-
-    const guests = await guestsQuery.execute();
+    const guests = party
+      ? await db.guest.findMany({
+          where: { partyId: party.id, weddingId },
+          select: PARTY_GUEST_SELECT,
+        })
+      : await db.guest.findMany({
+          where: { inviteCode: inviteCode.toUpperCase(), weddingId },
+          select: PARTY_GUEST_SELECT,
+        });
 
     if (!guests || guests.length === 0) {
       return { success: false, error: "Invalid invite code" };
     }
 
-    const primaryGuest = guests.find((g) => !g.is_plus_one);
-    const existingPlusOne = guests.find((g) => g.is_plus_one);
+    const primaryGuest = guests.find((g) => !g.isPlusOne);
+    const existingPlusOne = guests.find((g) => g.isPlusOne);
 
     if (!primaryGuest) {
       return { success: false, error: "Primary guest not found" };
     }
 
-    await weddingDb
-      .updateTable("guests")
-      .set({
-        first_name: firstName,
-        last_name: lastName || null,
-        rsvp_status: attending ? "yes" : "no",
-        dietary_restrictions: attending ? dietaryRestrictions || null : null,
-        under_21: under21 ?? primaryGuest.under_21,
-        three_and_under: threeAndUnder ?? primaryGuest.three_and_under,
-        mailing_address: mailingAddress || null,
-        phone_number: phoneNumber || null,
+    await db.guest.update({
+      where: { id: primaryGuest.id },
+      data: {
+        firstName: firstName,
+        lastName: lastName || null,
+        rsvpStatus: attending ? "yes" : "no",
+        dietaryRestrictions: attending ? dietaryRestrictions || null : null,
+        under21: under21 ?? primaryGuest.under21,
+        threeAndUnder: threeAndUnder ?? primaryGuest.threeAndUnder,
+        mailingAddress: mailingAddress || null,
+        phoneNumber: phoneNumber || null,
         whatsapp: whatsapp || null,
-        preferred_contact_method: preferredContactMethod || null,
-      })
-      .where("id", "=", primaryGuest.id)
-      .execute();
+        preferredContactMethod: preferredContactMethod || null,
+      },
+    });
 
-    if (primaryGuest.plus_one_allowed) {
+    if (primaryGuest.plusOneAllowed) {
       if (!attending) {
         if (existingPlusOne) {
-          await weddingDb
-            .updateTable("guests")
-            .set({ rsvp_status: "no", dietary_restrictions: null })
-            .where("id", "=", existingPlusOne.id)
-            .execute();
+          await db.guest.update({
+            where: { id: existingPlusOne.id },
+            data: { rsvpStatus: "no", dietaryRestrictions: null },
+          });
         }
       } else if (plusOneAttending && plusOneFirstName?.trim()) {
         if (existingPlusOne) {
-          await weddingDb
-            .updateTable("guests")
-            .set({
-              first_name: plusOneFirstName,
-              last_name: plusOneLastName || null,
+          await db.guest.update({
+            where: { id: existingPlusOne.id },
+            data: {
+              firstName: plusOneFirstName,
+              lastName: plusOneLastName || null,
               email: plusOneEmail || existingPlusOne.email,
-              rsvp_status: "yes",
-              dietary_restrictions: plusOneDietaryRestrictions || null,
-              under_21: plusOneUnder21 ?? existingPlusOne.under_21,
-              three_and_under:
-                plusOneThreeAndUnder ?? existingPlusOne.three_and_under,
-              phone_number: plusOnePhoneNumber || null,
+              rsvpStatus: "yes",
+              dietaryRestrictions: plusOneDietaryRestrictions || null,
+              under21: plusOneUnder21 ?? existingPlusOne.under21,
+              threeAndUnder:
+                plusOneThreeAndUnder ?? existingPlusOne.threeAndUnder,
+              phoneNumber: plusOnePhoneNumber || null,
               whatsapp: plusOneWhatsapp || null,
-              preferred_contact_method: plusOnePreferredContactMethod || null,
-            })
-            .where("id", "=", existingPlusOne.id)
-            .execute();
+              preferredContactMethod: plusOnePreferredContactMethod || null,
+            },
+          });
         } else {
-          await weddingDb
-            .insertInto("guests", {
-              first_name: plusOneFirstName,
-              last_name: plusOneLastName || null,
+          await db.guest.create({
+            data: {
+              firstName: plusOneFirstName,
+              lastName: plusOneLastName || null,
               email: plusOneEmail || primaryGuest.email,
-              invite_code: primaryGuest.invite_code,
-              party_id: primaryGuest.party_id,
+              inviteCode: primaryGuest.inviteCode,
+              partyId: primaryGuest.partyId,
               side: primaryGuest.side,
               list: primaryGuest.list,
-              is_plus_one: true,
-              plus_one_allowed: false,
-              primary_guest_id: primaryGuest.id,
-              rsvp_status: "yes",
-              dietary_restrictions: plusOneDietaryRestrictions || null,
-              under_21: plusOneUnder21 ?? false,
-              three_and_under: plusOneThreeAndUnder ?? false,
-              mailing_address: mailingAddress || null,
-              phone_number: plusOnePhoneNumber || null,
+              isPlusOne: true,
+              plusOneAllowed: false,
+              primaryGuestId: primaryGuest.id,
+              rsvpStatus: "yes",
+              dietaryRestrictions: plusOneDietaryRestrictions || null,
+              under21: plusOneUnder21 ?? false,
+              threeAndUnder: plusOneThreeAndUnder ?? false,
+              mailingAddress: mailingAddress || null,
+              phoneNumber: plusOnePhoneNumber || null,
               whatsapp: plusOneWhatsapp || null,
-              preferred_contact_method: plusOnePreferredContactMethod || null,
-              number_of_resends: 0,
-              physical_invite_sent: false,
+              preferredContactMethod: plusOnePreferredContactMethod || null,
+              numberOfResends: 0,
+              physicalInviteSent: false,
               family: primaryGuest.family,
-            })
-            .execute();
+              weddingId,
+            },
+          });
         }
       } else if (existingPlusOne && plusOneAttending === false) {
-        await weddingDb
-          .updateTable("guests")
-          .set({ rsvp_status: "no", dietary_restrictions: null })
-          .where("id", "=", existingPlusOne.id)
-          .execute();
+        await db.guest.update({
+          where: { id: existingPlusOne.id },
+          data: { rsvpStatus: "no", dietaryRestrictions: null },
+        });
       }
     }
 
@@ -319,26 +301,23 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       const capturedInviteCode = inviteCode;
       const capturedAttending = attending;
       const capturedDietary = dietaryRestrictions;
-      const capturedWeddingId = weddingId;
       after(async () => {
         try {
-          const updatedGuests = await db
-            .selectFrom("guests")
-            .select(["id", "first_name", "last_name", "email", "rsvp_status"])
-            .where("wedding_id", "=", capturedWeddingId)
-            .where(
-              capturedParty ? "party_id" : "invite_code",
-              "=",
-              capturedParty
-                ? capturedParty.id
-                : capturedInviteCode.toUpperCase(),
-            )
-            .execute();
+          const updatedGuests = await db.guest.findMany({
+            where: capturedParty
+              ? { partyId: capturedParty.id, weddingId }
+              : { inviteCode: capturedInviteCode.toUpperCase(), weddingId },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              rsvpStatus: true,
+            },
+          });
 
           const guestNames = updatedGuests
-            .map(
-              (g) => `${g.first_name}${g.last_name ? ` ${g.last_name}` : ""}`,
-            )
+            .map((g) => `${g.firstName}${g.lastName ? ` ${g.lastName}` : ""}`)
             .join(", ");
           const guestEmails = updatedGuests
             .filter((g) => g.email)
@@ -356,7 +335,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                 GUEST_EMAILS: guestEmails || "No email provided",
                 INVITE_CODE: capturedInviteCode.toUpperCase(),
                 STATUS_TEXT: capturedAttending ? "Attending" : "Not Attending",
-                STATUS_EMOJI: capturedAttending ? "✅" : "❌",
+                STATUS_EMOJI: capturedAttending ? "\u2705" : "\u274C",
                 DIETARY_RESTRICTIONS: capturedDietary || "None",
                 GUEST_COUNT_TEXT:
                   updatedGuests.length > 1
@@ -374,50 +353,61 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
 
           // Send calendar invites to attending guests with an email address
           const attendingWithEmail = updatedGuests.filter(
-            (g) => g.rsvp_status === "yes" && g.email?.includes("@"),
+            (g) => g.rsvpStatus === "yes" && g.email?.includes("@"),
           );
           if (attendingWithEmail.length > 0) {
-            const defaultEvents = await db
-              .selectFrom("events")
-              .select([
-                "id",
-                "name",
-                "event_date",
-                "start_time",
-                "end_time",
-                "location_name",
-                "location_address",
-              ])
-              .where("wedding_id", "=", capturedWeddingId)
-              .where("is_default", "=", true)
-              .orderBy("display_order", "asc")
-              .execute();
+            const defaultEvents = await db.event.findMany({
+              where: { isDefault: true, weddingId },
+              select: {
+                id: true,
+                name: true,
+                eventDate: true,
+                startTime: true,
+                endTime: true,
+                locationName: true,
+                locationAddress: true,
+              },
+              orderBy: { displayOrder: "asc" },
+            });
 
             if (defaultEvents.length > 0) {
               const eventsForIcs = defaultEvents.map((e) => ({
-                ...e,
+                id: e.id,
+                name: e.name,
                 event_date:
-                  e.event_date instanceof Date
-                    ? e.event_date
-                    : e.event_date
-                      ? new Date(`${e.event_date}T00:00:00`)
+                  e.eventDate instanceof Date
+                    ? e.eventDate
+                    : e.eventDate
+                      ? new Date(`${e.eventDate}T00:00:00`)
                       : null,
+                start_time: e.startTime
+                  ? e.startTime instanceof Date
+                    ? e.startTime.toISOString()
+                    : String(e.startTime)
+                  : null,
+                end_time: e.endTime
+                  ? e.endTime instanceof Date
+                    ? e.endTime.toISOString()
+                    : String(e.endTime)
+                  : null,
+                location_name: e.locationName,
+                location_address: e.locationAddress,
               }));
 
               for (const guest of attendingWithEmail) {
                 try {
-                  const guestName = `${guest.first_name}${guest.last_name ? ` ${guest.last_name}` : ""}`;
+                  const guestName = `${guest.firstName}${guest.lastName ? ` ${guest.lastName}` : ""}`;
                   const icsContent = generateIcs(eventsForIcs, guestName);
                   const html = buildCalendarEmailHtml(
                     eventsForIcs,
-                    guest.first_name,
+                    guest.firstName,
                   );
 
                   await sendEmail({
                     from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
                     to: guest.email as string,
                     subject:
-                      "Your Calendar Invite — Helen & Enrique's Wedding 💕",
+                      "Your Calendar Invite \u2014 Helen & Enrique's Wedding \uD83D\uDC95",
                     html,
                     attachments: [
                       {
@@ -427,14 +417,13 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                     ],
                   });
 
-                  await afterWeddingDb
-                    .updateTable("guests")
-                    .set({
-                      calendar_invite_sent: true,
-                      calendar_invite_sent_at: new Date().toISOString(),
-                    })
-                    .where("id", "=", guest.id)
-                    .execute();
+                  await db.guest.update({
+                    where: { id: guest.id },
+                    data: {
+                      calendarInviteSent: true,
+                      calendarInviteSentAt: new Date().toISOString(),
+                    },
+                  });
                 } catch (calendarError) {
                   console.error(
                     `Error sending calendar invite to guest ${guest.id}:`,
@@ -450,8 +439,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       });
     }
 
-    const { slug } = await getWeddingContext();
-    revalidatePath(`/${slug}/rsvp`);
+    revalidatePath("/rsvp");
     return { success: true };
   } catch (error) {
     console.error("Error submitting RSVP:", error);
@@ -544,28 +532,21 @@ export async function submitMultiGuestRSVP(
     } = parsed.data;
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
-    const party = await db
-      .selectFrom("parties")
-      .select(["id", "invite_code"])
-      .where("wedding_id", "=", weddingId)
-      .where("invite_code", "=", inviteCode.toUpperCase())
-      .executeTakeFirst();
+    const party = await db.party.findFirst({
+      where: { inviteCode: inviteCode.toUpperCase(), weddingId },
+      select: { id: true, inviteCode: true },
+    });
 
     const partyGuests = party
-      ? await db
-          .selectFrom("guests")
-          .select(PARTY_GUEST_COLUMNS)
-          .where("wedding_id", "=", weddingId)
-          .where("party_id", "=", party.id)
-          .execute()
-      : await db
-          .selectFrom("guests")
-          .select(PARTY_GUEST_COLUMNS)
-          .where("wedding_id", "=", weddingId)
-          .where("invite_code", "=", inviteCode.toUpperCase())
-          .execute();
+      ? await db.guest.findMany({
+          where: { partyId: party.id, weddingId },
+          select: PARTY_GUEST_SELECT,
+        })
+      : await db.guest.findMany({
+          where: { inviteCode: inviteCode.toUpperCase(), weddingId },
+          select: PARTY_GUEST_SELECT,
+        });
 
     if (!partyGuests || partyGuests.length === 0) {
       return { success: false, error: "Invalid invite code" };
@@ -582,106 +563,101 @@ export async function submitMultiGuestRSVP(
           return;
         }
 
-        await weddingDb
-          .updateTable("guests")
-          .set({
-            first_name: guestRsvp.firstName,
-            last_name: guestRsvp.lastName || null,
-            rsvp_status: guestRsvp.attending ? "yes" : "no",
-            dietary_restrictions: guestRsvp.attending
+        await db.guest.update({
+          where: { id: guestRsvp.guestId },
+          data: {
+            firstName: guestRsvp.firstName,
+            lastName: guestRsvp.lastName || null,
+            rsvpStatus: guestRsvp.attending ? "yes" : "no",
+            dietaryRestrictions: guestRsvp.attending
               ? guestRsvp.dietaryRestrictions || null
               : null,
-            under_21: guestRsvp.under21 ?? existingGuest.under_21,
-            three_and_under:
-              guestRsvp.threeAndUnder ?? existingGuest.three_and_under,
-            mailing_address: mailingAddress || existingGuest.mailing_address,
-            phone_number: phoneNumber || existingGuest.phone_number,
+            under21: guestRsvp.under21 ?? existingGuest.under21,
+            threeAndUnder:
+              guestRsvp.threeAndUnder ?? existingGuest.threeAndUnder,
+            mailingAddress: mailingAddress || existingGuest.mailingAddress,
+            phoneNumber: phoneNumber || existingGuest.phoneNumber,
             whatsapp: whatsapp || existingGuest.whatsapp,
-            preferred_contact_method:
-              preferredContactMethod || existingGuest.preferred_contact_method,
-            arrival_date: arrivalDate || existingGuest.arrival_date,
-            arrival_transport:
-              arrivalTransport || existingGuest.arrival_transport,
-            departure_date: departureDate || existingGuest.departure_date,
-            departure_transport:
-              departureTransport || existingGuest.departure_transport,
-            accommodation_notes:
-              accommodationNotes || existingGuest.accommodation_notes,
-          })
-          .where("id", "=", guestRsvp.guestId)
-          .execute();
+            preferredContactMethod:
+              preferredContactMethod || existingGuest.preferredContactMethod,
+            arrivalDate: arrivalDate || existingGuest.arrivalDate,
+            arrivalTransport:
+              arrivalTransport || existingGuest.arrivalTransport,
+            departureDate: departureDate || existingGuest.departureDate,
+            departureTransport:
+              departureTransport || existingGuest.departureTransport,
+            accommodationNotes:
+              accommodationNotes || existingGuest.accommodationNotes,
+          },
+        });
 
         if (guestRsvp.plusOneAllowed) {
           const existingPlusOne = guestRsvp.existingPlusOneId
             ? partyGuests.find((g) => g.id === guestRsvp.existingPlusOneId)
             : partyGuests.find(
-                (g) =>
-                  g.is_plus_one && g.primary_guest_id === guestRsvp.guestId,
+                (g) => g.isPlusOne && g.primaryGuestId === guestRsvp.guestId,
               );
 
           if (!guestRsvp.attending) {
             if (existingPlusOne) {
-              await weddingDb
-                .updateTable("guests")
-                .set({ rsvp_status: "no", dietary_restrictions: null })
-                .where("id", "=", existingPlusOne.id)
-                .execute();
+              await db.guest.update({
+                where: { id: existingPlusOne.id },
+                data: { rsvpStatus: "no", dietaryRestrictions: null },
+              });
             }
           } else if (
             guestRsvp.plusOneAttending &&
             guestRsvp.plusOneFirstName?.trim()
           ) {
             if (existingPlusOne) {
-              await weddingDb
-                .updateTable("guests")
-                .set({
-                  first_name: guestRsvp.plusOneFirstName,
-                  last_name: guestRsvp.plusOneLastName || null,
-                  rsvp_status: "yes",
-                  dietary_restrictions:
+              await db.guest.update({
+                where: { id: existingPlusOne.id },
+                data: {
+                  firstName: guestRsvp.plusOneFirstName,
+                  lastName: guestRsvp.plusOneLastName || null,
+                  rsvpStatus: "yes",
+                  dietaryRestrictions:
                     guestRsvp.plusOneDietaryRestrictions || null,
-                  under_21:
-                    guestRsvp.plusOneUnder21 ?? existingPlusOne.under_21,
-                  three_and_under:
+                  under21: guestRsvp.plusOneUnder21 ?? existingPlusOne.under21,
+                  threeAndUnder:
                     guestRsvp.plusOneThreeAndUnder ??
-                    existingPlusOne.three_and_under,
-                })
-                .where("id", "=", existingPlusOne.id)
-                .execute();
+                    existingPlusOne.threeAndUnder,
+                },
+              });
             } else {
-              await weddingDb
-                .insertInto("guests", {
-                  first_name: guestRsvp.plusOneFirstName,
-                  last_name: guestRsvp.plusOneLastName || null,
+              await db.guest.create({
+                data: {
+                  firstName: guestRsvp.plusOneFirstName,
+                  lastName: guestRsvp.plusOneLastName || null,
                   email: existingGuest.email,
-                  invite_code: existingGuest.invite_code,
-                  party_id: existingGuest.party_id,
+                  inviteCode: existingGuest.inviteCode,
+                  partyId: existingGuest.partyId,
                   side: existingGuest.side,
                   list: existingGuest.list,
-                  is_plus_one: true,
-                  plus_one_allowed: false,
-                  primary_guest_id: existingGuest.id,
-                  rsvp_status: "yes",
-                  dietary_restrictions:
+                  isPlusOne: true,
+                  plusOneAllowed: false,
+                  primaryGuestId: existingGuest.id,
+                  rsvpStatus: "yes",
+                  dietaryRestrictions:
                     guestRsvp.plusOneDietaryRestrictions || null,
-                  under_21: guestRsvp.plusOneUnder21 ?? false,
-                  three_and_under: guestRsvp.plusOneThreeAndUnder ?? false,
-                  mailing_address: mailingAddress || null,
-                  phone_number: phoneNumber || null,
+                  under21: guestRsvp.plusOneUnder21 ?? false,
+                  threeAndUnder: guestRsvp.plusOneThreeAndUnder ?? false,
+                  mailingAddress: mailingAddress || null,
+                  phoneNumber: phoneNumber || null,
                   whatsapp: whatsapp || null,
-                  preferred_contact_method: preferredContactMethod || null,
-                  number_of_resends: 0,
-                  physical_invite_sent: false,
+                  preferredContactMethod: preferredContactMethod || null,
+                  numberOfResends: 0,
+                  physicalInviteSent: false,
                   family: existingGuest.family,
-                })
-                .execute();
+                  weddingId,
+                },
+              });
             }
           } else if (existingPlusOne && guestRsvp.plusOneAttending === false) {
-            await weddingDb
-              .updateTable("guests")
-              .set({ rsvp_status: "no", dietary_restrictions: null })
-              .where("id", "=", existingPlusOne.id)
-              .execute();
+            await db.guest.update({
+              where: { id: existingPlusOne.id },
+              data: { rsvpStatus: "no", dietaryRestrictions: null },
+            });
           }
         }
       }),
@@ -693,42 +669,39 @@ export async function submitMultiGuestRSVP(
       const capturedParty = party;
       const capturedInviteCode = inviteCode;
       const capturedGuestRsvps = guestRsvps;
-      const capturedWeddingId = weddingId;
       after(async () => {
         try {
-          const updatedGuests = await db
-            .selectFrom("guests")
-            .select(["id", "first_name", "last_name", "email", "rsvp_status"])
-            .where("wedding_id", "=", capturedWeddingId)
-            .where(
-              capturedParty ? "party_id" : "invite_code",
-              "=",
-              capturedParty
-                ? capturedParty.id
-                : capturedInviteCode.toUpperCase(),
-            )
-            .execute();
+          const updatedGuests = await db.guest.findMany({
+            where: capturedParty
+              ? { partyId: capturedParty.id, weddingId }
+              : { inviteCode: capturedInviteCode.toUpperCase(), weddingId },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              rsvpStatus: true,
+            },
+          });
 
           const attendingGuests = updatedGuests.filter(
-            (g) => g.rsvp_status === "yes",
+            (g) => g.rsvpStatus === "yes",
           );
           const decliningGuests = updatedGuests.filter(
-            (g) => g.rsvp_status === "no",
+            (g) => g.rsvpStatus === "no",
           );
           const guestNames = updatedGuests
-            .map(
-              (g) => `${g.first_name}${g.last_name ? ` ${g.last_name}` : ""}`,
-            )
+            .map((g) => `${g.firstName}${g.lastName ? ` ${g.lastName}` : ""}`)
             .join(", ");
           const guestEmails = updatedGuests
             .filter((g) => g.email)
             .map((g) => g.email)
             .join(", ");
           const attendingNames = attendingGuests
-            .map((g) => g.first_name)
+            .map((g) => g.firstName)
             .join(", ");
           const decliningNames = decliningGuests
-            .map((g) => g.first_name)
+            .map((g) => g.firstName)
             .join(", ");
           const anyAttending = attendingGuests.length > 0;
 
@@ -743,7 +716,7 @@ export async function submitMultiGuestRSVP(
                 GUEST_EMAILS: guestEmails || "No email provided",
                 INVITE_CODE: capturedInviteCode.toUpperCase(),
                 STATUS_TEXT: `${attendingNames || "None"} attending${decliningNames ? `, ${decliningNames} declined` : ""}`,
-                STATUS_EMOJI: anyAttending ? "✅" : "❌",
+                STATUS_EMOJI: anyAttending ? "\u2705" : "\u274C",
                 DIETARY_RESTRICTIONS:
                   capturedGuestRsvps
                     .filter((g) => g.dietaryRestrictions)
@@ -761,50 +734,61 @@ export async function submitMultiGuestRSVP(
           });
           // Send calendar invites to attending guests with an email address
           const attendingWithEmailMulti = updatedGuests.filter(
-            (g) => g.rsvp_status === "yes" && g.email?.includes("@"),
+            (g) => g.rsvpStatus === "yes" && g.email?.includes("@"),
           );
           if (attendingWithEmailMulti.length > 0) {
-            const defaultEvents = await db
-              .selectFrom("events")
-              .select([
-                "id",
-                "name",
-                "event_date",
-                "start_time",
-                "end_time",
-                "location_name",
-                "location_address",
-              ])
-              .where("wedding_id", "=", capturedWeddingId)
-              .where("is_default", "=", true)
-              .orderBy("display_order", "asc")
-              .execute();
+            const defaultEvents = await db.event.findMany({
+              where: { isDefault: true, weddingId },
+              select: {
+                id: true,
+                name: true,
+                eventDate: true,
+                startTime: true,
+                endTime: true,
+                locationName: true,
+                locationAddress: true,
+              },
+              orderBy: { displayOrder: "asc" },
+            });
 
             if (defaultEvents.length > 0) {
               const eventsForIcs = defaultEvents.map((e) => ({
-                ...e,
+                id: e.id,
+                name: e.name,
                 event_date:
-                  e.event_date instanceof Date
-                    ? e.event_date
-                    : e.event_date
-                      ? new Date(`${e.event_date}T00:00:00`)
+                  e.eventDate instanceof Date
+                    ? e.eventDate
+                    : e.eventDate
+                      ? new Date(`${e.eventDate}T00:00:00`)
                       : null,
+                start_time: e.startTime
+                  ? e.startTime instanceof Date
+                    ? e.startTime.toISOString()
+                    : String(e.startTime)
+                  : null,
+                end_time: e.endTime
+                  ? e.endTime instanceof Date
+                    ? e.endTime.toISOString()
+                    : String(e.endTime)
+                  : null,
+                location_name: e.locationName,
+                location_address: e.locationAddress,
               }));
 
               for (const guest of attendingWithEmailMulti) {
                 try {
-                  const guestName = `${guest.first_name}${guest.last_name ? ` ${guest.last_name}` : ""}`;
+                  const guestName = `${guest.firstName}${guest.lastName ? ` ${guest.lastName}` : ""}`;
                   const icsContent = generateIcs(eventsForIcs, guestName);
                   const html = buildCalendarEmailHtml(
                     eventsForIcs,
-                    guest.first_name,
+                    guest.firstName,
                   );
 
                   await sendEmail({
                     from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
                     to: guest.email as string,
                     subject:
-                      "Your Calendar Invite — Helen & Enrique's Wedding 💕",
+                      "Your Calendar Invite \u2014 Helen & Enrique's Wedding \uD83D\uDC95",
                     html,
                     attachments: [
                       {
@@ -814,14 +798,13 @@ export async function submitMultiGuestRSVP(
                     ],
                   });
 
-                  await afterWeddingDb
-                    .updateTable("guests")
-                    .set({
-                      calendar_invite_sent: true,
-                      calendar_invite_sent_at: new Date().toISOString(),
-                    })
-                    .where("id", "=", guest.id)
-                    .execute();
+                  await db.guest.update({
+                    where: { id: guest.id },
+                    data: {
+                      calendarInviteSent: true,
+                      calendarInviteSentAt: new Date().toISOString(),
+                    },
+                  });
                 } catch (calendarError) {
                   console.error(
                     `Error sending calendar invite to guest ${guest.id}:`,
@@ -837,8 +820,7 @@ export async function submitMultiGuestRSVP(
       });
     }
 
-    const { slug } = await getWeddingContext();
-    revalidatePath(`/${slug}/rsvp`);
+    revalidatePath("/rsvp");
     return { success: true };
   } catch (error) {
     console.error("Error submitting multi-guest RSVP:", error);

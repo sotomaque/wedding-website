@@ -17,12 +17,7 @@ interface PageProps {
     status?: "pending" | "completed" | "refunded" | "failed";
     thankYouSent?: "true" | "false";
     hasGuest?: "true" | "false";
-    sortBy?:
-      | "created_at"
-      | "amount_cents"
-      | "donor_name"
-      | "gift_type"
-      | "status";
+    sortBy?: "createdAt" | "amountCents" | "donorName" | "giftType" | "status";
     sortOrder?: "asc" | "desc";
     page?: string;
     edit?: string;

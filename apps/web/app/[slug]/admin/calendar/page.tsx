@@ -31,122 +31,116 @@ async function CalendarData() {
   const weddingId = await getWeddingId();
 
   const [eventsRaw, guestsRaw, activityPlansRaw] = await Promise.all([
-    db
-      .selectFrom("events")
-      .where("wedding_id", "=", weddingId)
-      .select([
-        "id",
-        "name",
-        "event_date",
-        "start_time",
-        "end_time",
-        "location_name",
-      ])
-      .orderBy("event_date")
-      .execute() as Promise<
-      {
-        id: string;
-        name: string;
-        event_date: string | null;
-        start_time: string | null;
-        end_time: string | null;
-        location_name: string | null;
-      }[]
-    >,
-    db
-      .selectFrom("guests")
-      .leftJoin("parties", "parties.id", "guests.party_id")
-      .select([
-        "guests.id",
-        "guests.first_name",
-        "guests.last_name",
-        "guests.side",
-        "guests.arrival_date",
-        "guests.arrival_transport",
-        "guests.departure_date",
-        "guests.departure_transport",
-        "guests.party_id",
-        "parties.name as party_name",
-      ])
-      .where("guests.wedding_id", "=", weddingId)
-      .where((eb) =>
-        eb.or([
-          eb("guests.arrival_date", "is not", null),
-          eb("guests.departure_date", "is not", null),
-        ]),
-      )
-      .execute(),
-    db
-      .selectFrom("guest_activity_interests as gai")
-      .innerJoin("guests as g", "g.id", "gai.guest_id")
-      .innerJoin("activities as a", "a.id", "gai.activity_id")
-      .leftJoin("parties as p", "p.id", "g.party_id")
-      .select([
-        "gai.activity_id",
-        "a.name as activity_name",
-        "a.emoji as activity_emoji",
-        "g.first_name",
-        "g.last_name",
-        "g.side",
-        "gai.invite_code",
-        "p.name as party_name",
-        "gai.status",
-        "gai.planned_date",
-      ])
-      .where("gai.wedding_id", "=", weddingId)
-      .where("gai.planned_date", "is not", null)
-      .execute(),
+    db.event.findMany({
+      where: { weddingId },
+      select: {
+        id: true,
+        name: true,
+        eventDate: true,
+        startTime: true,
+        endTime: true,
+        locationName: true,
+      },
+      orderBy: { eventDate: "asc" },
+    }),
+    db.guest.findMany({
+      where: {
+        weddingId,
+        OR: [{ arrivalDate: { not: null } }, { departureDate: { not: null } }],
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        side: true,
+        arrivalDate: true,
+        arrivalTransport: true,
+        departureDate: true,
+        departureTransport: true,
+        partyId: true,
+        party: {
+          select: { name: true },
+        },
+      },
+    }),
+    db.guestActivityInterest.findMany({
+      where: { plannedDate: { not: null }, weddingId },
+      include: {
+        guest: {
+          select: {
+            firstName: true,
+            lastName: true,
+            side: true,
+            party: { select: { name: true } },
+          },
+        },
+        activity: {
+          select: { name: true, emoji: true },
+        },
+      },
+    }),
   ]);
 
   const events = eventsRaw.map((e) => ({
     id: e.id,
     name: e.name,
-    event_date: toDateStr(e.event_date),
-    start_time: e.start_time,
-    end_time: e.end_time,
-    location_name: e.location_name,
+    eventDate: toDateStr(e.eventDate),
+    startTime: e.startTime
+      ? e.startTime instanceof Date
+        ? e.startTime.toISOString()
+        : String(e.startTime)
+      : null,
+    endTime: e.endTime
+      ? e.endTime instanceof Date
+        ? e.endTime.toISOString()
+        : String(e.endTime)
+      : null,
+    locationName: e.locationName,
   }));
 
   // Normalize dates and build GuestTravel[] (no party fields serialized)
   const guests: GuestTravel[] = guestsRaw.map((g) => ({
     kind: "guest" as const,
     id: g.id,
-    first_name: g.first_name,
-    last_name: g.last_name,
+    firstName: g.firstName,
+    lastName: g.lastName,
     side: g.side,
-    arrival_date: toDateStr(g.arrival_date),
-    arrival_transport: g.arrival_transport,
-    departure_date: toDateStr(g.departure_date),
-    departure_transport: g.departure_transport,
+    arrivalDate: toDateStr(g.arrivalDate),
+    arrivalTransport: g.arrivalTransport,
+    departureDate: toDateStr(g.departureDate),
+    departureTransport: g.departureTransport,
   }));
 
-  // Group by party server-side so party_id/party_name aren't serialized to the client
+  // Group by party server-side so partyId/partyName aren't serialized to the client
   const parties = groupByParty(
     guestsRaw.map((g) => ({
       id: g.id,
-      first_name: g.first_name,
-      last_name: g.last_name,
+      firstName: g.firstName,
+      lastName: g.lastName,
       side: g.side,
-      arrival_date: toDateStr(g.arrival_date),
-      arrival_transport: g.arrival_transport,
-      departure_date: toDateStr(g.departure_date),
-      departure_transport: g.departure_transport,
-      party_id: g.party_id,
-      party_name: g.party_name,
+      arrivalDate: toDateStr(g.arrivalDate),
+      arrivalTransport: g.arrivalTransport,
+      departureDate: toDateStr(g.departureDate),
+      departureTransport: g.departureTransport,
+      partyId: g.partyId,
+      partyName: g.party?.name ?? null,
     })),
   );
 
-  const activityPlans: ActivityPlan[] = activityPlansRaw.map((ap) => ({
-    activityId: ap.activity_id,
-    activityName: ap.activity_name,
-    activityEmoji: ap.activity_emoji,
-    displayName:
-      ap.party_name ?? `${ap.first_name} ${ap.last_name ?? ""}`.trim(),
-    dedupeKey: `${ap.invite_code}:${ap.activity_id}`,
-    side: ap.side,
-    status: ap.status,
-    plannedDate: toDateStr(ap.planned_date) ?? "",
-  }));
+  const activityPlans: ActivityPlan[] = activityPlansRaw
+    .filter((ap) => ap.status === "interested" || ap.status === "committed")
+    .map((ap) => ({
+      activityId: ap.activityId,
+      activityName: ap.activity.name,
+      activityEmoji: ap.activity.emoji,
+      displayName:
+        ap.guest.party?.name ??
+        `${ap.guest.firstName} ${ap.guest.lastName ?? ""}`.trim(),
+      dedupeKey: `${ap.inviteCode}:${ap.activityId}`,
+      side: ap.guest.side,
+      status: ap.status as "interested" | "committed",
+      plannedDate: toDateStr(ap.plannedDate) ?? "",
+    }));
 
   return (
     <CalendarClient

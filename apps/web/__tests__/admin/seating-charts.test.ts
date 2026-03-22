@@ -1,22 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-// Mock wedding context - must be before any imports that use getWeddingId
-mock.module("@/lib/db/wedding-context", () => ({
-  getWeddingId: () => Promise.resolve("test-wedding-id"),
-  getWeddingContext: () =>
-    Promise.resolve({
-      weddingId: "test-wedding-id",
-      slug: "test-wedding",
-      coupleName: "Test Couple",
-      weddingDate: "2026-07-30",
-      rsvpDeadline: null,
-      timezone: "America/New_York",
-      status: "published",
-    }),
-  getWeddingBySlug: () => Promise.resolve(null),
-  getWeddingById: () => Promise.resolve(null),
-}));
-
 // Mock env
 mock.module("@/env", () => ({
   env: {
@@ -40,61 +23,71 @@ mock.module("@clerk/nextjs/server", () => ({
   currentUser: mockCurrentUser,
 }));
 
-// Create db mock with tracking
-const mockExecute = mock(() => Promise.resolve([]));
-const mockExecuteTakeFirst = mock(() => Promise.resolve(null));
-const mockExecuteTakeFirstOrThrow = mock(() => Promise.resolve({}));
-const mockInsertValues = mock(() => {});
-const mockDeleteWhere = mock(() => {});
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
 
-// Chainable db mock - any method call returns the proxy, terminal methods return mock fns
-function createChainableDb(terminals: Record<string, unknown> = {}) {
-  const handler: ProxyHandler<Record<string, unknown>> = {
-    get: (_, prop: string) => {
-      if (prop in terminals) return terminals[prop];
-      return (...args: unknown[]) => new Proxy({}, handler);
+// Create Prisma-style db mocks
+const mockSeatingChartFindMany = mock(() => Promise.resolve([]));
+const mockSeatingChartCreate = mock(() => Promise.resolve({}));
+
+const mockSeatingTableFindMany = mock(() => Promise.resolve([]));
+
+const mockGuestTableAssignmentDeleteMany = mock(() =>
+  Promise.resolve({ count: 0 }),
+);
+const mockGuestTableAssignmentCreateMany = mock(() =>
+  Promise.resolve({ count: 0 }),
+);
+
+mock.module("@/lib/db", () => ({
+  db: {
+    seatingChart: {
+      findMany: mockSeatingChartFindMany,
+      findUnique: mock(() => Promise.resolve(null)),
+      findFirst: mock(() => Promise.resolve(null)),
+      create: mockSeatingChartCreate,
+      update: mock(() => Promise.resolve({})),
+      delete: mock(() => Promise.resolve({})),
+      deleteMany: mock(() => Promise.resolve({ count: 0 })),
     },
-  };
-  return new Proxy({}, handler);
-}
-
-const selectTerminals = {
-  execute: mockExecute,
-  executeTakeFirst: mockExecuteTakeFirst,
-  executeTakeFirstOrThrow: mockExecuteTakeFirstOrThrow,
-};
-
-const mockDb = {
-  selectFrom: () => createChainableDb(selectTerminals),
-  insertInto: () =>
-    createChainableDb({
-      ...selectTerminals,
-      values: (data: unknown) => {
-        mockInsertValues(data);
-        return createChainableDb(selectTerminals);
-      },
-    }),
-  updateTable: () => createChainableDb(selectTerminals),
-  deleteFrom: () =>
-    createChainableDb({
-      ...selectTerminals,
-      where: (field: string, op: string, value: unknown) => {
-        mockDeleteWhere(field, op, value);
-        return createChainableDb(selectTerminals);
-      },
-    }),
-};
-
-mock.module("@/lib/db", () => ({ db: mockDb }));
-mock.module("@/lib/db/scoped", () => ({
-  forWedding: () => mockDb,
+    seatingTable: {
+      findMany: mockSeatingTableFindMany,
+      findUnique: mock(() => Promise.resolve(null)),
+      findFirst: mock(() => Promise.resolve(null)),
+      create: mock(() => Promise.resolve({})),
+      update: mock(() => Promise.resolve({})),
+      delete: mock(() => Promise.resolve({})),
+      deleteMany: mock(() => Promise.resolve({ count: 0 })),
+    },
+    guestTableAssignment: {
+      findMany: mock(() => Promise.resolve([])),
+      findUnique: mock(() => Promise.resolve(null)),
+      create: mock(() => Promise.resolve({})),
+      createMany: mockGuestTableAssignmentCreateMany,
+      update: mock(() => Promise.resolve({})),
+      delete: mock(() => Promise.resolve({})),
+      deleteMany: mockGuestTableAssignmentDeleteMany,
+    },
+  },
 }));
 
 describe("Seating Charts API - Authentication", () => {
   beforeEach(() => {
     mockCurrentUser.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
+    mockSeatingChartFindMany.mockClear();
   });
 
   describe("Unauthorized access", () => {
@@ -132,7 +125,7 @@ describe("Seating Charts API - Authentication", () => {
         id: "admin-123",
         emailAddresses: [{ emailAddress: "admin@example.com" }],
       });
-      mockExecute.mockResolvedValue([]);
+      mockSeatingChartFindMany.mockResolvedValue([]);
 
       const { GET } = await import("@/app/api/admin/seating-charts/route");
 
@@ -146,11 +139,8 @@ describe("Seating Charts API - Authentication", () => {
 describe("Seating Charts API - CRUD Operations", () => {
   beforeEach(() => {
     mockCurrentUser.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockDeleteWhere.mockClear();
+    mockSeatingChartFindMany.mockClear();
+    mockSeatingChartCreate.mockClear();
 
     // Default to authenticated admin
     mockCurrentUser.mockResolvedValue({
@@ -165,14 +155,14 @@ describe("Seating Charts API - CRUD Operations", () => {
         {
           id: "chart-1",
           name: "Wedding Reception",
-          default_seats_per_table: 8,
-          is_active: true,
+          defaultSeatsPerTable: 8,
+          isActive: true,
           notes: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       ];
-      mockExecute.mockResolvedValue(mockCharts);
+      mockSeatingChartFindMany.mockResolvedValue(mockCharts);
 
       const { GET } = await import("@/app/api/admin/seating-charts/route");
 
@@ -189,13 +179,13 @@ describe("Seating Charts API - CRUD Operations", () => {
       const newChart = {
         id: "chart-new",
         name: "New Chart",
-        default_seats_per_table: 10,
-        is_active: false,
+        defaultSeatsPerTable: 10,
+        isActive: false,
         notes: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
-      mockExecuteTakeFirstOrThrow.mockResolvedValue(newChart);
+      mockSeatingChartCreate.mockResolvedValue(newChart);
 
       const { POST } = await import("@/app/api/admin/seating-charts/route");
 
@@ -216,7 +206,7 @@ describe("Seating Charts API - CRUD Operations", () => {
 
       expect(response.status).toBe(200);
       expect(data.chart).toBeDefined();
-      expect(mockInsertValues).toHaveBeenCalled();
+      expect(mockSeatingChartCreate).toHaveBeenCalled();
     });
 
     it("should require chart name", async () => {
@@ -243,10 +233,9 @@ describe("Seating Charts API - CRUD Operations", () => {
 describe("Seating Charts Assignments API", () => {
   beforeEach(() => {
     mockCurrentUser.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockInsertValues.mockClear();
-    mockDeleteWhere.mockClear();
+    mockSeatingTableFindMany.mockClear();
+    mockGuestTableAssignmentDeleteMany.mockClear();
+    mockGuestTableAssignmentCreateMany.mockClear();
 
     // Default to authenticated admin
     mockCurrentUser.mockResolvedValue({
@@ -257,7 +246,7 @@ describe("Seating Charts Assignments API", () => {
 
   describe("POST /api/admin/seating-charts/[id]/assignments", () => {
     it("should require assignments array", async () => {
-      mockExecute.mockResolvedValue([{ id: "table-1" }]); // tables exist
+      mockSeatingTableFindMany.mockResolvedValue([{ id: "table-1" }]);
 
       const { POST } = await import(
         "@/app/api/admin/seating-charts/[id]/assignments/route"
@@ -282,7 +271,7 @@ describe("Seating Charts Assignments API", () => {
     });
 
     it("should filter out invalid UUIDs", async () => {
-      mockExecute.mockResolvedValue([{ id: "table-1" }]); // tables exist
+      mockSeatingTableFindMany.mockResolvedValue([{ id: "table-1" }]);
 
       const { POST } = await import(
         "@/app/api/admin/seating-charts/[id]/assignments/route"
@@ -313,7 +302,7 @@ describe("Seating Charts Assignments API", () => {
 
     it("should accept valid UUID guest IDs", async () => {
       const validUUID = "30355773-01ab-48f3-877a-6376c6be0026";
-      mockExecute.mockResolvedValue([{ id: "table-1" }]); // tables exist
+      mockSeatingTableFindMany.mockResolvedValue([{ id: "table-1" }]);
 
       const { POST } = await import(
         "@/app/api/admin/seating-charts/[id]/assignments/route"
@@ -342,7 +331,10 @@ describe("Seating Charts Assignments API", () => {
 
     it("should deduplicate guest assignments", async () => {
       const validUUID = "30355773-01ab-48f3-877a-6376c6be0026";
-      mockExecute.mockResolvedValue([{ id: "table-1" }, { id: "table-2" }]);
+      mockSeatingTableFindMany.mockResolvedValue([
+        { id: "table-1" },
+        { id: "table-2" },
+      ]);
 
       const { POST } = await import(
         "@/app/api/admin/seating-charts/[id]/assignments/route"
@@ -374,7 +366,10 @@ describe("Seating Charts Assignments API", () => {
 
   describe("DELETE /api/admin/seating-charts/[id]/assignments", () => {
     it("should clear all assignments for a chart", async () => {
-      mockExecute.mockResolvedValue([{ id: "table-1" }, { id: "table-2" }]);
+      mockSeatingTableFindMany.mockResolvedValue([
+        { id: "table-1" },
+        { id: "table-2" },
+      ]);
 
       const { DELETE } = await import(
         "@/app/api/admin/seating-charts/[id]/assignments/route"

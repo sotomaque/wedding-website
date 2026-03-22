@@ -1,33 +1,14 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-// Mock wedding context - must be before any imports that use getWeddingId
-mock.module("@/lib/db/wedding-context", () => ({
-  getWeddingId: () => Promise.resolve("test-wedding-id"),
-  getWeddingContext: () =>
-    Promise.resolve({
-      weddingId: "test-wedding-id",
-      slug: "test-wedding",
-      coupleName: "Test Couple",
-      weddingDate: "2026-07-30",
-      rsvpDeadline: null,
-      timezone: "America/New_York",
-      status: "published",
-    }),
-  getWeddingBySlug: () => Promise.resolve(null),
-  getWeddingById: () => Promise.resolve(null),
-}));
+// Mock email sending at the resend-client layer (more reliable than mocking the resend package)
+const mockSendEmail = mock(() =>
+  Promise.resolve({ data: { id: "email-123" }, error: null }),
+);
+const mockGetResendClient = mock(() => ({})); // truthy = client exists
 
-// Mock email sending - must be a proper class
-const mockSendEmail = mock(() => Promise.resolve({ id: "email-123" }));
-
-class MockResend {
-  emails = {
-    send: mockSendEmail,
-  };
-}
-
-mock.module("resend", () => ({
-  Resend: MockResend,
+mock.module("@/lib/email/resend-client", () => ({
+  sendEmail: mockSendEmail,
+  getResendClient: mockGetResendClient,
 }));
 
 // Mock env
@@ -49,37 +30,43 @@ mock.module("@clerk/nextjs/server", () => ({
     }),
 }));
 
-// Mock db
-const mockExecuteTakeFirst = mock(() => Promise.resolve(null));
-const mockExecute = mock(() => Promise.resolve([]));
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
 
-// Chainable db mock - any method call returns the proxy, terminal methods return mock fns
-function createChainableDb(terminals: Record<string, unknown> = {}) {
-  const handler: ProxyHandler<Record<string, unknown>> = {
-    get: (_, prop: string) => {
-      if (prop in terminals) return terminals[prop];
-      return () => new Proxy({}, handler);
+// Create Prisma-style db mocks
+const mockGuestFindUnique = mock(() => Promise.resolve(null));
+const mockGuestUpdate = mock(() => Promise.resolve({}));
+const mockEventFindFirst = mock(() => Promise.resolve(null));
+
+mock.module("@/lib/db", () => ({
+  db: {
+    guest: {
+      findMany: mock(() => Promise.resolve([])),
+      findUnique: mockGuestFindUnique,
+      findFirst: mock(() => Promise.resolve(null)),
+      create: mock(() => Promise.resolve({})),
+      update: mockGuestUpdate,
+      delete: mock(() => Promise.resolve({})),
+      deleteMany: mock(() => Promise.resolve({ count: 0 })),
+      count: mock(() => Promise.resolve(0)),
     },
-  };
-  return new Proxy({}, handler);
-}
-
-const terminalMethods = {
-  execute: mockExecute,
-  executeTakeFirst: mockExecuteTakeFirst,
-  executeTakeFirstOrThrow: mockExecuteTakeFirst,
-};
-
-const mockDb = {
-  selectFrom: () => createChainableDb(terminalMethods),
-  updateTable: () => createChainableDb(terminalMethods),
-  insertInto: () => createChainableDb(terminalMethods),
-  deleteFrom: () => createChainableDb(terminalMethods),
-};
-
-mock.module("@/lib/db", () => ({ db: mockDb }));
-mock.module("@/lib/db/scoped", () => ({
-  forWedding: () => mockDb,
+    event: {
+      findFirst: mockEventFindFirst,
+    },
+  },
 }));
 
 // Note: Email sending now uses Resend templates directly, no local template mock needed
@@ -87,18 +74,19 @@ mock.module("@/lib/db/scoped", () => ({
 describe("Email Sending - Resend Email", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecute.mockClear();
+    mockGuestFindUnique.mockClear();
+    mockGuestUpdate.mockClear();
+    mockEventFindFirst.mockClear();
   });
 
   it("should send email to guest with valid email", async () => {
-    mockExecuteTakeFirst.mockResolvedValue({
+    mockGuestFindUnique.mockResolvedValue({
       id: "guest-123",
-      first_name: "John",
-      last_name: "Doe",
+      firstName: "John",
+      lastName: "Doe",
       email: "john@example.com",
-      invite_code: "ABCD-1234",
-      number_of_resends: 0,
+      inviteCode: "ABCD-1234",
+      numberOfResends: 0,
       list: "a",
     });
 
@@ -129,13 +117,13 @@ describe("Email Sending - Resend Email", () => {
   });
 
   it("should allow sending to override email", async () => {
-    mockExecuteTakeFirst.mockResolvedValue({
+    mockGuestFindUnique.mockResolvedValue({
       id: "guest-123",
-      first_name: "John",
-      last_name: "Doe",
+      firstName: "John",
+      lastName: "Doe",
       email: null,
-      invite_code: "ABCD-1234",
-      number_of_resends: 0,
+      inviteCode: "ABCD-1234",
+      numberOfResends: 0,
       list: "a",
     });
 
@@ -166,11 +154,11 @@ describe("Email Sending - Resend Email", () => {
   });
 
   it("should reject when no email is available", async () => {
-    mockExecuteTakeFirst.mockResolvedValue({
+    mockGuestFindUnique.mockResolvedValue({
       id: "guest-123",
-      first_name: "John",
+      firstName: "John",
       email: null,
-      invite_code: "ABCD-1234",
+      inviteCode: "ABCD-1234",
       list: "a",
     });
 
@@ -195,7 +183,7 @@ describe("Email Sending - Resend Email", () => {
   });
 
   it("should return 404 for non-existent guest", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
+    mockGuestFindUnique.mockResolvedValue(null);
 
     const { POST } = await import("@/app/api/admin/guests/resend-email/route");
 
@@ -244,18 +232,19 @@ describe("Email Sending - B/C List Warning", () => {
 
   beforeEach(() => {
     mockSendEmail.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecute.mockClear();
+    mockGuestFindUnique.mockClear();
+    mockGuestUpdate.mockClear();
+    mockEventFindFirst.mockClear();
   });
 
   it("guest list B should be stored correctly", async () => {
-    mockExecuteTakeFirst.mockResolvedValue({
+    mockGuestFindUnique.mockResolvedValue({
       id: "guest-123",
-      first_name: "John",
+      firstName: "John",
       email: "john@example.com",
-      invite_code: "ABCD-1234",
+      inviteCode: "ABCD-1234",
       list: "b",
-      number_of_resends: 0,
+      numberOfResends: 0,
     });
 
     const { POST } = await import("@/app/api/admin/guests/resend-email/route");
@@ -278,13 +267,13 @@ describe("Email Sending - B/C List Warning", () => {
   });
 
   it("guest list C should be stored correctly", async () => {
-    mockExecuteTakeFirst.mockResolvedValue({
+    mockGuestFindUnique.mockResolvedValue({
       id: "guest-123",
-      first_name: "John",
+      firstName: "John",
       email: "john@example.com",
-      invite_code: "ABCD-1234",
+      inviteCode: "ABCD-1234",
       list: "c",
-      number_of_resends: 0,
+      numberOfResends: 0,
     });
 
     const { POST } = await import("@/app/api/admin/guests/resend-email/route");

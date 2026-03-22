@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
@@ -30,15 +29,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     // Fetch all guests with this invite code
-    const guests = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("invite_code", "=", inviteCode)
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { inviteCode, weddingId },
+    });
 
     if (guests.length === 0) {
       return NextResponse.json(
@@ -48,24 +43,20 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Update all guests with this invite code (primary + plus one)
-    await weddingDb
-      .updateTable("guests")
-      .set({
-        mailing_address: mailingAddress || null,
-        phone_number: phoneNumber || null,
+    await db.guest.updateMany({
+      where: { inviteCode, weddingId },
+      data: {
+        mailingAddress: mailingAddress || null,
+        phoneNumber: phoneNumber || null,
         whatsapp: whatsapp || null,
-        preferred_contact_method: preferredContactMethod || null,
-      })
-      .where("invite_code", "=", inviteCode)
-      .execute();
+        preferredContactMethod: preferredContactMethod || null,
+      },
+    });
 
     // Fetch updated guests
-    const updatedGuests = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("invite_code", "=", inviteCode)
-      .execute();
+    const updatedGuests = await db.guest.findMany({
+      where: { inviteCode, weddingId },
+    });
 
     return NextResponse.json({ guests: updatedGuests });
   } catch (error) {

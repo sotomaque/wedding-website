@@ -13,10 +13,10 @@ export interface WeddingContext {
   weddingId: string;
   slug: string;
   coupleName: string;
-  weddingDate: string;
+  weddingDate: Date;
   rsvpDeadline: string | null;
   timezone: string;
-  status: "draft" | "published" | "archived";
+  status: string;
 }
 
 /**
@@ -24,28 +24,27 @@ export interface WeddingContext {
  */
 const getWeddingBySlug = cache(
   async (slug: string): Promise<WeddingContext | null> => {
-    const row = await db
-      .selectFrom("weddings")
-      .select([
-        "id",
-        "slug",
-        "couple_name",
-        "wedding_date",
-        "rsvp_deadline",
-        "timezone",
-        "status",
-      ])
-      .where("slug", "=", slug)
-      .executeTakeFirst();
+    const row = await db.wedding.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        slug: true,
+        coupleName: true,
+        weddingDate: true,
+        rsvpDeadline: true,
+        timezone: true,
+        status: true,
+      },
+    });
 
     if (!row) return null;
 
     return {
       weddingId: row.id,
       slug: row.slug,
-      coupleName: row.couple_name,
-      weddingDate: row.wedding_date,
-      rsvpDeadline: row.rsvp_deadline,
+      coupleName: row.coupleName,
+      weddingDate: row.weddingDate,
+      rsvpDeadline: row.rsvpDeadline,
       timezone: row.timezone,
       status: row.status,
     };
@@ -57,28 +56,27 @@ const getWeddingBySlug = cache(
  */
 const getWeddingById = cache(
   async (id: string): Promise<WeddingContext | null> => {
-    const row = await db
-      .selectFrom("weddings")
-      .select([
-        "id",
-        "slug",
-        "couple_name",
-        "wedding_date",
-        "rsvp_deadline",
-        "timezone",
-        "status",
-      ])
-      .where("id", "=", id)
-      .executeTakeFirst();
+    const row = await db.wedding.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        slug: true,
+        coupleName: true,
+        weddingDate: true,
+        rsvpDeadline: true,
+        timezone: true,
+        status: true,
+      },
+    });
 
     if (!row) return null;
 
     return {
       weddingId: row.id,
       slug: row.slug,
-      coupleName: row.couple_name,
-      weddingDate: row.wedding_date,
-      rsvpDeadline: row.rsvp_deadline,
+      coupleName: row.coupleName,
+      weddingDate: row.weddingDate,
+      rsvpDeadline: row.rsvpDeadline,
       timezone: row.timezone,
       status: row.status,
     };

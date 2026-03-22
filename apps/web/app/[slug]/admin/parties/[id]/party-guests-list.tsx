@@ -105,26 +105,26 @@ export function PartyGuestsList({ party, otherParties }: PartyGuestsListProps) {
                     href={`/admin/guests?edit=${guest.id}`}
                     className="font-medium text-foreground hover:underline"
                   >
-                    {guest.first_name} {guest.last_name}
+                    {guest.firstName} {guest.lastName}
                   </Link>
                   <div className="flex items-center gap-2 mt-1">
-                    {guest.is_plus_one && (
+                    {guest.isPlusOne && (
                       <span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 px-1.5 py-0.5 rounded">
                         +1
                       </span>
                     )}
                     <span
                       className={`text-xs px-1.5 py-0.5 rounded ${
-                        guest.rsvp_status === "yes"
+                        guest.rsvpStatus === "yes"
                           ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                          : guest.rsvp_status === "no"
+                          : guest.rsvpStatus === "no"
                             ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
                             : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
                       }`}
                     >
-                      {guest.rsvp_status === "yes"
+                      {guest.rsvpStatus === "yes"
                         ? "Confirmed"
-                        : guest.rsvp_status === "no"
+                        : guest.rsvpStatus === "no"
                           ? "Declined"
                           : "Pending"}
                     </span>
@@ -150,7 +150,7 @@ export function PartyGuestsList({ party, otherParties }: PartyGuestsListProps) {
                         open: true,
                         guestId: guest.id,
                         guestName:
-                          `${guest.first_name} ${guest.last_name || ""}`.trim(),
+                          `${guest.firstName} ${guest.lastName || ""}`.trim(),
                         targetPartyId: "",
                       })
                     }
@@ -165,7 +165,7 @@ export function PartyGuestsList({ party, otherParties }: PartyGuestsListProps) {
                         open: true,
                         guestId: guest.id,
                         guestName:
-                          `${guest.first_name} ${guest.last_name || ""}`.trim(),
+                          `${guest.firstName} ${guest.lastName || ""}`.trim(),
                       })
                     }
                     disabled={party.guestCount <= 1}
@@ -221,8 +221,8 @@ export function PartyGuestsList({ party, otherParties }: PartyGuestsListProps) {
               <option value="">Select a party...</option>
               {otherParties.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.invite_code} -{" "}
-                  {p.name || p.guests.map((g) => g.first_name).join(", ")} (
+                  {p.inviteCode} -{" "}
+                  {p.name || p.guests.map((g) => g.firstName).join(", ")} (
                   {p.guestCount} guests)
                 </option>
               ))}

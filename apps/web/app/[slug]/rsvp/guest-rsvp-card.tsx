@@ -31,7 +31,7 @@ export function GuestRsvpCard({
 }: GuestRsvpCardProps) {
   const attending = watch(`guests.${index}.attending`);
   const plusOneAttending = watch(`guests.${index}.plusOneAttending`);
-  const hasPlusOne = guest.plus_one_allowed;
+  const hasPlusOne = guest.plusOneAllowed;
 
   const guestErrors = errors.guests?.[index];
 
@@ -40,7 +40,7 @@ export function GuestRsvpCard({
       {/* Guest Header */}
       <div className="mb-4">
         <h3 className="text-lg font-semibold">
-          {guest.first_name} {guest.last_name || ""}
+          {guest.firstName} {guest.lastName || ""}
         </h3>
         {hasPlusOne && (
           <p className="text-sm text-green-600 dark:text-green-400">

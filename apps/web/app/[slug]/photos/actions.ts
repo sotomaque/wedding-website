@@ -1,6 +1,6 @@
 "use server";
 
-import { forWedding } from "@/lib/db/scoped";
+import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
 export async function saveGuestPhoto(
@@ -9,15 +9,14 @@ export async function saveGuestPhoto(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
-
-    await weddingDb
-      .insertInto("guest_photos", {
+    await db.guestPhoto.create({
+      data: {
         url,
-        uploader_name: uploaderName || null,
-        is_visible: true,
-      })
-      .execute();
+        uploaderName: uploaderName || null,
+        isVisible: true,
+        weddingId,
+      },
+    });
 
     return { success: true };
   } catch (error) {

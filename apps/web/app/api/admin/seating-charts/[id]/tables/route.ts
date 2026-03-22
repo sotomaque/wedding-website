@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
@@ -28,8 +27,6 @@ export async function POST(
     }
 
     const { id: chartId } = await params;
-    const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
     const body = await request.json();
     const {
       tableNumber,
@@ -42,45 +39,41 @@ export async function POST(
     } = body;
 
     // Verify the chart exists
-    const chart = await db
-      .selectFrom("seating_charts")
-      .where("wedding_id", "=", weddingId)
-      .select("id")
-      .where("id", "=", chartId)
-      .executeTakeFirst();
+    const chart = await db.seatingChart.findUnique({
+      where: { id: chartId },
+      select: { id: true },
+    });
 
     if (!chart) {
       return NextResponse.json({ error: "Chart not found" }, { status: 404 });
     }
 
+    const weddingId = await getWeddingId();
+
     // If no table number provided, get the next one
     let finalTableNumber = tableNumber;
     if (finalTableNumber === undefined) {
-      const lastTable = await db
-        .selectFrom("seating_tables")
-        .where("wedding_id", "=", weddingId)
-        .select("table_number")
-        .where("seating_chart_id", "=", chartId)
-        .orderBy("table_number", "desc")
-        .limit(1)
-        .executeTakeFirst();
+      const maxTable = await db.seatingTable.aggregate({
+        where: { seatingChartId: chartId, weddingId },
+        _max: { tableNumber: true },
+      });
 
-      finalTableNumber = (lastTable?.table_number || 0) + 1;
+      finalTableNumber = (maxTable._max.tableNumber || 0) + 1;
     }
 
-    const table = await weddingDb
-      .insertInto("seating_tables", {
-        seating_chart_id: chartId,
-        table_number: finalTableNumber,
-        table_name: tableName || null,
-        capacity_override: capacityOverride || null,
-        position_x: positionX || 0,
-        position_y: positionY || 0,
+    const table = await db.seatingTable.create({
+      data: {
+        seatingChartId: chartId,
+        tableNumber: finalTableNumber,
+        tableName: tableName || null,
+        capacityOverride: capacityOverride || null,
+        positionX: positionX || 0,
+        positionY: positionY || 0,
         shape: shape || "round",
         notes: notes || null,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        weddingId,
+      },
+    });
 
     return NextResponse.json({ table });
   } catch (error) {
@@ -119,12 +112,10 @@ export async function DELETE(
 
     const { id: chartId } = await params;
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
-    await weddingDb
-      .deleteFrom("seating_tables")
-      .where("seating_chart_id", "=", chartId)
-      .execute();
+    await db.seatingTable.deleteMany({
+      where: { seatingChartId: chartId, weddingId },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

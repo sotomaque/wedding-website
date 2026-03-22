@@ -9,16 +9,16 @@ describe("formatGuestForSeating", () => {
   it("should format a basic guest correctly", () => {
     const dbGuest = {
       id: "guest-uuid-123",
-      first_name: "John",
-      last_name: "Doe",
+      firstName: "John",
+      lastName: "Doe",
       side: "bride" as const,
       family: true,
-      bridal_party_role: null,
+      bridalPartyRole: null,
       notes: null,
-      is_plus_one: false,
-      primary_guest_id: null,
-      invite_code: "ABCD-1234",
-      party_id: "party-uuid-1",
+      isPlusOne: false,
+      primaryGuestId: null,
+      inviteCode: "ABCD-1234",
+      partyId: "party-uuid-1",
     };
 
     const result = formatGuestForSeating(dbGuest);
@@ -40,16 +40,16 @@ describe("formatGuestForSeating", () => {
   it("should handle guest without last name", () => {
     const dbGuest = {
       id: "guest-uuid-123",
-      first_name: "Madonna",
-      last_name: null,
+      firstName: "Madonna",
+      lastName: null,
       side: "groom" as const,
       family: false,
-      bridal_party_role: "groomsmen",
+      bridalPartyRole: "groomsmen",
       notes: "VIP",
-      is_plus_one: false,
-      primary_guest_id: null,
-      invite_code: "EFGH-5678",
-      party_id: null,
+      isPlusOne: false,
+      primaryGuestId: null,
+      inviteCode: "EFGH-5678",
+      partyId: null,
     };
 
     const result = formatGuestForSeating(dbGuest);
@@ -62,16 +62,16 @@ describe("formatGuestForSeating", () => {
   it("should handle plus one correctly", () => {
     const dbGuest = {
       id: "plus-one-uuid",
-      first_name: "Jane",
-      last_name: "Smith",
+      firstName: "Jane",
+      lastName: "Smith",
       side: "bride" as const,
       family: false,
-      bridal_party_role: null,
+      bridalPartyRole: null,
       notes: null,
-      is_plus_one: true,
-      primary_guest_id: "primary-uuid",
-      invite_code: "ABCD-1234",
-      party_id: "party-uuid-1",
+      isPlusOne: true,
+      primaryGuestId: "primary-uuid",
+      inviteCode: "ABCD-1234",
+      partyId: "party-uuid-1",
     };
 
     const result = formatGuestForSeating(dbGuest);
@@ -83,16 +83,16 @@ describe("formatGuestForSeating", () => {
   it("should handle guest with both side", () => {
     const dbGuest = {
       id: "both-sides-uuid",
-      first_name: "Mutual",
-      last_name: "Friend",
+      firstName: "Mutual",
+      lastName: "Friend",
       side: "both" as const,
       family: false,
-      bridal_party_role: null,
+      bridalPartyRole: null,
       notes: null,
-      is_plus_one: false,
-      primary_guest_id: null,
-      invite_code: "BOTH-1234",
-      party_id: null,
+      isPlusOne: false,
+      primaryGuestId: null,
+      inviteCode: "BOTH-1234",
+      partyId: null,
     };
 
     const result = formatGuestForSeating(dbGuest);

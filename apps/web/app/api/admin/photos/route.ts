@@ -2,7 +2,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
@@ -33,13 +32,10 @@ export async function GET() {
 
     const weddingId = await getWeddingId();
 
-    const photos = await db
-      .selectFrom("photos")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .orderBy("display_order", "asc")
-      .orderBy("created_at", "desc")
-      .execute();
+    const photos = await db.photo.findMany({
+      where: { weddingId },
+      orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }],
+    });
 
     return NextResponse.json({ photos });
   } catch (error) {
@@ -89,27 +85,25 @@ export async function POST(request: NextRequest) {
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     // Get the highest display_order
-    const maxOrder = await db
-      .selectFrom("photos")
-      .where("wedding_id", "=", weddingId)
-      .select(db.fn.max("display_order").as("max_order"))
-      .executeTakeFirst();
+    const maxOrderResult = await db.photo.aggregate({
+      where: { weddingId },
+      _max: { displayOrder: true },
+    });
 
-    const newOrder = (maxOrder?.max_order ?? -1) + 1;
+    const newOrder = (maxOrderResult._max.displayOrder ?? -1) + 1;
 
-    const photo = await weddingDb
-      .insertInto("photos", {
+    const photo = await db.photo.create({
+      data: {
         url,
         alt,
         description: description || null,
-        display_order: newOrder,
-        is_active: true,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        displayOrder: newOrder,
+        isActive: true,
+        weddingId,
+      },
+    });
 
     return NextResponse.json({ photo }, { status: 201 });
   } catch (error) {

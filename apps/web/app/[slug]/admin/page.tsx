@@ -31,45 +31,40 @@ async function getGuestStats() {
   const weddingId = await getWeddingId();
 
   // Get count of accepted A-list guests (not plus-ones)
-  const acceptedAListCount = await db
-    .selectFrom("guests")
-    .where("wedding_id", "=", weddingId)
-    .select((eb) => eb.fn.count("id").as("count"))
-    .where("list", "=", "a")
-    .where("rsvp_status", "=", "yes")
-    .where("is_plus_one", "=", false)
-    .executeTakeFirst();
+  const acceptedAListCount = await db.guest.count({
+    where: {
+      list: "a",
+      rsvpStatus: "yes",
+      isPlusOne: false,
+      weddingId,
+    },
+  });
 
   // Get total A-list guests (not plus-ones)
-  const totalAListCount = await db
-    .selectFrom("guests")
-    .where("wedding_id", "=", weddingId)
-    .select((eb) => eb.fn.count("id").as("count"))
-    .where("list", "=", "a")
-    .where("is_plus_one", "=", false)
-    .executeTakeFirst();
+  const totalAListCount = await db.guest.count({
+    where: {
+      list: "a",
+      isPlusOne: false,
+      weddingId,
+    },
+  });
 
   // Get total accepted guests (including plus-ones)
-  const totalAcceptedCount = await db
-    .selectFrom("guests")
-    .where("wedding_id", "=", weddingId)
-    .select((eb) => eb.fn.count("id").as("count"))
-    .where("rsvp_status", "=", "yes")
-    .executeTakeFirst();
+  const totalAcceptedCount = await db.guest.count({
+    where: {
+      rsvpStatus: "yes",
+      weddingId,
+    },
+  });
 
   return {
-    acceptedAList: Number(acceptedAListCount?.count || 0),
-    totalAList: Number(totalAListCount?.count || 0),
-    totalAccepted: Number(totalAcceptedCount?.count || 0),
+    acceptedAList: acceptedAListCount,
+    totalAList: totalAListCount,
+    totalAccepted: totalAcceptedCount,
   };
 }
 
-export default async function AdminPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
+export default async function AdminPage() {
   const user = await currentUser();
   const weddingCountdown = getCountdown(WEDDING_DATE);
   const rsvpCountdown = getCountdown(RSVP_DEADLINE);
@@ -170,7 +165,7 @@ export default async function AdminPage({
                 Quick Actions
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href={`/${slug}/admin/guests`}>
+                <Link href="/admin/guests">
                   <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
                     <Users className="w-8 h-8 text-primary mb-3" />
                     <h3 className="font-semibold text-foreground mb-1">
@@ -182,7 +177,7 @@ export default async function AdminPage({
                   </div>
                 </Link>
 
-                <Link href={`/${slug}/admin/events`}>
+                <Link href="/admin/events">
                   <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
                     <Calendar className="w-8 h-8 text-primary mb-3" />
                     <h3 className="font-semibold text-foreground mb-1">
@@ -194,7 +189,7 @@ export default async function AdminPage({
                   </div>
                 </Link>
 
-                <Link href={`/${slug}/admin/templates`}>
+                <Link href="/admin/templates">
                   <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
                     <Mail className="w-8 h-8 text-primary mb-3" />
                     <h3 className="font-semibold text-foreground mb-1">
@@ -206,7 +201,7 @@ export default async function AdminPage({
                   </div>
                 </Link>
 
-                <Link href={`/${slug}/admin/api-docs`}>
+                <Link href="/admin/api-docs">
                   <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
                     <Code className="w-8 h-8 text-primary mb-3" />
                     <h3 className="font-semibold text-foreground mb-1">

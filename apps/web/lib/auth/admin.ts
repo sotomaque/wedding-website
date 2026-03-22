@@ -35,22 +35,17 @@ export async function isAdmin(weddingId?: string): Promise<AdminAuthResult> {
     return { authorized: true, error: null, role: "superadmin" };
   }
 
-  // Per-wedding check: wedding_admins table
+  // Per-wedding check: wedding_admins table (raw query — model not yet in Prisma schema)
   if (weddingId) {
-    const admin = await db
-      .selectFrom("wedding_admins")
-      .select(["role"])
-      .where("wedding_id", "=", weddingId)
-      .where((eb) =>
-        eb.or([eb("email", "=", userEmail), eb("clerk_user_id", "=", user.id)]),
-      )
-      .executeTakeFirst();
+    const admins = await db.$queryRaw<
+      { role: string }[]
+    >`SELECT role FROM wedding_admins WHERE wedding_id = ${weddingId}::uuid AND (email = ${userEmail} OR clerk_user_id = ${user.id}) LIMIT 1`;
 
-    if (admin) {
+    if (admins.length > 0) {
       return {
         authorized: true,
         error: null,
-        role: admin.role as "owner" | "editor",
+        role: admins[0]!.role as "owner" | "editor",
       };
     }
   }

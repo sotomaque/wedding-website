@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
-import { forWedding } from "@/lib/db/scoped";
-import { getWeddingId } from "@/lib/db/wedding-context";
+import { db } from "@/lib/db";
 
 /**
  * Update a table
@@ -27,8 +26,6 @@ export async function PATCH(
     }
 
     const { tableId } = await params;
-    const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
     const body = await request.json();
     const {
       tableNumber,
@@ -42,27 +39,25 @@ export async function PATCH(
 
     const updateData: Record<string, unknown> = {};
 
-    if (tableNumber !== undefined) updateData.table_number = tableNumber;
-    if (tableName !== undefined) updateData.table_name = tableName;
+    if (tableNumber !== undefined) updateData.tableNumber = tableNumber;
+    if (tableName !== undefined) updateData.tableName = tableName;
     if (capacityOverride !== undefined)
-      updateData.capacity_override = capacityOverride;
-    if (positionX !== undefined) updateData.position_x = positionX;
-    if (positionY !== undefined) updateData.position_y = positionY;
+      updateData.capacityOverride = capacityOverride;
+    if (positionX !== undefined) updateData.positionX = positionX;
+    if (positionY !== undefined) updateData.positionY = positionY;
     if (shape !== undefined) updateData.shape = shape;
     if (notes !== undefined) updateData.notes = notes;
 
-    const table = await weddingDb
-      .updateTable("seating_tables")
-      .set(updateData)
-      .where("id", "=", tableId)
-      .returningAll()
-      .executeTakeFirst();
+    try {
+      const table = await db.seatingTable.update({
+        where: { id: tableId },
+        data: updateData,
+      });
 
-    if (!table) {
+      return NextResponse.json({ table });
+    } catch {
       return NextResponse.json({ error: "Table not found" }, { status: 404 });
     }
-
-    return NextResponse.json({ table });
   } catch (error) {
     console.error(
       "Error in PATCH /api/admin/seating-charts/[id]/tables/[tableId]:",
@@ -98,13 +93,10 @@ export async function DELETE(
     }
 
     const { tableId } = await params;
-    const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
-    await weddingDb
-      .deleteFrom("seating_tables")
-      .where("id", "=", tableId)
-      .execute();
+    await db.seatingTable.delete({
+      where: { id: tableId },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,7 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
-import { forWedding } from "@/lib/db/scoped";
+import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
@@ -48,17 +48,15 @@ export async function POST(request: NextRequest) {
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
-    const result = await weddingDb
-      .updateTable("guests")
-      .set({ rsvp_status: rsvpStatus })
-      .where("id", "in", guestIds)
-      .execute();
+    const result = await db.guest.updateMany({
+      where: { id: { in: guestIds }, weddingId },
+      data: { rsvpStatus },
+    });
 
     return NextResponse.json({
       success: true,
-      updatedCount: Number(result[0]?.numUpdatedRows ?? 0),
+      updatedCount: result.count,
       rsvpStatus,
     });
   } catch (error) {

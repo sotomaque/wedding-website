@@ -119,11 +119,11 @@ export function DocumentsManager({ initialDocuments }: DocumentsManagerProps) {
     const result = await createDocument({
       title: newTitle,
       description: newDescription,
-      file_url: pendingUpload.url,
-      file_type: pendingUpload.type,
-      file_size: pendingUpload.size,
+      fileUrl: pendingUpload.url,
+      fileType: pendingUpload.type,
+      fileSize: pendingUpload.size,
       category: newCategory,
-      uploaded_by: pendingUpload.uploadedBy,
+      uploadedBy: pendingUpload.uploadedBy,
     });
     setIsSaving(false);
 
@@ -417,7 +417,7 @@ export function DocumentsManager({ initialDocuments }: DocumentsManagerProps) {
               ) : (
                 /* Display row */
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5">{fileIcon(doc.file_type)}</div>
+                  <div className="mt-0.5">{fileIcon(doc.fileType)}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm">{doc.title}</span>
@@ -428,10 +428,10 @@ export function DocumentsManager({ initialDocuments }: DocumentsManagerProps) {
                           ?.label ?? doc.category}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {formatBytes(doc.file_size)}
+                        {formatBytes(doc.fileSize)}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(doc.created_at).toLocaleDateString("en-US", {
+                        {new Date(doc.createdAt).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
@@ -447,7 +447,7 @@ export function DocumentsManager({ initialDocuments }: DocumentsManagerProps) {
                   <div className="flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="sm" asChild title="Preview">
                       <a
-                        href={doc.file_url}
+                        href={doc.fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -455,7 +455,7 @@ export function DocumentsManager({ initialDocuments }: DocumentsManagerProps) {
                       </a>
                     </Button>
                     <Button variant="ghost" size="sm" asChild title="Download">
-                      <a href={doc.file_url} download={doc.title}>
+                      <a href={doc.fileUrl} download={doc.title}>
                         <Download className="h-4 w-4" />
                       </a>
                     </Button>

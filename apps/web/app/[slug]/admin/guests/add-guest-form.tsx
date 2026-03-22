@@ -214,7 +214,7 @@ export function AddGuestForm({
                 <option value="">Create new party</option>
                 {parties.map((party) => (
                   <option key={party.id} value={party.id}>
-                    {party.invite_code} -{" "}
+                    {party.inviteCode} -{" "}
                     {party.name || party.guestNames || "Empty party"} (
                     {party.guestCount} guests)
                   </option>

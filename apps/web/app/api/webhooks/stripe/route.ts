@@ -66,16 +66,14 @@ async function findGuest(params: {
 
   // Try to match by email first (most reliable)
   if (email) {
-    const guestByEmail = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("email", "=", email.toLowerCase())
-      .executeTakeFirst();
+    const guestByEmail = await db.guest.findFirst({
+      where: { email: email.toLowerCase() },
+    });
 
     if (guestByEmail) {
       log("info", "Found matching guest by email", {
         guestId: guestByEmail.id,
-        guestName: `${guestByEmail.first_name} ${guestByEmail.last_name}`,
+        guestName: `${guestByEmail.firstName} ${guestByEmail.lastName}`,
         guestEmail: guestByEmail.email,
         matchedBy: "email",
       });
@@ -94,21 +92,17 @@ async function findGuest(params: {
       log("debug", "Attempting name match", { firstName, lastName });
 
       // Use raw SQL for case-insensitive matching
-      const guestByName = await db
-        .selectFrom("guests")
-        .selectAll()
-        .where((eb) =>
-          eb.and([
-            eb("first_name", "ilike", firstName),
-            eb("last_name", "ilike", lastName),
-          ]),
-        )
-        .executeTakeFirst();
+      const guestByName = await db.guest.findFirst({
+        where: {
+          firstName: { equals: firstName, mode: "insensitive" },
+          lastName: { equals: lastName, mode: "insensitive" },
+        },
+      });
 
       if (guestByName) {
         log("info", "Found matching guest by name", {
           guestId: guestByName.id,
-          guestName: `${guestByName.first_name} ${guestByName.last_name}`,
+          guestName: `${guestByName.firstName} ${guestByName.lastName}`,
           searchedName: name,
           matchedBy: "name",
         });
@@ -116,21 +110,17 @@ async function findGuest(params: {
       }
 
       // Also try reverse order (last name first)
-      const guestByNameReverse = await db
-        .selectFrom("guests")
-        .selectAll()
-        .where((eb) =>
-          eb.and([
-            eb("first_name", "ilike", lastName),
-            eb("last_name", "ilike", firstName),
-          ]),
-        )
-        .executeTakeFirst();
+      const guestByNameReverse = await db.guest.findFirst({
+        where: {
+          firstName: { equals: lastName, mode: "insensitive" },
+          lastName: { equals: firstName, mode: "insensitive" },
+        },
+      });
 
       if (guestByNameReverse) {
         log("info", "Found matching guest by name (reversed)", {
           guestId: guestByNameReverse.id,
-          guestName: `${guestByNameReverse.first_name} ${guestByNameReverse.last_name}`,
+          guestName: `${guestByNameReverse.firstName} ${guestByNameReverse.lastName}`,
           searchedName: name,
           matchedBy: "name_reversed",
         });
@@ -150,21 +140,19 @@ async function findGuest(params: {
     });
 
     // Try phone_number field
-    const guestByPhone = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where((eb) =>
-        eb.or([
-          eb("phone_number", "like", `%${normalizedPhone}`),
-          eb("whatsapp", "like", `%${normalizedPhone}`),
-        ]),
-      )
-      .executeTakeFirst();
+    const guestByPhone = await db.guest.findFirst({
+      where: {
+        OR: [
+          { phoneNumber: { endsWith: normalizedPhone } },
+          { whatsapp: { endsWith: normalizedPhone } },
+        ],
+      },
+    });
 
     if (guestByPhone) {
       log("info", "Found matching guest by phone", {
         guestId: guestByPhone.id,
-        guestName: `${guestByPhone.first_name} ${guestByPhone.last_name}`,
+        guestName: `${guestByPhone.firstName} ${guestByPhone.lastName}`,
         searchedPhone: phone,
         matchedBy: "phone",
       });
@@ -226,12 +214,12 @@ async function sendGiftNotificationEmail(params: {
 
   const giftEmoji =
     giftType === "baby_fund"
-      ? "👶"
+      ? "\uD83D\uDC76"
       : giftType === "honeymoon"
-        ? "🏝️"
+        ? "\uD83C\uDFDD\uFE0F"
         : giftType === "student_loans"
-          ? "🎓"
-          : "🎁";
+          ? "\uD83C\uDF93"
+          : "\uD83C\uDF81";
 
   try {
     const recipients = env.RSVP_EMAIL.split(",").map((e) => e.trim());
@@ -418,7 +406,7 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
       donorName,
       billingPhone,
       guestId,
-      guestName: `${guest.first_name} ${guest.last_name}`,
+      guestName: `${guest.firstName} ${guest.lastName}`,
     });
   } else {
     log("info", "Charge did not match any guest", {
@@ -435,63 +423,61 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
       paymentIntentId,
     });
 
-    const existingGift = await db
-      .selectFrom("gifts")
-      .select([
-        "id",
-        "donor_email",
-        "donor_name",
-        "guest_id",
-        "status",
-        "stripe_checkout_session_id",
-      ])
-      .where("stripe_payment_intent_id", "=", paymentIntentId)
-      .executeTakeFirst();
+    const existingGift = await db.gift.findFirst({
+      where: { stripePaymentIntentId: paymentIntentId },
+      select: {
+        id: true,
+        donorEmail: true,
+        donorName: true,
+        guestId: true,
+        status: true,
+        stripeCheckoutSessionId: true,
+      },
+    });
 
     if (existingGift) {
       log("info", "Found existing gift by payment intent", {
         existingGiftId: existingGift.id,
-        existingEmail: existingGift.donor_email,
-        existingName: existingGift.donor_name,
-        existingGuestId: existingGift.guest_id,
+        existingEmail: existingGift.donorEmail,
+        existingName: existingGift.donorName,
+        existingGuestId: existingGift.guestId,
         existingStatus: existingGift.status,
-        hasCheckoutSession: !!existingGift.stripe_checkout_session_id,
+        hasCheckoutSession: !!existingGift.stripeCheckoutSessionId,
       });
 
       // Update the existing gift with better billing details if available
       const updates: Record<string, unknown> = {
-        updated_at: new Date().toISOString(),
-        stripe_charge_id: charge.id,
+        updatedAt: new Date().toISOString(),
+        stripeChargeId: charge.id,
       };
 
       // Only update if we have better data from the charge
-      if (donorEmail && !existingGift.donor_email) {
-        updates.donor_email = donorEmail;
-        log("debug", "Will update donor_email", {
-          from: existingGift.donor_email,
+      if (donorEmail && !existingGift.donorEmail) {
+        updates.donorEmail = donorEmail;
+        log("debug", "Will update donorEmail", {
+          from: existingGift.donorEmail,
           to: donorEmail,
         });
       }
-      if (donorName && !existingGift.donor_name) {
-        updates.donor_name = donorName;
-        log("debug", "Will update donor_name", {
-          from: existingGift.donor_name,
+      if (donorName && !existingGift.donorName) {
+        updates.donorName = donorName;
+        log("debug", "Will update donorName", {
+          from: existingGift.donorName,
           to: donorName,
         });
       }
-      if (guestId && !existingGift.guest_id) {
-        updates.guest_id = guestId;
-        log("debug", "Will update guest_id", {
-          from: existingGift.guest_id,
+      if (guestId && !existingGift.guestId) {
+        updates.guestId = guestId;
+        log("debug", "Will update guestId", {
+          from: existingGift.guestId,
           to: guestId,
         });
       }
 
-      await db
-        .updateTable("gifts")
-        .set(updates)
-        .where("id", "=", existingGift.id)
-        .execute();
+      await db.gift.update({
+        where: { id: existingGift.id },
+        data: updates,
+      });
 
       log("info", "Updated existing gift with charge details", {
         giftId: existingGift.id,
@@ -507,11 +493,10 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
     chargeId: charge.id,
   });
 
-  const existingByCharge = await db
-    .selectFrom("gifts")
-    .select(["id", "status"])
-    .where("stripe_charge_id", "=", charge.id)
-    .executeTakeFirst();
+  const existingByCharge = await db.gift.findFirst({
+    where: { stripeChargeId: charge.id },
+    select: { id: true, status: true },
+  });
 
   if (existingByCharge) {
     log("warn", "Gift already recorded for this charge - skipping", {
@@ -529,24 +514,22 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
   });
 
   try {
-    const gift = await db
-      .insertInto("gifts")
-      .values({
-        stripe_charge_id: charge.id,
-        stripe_payment_intent_id: paymentIntentId,
-        donor_email: donorEmail,
-        donor_name: donorName,
-        amount_cents: amount,
+    const gift = await db.gift.create({
+      data: {
+        stripeChargeId: charge.id,
+        stripePaymentIntentId: paymentIntentId,
+        donorEmail: donorEmail,
+        donorName: donorName,
+        amountCents: amount,
         currency: currency,
-        gift_type: giftType,
-        guest_id: guestId,
+        giftType: giftType,
+        guestId: guestId,
         status: "completed",
-        thank_you_email_sent: false,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        thankYouEmailSent: false,
+      },
+    });
 
-    log("info", "✅ Gift recorded from charge", {
+    log("info", "Gift recorded from charge", {
       giftId: gift.id,
       chargeId: charge.id,
       paymentIntentId,
@@ -567,7 +550,7 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
       currency,
       giftType,
       matchedGuest: guest
-        ? { firstName: guest.first_name, lastName: guest.last_name }
+        ? { firstName: guest.firstName, lastName: guest.lastName }
         : null,
       chargeId: charge.id,
     });
@@ -636,11 +619,10 @@ async function handleChargeFailed(charge: Stripe.Charge) {
       paymentIntentId,
     });
 
-    const existingGift = await db
-      .selectFrom("gifts")
-      .select(["id", "status"])
-      .where("stripe_payment_intent_id", "=", paymentIntentId)
-      .executeTakeFirst();
+    const existingGift = await db.gift.findFirst({
+      where: { stripePaymentIntentId: paymentIntentId },
+      select: { id: true, status: true },
+    });
 
     if (existingGift) {
       log("info", "Found existing gift - updating status to failed", {
@@ -650,15 +632,14 @@ async function handleChargeFailed(charge: Stripe.Charge) {
       });
 
       // Update the existing gift status to failed
-      await db
-        .updateTable("gifts")
-        .set({
+      await db.gift.update({
+        where: { id: existingGift.id },
+        data: {
           status: "failed",
-          stripe_charge_id: charge.id,
-          updated_at: new Date().toISOString(),
-        })
-        .where("id", "=", existingGift.id)
-        .execute();
+          stripeChargeId: charge.id,
+          updatedAt: new Date().toISOString(),
+        },
+      });
 
       log("warn", "Updated gift to failed status", {
         giftId: existingGift.id,
@@ -675,11 +656,10 @@ async function handleChargeFailed(charge: Stripe.Charge) {
     chargeId: charge.id,
   });
 
-  const existingByCharge = await db
-    .selectFrom("gifts")
-    .select(["id", "status"])
-    .where("stripe_charge_id", "=", charge.id)
-    .executeTakeFirst();
+  const existingByCharge = await db.gift.findFirst({
+    where: { stripeChargeId: charge.id },
+    select: { id: true, status: true },
+  });
 
   if (existingByCharge) {
     log("warn", "Failed charge already recorded - skipping", {
@@ -699,24 +679,22 @@ async function handleChargeFailed(charge: Stripe.Charge) {
   });
 
   try {
-    const gift = await db
-      .insertInto("gifts")
-      .values({
-        stripe_charge_id: charge.id,
-        stripe_payment_intent_id: paymentIntentId,
-        donor_email: donorEmail,
-        donor_name: donorName,
-        amount_cents: amount,
+    const gift = await db.gift.create({
+      data: {
+        stripeChargeId: charge.id,
+        stripePaymentIntentId: paymentIntentId,
+        donorEmail: donorEmail,
+        donorName: donorName,
+        amountCents: amount,
         currency: currency,
-        gift_type: null,
-        guest_id: null,
+        giftType: null,
+        guestId: null,
         status: "failed",
-        thank_you_email_sent: false,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        thankYouEmailSent: false,
+      },
+    });
 
-    log("warn", "⚠️ Failed charge recorded", {
+    log("warn", "Failed charge recorded", {
       giftId: gift.id,
       chargeId: charge.id,
       paymentIntentId,
@@ -835,7 +813,7 @@ async function handleChargePending(charge: Stripe.Charge) {
       donorName,
       billingPhone,
       guestId,
-      guestName: `${guest.first_name} ${guest.last_name}`,
+      guestName: `${guest.firstName} ${guest.lastName}`,
     });
   }
 
@@ -845,11 +823,10 @@ async function handleChargePending(charge: Stripe.Charge) {
       paymentIntentId,
     });
 
-    const existingGift = await db
-      .selectFrom("gifts")
-      .select(["id", "status"])
-      .where("stripe_payment_intent_id", "=", paymentIntentId)
-      .executeTakeFirst();
+    const existingGift = await db.gift.findFirst({
+      where: { stripePaymentIntentId: paymentIntentId },
+      select: { id: true, status: true },
+    });
 
     if (existingGift) {
       log("info", "Found existing gift - updating status to pending", {
@@ -859,15 +836,14 @@ async function handleChargePending(charge: Stripe.Charge) {
       });
 
       // Update the existing gift status to pending
-      await db
-        .updateTable("gifts")
-        .set({
+      await db.gift.update({
+        where: { id: existingGift.id },
+        data: {
           status: "pending",
-          stripe_charge_id: charge.id,
-          updated_at: new Date().toISOString(),
-        })
-        .where("id", "=", existingGift.id)
-        .execute();
+          stripeChargeId: charge.id,
+          updatedAt: new Date().toISOString(),
+        },
+      });
 
       log("info", "Updated gift to pending status", {
         giftId: existingGift.id,
@@ -882,11 +858,10 @@ async function handleChargePending(charge: Stripe.Charge) {
     chargeId: charge.id,
   });
 
-  const existingByCharge = await db
-    .selectFrom("gifts")
-    .select(["id", "status"])
-    .where("stripe_charge_id", "=", charge.id)
-    .executeTakeFirst();
+  const existingByCharge = await db.gift.findFirst({
+    where: { stripeChargeId: charge.id },
+    select: { id: true, status: true },
+  });
 
   if (existingByCharge) {
     log("info", "Pending charge already recorded - skipping", {
@@ -904,24 +879,22 @@ async function handleChargePending(charge: Stripe.Charge) {
   });
 
   try {
-    const gift = await db
-      .insertInto("gifts")
-      .values({
-        stripe_charge_id: charge.id,
-        stripe_payment_intent_id: paymentIntentId,
-        donor_email: donorEmail,
-        donor_name: donorName,
-        amount_cents: amount,
+    const gift = await db.gift.create({
+      data: {
+        stripeChargeId: charge.id,
+        stripePaymentIntentId: paymentIntentId,
+        donorEmail: donorEmail,
+        donorName: donorName,
+        amountCents: amount,
         currency: currency,
-        gift_type: giftType,
-        guest_id: guestId,
+        giftType: giftType,
+        guestId: guestId,
         status: "pending",
-        thank_you_email_sent: false,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        thankYouEmailSent: false,
+      },
+    });
 
-    log("info", "⏳ Pending charge recorded", {
+    log("info", "Pending charge recorded", {
       giftId: gift.id,
       chargeId: charge.id,
       paymentIntentId,
@@ -984,11 +957,10 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   });
 
   // First check if gift exists
-  const existingGift = await db
-    .selectFrom("gifts")
-    .select(["id", "status", "amount_cents"])
-    .where("stripe_payment_intent_id", "=", paymentIntentId)
-    .executeTakeFirst();
+  const existingGift = await db.gift.findFirst({
+    where: { stripePaymentIntentId: paymentIntentId },
+    select: { id: true, status: true, amountCents: true },
+  });
 
   if (!existingGift) {
     log("warn", "No gift found for refunded charge", {
@@ -1001,25 +973,23 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   log("info", "Found gift to mark as refunded", {
     giftId: existingGift.id,
     previousStatus: existingGift.status,
-    originalAmountCents: existingGift.amount_cents,
+    originalAmountCents: existingGift.amountCents,
     refundedAmountCents: charge.amount_refunded,
   });
 
   // Update the gift status
-  const result = await db
-    .updateTable("gifts")
-    .set({
+  await db.gift.update({
+    where: { id: existingGift.id },
+    data: {
       status: "refunded",
-      updated_at: new Date().toISOString(),
-    })
-    .where("stripe_payment_intent_id", "=", paymentIntentId)
-    .executeTakeFirst();
+      updatedAt: new Date().toISOString(),
+    },
+  });
 
-  log("info", "💰 Refund processed", {
+  log("info", "Refund processed", {
     giftId: existingGift.id,
     chargeId: charge.id,
     paymentIntentId,
-    rowsUpdated: result.numUpdatedRows?.toString() || "unknown",
     refundedAmountDollars: charge.amount_refunded / 100,
   });
 }
@@ -1165,7 +1135,7 @@ export async function POST(request: NextRequest) {
 
     const processingTime = Date.now() - startTime;
 
-    log("info", "✅ Webhook processed successfully", {
+    log("info", "Webhook processed successfully", {
       requestId,
       eventId: event.id,
       eventType: event.type,
@@ -1175,7 +1145,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    log("error", "❌ Error processing Stripe webhook", {
+    log("error", "Error processing Stripe webhook", {
       requestId,
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,

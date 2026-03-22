@@ -1,22 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-// Mock wedding context - must be before any imports that use getWeddingId
-mock.module("@/lib/db/wedding-context", () => ({
-  getWeddingId: () => Promise.resolve("test-wedding-id"),
-  getWeddingContext: () =>
-    Promise.resolve({
-      weddingId: "test-wedding-id",
-      slug: "test-wedding",
-      coupleName: "Test Couple",
-      weddingDate: "2026-07-30",
-      rsvpDeadline: null,
-      timezone: "America/New_York",
-      status: "published",
-    }),
-  getWeddingBySlug: () => Promise.resolve(null),
-  getWeddingById: () => Promise.resolve(null),
-}));
-
 // Mock currentUser from Clerk
 const mockCurrentUser = mock(() => Promise.resolve(null));
 
@@ -34,33 +17,44 @@ mock.module("@/env", () => ({
   },
 }));
 
-// Mock the db module - chainable proxy that supports any method chain
-function createChainableDb(terminals: Record<string, unknown> = {}) {
-  const handler: ProxyHandler<Record<string, unknown>> = {
-    get: (_, prop: string) => {
-      if (prop in terminals) return terminals[prop];
-      return () => new Proxy({}, handler);
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
+
+// Mock the db module with Prisma-style mocks
+mock.module("@/lib/db", () => ({
+  db: {
+    guest: {
+      findMany: mock(() => Promise.resolve([])),
+      findUnique: mock(() => Promise.resolve(null)),
+      findFirst: mock(() => Promise.resolve(null)),
+      create: mock(() => Promise.resolve({ id: "test-id" })),
+      update: mock(() => Promise.resolve({ id: "test-id" })),
+      delete: mock(() => Promise.resolve({})),
+      deleteMany: mock(() => Promise.resolve({ count: 0 })),
+      count: mock(() => Promise.resolve(0)),
     },
-  };
-  return new Proxy({}, handler);
-}
-
-const terminalMethods = {
-  execute: () => Promise.resolve([]),
-  executeTakeFirst: () => Promise.resolve(null),
-  executeTakeFirstOrThrow: () => Promise.resolve({ id: "test-id" }),
-};
-
-const mockDb = {
-  selectFrom: () => createChainableDb(terminalMethods),
-  updateTable: () => createChainableDb(terminalMethods),
-  insertInto: () => createChainableDb(terminalMethods),
-  deleteFrom: () => createChainableDb(terminalMethods),
-};
-
-mock.module("@/lib/db", () => ({ db: mockDb }));
-mock.module("@/lib/db/scoped", () => ({
-  forWedding: () => mockDb,
+    party: {
+      findUnique: mock(() => Promise.resolve(null)),
+      create: mock(() => Promise.resolve({ id: "test-id" })),
+      delete: mock(() => Promise.resolve({})),
+    },
+    event: {
+      findFirst: mock(() => Promise.resolve(null)),
+    },
+  },
 }));
 
 describe("Admin API Authentication", () => {

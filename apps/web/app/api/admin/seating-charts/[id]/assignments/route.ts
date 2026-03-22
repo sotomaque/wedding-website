@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { isValidUUID } from "@/lib/utils/uuid";
 
@@ -40,15 +39,12 @@ export async function POST(
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     // Verify the chart exists and get its tables
-    const tables = await db
-      .selectFrom("seating_tables")
-      .where("wedding_id", "=", weddingId)
-      .select(["id"])
-      .where("seating_chart_id", "=", chartId)
-      .execute();
+    const tables = await db.seatingTable.findMany({
+      where: { seatingChartId: chartId, weddingId },
+      select: { id: true },
+    });
 
     const validTableIds = new Set(tables.map((t) => t.id));
 
@@ -88,26 +84,22 @@ export async function POST(
 
     // Only delete if we have valid UUIDs
     if (guestIds.length > 0) {
-      await weddingDb
-        .deleteFrom("guest_table_assignments")
-        .where("guest_id", "in", guestIds)
-        .execute();
+      await db.guestTableAssignment.deleteMany({
+        where: { guestId: { in: guestIds } },
+      });
     }
 
     // Insert new assignments
-    for (const a of uniqueAssignments as Array<{
-      guestId: string;
-      tableId: string;
-      seatNumber?: number;
-    }>) {
-      await weddingDb
-        .insertInto("guest_table_assignments", {
-          guest_id: a.guestId,
-          seating_table_id: a.tableId,
-          seat_number: a.seatNumber || null,
-        })
-        .execute();
-    }
+    await db.guestTableAssignment.createMany({
+      data: uniqueAssignments.map(
+        (a: { guestId: string; tableId: string; seatNumber?: number }) => ({
+          guestId: a.guestId,
+          seatingTableId: a.tableId,
+          seatNumber: a.seatNumber || null,
+          weddingId,
+        }),
+      ),
+    });
 
     return NextResponse.json({
       success: true,
@@ -149,18 +141,16 @@ export async function DELETE(
     }
 
     const { id: chartId } = await params;
-    const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
     const { searchParams } = new URL(request.url);
     const guestIdsParam = searchParams.get("guestIds");
 
+    const weddingId = await getWeddingId();
+
     // Get all tables for this chart
-    const tables = await db
-      .selectFrom("seating_tables")
-      .where("wedding_id", "=", weddingId)
-      .select(["id"])
-      .where("seating_chart_id", "=", chartId)
-      .execute();
+    const tables = await db.seatingTable.findMany({
+      where: { seatingChartId: chartId, weddingId },
+      select: { id: true },
+    });
 
     const tableIds = tables.map((t) => t.id);
 
@@ -171,17 +161,18 @@ export async function DELETE(
     if (guestIdsParam) {
       // Delete specific guest assignments
       const guestIds = guestIdsParam.split(",");
-      await weddingDb
-        .deleteFrom("guest_table_assignments")
-        .where("seating_table_id", "in", tableIds)
-        .where("guest_id", "in", guestIds)
-        .execute();
+      await db.guestTableAssignment.deleteMany({
+        where: {
+          seatingTableId: { in: tableIds },
+          guestId: { in: guestIds },
+          weddingId,
+        },
+      });
     } else {
       // Delete all assignments for this chart's tables
-      await weddingDb
-        .deleteFrom("guest_table_assignments")
-        .where("seating_table_id", "in", tableIds)
-        .execute();
+      await db.guestTableAssignment.deleteMany({
+        where: { seatingTableId: { in: tableIds }, weddingId },
+      });
     }
 
     return NextResponse.json({ success: true });

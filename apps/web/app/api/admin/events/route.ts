@@ -2,7 +2,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
@@ -33,13 +32,10 @@ export async function GET() {
 
     const weddingId = await getWeddingId();
 
-    const events = await db
-      .selectFrom("events")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .orderBy("display_order", "asc")
-      .orderBy("event_date", "asc")
-      .execute();
+    const events = await db.event.findMany({
+      where: { weddingId },
+      orderBy: [{ displayOrder: "asc" }, { eventDate: "asc" }],
+    });
 
     // Get invite counts for each event
     const eventsWithCounts = await Promise.all(
@@ -48,28 +44,25 @@ export async function GET() {
         let confirmed: number;
         let declined: number;
 
-        if (event.is_default) {
+        if (event.isDefault) {
           // For default events, use guest's main RSVP status
-          const guests = await db
-            .selectFrom("guests")
-            .where("wedding_id", "=", weddingId)
-            .select("rsvp_status")
-            .execute();
+          const guests = await db.guest.findMany({
+            where: { weddingId },
+            select: { rsvpStatus: true },
+          });
 
           total = guests.length;
-          confirmed = guests.filter((g) => g.rsvp_status === "yes").length;
-          declined = guests.filter((g) => g.rsvp_status === "no").length;
+          confirmed = guests.filter((g) => g.rsvpStatus === "yes").length;
+          declined = guests.filter((g) => g.rsvpStatus === "no").length;
         } else {
-          const invites = await db
-            .selectFrom("guest_event_invites")
-            .where("wedding_id", "=", weddingId)
-            .select("rsvp_status")
-            .where("event_id", "=", event.id)
-            .execute();
+          const invites = await db.guestEventInvite.findMany({
+            where: { eventId: event.id, weddingId },
+            select: { rsvpStatus: true },
+          });
 
           total = invites.length;
-          confirmed = invites.filter((i) => i.rsvp_status === "yes").length;
-          declined = invites.filter((i) => i.rsvp_status === "no").length;
+          confirmed = invites.filter((i) => i.rsvpStatus === "yes").length;
+          declined = invites.filter((i) => i.rsvpStatus === "no").length;
         }
 
         return {
@@ -137,51 +130,47 @@ export async function POST(request: NextRequest) {
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     // Get the highest display_order
-    const maxOrder = await db
-      .selectFrom("events")
-      .where("wedding_id", "=", weddingId)
-      .select(db.fn.max("display_order").as("max_order"))
-      .executeTakeFirst();
+    const maxOrder = await db.event.aggregate({
+      where: { weddingId },
+      _max: { displayOrder: true },
+    });
 
-    const newOrder = (maxOrder?.max_order ?? 0) + 1;
+    const newOrder = (maxOrder._max.displayOrder ?? 0) + 1;
 
-    const event = await weddingDb
-      .insertInto("events", {
+    const event = await db.event.create({
+      data: {
         name,
         description: description || null,
-        event_date: eventDate || null,
-        start_time: startTime || null,
-        end_time: endTime || null,
-        location_name: locationName || null,
-        location_address: locationAddress || null,
+        eventDate: eventDate || null,
+        startTime: startTime || null,
+        endTime: endTime || null,
+        locationName: locationName || null,
+        locationAddress: locationAddress || null,
         latitude: latitude || null,
         longitude: longitude || null,
-        is_default: isDefault || false,
-        display_order: newOrder,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        isDefault: isDefault || false,
+        displayOrder: newOrder,
+        weddingId,
+      },
+    });
 
     // If this is a default event, invite all guests
     if (isDefault) {
-      const guests = await db
-        .selectFrom("guests")
-        .where("wedding_id", "=", weddingId)
-        .select("id")
-        .execute();
+      const guests = await db.guest.findMany({
+        where: { weddingId },
+        select: { id: true },
+      });
 
-      for (const guest of guests) {
-        await weddingDb
-          .insertInto("guest_event_invites", {
-            guest_id: guest.id,
-            event_id: event.id,
-          })
-          .onConflict((oc) => oc.columns(["guest_id", "event_id"]).doNothing())
-          .execute();
-      }
+      await db.guestEventInvite.createMany({
+        data: guests.map((guest) => ({
+          guestId: guest.id,
+          eventId: event.id,
+          weddingId,
+        })),
+        skipDuplicates: true,
+      });
     }
 
     return NextResponse.json({ event }, { status: 201 });

@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
@@ -27,75 +26,61 @@ export async function GET(
     }
 
     const { id } = await params;
-    const weddingId = await getWeddingId();
 
-    // Fetch the chart
-    const chart = await db
-      .selectFrom("seating_charts")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("id", "=", id)
-      .executeTakeFirst();
+    // Fetch the chart with tables, assignments, and guest details
+    const chart = await db.seatingChart.findUnique({
+      where: { id },
+    });
 
     if (!chart) {
       return NextResponse.json({ error: "Chart not found" }, { status: 404 });
     }
 
+    const weddingId = await getWeddingId();
+
     // Fetch tables for this chart
-    const tables = await db
-      .selectFrom("seating_tables")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("seating_chart_id", "=", id)
-      .orderBy("table_number", "asc")
-      .execute();
+    const tables = await db.seatingTable.findMany({
+      where: { seatingChartId: id, weddingId },
+      orderBy: { tableNumber: "asc" },
+    });
 
     // Fetch all assignments for these tables
     const tableIds = tables.map((t) => t.id);
     const assignments =
       tableIds.length > 0
-        ? await db
-            .selectFrom("guest_table_assignments")
-            .where("wedding_id", "=", weddingId)
-            .selectAll()
-            .where("seating_table_id", "in", tableIds)
-            .execute()
+        ? await db.guestTableAssignment.findMany({
+            where: { seatingTableId: { in: tableIds }, weddingId },
+          })
         : [];
 
     // Fetch guest details for all assigned guests
-    const assignedGuestIds = assignments.map((a) => a.guest_id);
+    const assignedGuestIds = assignments.map((a) => a.guestId);
     const assignedGuests =
       assignedGuestIds.length > 0
-        ? await db
-            .selectFrom("guests")
-            .where("wedding_id", "=", weddingId)
-            .selectAll()
-            .where("id", "in", assignedGuestIds)
-            .execute()
+        ? await db.guest.findMany({
+            where: { id: { in: assignedGuestIds }, weddingId },
+          })
         : [];
 
     // Fetch all confirmed guests (for showing unassigned)
-    const allConfirmedGuests = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("rsvp_status", "=", "yes")
-      .execute();
+    const allConfirmedGuests = await db.guest.findMany({
+      where: { rsvpStatus: "yes", weddingId },
+    });
 
     // Build tables with guests
     const tablesWithGuests = tables.map((table) => {
       const tableAssignments = assignments.filter(
-        (a) => a.seating_table_id === table.id,
+        (a) => a.seatingTableId === table.id,
       );
       const tableGuests = tableAssignments
-        .map((a) => assignedGuests.find((g) => g.id === a.guest_id))
+        .map((a) => assignedGuests.find((g) => g.id === a.guestId))
         .filter(Boolean);
 
       return {
         ...table,
         guests: tableGuests,
         assignedCount: tableGuests.length,
-        capacity: table.capacity_override || chart.default_seats_per_table,
+        capacity: table.capacityOverride || chart.defaultSeatsPerTable,
       };
     });
 
@@ -153,33 +138,29 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
     const body = await request.json();
     const { name, defaultSeatsPerTable, isActive, notes } = body;
 
     const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
+      updatedAt: new Date(),
     };
 
     if (name !== undefined) updateData.name = name;
     if (defaultSeatsPerTable !== undefined)
-      updateData.default_seats_per_table = defaultSeatsPerTable;
-    if (isActive !== undefined) updateData.is_active = isActive;
+      updateData.defaultSeatsPerTable = defaultSeatsPerTable;
+    if (isActive !== undefined) updateData.isActive = isActive;
     if (notes !== undefined) updateData.notes = notes;
 
-    const chart = await weddingDb
-      .updateTable("seating_charts")
-      .set(updateData)
-      .where("id", "=", id)
-      .returningAll()
-      .executeTakeFirst();
+    try {
+      const chart = await db.seatingChart.update({
+        where: { id },
+        data: updateData,
+      });
 
-    if (!chart) {
+      return NextResponse.json({ chart });
+    } catch {
       return NextResponse.json({ error: "Chart not found" }, { status: 404 });
     }
-
-    return NextResponse.json({ chart });
   } catch (error) {
     console.error("Error in PATCH /api/admin/seating-charts/[id]:", error);
     return NextResponse.json(
@@ -212,10 +193,10 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
-    await weddingDb.deleteFrom("seating_charts").where("id", "=", id).execute();
+    await db.seatingChart.delete({
+      where: { id },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

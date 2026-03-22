@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
@@ -24,12 +23,10 @@ export async function GET() {
 
     const weddingId = await getWeddingId();
 
-    const charts = await db
-      .selectFrom("seating_charts")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .orderBy("updated_at", "desc")
-      .execute();
+    const charts = await db.seatingChart.findMany({
+      where: { weddingId },
+      orderBy: { updatedAt: "desc" },
+    });
 
     return NextResponse.json({ charts });
   } catch (error) {
@@ -71,17 +68,16 @@ export async function POST(request: NextRequest) {
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
-    const chart = await weddingDb
-      .insertInto("seating_charts", {
+    const chart = await db.seatingChart.create({
+      data: {
         name,
-        default_seats_per_table: defaultSeatsPerTable || 8,
-        is_active: false,
+        defaultSeatsPerTable: defaultSeatsPerTable || 8,
+        isActive: false,
         notes: notes || null,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        weddingId,
+      },
+    });
 
     return NextResponse.json({ chart });
   } catch (error) {

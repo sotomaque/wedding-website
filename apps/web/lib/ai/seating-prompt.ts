@@ -90,27 +90,27 @@ CRITICAL INSTRUCTIONS:
  */
 export function formatGuestForSeating(guest: {
   id: string;
-  first_name: string;
-  last_name: string | null;
-  side: "bride" | "groom" | "both" | null;
+  firstName: string;
+  lastName: string | null;
+  side: string | null;
   family: boolean;
-  bridal_party_role: string | null;
+  bridalPartyRole: string | null;
   notes: string | null;
-  is_plus_one: boolean;
-  primary_guest_id: string | null;
-  invite_code: string;
-  party_id: string | null;
+  isPlusOne: boolean;
+  primaryGuestId: string | null;
+  inviteCode: string | null;
+  partyId: string | null;
 }): GuestForSeating {
   return {
     id: guest.id,
-    name: `${guest.first_name}${guest.last_name ? ` ${guest.last_name}` : ""}`,
-    side: guest.side,
+    name: `${guest.firstName}${guest.lastName ? ` ${guest.lastName}` : ""}`,
+    side: guest.side as "bride" | "groom" | "both" | null,
     family: guest.family,
-    bridalPartyRole: guest.bridal_party_role,
+    bridalPartyRole: guest.bridalPartyRole,
     notes: guest.notes,
-    isPlusOne: guest.is_plus_one,
-    primaryGuestId: guest.primary_guest_id,
-    inviteCode: guest.invite_code,
-    partyId: guest.party_id,
+    isPlusOne: guest.isPlusOne,
+    primaryGuestId: guest.primaryGuestId,
+    inviteCode: guest.inviteCode ?? "",
+    partyId: guest.partyId,
   };
 }

@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getEventRsvpNotificationEmail } from "@/lib/email/templates/event-rsvp-notification";
@@ -29,16 +28,15 @@ export async function POST(request: NextRequest) {
     // Normalize code to uppercase
     const normalizedCode = inviteCode.toUpperCase().trim();
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     // Find guest with this invite code
-    const guest = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("invite_code", "=", normalizedCode)
-      .where("is_plus_one", "=", false) // Only match primary guests
-      .executeTakeFirst();
+    const guest = await db.guest.findFirst({
+      where: {
+        inviteCode: normalizedCode,
+        isPlusOne: false, // Only match primary guests
+        weddingId,
+      },
+    });
 
     if (!guest) {
       return NextResponse.json(
@@ -48,25 +46,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify event exists
-    const event = await db
-      .selectFrom("events")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("id", "=", eventId)
-      .executeTakeFirst();
+    const event = await db.event.findUnique({
+      where: { id: eventId },
+    });
 
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
     // Check if guest is invited to this event
-    const invite = await db
-      .selectFrom("guest_event_invites")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("guest_id", "=", guest.id)
-      .where("event_id", "=", eventId)
-      .executeTakeFirst();
+    const invite = await db.guestEventInvite.findFirst({
+      where: {
+        guestId: guest.id,
+        eventId: eventId,
+      },
+    });
 
     if (!invite) {
       return NextResponse.json(
@@ -77,11 +71,10 @@ export async function POST(request: NextRequest) {
 
     // Update the RSVP status
     const rsvpStatus = attending ? "yes" : "no";
-    await weddingDb
-      .updateTable("guest_event_invites")
-      .set({ rsvp_status: rsvpStatus })
-      .where("id", "=", invite.id)
-      .execute();
+    await db.guestEventInvite.update({
+      where: { id: invite.id },
+      data: { rsvpStatus },
+    });
 
     // Send notification email to admins
     try {
@@ -101,11 +94,11 @@ export async function POST(request: NextRequest) {
 
         const emailHtml = getEventRsvpNotificationEmail({
           guest: {
-            firstName: guest.first_name,
-            lastName: guest.last_name,
+            firstName: guest.firstName,
+            lastName: guest.lastName,
             email: guest.email,
           },
-          inviteCode: guest.invite_code,
+          inviteCode: guest.inviteCode ?? "",
           eventName: event.name,
           attending,
           submittedAt,
@@ -114,7 +107,7 @@ export async function POST(request: NextRequest) {
         await sendEmail({
           from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
           to: adminEmails,
-          subject: `Event RSVP: ${guest.first_name} ${attending ? "is attending" : "declined"} ${event.name}`,
+          subject: `Event RSVP: ${guest.firstName} ${attending ? "is attending" : "declined"} ${event.name}`,
           html: emailHtml,
         });
       }

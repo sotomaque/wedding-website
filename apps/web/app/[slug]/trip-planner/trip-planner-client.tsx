@@ -23,10 +23,10 @@ import {
 interface CalendarEvent {
   id: string;
   name: string;
-  event_date: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  location_name: string | null;
+  eventDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  locationName: string | null;
 }
 
 interface TripPlannerClientProps {
@@ -62,7 +62,7 @@ export function TripPlannerClient({
     const set = new Set<string>();
     if (!showEvents) return set;
     for (const e of events) {
-      if (e.event_date) set.add(normalizeKey(e.event_date));
+      if (e.eventDate) set.add(normalizeKey(e.eventDate));
     }
     return set;
   }, [events, showEvents]);
@@ -70,7 +70,7 @@ export function TripPlannerClient({
   const arrivalDates = React.useMemo(() => {
     const set = new Set<string>();
     for (const p of parties) {
-      if (p.arrival_date) set.add(normalizeKey(p.arrival_date));
+      if (p.arrivalDate) set.add(normalizeKey(p.arrivalDate));
     }
     return set;
   }, [parties]);
@@ -78,7 +78,7 @@ export function TripPlannerClient({
   const departureDates = React.useMemo(() => {
     const set = new Set<string>();
     for (const p of parties) {
-      if (p.departure_date) set.add(normalizeKey(p.departure_date));
+      if (p.departureDate) set.add(normalizeKey(p.departureDate));
     }
     return set;
   }, [parties]);
@@ -103,7 +103,7 @@ export function TripPlannerClient({
     () =>
       selectedKey && showEvents
         ? events.filter(
-            (e) => e.event_date && normalizeKey(e.event_date) === selectedKey,
+            (e) => e.eventDate && normalizeKey(e.eventDate) === selectedKey,
           )
         : [],
     [selectedKey, events, showEvents],
@@ -113,8 +113,7 @@ export function TripPlannerClient({
     () =>
       selectedKey
         ? parties.filter(
-            (p) =>
-              p.arrival_date && normalizeKey(p.arrival_date) === selectedKey,
+            (p) => p.arrivalDate && normalizeKey(p.arrivalDate) === selectedKey,
           )
         : [],
     [selectedKey, parties],
@@ -125,8 +124,7 @@ export function TripPlannerClient({
       selectedKey
         ? parties.filter(
             (p) =>
-              p.departure_date &&
-              normalizeKey(p.departure_date) === selectedKey,
+              p.departureDate && normalizeKey(p.departureDate) === selectedKey,
           )
         : [],
     [selectedKey, parties],
@@ -172,7 +170,7 @@ export function TripPlannerClient({
   const monthIndex = month.getMonth();
   const weeks = getWeeksInMonth(year, monthIndex);
   const partiesWithBothDates = parties.filter(
-    (p) => p.arrival_date && p.departure_date,
+    (p) => p.arrivalDate && p.departureDate,
   );
 
   return (
@@ -269,15 +267,15 @@ export function TripPlannerClient({
                             className="rounded-md border p-3 text-sm"
                           >
                             <p className="font-medium">{e.name}</p>
-                            {(e.start_time || e.end_time) && (
+                            {(e.startTime || e.endTime) && (
                               <p className="text-muted-foreground text-xs mt-0.5">
-                                {e.start_time}
-                                {e.end_time ? ` – ${e.end_time}` : ""}
+                                {e.startTime}
+                                {e.endTime ? ` – ${e.endTime}` : ""}
                               </p>
                             )}
-                            {e.location_name && (
+                            {e.locationName && (
                               <p className="text-muted-foreground text-xs">
-                                {e.location_name}
+                                {e.locationName}
                               </p>
                             )}
                           </div>
@@ -297,7 +295,7 @@ export function TripPlannerClient({
                           <PartyRow
                             key={p.id}
                             party={p}
-                            transport={p.arrival_transport}
+                            transport={p.arrivalTransport}
                           />
                         ))}
                       </div>
@@ -315,7 +313,7 @@ export function TripPlannerClient({
                           <PartyRow
                             key={p.id}
                             party={p}
-                            transport={p.departure_transport}
+                            transport={p.departureTransport}
                           />
                         ))}
                       </div>
@@ -440,12 +438,11 @@ export function TripPlannerClient({
                             style={{
                               gridColumn: `${bar.colStart} / ${bar.colEnd + 1}`,
                             }}
-                            title={`${bar.guest.first_name} ${bar.guest.last_name ?? ""}`.trim()}
+                            title={`${bar.guest.firstName} ${bar.guest.lastName ?? ""}`.trim()}
                           >
                             {bar.isStart && (
                               <span className="truncate">
-                                {bar.guest.first_name}{" "}
-                                {bar.guest.last_name ?? ""}
+                                {bar.guest.firstName} {bar.guest.lastName ?? ""}
                               </span>
                             )}
                           </div>
@@ -467,7 +464,7 @@ export function TripPlannerClient({
                     colorMap.get(p.id),
                   )}
                 >
-                  {p.first_name} {p.last_name ?? ""}
+                  {p.firstName} {p.lastName ?? ""}
                 </span>
               ))}
             </div>

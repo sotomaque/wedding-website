@@ -28,19 +28,16 @@ export async function POST(request: NextRequest) {
     const weddingId = await getWeddingId();
 
     // Fetch guest details
-    const guests = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("invite_code", "=", inviteCode.toUpperCase())
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { inviteCode: inviteCode.toUpperCase(), weddingId },
+    });
 
     if (guests.length === 0) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
     // Get primary guest (non-plus-one)
-    const primaryGuest = guests.find((g) => !g.is_plus_one) || guests[0];
+    const primaryGuest = guests.find((g) => !g.isPlusOne) || guests[0];
 
     if (!primaryGuest) {
       return NextResponse.json(
@@ -50,25 +47,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch hotel details
-    const hotel = await db
-      .selectFrom("hotels")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("id", "=", hotelId)
-      .executeTakeFirst();
+    const hotel = await db.hotel.findUnique({
+      where: { id: hotelId },
+    });
 
     if (!hotel) {
       return NextResponse.json({ error: "Hotel not found" }, { status: 404 });
     }
 
     // Fetch hotel interest details
-    const interest = await db
-      .selectFrom("guest_hotel_interests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("hotel_id", "=", hotelId)
-      .where("invite_code", "=", inviteCode.toUpperCase())
-      .executeTakeFirst();
+    const interest = await db.guestHotelInterest.findFirst({
+      where: {
+        hotelId: hotelId,
+        inviteCode: inviteCode.toUpperCase(),
+        weddingId,
+      },
+    });
 
     // Check if email is configured
     if (!getResendClient() || !env.RSVP_EMAIL) {
@@ -83,19 +77,19 @@ export async function POST(request: NextRequest) {
 
     // Generate email HTML
     const emailHtml = getHotelInterestNotificationEmail({
-      guestFirstName: primaryGuest.first_name,
-      guestLastName: primaryGuest.last_name,
+      guestFirstName: primaryGuest.firstName,
+      guestLastName: primaryGuest.lastName,
       guestEmail: primaryGuest.email,
-      guestPhone: primaryGuest.phone_number,
-      hotelName: hotel.name as string,
+      guestPhone: primaryGuest.phoneNumber,
+      hotelName: hotel.name,
       hotelAddress: hotel.address,
-      checkInDate: interest?.check_in_date
-        ? new Date(interest.check_in_date).toISOString()
+      checkInDate: interest?.checkInDate
+        ? new Date(interest.checkInDate).toISOString()
         : null,
-      checkOutDate: interest?.check_out_date
-        ? new Date(interest.check_out_date).toISOString()
+      checkOutDate: interest?.checkOutDate
+        ? new Date(interest.checkOutDate).toISOString()
         : null,
-      numberOfRooms: interest?.number_of_rooms ?? null,
+      numberOfRooms: interest?.numberOfRooms ?? null,
       notes: interest?.notes ?? null,
       adminUrl,
     });
@@ -108,7 +102,7 @@ export async function POST(request: NextRequest) {
       const result = await sendEmail({
         from: "Wedding Website <rsvp@helen-and-enrique.com>",
         to: recipients,
-        subject: `Hotel Interest: ${primaryGuest.first_name} ${primaryGuest.last_name || ""} - ${hotel.name}`,
+        subject: `Hotel Interest: ${primaryGuest.firstName} ${primaryGuest.lastName || ""} - ${hotel.name}`,
         html: emailHtml,
       });
 

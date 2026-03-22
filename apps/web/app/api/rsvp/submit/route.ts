@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
@@ -28,31 +27,27 @@ export async function POST(request: NextRequest) {
 
     const normalizedCode = inviteCode.toUpperCase();
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
-    // Kysely query - update all guests with this invite code
-    await weddingDb
-      .updateTable("guests")
-      .set({
-        rsvp_status: attending ? "yes" : "no",
-        dietary_restrictions: dietaryRestrictions || null,
-      })
-      .where("invite_code", "=", normalizedCode)
-      .execute();
+    // Update all guests with this invite code
+    await db.guest.updateMany({
+      where: { inviteCode: normalizedCode, weddingId },
+      data: {
+        rsvpStatus: attending ? "yes" : "no",
+        dietaryRestrictions: dietaryRestrictions || null,
+      },
+    });
 
     // Send notification email to admin
     if (getResendClient() && env.RSVP_EMAIL) {
       try {
         // Fetch guests for the notification email
-        const guests = await db
-          .selectFrom("guests")
-          .where("wedding_id", "=", weddingId)
-          .select(["first_name", "last_name", "email"])
-          .where("invite_code", "=", normalizedCode)
-          .execute();
+        const guests = await db.guest.findMany({
+          where: { inviteCode: normalizedCode, weddingId },
+          select: { firstName: true, lastName: true, email: true },
+        });
 
         const guestNames = guests
-          .map((g) => `${g.first_name}${g.last_name ? ` ${g.last_name}` : ""}`)
+          .map((g) => `${g.firstName}${g.lastName ? ` ${g.lastName}` : ""}`)
           .join(", ");
 
         const guestEmails = guests
@@ -64,7 +59,7 @@ export async function POST(request: NextRequest) {
         await sendEmail({
           from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
           to: recipients,
-          subject: `${attending ? "✅" : "❌"} RSVP: ${guests.map((g) => g.first_name).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,
+          subject: `${attending ? "\u2705" : "\u274C"} RSVP: ${guests.map((g) => g.firstName).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,
           template: {
             id: RSVP_NOTIFICATION_TEMPLATE_ALIAS,
             variables: {
@@ -72,7 +67,7 @@ export async function POST(request: NextRequest) {
               GUEST_EMAILS: guestEmails || "No email provided",
               INVITE_CODE: normalizedCode,
               STATUS_TEXT: attending ? "Attending" : "Not Attending",
-              STATUS_EMOJI: attending ? "✅" : "❌",
+              STATUS_EMOJI: attending ? "\u2705" : "\u274C",
               DIETARY_RESTRICTIONS: dietaryRestrictions || "None",
               GUEST_COUNT_TEXT:
                 guests.length > 1 ? `${guests.length} guests` : "1 guest",

@@ -2,7 +2,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
@@ -11,18 +10,16 @@ import { getWeddingId } from "@/lib/db/wedding-context";
 async function deleteEmptyParty(
   partyId: string,
   weddingId: string,
-  weddingDb: ReturnType<typeof forWedding>,
 ): Promise<void> {
   try {
-    const guestCount = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .select(db.fn.count("id").as("count"))
-      .where("party_id", "=", partyId)
-      .executeTakeFirst();
+    const guestCount = await db.guest.count({
+      where: { partyId, weddingId },
+    });
 
-    if (guestCount && Number(guestCount.count) === 0) {
-      await weddingDb.deleteFrom("parties").where("id", "=", partyId).execute();
+    if (guestCount === 0) {
+      await db.party.delete({
+        where: { id: partyId },
+      });
     }
   } catch (error) {
     // Log but don't fail the main operation
@@ -64,25 +61,22 @@ export async function GET(
     const weddingId = await getWeddingId();
 
     // Fetch the guest
-    const guest = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("id", "=", id)
-      .executeTakeFirst();
+    const guest = await db.guest.findUnique({
+      where: { id },
+    });
 
     if (!guest) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
     // Fetch plus-one if exists
-    const plusOne = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("primary_guest_id", "=", id)
-      .where("is_plus_one", "=", true)
-      .executeTakeFirst();
+    const plusOne = await db.guest.findFirst({
+      where: {
+        primaryGuestId: id,
+        isPlusOne: true,
+        weddingId,
+      },
+    });
 
     return NextResponse.json({ guest, plusOne: plusOne || null });
   } catch (error) {
@@ -127,7 +121,6 @@ export async function PATCH(
 
     const { id } = await params;
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
     const body = await request.json();
     const {
       firstName,
@@ -157,32 +150,27 @@ export async function PATCH(
       accommodationNotes,
     } = body;
 
-    // Kysely query - fetch the current guest to check if they have a plus one
-    const currentGuest = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("id", "=", id)
-      .executeTakeFirst();
+    // Fetch the current guest to check if they have a plus one
+    const currentGuest = await db.guest.findUnique({
+      where: { id },
+    });
 
     if (!currentGuest) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
-    // Handle party change - get the new party's invite_code if partyId changed
-    let newPartyId = currentGuest.party_id;
-    let newInviteCode = currentGuest.invite_code;
-    const sourcePartyId = currentGuest.party_id; // Track for cleanup
+    // Handle party change - get the new party's inviteCode if partyId changed
+    let newPartyId = currentGuest.partyId;
+    let newInviteCode = currentGuest.inviteCode;
+    const sourcePartyId = currentGuest.partyId; // Track for cleanup
 
-    if (partyId !== undefined && partyId !== currentGuest.party_id) {
+    if (partyId !== undefined && partyId !== currentGuest.partyId) {
       if (partyId) {
         // Moving to an existing party
-        const targetParty = await db
-          .selectFrom("parties")
-          .where("wedding_id", "=", weddingId)
-          .select(["id", "invite_code"])
-          .where("id", "=", partyId)
-          .executeTakeFirst();
+        const targetParty = await db.party.findUnique({
+          where: { id: partyId },
+          select: { id: true, inviteCode: true },
+        });
 
         if (!targetParty) {
           return NextResponse.json(
@@ -192,7 +180,7 @@ export async function PATCH(
         }
 
         newPartyId = targetParty.id;
-        newInviteCode = targetParty.invite_code;
+        newInviteCode = targetParty.inviteCode;
       } else {
         // Removing from party (set to null)
         newPartyId = null;
@@ -200,89 +188,87 @@ export async function PATCH(
     }
 
     // Update the primary guest
-    const updatedGuest = await weddingDb
-      .updateTable("guests")
-      .set({
-        first_name: firstName || currentGuest.first_name,
-        last_name:
-          lastName !== undefined ? lastName || null : currentGuest.last_name,
+    const updatedGuest = await db.guest.update({
+      where: { id },
+      data: {
+        firstName: firstName || currentGuest.firstName,
+        lastName:
+          lastName !== undefined ? lastName || null : currentGuest.lastName,
         email: email || null,
         side: side !== undefined ? side : currentGuest.side,
         list: list || currentGuest.list,
-        plus_one_allowed: plusOneAllowed || false,
-        mailing_address:
+        plusOneAllowed: plusOneAllowed || false,
+        mailingAddress:
           mailingAddress !== undefined
             ? mailingAddress || null
-            : currentGuest.mailing_address,
-        physical_invite_sent:
+            : currentGuest.mailingAddress,
+        physicalInviteSent:
           physicalInviteSent !== undefined
             ? physicalInviteSent
-            : currentGuest.physical_invite_sent,
-        phone_number:
+            : currentGuest.physicalInviteSent,
+        phoneNumber:
           phoneNumber !== undefined
             ? phoneNumber || null
-            : currentGuest.phone_number,
+            : currentGuest.phoneNumber,
         whatsapp:
           whatsapp !== undefined ? whatsapp || null : currentGuest.whatsapp,
-        preferred_contact_method:
+        preferredContactMethod:
           preferredContactMethod !== undefined
             ? preferredContactMethod || null
-            : currentGuest.preferred_contact_method,
+            : currentGuest.preferredContactMethod,
         family: family !== undefined ? family : currentGuest.family,
-        under_21: under21 !== undefined ? under21 : currentGuest.under_21,
-        three_and_under:
+        under21: under21 !== undefined ? under21 : currentGuest.under21,
+        threeAndUnder:
           threeAndUnder !== undefined
             ? threeAndUnder
-            : currentGuest.three_and_under,
+            : currentGuest.threeAndUnder,
         notes: notes !== undefined ? notes || null : currentGuest.notes,
         gender: gender !== undefined ? gender || null : currentGuest.gender,
-        bridal_party_role:
+        bridalPartyRole:
           bridalPartyRole !== undefined
             ? bridalPartyRole || null
-            : currentGuest.bridal_party_role,
-        party_id: newPartyId,
-        invite_code: newInviteCode,
-        arrival_date:
+            : currentGuest.bridalPartyRole,
+        partyId: newPartyId,
+        inviteCode: newInviteCode,
+        arrivalDate:
           arrivalDate !== undefined
             ? arrivalDate || null
-            : currentGuest.arrival_date,
-        arrival_transport:
+            : currentGuest.arrivalDate,
+        arrivalTransport:
           arrivalTransport !== undefined
             ? arrivalTransport || null
-            : currentGuest.arrival_transport,
-        departure_date:
+            : currentGuest.arrivalTransport,
+        departureDate:
           departureDate !== undefined
             ? departureDate || null
-            : currentGuest.departure_date,
-        departure_transport:
+            : currentGuest.departureDate,
+        departureTransport:
           departureTransport !== undefined
             ? departureTransport || null
-            : currentGuest.departure_transport,
-        accommodation_notes:
+            : currentGuest.departureTransport,
+        accommodationNotes:
           accommodationNotes !== undefined
             ? accommodationNotes || null
-            : currentGuest.accommodation_notes,
-      })
-      .where("id", "=", id)
-      .returningAll()
-      .executeTakeFirst();
+            : currentGuest.accommodationNotes,
+      },
+    });
 
     // Handle plus one logic
     if (plusOneAllowed) {
       // Check if plus one already exists
-      const existingPlusOne = await db
-        .selectFrom("guests")
-        .where("wedding_id", "=", weddingId)
-        .selectAll()
-        .where("primary_guest_id", "=", id)
-        .where("is_plus_one", "=", true)
-        .executeTakeFirst();
+      const existingPlusOne = await db.guest.findFirst({
+        where: {
+          primaryGuestId: id,
+          isPlusOne: true,
+          weddingId,
+        },
+      });
 
       // Determine plus-one name: use provided name or create placeholder
       const primaryFullName =
-        `${updatedGuest?.first_name || currentGuest.first_name}${
-          updatedGuest?.last_name || currentGuest.last_name
-            ? ` ${updatedGuest?.last_name || currentGuest.last_name}`
+        `${updatedGuest?.firstName || currentGuest.firstName}${
+          updatedGuest?.lastName || currentGuest.lastName
+            ? ` ${updatedGuest?.lastName || currentGuest.lastName}`
             : ""
         }`.trim();
       const plusOneFirstNameFinal = plusOneFirstName?.trim() || primaryFullName;
@@ -293,57 +279,58 @@ export async function PATCH(
       if (existingPlusOne) {
         // Update existing plus one
         // Note: list and family are automatically cascaded by database trigger
-        await weddingDb
-          .updateTable("guests")
-          .set({
-            first_name: plusOneFirstNameFinal,
-            last_name: plusOneLastNameFinal,
+        await db.guest.update({
+          where: { id: existingPlusOne.id },
+          data: {
+            firstName: plusOneFirstNameFinal,
+            lastName: plusOneLastNameFinal,
             side: side !== undefined ? side : currentGuest.side,
-            party_id: newPartyId,
-            invite_code: newInviteCode,
-          })
-          .where("id", "=", existingPlusOne.id)
-          .execute();
+            partyId: newPartyId,
+            inviteCode: newInviteCode,
+          },
+        });
       } else {
         // Create new plus one
         // Note: list and family will be automatically set by database trigger on first update
         // For initial creation, we set them explicitly since trigger only runs on UPDATE
-        await weddingDb
-          .insertInto("guests", {
-            first_name: plusOneFirstNameFinal,
-            last_name: plusOneLastNameFinal,
-            email: null, // Plus-ones don't have their own email
-            invite_code: newInviteCode,
-            party_id: newPartyId,
+        await db.guest.create({
+          data: {
+            firstName: plusOneFirstNameFinal,
+            lastName: plusOneLastNameFinal,
+            email: null,
+            inviteCode: newInviteCode,
+            partyId: newPartyId,
             side: side !== undefined ? side : currentGuest.side,
             list: list || currentGuest.list,
-            is_plus_one: true,
-            plus_one_allowed: false, // Plus ones themselves don't get plus ones
-            primary_guest_id: id,
-            rsvp_status: "pending",
-            number_of_resends: 0,
-            physical_invite_sent: false,
+            isPlusOne: true,
+            plusOneAllowed: false,
+            primaryGuestId: id,
+            rsvpStatus: "pending",
+            numberOfResends: 0,
+            physicalInviteSent: false,
             family: family !== undefined ? family : currentGuest.family,
-            under_21: under21 !== undefined ? under21 : currentGuest.under_21,
-            three_and_under:
+            under21: under21 !== undefined ? under21 : currentGuest.under21,
+            threeAndUnder:
               threeAndUnder !== undefined
                 ? threeAndUnder
-                : currentGuest.three_and_under,
-          })
-          .execute();
+                : currentGuest.threeAndUnder,
+            weddingId,
+          },
+        });
       }
     } else {
       // Remove plus one if it exists and plusOneAllowed is false
-      await weddingDb
-        .deleteFrom("guests")
-        .where("primary_guest_id", "=", id)
-        .where("is_plus_one", "=", true)
-        .execute();
+      await db.guest.deleteMany({
+        where: {
+          primaryGuestId: id,
+          isPlusOne: true,
+        },
+      });
     }
 
     // Clean up the source party if it's now empty (guest was moved to a different party)
     if (sourcePartyId && sourcePartyId !== newPartyId) {
-      await deleteEmptyParty(sourcePartyId, weddingId, weddingDb);
+      await deleteEmptyParty(sourcePartyId, weddingId);
     }
 
     return NextResponse.json({ guest: updatedGuest });

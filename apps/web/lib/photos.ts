@@ -7,10 +7,10 @@ export interface Photo {
   url: string;
   alt: string;
   description: string | null;
-  display_order: number;
-  is_active: boolean;
-  created_at: Date;
-  updated_at?: Date;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt?: Date;
 }
 
 /**
@@ -21,14 +21,11 @@ export async function getAllPhotos(): Promise<HeroPhoto[]> {
   try {
     const weddingId = await getWeddingId();
 
-    // Fetch active photos from database, ordered by display_order
-    const dbPhotos = await db
-      .selectFrom("photos")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("is_active", "=", true)
-      .orderBy("display_order", "asc")
-      .execute();
+    // Fetch active photos from database, ordered by displayOrder
+    const dbPhotos = await db.photo.findMany({
+      where: { isActive: true, weddingId },
+      orderBy: { displayOrder: "asc" },
+    });
 
     // Convert DB photos to HeroPhoto format
     const convertedDbPhotos: HeroPhoto[] = dbPhotos.map((photo) => ({
@@ -53,13 +50,10 @@ export async function getAllPhotos(): Promise<HeroPhoto[]> {
 export async function getAdminPhotos(): Promise<Photo[]> {
   const weddingId = await getWeddingId();
 
-  const photos = await db
-    .selectFrom("photos")
-    .where("wedding_id", "=", weddingId)
-    .selectAll()
-    .orderBy("display_order", "asc")
-    .orderBy("created_at", "desc")
-    .execute();
+  const photos = await db.photo.findMany({
+    where: { weddingId },
+    orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }],
+  });
 
-  return photos;
+  return photos as unknown as Photo[];
 }

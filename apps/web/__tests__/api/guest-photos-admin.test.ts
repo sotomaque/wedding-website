@@ -1,23 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { NextRequest } from "next/server";
 
-// Mock wedding context - must be before any imports that use getWeddingId
-mock.module("@/lib/db/wedding-context", () => ({
-  getWeddingId: () => Promise.resolve("test-wedding-id"),
-  getWeddingContext: () =>
-    Promise.resolve({
-      weddingId: "test-wedding-id",
-      slug: "test-wedding",
-      coupleName: "Test Couple",
-      weddingDate: "2026-07-30",
-      rsvpDeadline: null,
-      timezone: "America/New_York",
-      status: "published",
-    }),
-  getWeddingBySlug: () => Promise.resolve(null),
-  getWeddingById: () => Promise.resolve(null),
-}));
-
 // ----- mock setup -----
 mock.module("@/env", () => ({
   env: { ADMIN_EMAILS: "admin@example.com" },
@@ -28,35 +11,34 @@ mock.module("@clerk/nextjs/server", () => ({
   currentUser: mockCurrentUser,
 }));
 
-const mockExecuteTakeFirst = mock(() => Promise.resolve(null));
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
 
-// Chainable db mock
-function createChainableDb(terminals: Record<string, unknown> = {}) {
-  const handler: ProxyHandler<Record<string, unknown>> = {
-    get: (_, prop: string) => {
-      if (prop in terminals) return terminals[prop];
-      return (...args: unknown[]) => new Proxy({}, handler);
+const mockGuestPhotoFindUnique = mock(() => Promise.resolve(null));
+const mockGuestPhotoUpdate = mock(() => Promise.resolve(null));
+const mockGuestPhotoDelete = mock(() => Promise.resolve(null));
+
+mock.module("@/lib/db", () => ({
+  db: {
+    guestPhoto: {
+      findUnique: mockGuestPhotoFindUnique,
+      update: mockGuestPhotoUpdate,
+      delete: mockGuestPhotoDelete,
     },
-  };
-  return new Proxy({}, handler);
-}
-
-const terminalMethods = {
-  execute: () => Promise.resolve([]),
-  executeTakeFirst: mockExecuteTakeFirst,
-  executeTakeFirstOrThrow: mockExecuteTakeFirst,
-};
-
-const mockDb = {
-  selectFrom: () => createChainableDb(terminalMethods),
-  updateTable: () => createChainableDb(terminalMethods),
-  insertInto: () => createChainableDb(terminalMethods),
-  deleteFrom: () => createChainableDb(terminalMethods),
-};
-
-mock.module("@/lib/db", () => ({ db: mockDb }));
-mock.module("@/lib/db/scoped", () => ({
-  forWedding: () => mockDb,
+  },
 }));
 
 // ----- helpers -----
@@ -83,7 +65,9 @@ const PARAMS = { params: Promise.resolve({ id: "photo-123" }) };
 describe("PATCH /api/admin/guest-photos/[id]", () => {
   beforeEach(() => {
     mockCurrentUser.mockClear();
-    mockExecuteTakeFirst.mockClear();
+    mockGuestPhotoFindUnique.mockClear();
+    mockGuestPhotoUpdate.mockClear();
+    mockGuestPhotoDelete.mockClear();
   });
 
   describe("auth guard", () => {
@@ -92,7 +76,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
       const response = await PATCH(
-        makeReq("PATCH", { is_visible: false }),
+        makeReq("PATCH", { isVisible: false }),
         PARAMS,
       );
       const data = await response.json();
@@ -106,7 +90,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
       const response = await PATCH(
-        makeReq("PATCH", { is_visible: false }),
+        makeReq("PATCH", { isVisible: false }),
         PARAMS,
       );
       const data = await response.json();
@@ -119,64 +103,76 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
   describe("hide photo", () => {
     it("returns 200 with photo set to hidden", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecuteTakeFirst.mockResolvedValueOnce({
+      mockGuestPhotoFindUnique.mockResolvedValueOnce({
         id: "photo-123",
         url: "https://utfs.io/f/a.jpg",
-        uploader_name: "Alice",
-        is_visible: false,
-        hidden_at: new Date("2026-03-15T00:00:00Z"),
-        hidden_by: "admin@example.com",
-        uploaded_at: new Date(),
+        uploaderName: "Alice",
+        isVisible: true,
+      });
+      mockGuestPhotoUpdate.mockResolvedValueOnce({
+        id: "photo-123",
+        url: "https://utfs.io/f/a.jpg",
+        uploaderName: "Alice",
+        isVisible: false,
+        hiddenAt: new Date("2026-03-15T00:00:00Z"),
+        hiddenBy: "admin@example.com",
+        uploadedAt: new Date(),
       });
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
       const response = await PATCH(
-        makeReq("PATCH", { is_visible: false }),
+        makeReq("PATCH", { isVisible: false }),
         PARAMS,
       );
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.photo.is_visible).toBe(false);
-      expect(data.photo.hidden_by).toBe("admin@example.com");
+      expect(data.photo.isVisible).toBe(false);
+      expect(data.photo.hiddenBy).toBe("admin@example.com");
     });
   });
 
   describe("show photo", () => {
     it("returns 200 with photo set to visible and hidden fields cleared", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecuteTakeFirst.mockResolvedValueOnce({
+      mockGuestPhotoFindUnique.mockResolvedValueOnce({
         id: "photo-123",
         url: "https://utfs.io/f/a.jpg",
-        uploader_name: "Alice",
-        is_visible: true,
-        hidden_at: null,
-        hidden_by: null,
-        uploaded_at: new Date(),
+        uploaderName: "Alice",
+        isVisible: false,
+      });
+      mockGuestPhotoUpdate.mockResolvedValueOnce({
+        id: "photo-123",
+        url: "https://utfs.io/f/a.jpg",
+        uploaderName: "Alice",
+        isVisible: true,
+        hiddenAt: null,
+        hiddenBy: null,
+        uploadedAt: new Date(),
       });
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
       const response = await PATCH(
-        makeReq("PATCH", { is_visible: true }),
+        makeReq("PATCH", { isVisible: true }),
         PARAMS,
       );
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.photo.is_visible).toBe(true);
-      expect(data.photo.hidden_at).toBeNull();
-      expect(data.photo.hidden_by).toBeNull();
+      expect(data.photo.isVisible).toBe(true);
+      expect(data.photo.hiddenAt).toBeNull();
+      expect(data.photo.hiddenBy).toBeNull();
     });
   });
 
   describe("photo not found", () => {
     it("returns 404 when photo does not exist", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecuteTakeFirst.mockResolvedValueOnce(undefined);
+      mockGuestPhotoFindUnique.mockResolvedValueOnce(null);
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
       const response = await PATCH(
-        makeReq("PATCH", { is_visible: false }),
+        makeReq("PATCH", { isVisible: false }),
         PARAMS,
       );
       const data = await response.json();
@@ -191,7 +187,9 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
 describe("DELETE /api/admin/guest-photos/[id]", () => {
   beforeEach(() => {
     mockCurrentUser.mockClear();
-    mockExecuteTakeFirst.mockClear();
+    mockGuestPhotoFindUnique.mockClear();
+    mockGuestPhotoUpdate.mockClear();
+    mockGuestPhotoDelete.mockClear();
   });
 
   describe("auth guard", () => {
@@ -225,14 +223,20 @@ describe("DELETE /api/admin/guest-photos/[id]", () => {
   describe("successful delete", () => {
     it("returns 200 with the deleted photo", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecuteTakeFirst.mockResolvedValueOnce({
+      mockGuestPhotoFindUnique.mockResolvedValueOnce({
         id: "photo-123",
         url: "https://utfs.io/f/a.jpg",
-        uploader_name: "Alice",
-        is_visible: true,
-        hidden_at: null,
-        hidden_by: null,
-        uploaded_at: new Date(),
+        uploaderName: "Alice",
+        isVisible: true,
+      });
+      mockGuestPhotoDelete.mockResolvedValueOnce({
+        id: "photo-123",
+        url: "https://utfs.io/f/a.jpg",
+        uploaderName: "Alice",
+        isVisible: true,
+        hiddenAt: null,
+        hiddenBy: null,
+        uploadedAt: new Date(),
       });
 
       const { DELETE } = await import(
@@ -249,7 +253,7 @@ describe("DELETE /api/admin/guest-photos/[id]", () => {
   describe("photo not found", () => {
     it("returns 404 when photo does not exist", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecuteTakeFirst.mockResolvedValueOnce(undefined);
+      mockGuestPhotoFindUnique.mockResolvedValueOnce(null);
 
       const { DELETE } = await import(
         "@/app/api/admin/guest-photos/[id]/route"
@@ -265,7 +269,7 @@ describe("DELETE /api/admin/guest-photos/[id]", () => {
   describe("database error", () => {
     it("returns 500 on unexpected database error", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecuteTakeFirst.mockRejectedValueOnce(new Error("DB failure"));
+      mockGuestPhotoFindUnique.mockRejectedValueOnce(new Error("DB failure"));
 
       const { DELETE } = await import(
         "@/app/api/admin/guest-photos/[id]/route"

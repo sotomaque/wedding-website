@@ -4,6 +4,7 @@
   "workspaces": {
     "apps/web": {
       "ignoreDependencies": [
+        "@prisma/client",
         "@t3-oss/env-nextjs",
         "@tailwindcss/postcss",
         "postcss"

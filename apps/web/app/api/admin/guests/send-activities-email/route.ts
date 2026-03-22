@@ -2,8 +2,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
-import { getWeddingId } from "@/lib/db/wedding-context";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getActivitiesInvitationEmail } from "@/lib/email/templates/activities-invitation";
 
@@ -49,23 +47,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
-
     // Fetch guest details
-    const guest = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("id", "=", guestId)
-      .executeTakeFirst();
+    const guest = await db.guest.findUnique({
+      where: { id: guestId },
+    });
 
     if (!guest) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
     // Verify guest has RSVP'd yes
-    if (guest.rsvp_status !== "yes") {
+    if (guest.rsvpStatus !== "yes") {
       return NextResponse.json(
         { error: "Guest has not RSVP'd yes" },
         { status: 400 },
@@ -95,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const thingsToDoUrl = `${appUrl}/things-to-do?code=${guest.invite_code}`;
+    const thingsToDoUrl = `${appUrl}/things-to-do?code=${guest.inviteCode}`;
 
     try {
       let result: { error: Error | null };
@@ -111,9 +103,9 @@ export async function POST(request: NextRequest) {
           template: {
             id: templateId,
             variables: {
-              FIRST_NAME: guest.first_name,
-              LAST_NAME: guest.last_name || "",
-              INVITE_CODE: guest.invite_code,
+              FIRST_NAME: guest.firstName,
+              LAST_NAME: guest.lastName || "",
+              INVITE_CODE: guest.inviteCode ?? "",
               THINGS_TO_DO_URL: thingsToDoUrl,
               APP_URL: appUrl,
             },
@@ -122,9 +114,9 @@ export async function POST(request: NextRequest) {
       } else {
         // Use hardcoded template
         const emailHtml = getActivitiesInvitationEmail({
-          firstName: guest.first_name,
-          lastName: guest.last_name,
-          inviteCode: guest.invite_code,
+          firstName: guest.firstName,
+          lastName: guest.lastName,
+          inviteCode: guest.inviteCode ?? "",
           thingsToDoUrl,
           appUrl,
         });
@@ -146,16 +138,15 @@ export async function POST(request: NextRequest) {
       }
 
       // Update activities email tracking
-      await weddingDb
-        .updateTable("guests")
-        .set({
-          activities_email_sent: true,
-          activities_email_sent_at: new Date().toISOString(),
-          activities_email_resend_count:
-            (guest.activities_email_resend_count || 0) + 1,
-        })
-        .where("id", "=", guestId)
-        .execute();
+      await db.guest.update({
+        where: { id: guestId },
+        data: {
+          activitiesEmailSent: true,
+          activitiesEmailSentAt: new Date().toISOString(),
+          activitiesEmailResendCount:
+            (guest.activitiesEmailResendCount || 0) + 1,
+        },
+      });
 
       return NextResponse.json({
         success: true,

@@ -2,32 +2,30 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
-import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 export interface WeddingTodo {
   id: string;
   title: string;
-  is_completed: boolean;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
+  isCompleted: boolean;
+  displayOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export async function getTodos(): Promise<WeddingTodo[]> {
   try {
     const weddingId = await getWeddingId();
-    const todos = await db
-      .selectFrom("wedding_todos")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .orderBy("is_completed", "asc")
-      .orderBy("display_order", "asc")
-      .orderBy("created_at", "desc")
-      .execute();
+    const todos = await db.weddingTodo.findMany({
+      where: { weddingId },
+      orderBy: [
+        { isCompleted: "asc" },
+        { displayOrder: "asc" },
+        { createdAt: "desc" },
+      ],
+    });
 
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    return todos as any;
+    return todos;
   } catch (error) {
     console.error("Error fetching todos:", error);
     throw error;
@@ -43,25 +41,25 @@ export async function addTodo(
       return { success: false, error: "Title is required" };
     }
 
-    const { weddingId, slug } = await getWeddingContext();
-    const weddingDb = forWedding(weddingId);
+    const weddingId = await getWeddingId();
 
-    // Get the max display_order to place new todo at the end
-    const last = await db
-      .selectFrom("wedding_todos")
-      .where("wedding_id", "=", weddingId)
-      .select(db.fn.max("display_order").as("max_order"))
-      .executeTakeFirst();
+    // Get the max displayOrder to place new todo at the end
+    const result = await db.weddingTodo.aggregate({
+      where: { weddingId },
+      _max: { displayOrder: true },
+    });
 
-    const nextOrder = (Number(last?.max_order) || 0) + 1;
+    const nextOrder = (result._max.displayOrder ?? 0) + 1;
 
-    await weddingDb
-      .insertInto("wedding_todos", {
+    await db.weddingTodo.create({
+      data: {
         title: trimmed,
-        display_order: nextOrder,
-      })
-      .execute();
-    revalidatePath(`/${slug}/admin/todos`);
+        displayOrder: nextOrder,
+        weddingId,
+      },
+    });
+
+    revalidatePath("/admin/todos");
     return { success: true };
   } catch (error) {
     console.error("Error adding todo:", error);
@@ -74,18 +72,12 @@ export async function toggleTodo(
   isCompleted: boolean,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { weddingId, slug } = await getWeddingContext();
-    const weddingDb = forWedding(weddingId);
+    await db.weddingTodo.update({
+      where: { id },
+      data: { isCompleted },
+    });
 
-    await weddingDb
-      .updateTable("wedding_todos")
-      .set({
-        is_completed: isCompleted,
-        updated_at: new Date().toISOString(),
-      })
-      .where("id", "=", id)
-      .execute();
-    revalidatePath(`/${slug}/admin/todos`);
+    revalidatePath("/admin/todos");
     return { success: true };
   } catch (error) {
     console.error("Error toggling todo:", error);
@@ -97,11 +89,9 @@ export async function deleteTodo(
   id: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { weddingId, slug } = await getWeddingContext();
-    const weddingDb = forWedding(weddingId);
+    await db.weddingTodo.delete({ where: { id } });
 
-    await weddingDb.deleteFrom("wedding_todos").where("id", "=", id).execute();
-    revalidatePath(`/${slug}/admin/todos`);
+    revalidatePath("/admin/todos");
     return { success: true };
   } catch (error) {
     console.error("Error deleting todo:", error);
@@ -119,18 +109,12 @@ export async function updateTodoTitle(
       return { success: false, error: "Title is required" };
     }
 
-    const { weddingId, slug } = await getWeddingContext();
-    const weddingDb = forWedding(weddingId);
+    await db.weddingTodo.update({
+      where: { id },
+      data: { title: trimmed },
+    });
 
-    await weddingDb
-      .updateTable("wedding_todos")
-      .set({
-        title: trimmed,
-        updated_at: new Date().toISOString(),
-      })
-      .where("id", "=", id)
-      .execute();
-    revalidatePath(`/${slug}/admin/todos`);
+    revalidatePath("/admin/todos");
     return { success: true };
   } catch (error) {
     console.error("Error updating todo:", error);

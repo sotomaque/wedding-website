@@ -10,26 +10,19 @@ export const metadata = {
   title: "Guest Photos — Admin",
 };
 
-export default async function GuestPhotosAdminPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
+export default async function GuestPhotosAdminPage() {
   const user = await currentUser();
-  if (!user) redirect(`/${slug}/unauthorized`);
+  if (!user) redirect("/unauthorized");
 
   const { authorized } = await isAdmin();
-  if (!authorized) redirect(`/${slug}/unauthorized`);
+  if (!authorized) redirect("/unauthorized");
 
   const weddingId = await getWeddingId();
 
-  const photos = await db
-    .selectFrom("guest_photos")
-    .where("wedding_id", "=", weddingId)
-    .selectAll()
-    .orderBy("uploaded_at", "desc")
-    .execute();
+  const photos = await db.guestPhoto.findMany({
+    where: { weddingId },
+    orderBy: { uploadedAt: "desc" },
+  });
 
   const appUrl = env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const uploadUrl = `${appUrl}/photos/upload`;
@@ -48,9 +41,9 @@ export default async function GuestPhotosAdminPage({
         photos={photos.map((p) => ({
           id: p.id,
           url: p.url,
-          uploader_name: p.uploader_name,
-          is_visible: p.is_visible,
-          uploaded_at: p.uploaded_at.toISOString(),
+          uploaderName: p.uploaderName,
+          isVisible: p.isVisible,
+          uploadedAt: p.uploadedAt.toISOString(),
         }))}
         uploadUrl={uploadUrl}
       />

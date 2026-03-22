@@ -1,22 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
-// Mock wedding context - must be before any imports that use getWeddingId
-mock.module("@/lib/db/wedding-context", () => ({
-  getWeddingId: () => Promise.resolve("test-wedding-id"),
-  getWeddingContext: () =>
-    Promise.resolve({
-      weddingId: "test-wedding-id",
-      slug: "test-wedding",
-      coupleName: "Test Couple",
-      weddingDate: "2026-07-30",
-      rsvpDeadline: null,
-      timezone: "America/New_York",
-      status: "published",
-    }),
-  getWeddingBySlug: () => Promise.resolve(null),
-  getWeddingById: () => Promise.resolve(null),
-}));
-
 // ----- mock setup -----
 mock.module("@/env", () => ({
   env: { ADMIN_EMAILS: "admin@example.com" },
@@ -27,21 +10,28 @@ mock.module("@clerk/nextjs/server", () => ({
   currentUser: mockCurrentUser,
 }));
 
-const mockExecute = mock(() => Promise.resolve([]));
-// Chainable db mock
-function createChainableDb(terminals: Record<string, unknown> = {}) {
-  const handler: ProxyHandler<Record<string, unknown>> = {
-    get: (_, prop: string) => {
-      if (prop in terminals) return terminals[prop];
-      return (...args: unknown[]) => new Proxy({}, handler);
-    },
-  };
-  return new Proxy({}, handler);
-}
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
 
+const mockGuestPhotoFindMany = mock(() => Promise.resolve([]));
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => createChainableDb({ execute: mockExecute }),
+    guestPhoto: {
+      findMany: mockGuestPhotoFindMany,
+    },
   },
 }));
 
@@ -62,7 +52,7 @@ beforeEach(() => {
   global.fetch = mockFetch;
   mockFetch.mockClear();
   mockCurrentUser.mockClear();
-  mockExecute.mockClear();
+  mockGuestPhotoFindMany.mockClear();
 });
 
 afterEach(() => {
@@ -83,14 +73,14 @@ const MOCK_PHOTOS = [
   {
     id: "p1",
     url: "https://utfs.io/f/a.jpg",
-    uploader_name: "Alice",
-    uploaded_at: new Date(),
+    uploaderName: "Alice",
+    uploadedAt: new Date(),
   },
   {
     id: "p2",
     url: "https://utfs.io/f/b.jpg",
-    uploader_name: null,
-    uploaded_at: new Date(),
+    uploaderName: null,
+    uploadedAt: new Date(),
   },
 ];
 
@@ -131,7 +121,7 @@ describe("GET /api/admin/guest-photos/download", () => {
   describe("empty state", () => {
     it("returns 404 when no photos exist", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecute.mockResolvedValueOnce([]);
+      mockGuestPhotoFindMany.mockResolvedValueOnce([]);
 
       const { GET } = await import(
         "@/app/api/admin/guest-photos/download/route"
@@ -147,7 +137,7 @@ describe("GET /api/admin/guest-photos/download", () => {
   describe("successful download", () => {
     it("returns 200 with correct ZIP headers", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecute.mockResolvedValueOnce(MOCK_PHOTOS);
+      mockGuestPhotoFindMany.mockResolvedValueOnce(MOCK_PHOTOS);
 
       const { GET } = await import(
         "@/app/api/admin/guest-photos/download/route"
@@ -164,7 +154,7 @@ describe("GET /api/admin/guest-photos/download", () => {
 
     it("returns non-empty body", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecute.mockResolvedValueOnce(MOCK_PHOTOS);
+      mockGuestPhotoFindMany.mockResolvedValueOnce(MOCK_PHOTOS);
 
       const { GET } = await import(
         "@/app/api/admin/guest-photos/download/route"
@@ -179,7 +169,7 @@ describe("GET /api/admin/guest-photos/download", () => {
   describe("resilience", () => {
     it("still returns ZIP when one photo URL fetch fails", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecute.mockResolvedValueOnce(MOCK_PHOTOS);
+      mockGuestPhotoFindMany.mockResolvedValueOnce(MOCK_PHOTOS);
 
       // First fetch returns 404, second returns the image
       mockFetch
@@ -204,7 +194,9 @@ describe("GET /api/admin/guest-photos/download", () => {
   describe("database error", () => {
     it("returns 500 on database error", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecute.mockRejectedValueOnce(new Error("DB connection refused"));
+      mockGuestPhotoFindMany.mockRejectedValueOnce(
+        new Error("DB connection refused"),
+      );
 
       const { GET } = await import(
         "@/app/api/admin/guest-photos/download/route"

@@ -1,22 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-// Mock wedding context - must be before any imports that use getWeddingId
-mock.module("@/lib/db/wedding-context", () => ({
-  getWeddingId: () => Promise.resolve("test-wedding-id"),
-  getWeddingContext: () =>
-    Promise.resolve({
-      weddingId: "test-wedding-id",
-      slug: "test-wedding",
-      coupleName: "Test Couple",
-      weddingDate: "2026-07-30",
-      rsvpDeadline: null,
-      timezone: "America/New_York",
-      status: "published",
-    }),
-  getWeddingBySlug: () => Promise.resolve(null),
-  getWeddingById: () => Promise.resolve(null),
-}));
-
 // Mock photo data
 const mockPhotos = [
   {
@@ -24,30 +7,30 @@ const mockPhotos = [
     url: "https://example.com/photo1.jpg",
     alt: "Photo 1",
     description: "Description 1",
-    display_order: 0,
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    displayOrder: 0,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     id: "photo-2",
     url: "https://example.com/photo2.jpg",
     alt: "Photo 2",
     description: "Description 2",
-    display_order: 1,
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    displayOrder: 1,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     id: "photo-3",
     url: "https://example.com/photo3.jpg",
     alt: "Photo 3",
     description: null,
-    display_order: 2,
-    is_active: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    displayOrder: 2,
+    isActive: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
 ];
 
@@ -58,41 +41,39 @@ mock.module("@/env", () => ({
   },
 }));
 
-// Mock the db module - chainable proxy
-function createChainableDb(terminals: Record<string, unknown> = {}) {
-  const handler: ProxyHandler<Record<string, unknown>> = {
-    get: (_, prop: string) => {
-      if (prop in terminals) return terminals[prop];
-      return (...args: unknown[]) => new Proxy({}, handler);
-    },
-  };
-  return new Proxy({}, handler);
-}
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
 
-const mockExecute = mock(() =>
-  Promise.resolve(mockPhotos.filter((p) => p.is_active)),
+// Mock the db module
+const mockPhotoFindMany = mock(() =>
+  Promise.resolve(mockPhotos.filter((p) => p.isActive)),
 );
-const mockExecuteTakeFirst = mock(() => Promise.resolve(mockPhotos[0]));
+const mockPhotoCreate = mock(() => Promise.resolve(mockPhotos[0]));
+const mockPhotoAggregate = mock(() =>
+  Promise.resolve({ _max: { displayOrder: 2 } }),
+);
 
-const terminalMethods = {
-  execute: mockExecute,
-  executeTakeFirst: mockExecuteTakeFirst,
-  executeTakeFirstOrThrow: mockExecuteTakeFirst,
-};
-
-const mockDb = {
-  selectFrom: () => createChainableDb(terminalMethods),
-  insertInto: () => createChainableDb(terminalMethods),
-  updateTable: () => createChainableDb(terminalMethods),
-  deleteFrom: () => createChainableDb(terminalMethods),
-  fn: {
-    max: () => ({ as: () => "max_order" }),
+mock.module("@/lib/db", () => ({
+  db: {
+    photo: {
+      findMany: mockPhotoFindMany,
+      create: mockPhotoCreate,
+      aggregate: mockPhotoAggregate,
+    },
   },
-};
-
-mock.module("@/lib/db", () => ({ db: mockDb }));
-mock.module("@/lib/db/scoped", () => ({
-  forWedding: () => mockDb,
 }));
 
 // Mock Clerk
@@ -134,6 +115,10 @@ describe("Public Photos API", () => {
 describe("Admin Photos API", () => {
   beforeEach(() => {
     mockCurrentUser.mockClear();
+    mockPhotoFindMany.mockClear();
+    mockPhotoCreate.mockClear();
+    // Reset findMany to return all photos for admin
+    mockPhotoFindMany.mockResolvedValue(mockPhotos);
   });
 
   describe("GET /api/admin/photos", () => {

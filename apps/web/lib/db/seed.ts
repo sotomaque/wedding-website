@@ -1,4 +1,3 @@
-import { sql } from "kysely";
 import { db } from "./index";
 
 /**
@@ -59,7 +58,8 @@ export const SEED = {
  * Uses CASCADE to handle foreign key constraints.
  */
 async function truncateAll() {
-  await sql`
+  // Prisma doesn't have raw TRUNCATE by default, so we use $executeRawUnsafe
+  await db.$executeRawUnsafe(`
     TRUNCATE TABLE
       guest_table_assignments,
       seating_tables,
@@ -77,7 +77,7 @@ async function truncateAll() {
       hotels,
       guest_photos
     CASCADE
-  `.execute(db);
+  `);
 }
 
 /**
@@ -85,167 +85,163 @@ async function truncateAll() {
  */
 async function seedData() {
   // Events first (needed before guests, since guest insert trigger creates invites for default events)
-  await db
-    .insertInto("events")
-    .values([
+  await db.event.createMany({
+    data: [
       {
         id: SEED.events.ceremony.id,
         name: SEED.events.ceremony.name,
         description: "Wedding ceremony",
-        is_default: true,
-        display_order: 1,
+        isDefault: true,
+        displayOrder: 1,
       },
       {
         id: SEED.events.reception.id,
         name: SEED.events.reception.name,
         description: "Wedding reception",
-        is_default: true,
-        display_order: 2,
+        isDefault: true,
+        displayOrder: 2,
       },
-    ])
-    .execute();
+    ],
+  });
 
   // Parties
-  await db
-    .insertInto("parties")
-    .values([
+  await db.party.createMany({
+    data: [
       {
         id: SEED.parties.single.id,
-        invite_code: SEED.parties.single.inviteCode,
+        inviteCode: SEED.parties.single.inviteCode,
         name: "Alice Solo",
         side: "bride",
         list: "a",
       },
       {
         id: SEED.parties.family.id,
-        invite_code: SEED.parties.family.inviteCode,
+        inviteCode: SEED.parties.family.inviteCode,
         name: "Bob Family",
         side: "groom",
         list: "a",
       },
-    ])
-    .execute();
+    ],
+  });
 
   // Guests (trigger `invite_new_guest_to_default_events` auto-creates guest_event_invites)
-  await db
-    .insertInto("guests")
-    .values([
+  await db.guest.createMany({
+    data: [
       {
         id: SEED.guests.alice.id,
-        first_name: SEED.guests.alice.firstName,
-        last_name: SEED.guests.alice.lastName,
+        firstName: SEED.guests.alice.firstName,
+        lastName: SEED.guests.alice.lastName,
         email: SEED.guests.alice.email,
-        invite_code: SEED.parties.single.inviteCode,
-        rsvp_status: "pending",
-        plus_one_allowed: true,
+        inviteCode: SEED.parties.single.inviteCode,
+        rsvpStatus: "pending",
+        plusOneAllowed: true,
         side: "bride",
         list: "a",
-        is_plus_one: false,
-        number_of_resends: 0,
-        physical_invite_sent: false,
+        isPlusOne: false,
+        numberOfResends: 0,
+        physicalInviteSent: false,
         family: false,
-        under_21: false,
-        three_and_under: false,
-        party_id: SEED.parties.single.id,
+        under21: false,
+        threeAndUnder: false,
+        partyId: SEED.parties.single.id,
       },
       {
         id: SEED.guests.bob.id,
-        first_name: SEED.guests.bob.firstName,
-        last_name: SEED.guests.bob.lastName,
+        firstName: SEED.guests.bob.firstName,
+        lastName: SEED.guests.bob.lastName,
         email: SEED.guests.bob.email,
-        invite_code: SEED.parties.family.inviteCode,
-        rsvp_status: "yes",
-        plus_one_allowed: false,
+        inviteCode: SEED.parties.family.inviteCode,
+        rsvpStatus: "yes",
+        plusOneAllowed: false,
         side: "groom",
         list: "a",
-        is_plus_one: false,
-        number_of_resends: 0,
-        physical_invite_sent: false,
+        isPlusOne: false,
+        numberOfResends: 0,
+        physicalInviteSent: false,
         family: true,
-        under_21: false,
-        three_and_under: false,
-        party_id: SEED.parties.family.id,
+        under21: false,
+        threeAndUnder: false,
+        partyId: SEED.parties.family.id,
       },
       {
         id: SEED.guests.carol.id,
-        first_name: SEED.guests.carol.firstName,
-        last_name: SEED.guests.carol.lastName,
+        firstName: SEED.guests.carol.firstName,
+        lastName: SEED.guests.carol.lastName,
         email: null,
-        invite_code: SEED.parties.family.inviteCode,
-        rsvp_status: "yes",
-        plus_one_allowed: false,
+        inviteCode: SEED.parties.family.inviteCode,
+        rsvpStatus: "yes",
+        plusOneAllowed: false,
         side: "groom",
         list: "a",
-        is_plus_one: false,
-        number_of_resends: 0,
-        physical_invite_sent: false,
+        isPlusOne: false,
+        numberOfResends: 0,
+        physicalInviteSent: false,
         family: true,
-        under_21: true,
-        three_and_under: false,
-        party_id: SEED.parties.family.id,
+        under21: true,
+        threeAndUnder: false,
+        partyId: SEED.parties.family.id,
       },
-    ])
-    .execute();
+    ],
+  });
 
   // Update Bob & Carol's event invites to "yes" (trigger created them as "pending")
-  await db
-    .updateTable("guest_event_invites")
-    .set({ rsvp_status: "yes" })
-    .where("guest_id", "in", [SEED.guests.bob.id, SEED.guests.carol.id])
-    .execute();
+  await db.guestEventInvite.updateMany({
+    where: {
+      guestId: { in: [SEED.guests.bob.id, SEED.guests.carol.id] },
+    },
+    data: { rsvpStatus: "yes" },
+  });
 
   // Guest photos (seed for E2E tests — 4 total: 3 visible, 1 hidden)
-  await db
-    .insertInto("guest_photos")
-    .values([
+  await db.guestPhoto.createMany({
+    data: [
       {
         id: SEED.guestPhotos.visible1.id,
         url: "https://utfs.io/f/e2e-photo-1.jpg",
-        uploader_name: "E2E-Guest",
-        is_visible: true,
+        uploaderName: "E2E-Guest",
+        isVisible: true,
       },
       {
         id: SEED.guestPhotos.visible2.id,
         url: "https://utfs.io/f/e2e-photo-2.jpg",
-        uploader_name: null,
-        is_visible: true,
+        uploaderName: null,
+        isVisible: true,
       },
       {
         id: SEED.guestPhotos.hidden1.id,
         url: "https://utfs.io/f/e2e-photo-3.jpg",
-        uploader_name: "E2E-Hidden",
-        is_visible: false,
-        hidden_at: new Date("2026-01-15T10:00:00Z"),
-        hidden_by: "admin@example.com",
+        uploaderName: "E2E-Hidden",
+        isVisible: false,
+        hiddenAt: new Date("2026-01-15T10:00:00Z"),
+        hiddenBy: "admin@example.com",
       },
       {
         id: SEED.guestPhotos.deletable.id,
         url: "https://utfs.io/f/e2e-photo-4.jpg",
-        uploader_name: "E2E-Delete-Me",
-        is_visible: true,
+        uploaderName: "E2E-Delete-Me",
+        isVisible: true,
       },
-    ])
-    .execute();
+    ],
+  });
 
   // Wedding todos
-  await db
-    .insertInto("wedding_todos")
-    .values([
+  await db.weddingTodo.createMany({
+    data: [
       {
         title: "Book the florist",
-        display_order: 1,
+        displayOrder: 1,
       },
       {
         title: "Order wedding cake",
-        display_order: 2,
+        displayOrder: 2,
       },
       {
         title: "Finalize seating chart",
-        is_completed: true,
-        display_order: 3,
+        isCompleted: true,
+        displayOrder: 3,
       },
-    ])
-    .execute();
+    ],
+  });
 }
 
 /**

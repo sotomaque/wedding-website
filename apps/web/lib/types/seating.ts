@@ -3,29 +3,18 @@
  * Extended types for the seating chart feature with relations and AI integration
  */
 
-import type { Database } from "@/lib/supabase/types";
+import type {
+  Guest as PrismaGuest,
+  GuestTableAssignment as PrismaGuestTableAssignment,
+  SeatingChart as PrismaSeatingChart,
+  SeatingTable as PrismaSeatingTable,
+} from "@prisma/client";
 
-// Base types from database
-export type SeatingChart =
-  Database["public"]["Tables"]["seating_charts"]["Row"];
-export type SeatingChartInsert =
-  Database["public"]["Tables"]["seating_charts"]["Insert"];
-export type SeatingChartUpdate =
-  Database["public"]["Tables"]["seating_charts"]["Update"];
-
-export type SeatingTable =
-  Database["public"]["Tables"]["seating_tables"]["Row"];
-export type SeatingTableInsert =
-  Database["public"]["Tables"]["seating_tables"]["Insert"];
-export type SeatingTableUpdate =
-  Database["public"]["Tables"]["seating_tables"]["Update"];
-
-export type GuestTableAssignment =
-  Database["public"]["Tables"]["guest_table_assignments"]["Row"];
-export type GuestTableAssignmentInsert =
-  Database["public"]["Tables"]["guest_table_assignments"]["Insert"];
-
-export type Guest = Database["public"]["Tables"]["guests"]["Row"];
+// Base types from Prisma
+export type SeatingChart = PrismaSeatingChart;
+export type SeatingTable = PrismaSeatingTable;
+export type GuestTableAssignment = PrismaGuestTableAssignment;
+export type Guest = PrismaGuest;
 
 // Extended types with relations
 export interface SeatingTableWithGuests extends SeatingTable {

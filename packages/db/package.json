@@ -1,0 +1,28 @@
+{
+  "name": "@workspace/db",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:pull": "prisma db pull",
+    "db:migrate:new": "supabase db diff -f",
+    "db:reset": "supabase db reset",
+    "db:studio": "prisma studio",
+    "lint:types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/client": "~6.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25",
+    "@workspace/typescript-config": "workspace:*",
+    "prisma": "~6.9.0",
+    "typescript": "^5.9.2"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

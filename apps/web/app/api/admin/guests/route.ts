@@ -2,7 +2,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { sendEmail } from "@/lib/email/resend-client";
@@ -36,13 +35,10 @@ export async function GET() {
 
     const weddingId = await getWeddingId();
 
-    // Kysely query - fetch all guests ordered by created_at
-    const guests = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .orderBy("created_at", "desc")
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { weddingId },
+      orderBy: { createdAt: "desc" },
+    });
 
     return NextResponse.json({ guests });
   } catch (error) {
@@ -113,25 +109,22 @@ export async function POST(request: NextRequest) {
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     let inviteCode: string;
     let targetPartyId: string;
 
     // If partyId is provided, add guest to existing party
     if (partyId) {
-      const existingParty = await db
-        .selectFrom("parties")
-        .where("wedding_id", "=", weddingId)
-        .select(["id", "invite_code"])
-        .where("id", "=", partyId)
-        .executeTakeFirst();
+      const existingParty = await db.party.findUnique({
+        where: { id: partyId },
+        select: { id: true, inviteCode: true },
+      });
 
       if (!existingParty) {
         return NextResponse.json({ error: "Party not found" }, { status: 404 });
       }
 
-      inviteCode = existingParty.invite_code;
+      inviteCode = existingParty.inviteCode;
       targetPartyId = existingParty.id;
     } else {
       // Generate unique invite code for new party
@@ -140,13 +133,10 @@ export async function POST(request: NextRequest) {
       const maxAttempts = 10;
 
       while (attempts < maxAttempts) {
-        // Kysely query - check if invite code exists in parties table
-        const existing = await db
-          .selectFrom("parties")
-          .where("wedding_id", "=", weddingId)
-          .select("id")
-          .where("invite_code", "=", inviteCode)
-          .executeTakeFirst();
+        const existing = await db.party.findUnique({
+          where: { inviteCode },
+          select: { id: true },
+        });
 
         if (!existing) break;
 
@@ -162,46 +152,47 @@ export async function POST(request: NextRequest) {
       }
 
       // Create new party
-      const newParty = await weddingDb
-        .insertInto("parties", {
-          invite_code: inviteCode,
+      const newParty = await db.party.create({
+        data: {
+          inviteCode,
           side: side || null,
           list: list || "a",
-        })
-        .returning(["id"])
-        .executeTakeFirstOrThrow();
+          weddingId,
+        },
+        select: { id: true },
+      });
 
       targetPartyId = newParty.id;
     }
 
-    // Kysely query - insert primary guest
-    const guest = await weddingDb
-      .insertInto("guests", {
-        first_name: firstName,
-        last_name: lastName || null,
+    // Insert primary guest
+    const guest = await db.guest.create({
+      data: {
+        firstName,
+        lastName: lastName || null,
         email: email || null,
-        invite_code: inviteCode,
-        party_id: targetPartyId,
+        inviteCode,
+        partyId: targetPartyId,
         side: side || null,
         list: list || "a",
-        is_plus_one: false,
-        plus_one_allowed: plusOneAllowed || false,
-        rsvp_status: "pending",
-        number_of_resends: 0,
-        mailing_address: mailingAddress || null,
-        physical_invite_sent: false,
-        phone_number: phoneNumber || null,
+        isPlusOne: false,
+        plusOneAllowed: plusOneAllowed || false,
+        rsvpStatus: "pending",
+        numberOfResends: 0,
+        mailingAddress: mailingAddress || null,
+        physicalInviteSent: false,
+        phoneNumber: phoneNumber || null,
         whatsapp: whatsapp || null,
-        preferred_contact_method: preferredContactMethod || null,
+        preferredContactMethod: preferredContactMethod || null,
         family: family || false,
-        under_21: under21 || false,
-        three_and_under: threeAndUnder || false,
+        under21: under21 || false,
+        threeAndUnder: threeAndUnder || false,
         notes: notes || null,
         gender: gender || null,
-        bridal_party_role: bridalPartyRole || null,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        bridalPartyRole: bridalPartyRole || null,
+        weddingId,
+      },
+    });
 
     // If plus one is allowed, always create the plus one guest record
     let plusOneGuest = null;
@@ -216,33 +207,32 @@ export async function POST(request: NextRequest) {
           ? plusOneLastName || null
           : "- Plus One";
 
-        // Kysely query - insert plus one guest
-        plusOneGuest = await weddingDb
-          .insertInto("guests", {
-            first_name: plusOneFirstNameFinal,
-            last_name: plusOneLastNameFinal,
-            email: null, // Plus-ones don't have their own email
-            invite_code: inviteCode, // Same invite code
-            party_id: targetPartyId, // Same party as primary guest
+        plusOneGuest = await db.guest.create({
+          data: {
+            firstName: plusOneFirstNameFinal,
+            lastName: plusOneLastNameFinal,
+            email: null,
+            inviteCode,
+            partyId: targetPartyId,
             side: side || null,
             list: list || "a",
-            is_plus_one: true,
-            plus_one_allowed: false, // Plus ones themselves don't get plus ones
-            primary_guest_id: guest.id,
-            rsvp_status: "pending",
-            number_of_resends: 0,
-            mailing_address: null, // Plus-ones start with no contact info
-            physical_invite_sent: false,
-            phone_number: null,
+            isPlusOne: true,
+            plusOneAllowed: false,
+            primaryGuestId: guest.id,
+            rsvpStatus: "pending",
+            numberOfResends: 0,
+            mailingAddress: null,
+            physicalInviteSent: false,
+            phoneNumber: null,
             whatsapp: null,
-            preferred_contact_method: null,
-            family: family || false, // Inherit family status from primary guest
-            under_21: under21 || false, // Inherit under_21 status from primary guest
-            three_and_under: threeAndUnder || false, // Inherit three_and_under status from primary guest
+            preferredContactMethod: null,
+            family: family || false,
+            under21: under21 || false,
+            threeAndUnder: threeAndUnder || false,
             notes: null,
-          })
-          .returningAll()
-          .executeTakeFirst();
+            weddingId,
+          },
+        });
       } catch (plusOneError) {
         console.error("Error creating plus one:", plusOneError);
         // Don't fail the entire request, just log it
@@ -257,16 +247,13 @@ export async function POST(request: NextRequest) {
       // Fetch wedding date from the Wedding Ceremony event
       let weddingDate = "";
       try {
-        const ceremonyEvent = await db
-          .selectFrom("events")
-          .where("wedding_id", "=", weddingId)
-          .select(["event_date"])
-          .where("name", "=", "Wedding Ceremony")
-          .executeTakeFirst();
+        const ceremonyEvent = await db.event.findFirst({
+          where: { name: "Wedding Ceremony", weddingId },
+          select: { eventDate: true },
+        });
 
-        if (ceremonyEvent?.event_date) {
-          // event_date can be a Date object or string depending on the driver
-          const dateValue = ceremonyEvent.event_date;
+        if (ceremonyEvent?.eventDate) {
+          const dateValue = ceremonyEvent.eventDate;
           const dateObj =
             dateValue instanceof Date
               ? dateValue
@@ -303,12 +290,11 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Update number_of_resends to 1 after successful email send
-        await weddingDb
-          .updateTable("guests")
-          .set({ number_of_resends: 1 })
-          .where("id", "=", guest.id)
-          .execute();
+        // Update numberOfResends to 1 after successful email send
+        await db.guest.update({
+          where: { id: guest.id },
+          data: { numberOfResends: 1 },
+        });
       } catch (emailError) {
         console.error("Error sending email:", emailError);
         // Don't fail the request if email fails
@@ -365,11 +351,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
-
-    // Kysely query - delete guest by ID
-    await weddingDb.deleteFrom("guests").where("id", "=", id).execute();
+    await db.guest.delete({
+      where: { id },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

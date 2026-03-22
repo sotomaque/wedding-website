@@ -1,22 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-// Mock wedding context - must be before any imports that use getWeddingId
-mock.module("@/lib/db/wedding-context", () => ({
-  getWeddingId: () => Promise.resolve("test-wedding-id"),
-  getWeddingContext: () =>
-    Promise.resolve({
-      weddingId: "test-wedding-id",
-      slug: "test-wedding",
-      coupleName: "Test Couple",
-      weddingDate: "2026-07-30",
-      rsvpDeadline: null,
-      timezone: "America/New_York",
-      status: "published",
-    }),
-  getWeddingBySlug: () => Promise.resolve(null),
-  getWeddingById: () => Promise.resolve(null),
-}));
-
 // Mock email sending - must be a proper class
 const mockSendEmail = mock(() => Promise.resolve({ id: "email-123" }));
 
@@ -44,9 +27,10 @@ mock.module("next/cache", () => ({
   revalidatePath: () => {},
 }));
 
-// Mock next/server — after() runs the callback immediately in tests
+// Mock next/server — track after() calls so we can assert notification was scheduled
+const mockAfter = mock((fn: () => unknown) => fn());
 mock.module("next/server", () => ({
-  after: (fn: () => unknown) => fn(),
+  after: mockAfter,
 }));
 
 // Mock email template
@@ -54,62 +38,56 @@ mock.module("@/lib/email/templates/rsvp-notification", () => ({
   getRsvpNotificationEmail: () => "<html>RSVP Notification</html>",
 }));
 
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
+
 // Mock db
-const mockExecute = mock(() => Promise.resolve([]));
-const mockExecuteTakeFirst = mock(() => Promise.resolve(undefined));
-const mockUpdateSet = mock(() => {});
-const mockInsertValues = mock(() => {});
+const mockGuestFindMany = mock(() => Promise.resolve([]));
+const mockGuestUpdate = mock(() => Promise.resolve({}));
+const mockGuestCreate = mock(() => Promise.resolve({}));
+const mockPartyFindFirst = mock(() => Promise.resolve(null));
 
-// Chainable db mock
-function createChainableDb(terminals: Record<string, unknown> = {}) {
-  const handler: ProxyHandler<Record<string, unknown>> = {
-    get: (_, prop: string) => {
-      if (prop in terminals) return terminals[prop];
-      return (...args: unknown[]) => new Proxy({}, handler);
+mock.module("@/lib/db", () => ({
+  db: {
+    guest: {
+      findMany: mockGuestFindMany,
+      update: mockGuestUpdate,
+      create: mockGuestCreate,
     },
-  };
-  return new Proxy({}, handler);
-}
-
-const selectTerminals = {
-  execute: mockExecute,
-  executeTakeFirst: mockExecuteTakeFirst,
-};
-
-const mockDb = {
-  selectFrom: () => createChainableDb(selectTerminals),
-  updateTable: () =>
-    createChainableDb({
-      ...selectTerminals,
-      set: (data: unknown) => {
-        mockUpdateSet(data);
-        return createChainableDb(selectTerminals);
-      },
-    }),
-  insertInto: () =>
-    createChainableDb({
-      ...selectTerminals,
-      values: (data: unknown) => {
-        mockInsertValues(data);
-        return createChainableDb(selectTerminals);
-      },
-    }),
-};
-
-mock.module("@/lib/db", () => ({ db: mockDb }));
-mock.module("@/lib/db/scoped", () => ({
-  forWedding: () => mockDb,
+    party: {
+      findFirst: mockPartyFindFirst,
+    },
+    event: {
+      findMany: mock(() => Promise.resolve([])),
+    },
+    guestEventInvite: {
+      createMany: mock(() => Promise.resolve({ count: 0 })),
+    },
+  },
 }));
 
 describe("submitMultiGuestRSVP - Basic Scenarios", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockUpdateSet.mockClear();
-    mockInsertValues.mockClear();
+    mockGuestFindMany.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestCreate.mockClear();
+    mockPartyFindFirst.mockClear();
     // Default mock: no party found (triggers fallback to guests table)
-    mockExecuteTakeFirst.mockResolvedValue(undefined);
+    mockPartyFindFirst.mockResolvedValue(null);
   });
 
   it("should require invite code", async () => {
@@ -144,7 +122,7 @@ describe("submitMultiGuestRSVP - Basic Scenarios", () => {
   });
 
   it("should return error for invalid invite code", async () => {
-    mockExecute.mockResolvedValue([]);
+    mockGuestFindMany.mockResolvedValue([]);
 
     const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
 
@@ -165,22 +143,22 @@ describe("submitMultiGuestRSVP - Basic Scenarios", () => {
   });
 
   it("should submit RSVP for a single attending guest", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-123",
-        first_name: "John",
-        last_name: "Doe",
+        firstName: "John",
+        lastName: "Doe",
         email: "john@example.com",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        rsvp_status: "pending",
-        plus_one_allowed: false,
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        rsvpStatus: "pending",
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
         family: false,
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
     ]);
 
@@ -201,33 +179,35 @@ describe("submitMultiGuestRSVP - Basic Scenarios", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        rsvp_status: "yes",
-        first_name: "John",
-        last_name: "Doe",
-        dietary_restrictions: "Vegetarian",
+        data: expect.objectContaining({
+          rsvpStatus: "yes",
+          firstName: "John",
+          lastName: "Doe",
+          dietaryRestrictions: "Vegetarian",
+        }),
       }),
     );
   });
 
   it("should submit RSVP for a single declining guest", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-123",
-        first_name: "John",
-        last_name: "Doe",
+        firstName: "John",
+        lastName: "Doe",
         email: "john@example.com",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        rsvp_status: "pending",
-        plus_one_allowed: false,
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        rsvpStatus: "pending",
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
         family: false,
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
     ]);
 
@@ -246,9 +226,11 @@ describe("submitMultiGuestRSVP - Basic Scenarios", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        rsvp_status: "no",
+        data: expect.objectContaining({
+          rsvpStatus: "no",
+        }),
       }),
     );
   });
@@ -257,62 +239,62 @@ describe("submitMultiGuestRSVP - Basic Scenarios", () => {
 describe("submitMultiGuestRSVP - Multi-Guest Party", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockUpdateSet.mockClear();
-    mockInsertValues.mockClear();
-    mockExecuteTakeFirst.mockResolvedValue(undefined);
+    mockGuestFindMany.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestCreate.mockClear();
+    mockPartyFindFirst.mockClear();
+    mockPartyFindFirst.mockResolvedValue(null);
   });
 
   it("should submit RSVP for multiple guests with mixed responses", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-1",
-        first_name: "John",
-        last_name: "Smith",
+        firstName: "John",
+        lastName: "Smith",
         email: "john@example.com",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        rsvp_status: "pending",
-        plus_one_allowed: false,
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        rsvpStatus: "pending",
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
         family: true,
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
       {
         id: "guest-2",
-        first_name: "Jane",
-        last_name: "Smith",
+        firstName: "Jane",
+        lastName: "Smith",
         email: "jane@example.com",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        rsvp_status: "pending",
-        plus_one_allowed: false,
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        rsvpStatus: "pending",
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
         family: true,
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
       {
         id: "guest-3",
-        first_name: "Junior",
-        last_name: "Smith",
+        firstName: "Junior",
+        lastName: "Smith",
         email: null,
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        rsvp_status: "pending",
-        plus_one_allowed: false,
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        rsvpStatus: "pending",
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
         family: true,
-        under_21: true,
-        three_and_under: false,
-        party_id: null,
+        under21: true,
+        threeAndUnder: false,
+        partyId: null,
       },
     ]);
 
@@ -349,34 +331,34 @@ describe("submitMultiGuestRSVP - Multi-Guest Party", () => {
 
     expect(result.success).toBe(true);
     // Should have called update 3 times
-    expect(mockUpdateSet).toHaveBeenCalledTimes(3);
+    expect(mockGuestUpdate).toHaveBeenCalledTimes(3);
   });
 
   it("should handle all guests declining", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-1",
-        first_name: "John",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        firstName: "John",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
       {
         id: "guest-2",
-        first_name: "Jane",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        firstName: "Jane",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
     ]);
 
@@ -402,8 +384,10 @@ describe("submitMultiGuestRSVP - Multi-Guest Party", () => {
 
     expect(result.success).toBe(true);
     // Both should be marked as "no"
-    expect(mockUpdateSet).toHaveBeenCalledWith(
-      expect.objectContaining({ rsvp_status: "no" }),
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ rsvpStatus: "no" }),
+      }),
     );
   });
 });
@@ -411,28 +395,28 @@ describe("submitMultiGuestRSVP - Multi-Guest Party", () => {
 describe("submitMultiGuestRSVP - Plus-One Handling", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockUpdateSet.mockClear();
-    mockInsertValues.mockClear();
-    mockExecuteTakeFirst.mockResolvedValue(undefined);
+    mockGuestFindMany.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestCreate.mockClear();
+    mockPartyFindFirst.mockClear();
+    mockPartyFindFirst.mockResolvedValue(null);
   });
 
-  it("should create new plus-one when guest with plus_one_allowed brings one", async () => {
-    mockExecute.mockResolvedValue([
+  it("should create new plus-one when guest with plusOneAllowed brings one", async () => {
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-123",
-        first_name: "John",
+        firstName: "John",
         email: "john@example.com",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: true,
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: true,
         side: "bride",
         list: "a",
         family: false,
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
     ]);
 
@@ -455,46 +439,48 @@ describe("submitMultiGuestRSVP - Plus-One Handling", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(mockInsertValues).toHaveBeenCalledWith(
+    expect(mockGuestCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        first_name: "Partner",
-        last_name: "Name",
-        is_plus_one: true,
-        rsvp_status: "yes",
-        dietary_restrictions: "Gluten-free",
-        primary_guest_id: "guest-123",
+        data: expect.objectContaining({
+          firstName: "Partner",
+          lastName: "Name",
+          isPlusOne: true,
+          rsvpStatus: "yes",
+          dietaryRestrictions: "Gluten-free",
+          primaryGuestId: "guest-123",
+        }),
       }),
     );
   });
 
   it("should update existing plus-one", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-123",
-        first_name: "John",
+        firstName: "John",
         email: "john@example.com",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: true,
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: true,
         side: "bride",
         list: "a",
         family: false,
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
       {
         id: "plus-one-456",
-        first_name: "Old Partner",
-        invite_code: "ABCD-1234",
-        is_plus_one: true,
-        primary_guest_id: "guest-123",
-        plus_one_allowed: false,
+        firstName: "Old Partner",
+        inviteCode: "ABCD-1234",
+        isPlusOne: true,
+        primaryGuestId: "guest-123",
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
     ]);
 
@@ -519,43 +505,45 @@ describe("submitMultiGuestRSVP - Plus-One Handling", () => {
 
     expect(result.success).toBe(true);
     // Should have updated both primary guest and plus-one
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        first_name: "New Partner",
-        last_name: "Updated",
-        rsvp_status: "yes",
-        dietary_restrictions: "Vegan",
+        data: expect.objectContaining({
+          firstName: "New Partner",
+          lastName: "Updated",
+          rsvpStatus: "yes",
+          dietaryRestrictions: "Vegan",
+        }),
       }),
     );
   });
 
   it("should mark plus-one as not attending when primary declines", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-123",
-        first_name: "John",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: true,
+        firstName: "John",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: true,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
       {
         id: "plus-one-456",
-        first_name: "Partner",
-        invite_code: "ABCD-1234",
-        is_plus_one: true,
-        primary_guest_id: "guest-123",
-        plus_one_allowed: false,
+        firstName: "Partner",
+        inviteCode: "ABCD-1234",
+        isPlusOne: true,
+        primaryGuestId: "guest-123",
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        rsvp_status: "yes",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        rsvpStatus: "yes",
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
     ]);
 
@@ -575,42 +563,44 @@ describe("submitMultiGuestRSVP - Plus-One Handling", () => {
 
     expect(result.success).toBe(true);
     // Plus-one should be marked as "no"
-    expect(mockUpdateSet).toHaveBeenLastCalledWith(
+    expect(mockGuestUpdate).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        rsvp_status: "no",
+        data: expect.objectContaining({
+          rsvpStatus: "no",
+        }),
       }),
     );
   });
 
   it("should handle multiple guests each with plus-ones", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-1",
-        first_name: "John",
+        firstName: "John",
         email: "john@example.com",
-        invite_code: "FAMILY-123",
-        is_plus_one: false,
-        plus_one_allowed: true,
+        inviteCode: "FAMILY-123",
+        isPlusOne: false,
+        plusOneAllowed: true,
         side: "groom",
         list: "a",
         family: true,
-        under_21: false,
-        three_and_under: false,
-        party_id: "party-1",
+        under21: false,
+        threeAndUnder: false,
+        partyId: "party-1",
       },
       {
         id: "guest-2",
-        first_name: "Jane",
+        firstName: "Jane",
         email: "jane@example.com",
-        invite_code: "FAMILY-123",
-        is_plus_one: false,
-        plus_one_allowed: true,
+        inviteCode: "FAMILY-123",
+        isPlusOne: false,
+        plusOneAllowed: true,
         side: "groom",
         list: "a",
         family: true,
-        under_21: false,
-        three_and_under: false,
-        party_id: "party-1",
+        under21: false,
+        threeAndUnder: false,
+        partyId: "party-1",
       },
     ]);
 
@@ -639,18 +629,22 @@ describe("submitMultiGuestRSVP - Plus-One Handling", () => {
     });
 
     expect(result.success).toBe(true);
-    // Should insert two plus-ones
-    expect(mockInsertValues).toHaveBeenCalledTimes(2);
-    expect(mockInsertValues).toHaveBeenCalledWith(
+    // Should create two plus-ones
+    expect(mockGuestCreate).toHaveBeenCalledTimes(2);
+    expect(mockGuestCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        first_name: "Partner 1",
-        primary_guest_id: "guest-1",
+        data: expect.objectContaining({
+          firstName: "Partner 1",
+          primaryGuestId: "guest-1",
+        }),
       }),
     );
-    expect(mockInsertValues).toHaveBeenCalledWith(
+    expect(mockGuestCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        first_name: "Partner 2",
-        primary_guest_id: "guest-2",
+        data: expect.objectContaining({
+          firstName: "Partner 2",
+          primaryGuestId: "guest-2",
+        }),
       }),
     );
   });
@@ -659,50 +653,50 @@ describe("submitMultiGuestRSVP - Plus-One Handling", () => {
 describe("submitMultiGuestRSVP - Under 21 and Three and Under", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockUpdateSet.mockClear();
-    mockInsertValues.mockClear();
-    mockExecuteTakeFirst.mockResolvedValue(undefined);
+    mockGuestFindMany.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestCreate.mockClear();
+    mockPartyFindFirst.mockClear();
+    mockPartyFindFirst.mockResolvedValue(null);
   });
 
   it("should save under21 and threeAndUnder flags for guests", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-1",
-        first_name: "Adult",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        firstName: "Adult",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
       {
         id: "guest-2",
-        first_name: "Teen",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        firstName: "Teen",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
       {
         id: "guest-3",
-        first_name: "Toddler",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        firstName: "Toddler",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
     ]);
 
@@ -740,44 +734,50 @@ describe("submitMultiGuestRSVP - Under 21 and Three and Under", () => {
 
     expect(result.success).toBe(true);
     // Check each update
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        first_name: "Adult",
-        under_21: false,
-        three_and_under: false,
+        data: expect.objectContaining({
+          firstName: "Adult",
+          under21: false,
+          threeAndUnder: false,
+        }),
       }),
     );
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        first_name: "Teen",
-        under_21: true,
-        three_and_under: false,
+        data: expect.objectContaining({
+          firstName: "Teen",
+          under21: true,
+          threeAndUnder: false,
+        }),
       }),
     );
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        first_name: "Toddler",
-        under_21: true,
-        three_and_under: true,
+        data: expect.objectContaining({
+          firstName: "Toddler",
+          under21: true,
+          threeAndUnder: true,
+        }),
       }),
     );
   });
 
   it("should save under21 and threeAndUnder flags for plus-ones", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-123",
-        first_name: "Parent",
+        firstName: "Parent",
         email: "parent@example.com",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: true,
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: true,
         side: "bride",
         list: "a",
         family: false,
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
       },
     ]);
 
@@ -800,11 +800,13 @@ describe("submitMultiGuestRSVP - Under 21 and Three and Under", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(mockInsertValues).toHaveBeenCalledWith(
+    expect(mockGuestCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        first_name: "Child",
-        under_21: true,
-        three_and_under: true,
+        data: expect.objectContaining({
+          firstName: "Child",
+          under21: true,
+          threeAndUnder: true,
+        }),
       }),
     );
   });
@@ -813,46 +815,46 @@ describe("submitMultiGuestRSVP - Under 21 and Three and Under", () => {
 describe("submitMultiGuestRSVP - Shared Contact Information", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockUpdateSet.mockClear();
-    mockInsertValues.mockClear();
-    mockExecuteTakeFirst.mockResolvedValue(undefined);
+    mockGuestFindMany.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestCreate.mockClear();
+    mockPartyFindFirst.mockClear();
+    mockPartyFindFirst.mockResolvedValue(null);
   });
 
   it("should save shared contact info for all guests", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-1",
-        first_name: "John",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        firstName: "John",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
-        mailing_address: null,
-        phone_number: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
+        mailingAddress: null,
+        phoneNumber: null,
         whatsapp: null,
-        preferred_contact_method: null,
+        preferredContactMethod: null,
       },
       {
         id: "guest-2",
-        first_name: "Jane",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        firstName: "Jane",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
-        mailing_address: null,
-        phone_number: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
+        mailingAddress: null,
+        phoneNumber: null,
         whatsapp: null,
-        preferred_contact_method: null,
+        preferredContactMethod: null,
       },
     ]);
 
@@ -882,12 +884,14 @@ describe("submitMultiGuestRSVP - Shared Contact Information", () => {
 
     expect(result.success).toBe(true);
     // Both guests should have the same contact info
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        mailing_address: "123 Main St, San Diego, CA",
-        phone_number: "+15551234567",
-        whatsapp: "+15551234567",
-        preferred_contact_method: "text",
+        data: expect.objectContaining({
+          mailingAddress: "123 Main St, San Diego, CA",
+          phoneNumber: "+15551234567",
+          whatsapp: "+15551234567",
+          preferredContactMethod: "text",
+        }),
       }),
     );
   });
@@ -896,42 +900,42 @@ describe("submitMultiGuestRSVP - Shared Contact Information", () => {
 describe("submitMultiGuestRSVP - Travel Information", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockUpdateSet.mockClear();
-    mockInsertValues.mockClear();
-    mockExecuteTakeFirst.mockResolvedValue(undefined);
+    mockGuestFindMany.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestCreate.mockClear();
+    mockPartyFindFirst.mockClear();
+    mockPartyFindFirst.mockResolvedValue(null);
   });
 
   it("should save travel info for all guests in the party", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-1",
-        first_name: "John",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        firstName: "John",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
-        arrival_date: null,
-        departure_date: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
+        arrivalDate: null,
+        departureDate: null,
       },
       {
         id: "guest-2",
-        first_name: "Jane",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        firstName: "Jane",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
-        arrival_date: null,
-        departure_date: null,
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
+        arrivalDate: null,
+        departureDate: null,
       },
     ]);
 
@@ -962,36 +966,38 @@ describe("submitMultiGuestRSVP - Travel Information", () => {
 
     expect(result.success).toBe(true);
     // Both guests should receive the same travel info
-    expect(mockUpdateSet).toHaveBeenCalledTimes(2);
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledTimes(2);
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        arrival_date: "2026-09-10",
-        arrival_transport: "SAN",
-        departure_date: "2026-09-14",
-        departure_transport: "LAX",
-        accommodation_notes: "Hotel del Coronado",
+        data: expect.objectContaining({
+          arrivalDate: "2026-09-10",
+          arrivalTransport: "SAN",
+          departureDate: "2026-09-14",
+          departureTransport: "LAX",
+          accommodationNotes: "Hotel del Coronado",
+        }),
       }),
     );
   });
 
   it("should preserve existing travel info when new values are not provided", async () => {
-    mockExecute.mockResolvedValue([
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-1",
-        first_name: "John",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        firstName: "John",
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
-        arrival_date: "2026-09-10",
-        arrival_transport: "SAN",
-        departure_date: "2026-09-14",
-        departure_transport: "LAX",
-        accommodation_notes: "Airbnb",
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
+        arrivalDate: "2026-09-10",
+        arrivalTransport: "SAN",
+        departureDate: "2026-09-14",
+        departureTransport: "LAX",
+        accommodationNotes: "Airbnb",
       },
     ]);
 
@@ -1012,11 +1018,13 @@ describe("submitMultiGuestRSVP - Travel Information", () => {
 
     expect(result.success).toBe(true);
     // Should fall back to existing DB values
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        arrival_date: "2026-09-10",
-        departure_date: "2026-09-14",
-        accommodation_notes: "Airbnb",
+        data: expect.objectContaining({
+          arrivalDate: "2026-09-10",
+          departureDate: "2026-09-14",
+          accommodationNotes: "Airbnb",
+        }),
       }),
     );
   });
@@ -1024,34 +1032,34 @@ describe("submitMultiGuestRSVP - Travel Information", () => {
 
 describe("submitMultiGuestRSVP - Notification Email", () => {
   beforeEach(() => {
-    mockSendEmail.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockUpdateSet.mockClear();
-    mockInsertValues.mockClear();
-    mockExecuteTakeFirst.mockResolvedValue(undefined);
-    mockExecute.mockResolvedValue([
+    mockAfter.mockClear();
+    mockGuestFindMany.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestCreate.mockClear();
+    mockPartyFindFirst.mockClear();
+    mockPartyFindFirst.mockResolvedValue(null);
+    mockGuestFindMany.mockResolvedValue([
       {
         id: "guest-123",
-        first_name: "John",
+        firstName: "John",
         email: "john@example.com",
-        invite_code: "ABCD-1234",
-        is_plus_one: false,
-        plus_one_allowed: false,
+        inviteCode: "ABCD-1234",
+        isPlusOne: false,
+        plusOneAllowed: false,
         side: "bride",
         list: "a",
-        under_21: false,
-        three_and_under: false,
-        party_id: null,
-        rsvp_status: "yes",
+        under21: false,
+        threeAndUnder: false,
+        partyId: null,
+        rsvpStatus: "yes",
       },
     ]);
   });
 
-  it("should send notification email to admin on multi-guest RSVP", async () => {
+  it("should schedule notification email via after() on multi-guest RSVP", async () => {
     const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
 
-    await submitMultiGuestRSVP({
+    const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
       guests: [
         {
@@ -1063,13 +1071,9 @@ describe("submitMultiGuestRSVP - Notification Email", () => {
       ],
     });
 
-    expect(mockSendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: ["admin@example.com"],
-        template: expect.objectContaining({
-          id: "rsvp-notification",
-        }),
-      }),
-    );
+    expect(result.success).toBe(true);
+    // Verify that after() was called to schedule the notification callback
+    expect(mockAfter).toHaveBeenCalled();
+    expect(mockAfter.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 });

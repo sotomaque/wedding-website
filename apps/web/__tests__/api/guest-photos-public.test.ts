@@ -1,43 +1,33 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-// Mock wedding context - must be before any imports that use getWeddingId
-mock.module("@/lib/db/wedding-context", () => ({
-  getWeddingId: () => Promise.resolve("test-wedding-id"),
-  getWeddingContext: () =>
-    Promise.resolve({
-      weddingId: "test-wedding-id",
-      slug: "test-wedding",
-      coupleName: "Test Couple",
-      weddingDate: "2026-07-30",
-      rsvpDeadline: null,
-      timezone: "America/New_York",
-      status: "published",
-    }),
-  getWeddingBySlug: () => Promise.resolve(null),
-  getWeddingById: () => Promise.resolve(null),
-}));
-
 // ----- mock setup -----
 mock.module("@/env", () => ({
   env: { ADMIN_EMAILS: "admin@example.com" },
 }));
 
-const mockExecute = mock(() => Promise.resolve([]));
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
 
-// Chainable db mock
-function createChainableDb(terminals: Record<string, unknown> = {}) {
-  const handler: ProxyHandler<Record<string, unknown>> = {
-    get: (_, prop: string) => {
-      if (prop in terminals) return terminals[prop];
-      return (...args: unknown[]) => new Proxy({}, handler);
-    },
-  };
-  return new Proxy({}, handler);
-}
+const mockGuestPhotoFindMany = mock(() => Promise.resolve([]));
 
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => createChainableDb({ execute: mockExecute }),
+    guestPhoto: {
+      findMany: mockGuestPhotoFindMany,
+    },
   },
 }));
 
@@ -47,30 +37,30 @@ const MOCK_PHOTOS = [
   {
     id: "photo-1",
     url: "https://utfs.io/f/a.jpg",
-    uploader_name: "Alice",
-    is_visible: true,
-    uploaded_at: new Date().toISOString(),
-    hidden_at: null,
-    hidden_by: null,
+    uploaderName: "Alice",
+    isVisible: true,
+    uploadedAt: new Date().toISOString(),
+    hiddenAt: null,
+    hiddenBy: null,
   },
   {
     id: "photo-2",
     url: "https://utfs.io/f/b.jpg",
-    uploader_name: null,
-    is_visible: true,
-    uploaded_at: new Date().toISOString(),
-    hidden_at: null,
-    hidden_by: null,
+    uploaderName: null,
+    isVisible: true,
+    uploadedAt: new Date().toISOString(),
+    hiddenAt: null,
+    hiddenBy: null,
   },
 ];
 
 describe("GET /api/guest-photos", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
+    mockGuestPhotoFindMany.mockClear();
   });
 
   it("returns 200 with photos array when visible photos exist", async () => {
-    mockExecute.mockResolvedValueOnce(MOCK_PHOTOS);
+    mockGuestPhotoFindMany.mockResolvedValueOnce(MOCK_PHOTOS);
 
     const { GET } = await import("@/app/api/guest-photos/route");
     const response = await GET();
@@ -84,7 +74,7 @@ describe("GET /api/guest-photos", () => {
   });
 
   it("returns 200 with empty array when no visible photos exist", async () => {
-    mockExecute.mockResolvedValueOnce([]);
+    mockGuestPhotoFindMany.mockResolvedValueOnce([]);
 
     const { GET } = await import("@/app/api/guest-photos/route");
     const response = await GET();
@@ -96,7 +86,9 @@ describe("GET /api/guest-photos", () => {
   });
 
   it("returns 500 on database error", async () => {
-    mockExecute.mockRejectedValueOnce(new Error("DB connection failed"));
+    mockGuestPhotoFindMany.mockRejectedValueOnce(
+      new Error("DB connection failed"),
+    );
 
     const { GET } = await import("@/app/api/guest-photos/route");
     const response = await GET();
@@ -107,7 +99,7 @@ describe("GET /api/guest-photos", () => {
   });
 
   it("returns photos array (not a nested object)", async () => {
-    mockExecute.mockResolvedValueOnce(MOCK_PHOTOS);
+    mockGuestPhotoFindMany.mockResolvedValueOnce(MOCK_PHOTOS);
 
     const { GET } = await import("@/app/api/guest-photos/route");
     const response = await GET();

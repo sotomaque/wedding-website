@@ -2,7 +2,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
@@ -53,15 +52,11 @@ export async function POST(request: NextRequest) {
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     // Fetch all guests
-    const guests = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("id", "in", guestIds)
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { id: { in: guestIds }, weddingId },
+    });
 
     if (guests.length === 0) {
       return NextResponse.json({ error: "No guests found" }, { status: 404 });
@@ -73,18 +68,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: `${guestsWithoutEmail.length} guest(s) don't have valid email addresses`,
-          guestsWithoutEmail: guestsWithoutEmail.map((g) => g.first_name),
+          guestsWithoutEmail: guestsWithoutEmail.map((g) => g.firstName),
         },
         { status: 400 },
       );
     }
 
-    const guestsAlreadyRsvpd = guests.filter((g) => g.rsvp_status === "yes");
+    const guestsAlreadyRsvpd = guests.filter((g) => g.rsvpStatus === "yes");
     if (guestsAlreadyRsvpd.length > 0) {
       return NextResponse.json(
         {
           error: `${guestsAlreadyRsvpd.length} guest(s) have already RSVP'd yes`,
-          guestsAlreadyRsvpd: guestsAlreadyRsvpd.map((g) => g.first_name),
+          guestsAlreadyRsvpd: guestsAlreadyRsvpd.map((g) => g.firstName),
         },
         { status: 400 },
       );
@@ -95,16 +90,14 @@ export async function POST(request: NextRequest) {
     // Fetch wedding date from the Wedding Ceremony event
     let weddingDate = "";
     try {
-      const ceremonyEvent = await db
-        .selectFrom("events")
-        .where("wedding_id", "=", weddingId)
-        .select(["event_date"])
-        .where("name", "=", "Wedding Ceremony")
-        .executeTakeFirst();
+      const ceremonyEvent = await db.event.findFirst({
+        where: { name: "Wedding Ceremony", weddingId },
+        select: { eventDate: true },
+      });
 
-      if (ceremonyEvent?.event_date) {
-        // event_date can be a Date object or string depending on the driver
-        const dateValue = ceremonyEvent.event_date;
+      if (ceremonyEvent?.eventDate) {
+        // eventDate can be a Date object or string depending on the driver
+        const dateValue = ceremonyEvent.eventDate;
         const dateObj =
           dateValue instanceof Date
             ? dateValue
@@ -128,7 +121,7 @@ export async function POST(request: NextRequest) {
     const errors: { guest: string; error: string }[] = [];
 
     for (const guest of guests) {
-      const rsvpUrl = `${appUrl}/rsvp?code=${guest.invite_code}`;
+      const rsvpUrl = `${appUrl}/rsvp?code=${guest.inviteCode}`;
 
       try {
         // Use Resend template (default: wedding-invitation template)
@@ -141,9 +134,9 @@ export async function POST(request: NextRequest) {
           template: {
             id: templateToUse,
             variables: {
-              FIRST_NAME: guest.first_name || "",
-              LAST_NAME: guest.last_name || "",
-              INVITE_CODE: guest.invite_code,
+              FIRST_NAME: guest.firstName || "",
+              LAST_NAME: guest.lastName || "",
+              INVITE_CODE: guest.inviteCode ?? "",
               RSVP_URL: rsvpUrl,
               APP_URL: appUrl,
               WEDDING_DATE: weddingDate,
@@ -155,20 +148,19 @@ export async function POST(request: NextRequest) {
           throw result.error;
         }
 
-        // Increment number_of_resends
-        await weddingDb
-          .updateTable("guests")
-          .set({
-            number_of_resends: (guest.number_of_resends || 0) + 1,
-          })
-          .where("id", "=", guest.id)
-          .execute();
+        // Increment numberOfResends
+        await db.guest.update({
+          where: { id: guest.id },
+          data: {
+            numberOfResends: (guest.numberOfResends || 0) + 1,
+          },
+        });
 
         sentCount++;
       } catch (emailError) {
         console.error(`Error sending email to ${guest.email}:`, emailError);
         errors.push({
-          guest: `${guest.first_name} ${guest.last_name || ""}`.trim(),
+          guest: `${guest.firstName} ${guest.lastName || ""}`.trim(),
           error: "Failed to send email",
         });
       }

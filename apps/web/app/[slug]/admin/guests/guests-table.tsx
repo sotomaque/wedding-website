@@ -1,5 +1,6 @@
 "use client";
 
+import type { Guest } from "@prisma/client";
 import {
   type ColumnFiltersState,
   flexRender,
@@ -41,22 +42,19 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
-import type { Database } from "@/lib/supabase/types";
 import type { PartyOption } from "./actions";
 import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
 import { GuestsFilters } from "./guests-filters";
 
-type Guest = Database["public"]["Tables"]["guests"]["Row"];
 type SortableColumn =
-  | "first_name"
+  | "firstName"
   | "email"
   | "side"
   | "list"
-  | "rsvp_status"
-  | "number_of_resends"
-  | "plus_one_allowed"
+  | "rsvpStatus"
+  | "numberOfResends"
+  | "plusOneAllowed"
   | "family"
   | "notes";
 
@@ -80,7 +78,6 @@ export function GuestsTable({
   const [isBulkSettingRsvp, setIsBulkSettingRsvp] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const slug = useWeddingSlug();
 
   const currentSortBy = searchParams.get("sortBy") || undefined;
   const currentSortOrder =
@@ -106,14 +103,14 @@ export function GuestsTable({
         // Remove sorting
         params.delete("sortBy");
         params.delete("sortOrder");
-        router.push(`/${slug}/admin/guests?${params.toString()}`);
+        router.push(`/admin/guests?${params.toString()}`);
         return;
       }
     }
 
     params.set("sortBy", column);
     params.set("sortOrder", newSortOrder);
-    router.push(`/${slug}/admin/guests?${params.toString()}`);
+    router.push(`/admin/guests?${params.toString()}`);
   }
 
   function handlePageChange(newPageIndex: number) {
@@ -125,11 +122,11 @@ export function GuestsTable({
       params.set("page", newPageIndex.toString());
     }
 
-    router.push(`/${slug}/admin/guests?${params.toString()}`);
+    router.push(`/admin/guests?${params.toString()}`);
   }
 
   function clearFilters() {
-    router.push(`/${slug}/admin/guests`);
+    router.push("/admin/guests");
   }
 
   async function handleUpdateNotes(guestId: string, notes: string) {
@@ -271,7 +268,7 @@ export function GuestsTable({
     guest.email?.includes("@"),
   );
   const noneHaveRsvpdYes = selectedGuests.every(
-    (guest) => guest.rsvp_status !== "yes",
+    (guest) => guest.rsvpStatus !== "yes",
   );
   const canBulkSendEmail =
     selectedGuests.length > 0 && allHaveEmail && noneHaveRsvpdYes;
@@ -287,7 +284,7 @@ export function GuestsTable({
     }
     if (!noneHaveRsvpdYes) {
       const guestsAlreadyRsvpd = selectedGuests.filter(
-        (g) => g.rsvp_status === "yes",
+        (g) => g.rsvpStatus === "yes",
       );
       return `${guestsAlreadyRsvpd.length} selected guest(s) have already RSVP'd yes`;
     }
@@ -332,7 +329,7 @@ export function GuestsTable({
 
   // Validation for bulk calendar invites
   const allAttendingWithEmail = selectedGuests.every(
-    (g) => g.rsvp_status === "yes" && g.email?.includes("@"),
+    (g) => g.rsvpStatus === "yes" && g.email?.includes("@"),
   );
   const canBulkSendCalendarInvites =
     selectedGuests.length > 0 && allAttendingWithEmail;
@@ -340,7 +337,7 @@ export function GuestsTable({
   function getBulkCalendarValidationMessage(): string | null {
     if (selectedGuests.length === 0) return null;
     const ineligible = selectedGuests.filter(
-      (g) => g.rsvp_status !== "yes" || !g.email?.includes("@"),
+      (g) => g.rsvpStatus !== "yes" || !g.email?.includes("@"),
     );
     if (ineligible.length > 0) {
       return `${ineligible.length} selected guest(s) are not attending or have no email`;
@@ -501,12 +498,12 @@ export function GuestsTable({
             Refresh
           </Button>
           <Button variant="outline" size="icon" asChild className="md:hidden">
-            <Link href={`/${slug}/admin/parties`}>
+            <Link href="/admin/parties">
               <UsersRound className="h-4 w-4" />
             </Link>
           </Button>
           <Button variant="outline" asChild className="hidden md:flex">
-            <Link href={`/${slug}/admin/parties`}>
+            <Link href="/admin/parties">
               <UsersRound className="h-4 w-4 mr-2" />
               Parties
             </Link>

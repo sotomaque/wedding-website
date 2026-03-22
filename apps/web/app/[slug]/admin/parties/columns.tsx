@@ -196,13 +196,13 @@ export function createColumns({
       enableSorting: false,
     },
     {
-      accessorKey: "invite_code",
+      accessorKey: "inviteCode",
       header: ({ column }) => (
         <SortableHeader column={column} label="Invite Code" />
       ),
       cell: ({ row }) => (
         <span className="font-mono text-sm bg-secondary px-2 py-1 rounded">
-          {row.original.invite_code}
+          {row.original.inviteCode}
         </span>
       ),
     },
@@ -219,7 +219,7 @@ export function createColumns({
       id: "members",
       accessorFn: (row) =>
         row.guests
-          .map((g) => `${g.first_name} ${g.last_name || ""}`.trim())
+          .map((g) => `${g.firstName} ${g.lastName || ""}`.trim())
           .join(" "),
       header: "Guests",
       cell: ({ row }) => {
@@ -228,7 +228,7 @@ export function createColumns({
           <span className="text-muted-foreground text-sm">
             {party.guests
               .slice(0, 2)
-              .map((g) => g.first_name)
+              .map((g) => g.firstName)
               .join(", ")}
             {party.guestCount > 2 && ` +${party.guestCount - 2}`}
           </span>

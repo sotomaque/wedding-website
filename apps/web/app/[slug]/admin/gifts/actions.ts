@@ -5,26 +5,26 @@ import { getWeddingId } from "@/lib/db/wedding-context";
 
 interface Gift {
   id: string;
-  stripe_checkout_session_id: string | null;
-  stripe_payment_intent_id: string | null;
-  stripe_payment_link_id: string | null;
-  stripe_charge_id: string | null;
-  donor_email: string | null;
-  donor_name: string | null;
-  amount_cents: number;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
+  stripePaymentLinkId: string | null;
+  stripeChargeId: string | null;
+  donorEmail: string | null;
+  donorName: string | null;
+  amountCents: number;
   currency: string;
-  gift_type: "baby_fund" | "honeymoon" | "student_loans" | null;
-  guest_id: string | null;
+  giftType: "baby_fund" | "honeymoon" | "student_loans" | null;
+  guestId: string | null;
   status: "pending" | "completed" | "refunded" | "failed";
-  thank_you_email_sent: boolean;
-  thank_you_email_sent_at: string | null;
+  thankYouEmailSent: boolean;
+  thankYouEmailSentAt: string | null;
   notes: string | null;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
   // Joined guest data
-  guest_first_name?: string | null;
-  guest_last_name?: string | null;
-  guest_email?: string | null;
+  guestFirstName?: string | null;
+  guestLastName?: string | null;
+  guestEmail?: string | null;
 }
 
 interface GetGiftsParams {
@@ -32,95 +32,74 @@ interface GetGiftsParams {
   status?: "pending" | "completed" | "refunded" | "failed";
   thankYouSent?: "true" | "false";
   hasGuest?: "true" | "false";
-  sortBy?:
-    | "created_at"
-    | "amount_cents"
-    | "donor_name"
-    | "gift_type"
-    | "status";
+  sortBy?: "createdAt" | "amountCents" | "donorName" | "giftType" | "status";
   sortOrder?: "asc" | "desc";
 }
+
+const sortByMap: Record<string, string> = {
+  createdAt: "createdAt",
+  amountCents: "amountCents",
+  donorName: "donorName",
+  giftType: "giftType",
+  status: "status",
+};
 
 export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
   try {
     const weddingId = await getWeddingId();
+    // Build where clause
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic filter building
+    const where: any = { weddingId };
 
-    let query = db
-      .selectFrom("gifts")
-      .leftJoin("guests", "gifts.guest_id", "guests.id")
-      .where("gifts.wedding_id", "=", weddingId)
-      .select([
-        "gifts.id",
-        "gifts.stripe_checkout_session_id",
-        "gifts.stripe_payment_intent_id",
-        "gifts.stripe_payment_link_id",
-        "gifts.stripe_charge_id",
-        "gifts.donor_email",
-        "gifts.donor_name",
-        "gifts.amount_cents",
-        "gifts.currency",
-        "gifts.gift_type",
-        "gifts.guest_id",
-        "gifts.status",
-        "gifts.thank_you_email_sent",
-        "gifts.thank_you_email_sent_at",
-        "gifts.notes",
-        "gifts.created_at",
-        "gifts.updated_at",
-        "guests.first_name as guest_first_name",
-        "guests.last_name as guest_last_name",
-        "guests.email as guest_email",
-      ]);
-
-    // Apply filters
     if (params.giftType) {
-      query = query.where("gifts.gift_type", "=", params.giftType);
+      where.giftType = params.giftType;
     }
 
     if (params.status) {
-      query = query.where("gifts.status", "=", params.status);
+      where.status = params.status;
     }
 
     if (params.thankYouSent !== undefined) {
-      query = query.where(
-        "gifts.thank_you_email_sent",
-        "=",
-        params.thankYouSent === "true",
-      );
+      where.thankYouEmailSent = params.thankYouSent === "true";
     }
 
     if (params.hasGuest !== undefined) {
       if (params.hasGuest === "true") {
-        query = query.where("gifts.guest_id", "is not", null);
+        where.guestId = { not: null };
       } else {
-        query = query.where("gifts.guest_id", "is", null);
+        where.guestId = null;
       }
     }
 
     // Apply sorting
-    const sortBy = params.sortBy || "created_at";
+    const sortBy = sortByMap[params.sortBy || "createdAt"] || "createdAt";
     const sortOrder = params.sortOrder || "desc";
 
-    // Map sortBy to actual column with table prefix
-    const sortColumn =
-      sortBy === "created_at"
-        ? "gifts.created_at"
-        : sortBy === "amount_cents"
-          ? "gifts.amount_cents"
-          : sortBy === "donor_name"
-            ? "gifts.donor_name"
-            : sortBy === "gift_type"
-              ? "gifts.gift_type"
-              : sortBy === "status"
-                ? "gifts.status"
-                : "gifts.created_at";
+    const gifts = await db.gift.findMany({
+      where,
+      orderBy: { [sortBy]: sortOrder },
+      include: {
+        guest: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
 
-    query = query.orderBy(sortColumn, sortOrder);
-
-    const gifts = await query.execute();
+    // Map to expected shape with flattened guest data
+    const mapped = gifts.map((gift) => ({
+      ...gift,
+      guestFirstName: gift.guest?.firstName ?? null,
+      guestLastName: gift.guest?.lastName ?? null,
+      guestEmail: gift.guest?.email ?? null,
+      guest: undefined,
+    }));
 
     // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    return gifts as any;
+    return mapped as any;
   } catch (error) {
     console.error("Error fetching gifts:", error);
     throw error;
@@ -129,43 +108,34 @@ export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
 
 export async function getGiftWithGuest(giftId: string) {
   try {
-    const weddingId = await getWeddingId();
-
-    const gift = await db
-      .selectFrom("gifts")
-      .leftJoin("guests", "gifts.guest_id", "guests.id")
-      .where("gifts.wedding_id", "=", weddingId)
-      .select([
-        "gifts.id",
-        "gifts.stripe_checkout_session_id",
-        "gifts.stripe_payment_intent_id",
-        "gifts.stripe_payment_link_id",
-        "gifts.stripe_charge_id",
-        "gifts.donor_email",
-        "gifts.donor_name",
-        "gifts.amount_cents",
-        "gifts.currency",
-        "gifts.gift_type",
-        "gifts.guest_id",
-        "gifts.status",
-        "gifts.thank_you_email_sent",
-        "gifts.thank_you_email_sent_at",
-        "gifts.notes",
-        "gifts.created_at",
-        "gifts.updated_at",
-        "guests.first_name as guest_first_name",
-        "guests.last_name as guest_last_name",
-        "guests.email as guest_email",
-      ])
-      .where("gifts.id", "=", giftId)
-      .executeTakeFirst();
+    const gift = await db.gift.findUnique({
+      where: { id: giftId },
+      include: {
+        guest: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
 
     if (!gift) {
       return null;
     }
 
+    // Map to expected shape with flattened guest data
+    const mapped = {
+      ...gift,
+      guestFirstName: gift.guest?.firstName ?? null,
+      guestLastName: gift.guest?.lastName ?? null,
+      guestEmail: gift.guest?.email ?? null,
+      guest: undefined,
+    };
+
     // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    return gift as any as Gift;
+    return mapped as any as Gift;
   } catch (error) {
     console.error("Error fetching gift:", error);
     return null;
@@ -174,23 +144,19 @@ export async function getGiftWithGuest(giftId: string) {
 
 interface GuestOption {
   id: string;
-  first_name: string;
-  last_name: string | null;
+  firstName: string;
+  lastName: string | null;
   email: string | null;
 }
 
 export async function getGuestOptions(): Promise<GuestOption[]> {
   try {
     const weddingId = await getWeddingId();
-
-    const guests = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .select(["id", "first_name", "last_name", "email"])
-      .where("is_plus_one", "=", false)
-      .orderBy("first_name", "asc")
-      .orderBy("last_name", "asc")
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { isPlusOne: false, weddingId },
+      select: { id: true, firstName: true, lastName: true, email: true },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+    });
 
     return guests;
   } catch (error) {
@@ -202,19 +168,12 @@ export async function getGuestOptions(): Promise<GuestOption[]> {
 export async function getGiftStats() {
   try {
     const weddingId = await getWeddingId();
-
-    const gifts = await db
-      .selectFrom("gifts")
-      .where("wedding_id", "=", weddingId)
-      .select([
-        "gift_type",
-        "status",
-        db.fn.sum<number>("amount_cents").as("total_cents"),
-        db.fn.count<number>("id").as("count"),
-      ])
-      .where("status", "=", "completed")
-      .groupBy(["gift_type", "status"])
-      .execute();
+    const gifts = await db.gift.groupBy({
+      by: ["giftType", "status"],
+      where: { status: "completed", weddingId },
+      _sum: { amountCents: true },
+      _count: { id: true },
+    });
 
     const stats = {
       baby_fund: { total: 0, count: 0 },
@@ -226,12 +185,12 @@ export async function getGiftStats() {
     };
 
     for (const gift of gifts) {
-      const type = gift.gift_type || "unknown";
+      const type = gift.giftType || "unknown";
       const key = type as keyof typeof stats;
       if (key in stats && typeof stats[key] === "object") {
         const statEntry = stats[key] as { total: number; count: number };
-        statEntry.total = Number(gift.total_cents) || 0;
-        statEntry.count = Number(gift.count) || 0;
+        statEntry.total = gift._sum.amountCents || 0;
+        statEntry.count = gift._count.id || 0;
         stats.grand_total += statEntry.total;
         stats.total_count += statEntry.count;
       }

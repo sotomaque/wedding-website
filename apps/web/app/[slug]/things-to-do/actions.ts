@@ -4,21 +4,20 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { getGuestParty } from "@/lib/auth/guest-session";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
-import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 export interface Activity {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   emoji: string | null;
   address: string | null;
   imageUrl: string | null;
   latitude: number | null;
   longitude: number | null;
-  isVenue: boolean;
-  venueType: "ceremony" | "reception" | null;
-  displayOrder: number;
+  isVenue: boolean | null;
+  venueType: "ceremony" | "reception" | string | null;
+  displayOrder: number | null;
 }
 
 export interface ActivityWithInterest extends Activity {
@@ -44,28 +43,24 @@ export async function getActivities(
   const weddingId = await getWeddingId();
 
   // Get all activities
-  const activities = await db
-    .selectFrom("activities")
-    .selectAll()
-    .where("wedding_id", "=", weddingId)
-    .orderBy("display_order", "asc")
-    .execute();
+  const activities = await db.activity.findMany({
+    where: { weddingId },
+    orderBy: { displayOrder: "asc" },
+  });
 
   // Get all interests with guest info
-  const allInterests = await db
-    .selectFrom("guest_activity_interests as gai")
-    .innerJoin("guests as g", "g.id", "gai.guest_id")
-    .where("gai.wedding_id", "=", weddingId)
-    .select([
-      "gai.activity_id",
-      "gai.invite_code",
-      "gai.status",
-      "gai.planned_date",
-      "g.first_name",
-      "g.last_name",
-      "g.is_plus_one",
-    ])
-    .execute();
+  const allInterests = await db.guestActivityInterest.findMany({
+    where: { weddingId },
+    include: {
+      guest: {
+        select: {
+          firstName: true,
+          lastName: true,
+          isPlusOne: true,
+        },
+      },
+    },
+  });
 
   // Group interests by activity and invite code
   const interestsByActivity = new Map<
@@ -85,29 +80,35 @@ export async function getActivities(
   >();
 
   for (const interest of allInterests) {
-    if (!interestsByActivity.has(interest.activity_id)) {
-      interestsByActivity.set(interest.activity_id, new Map());
+    if (!interestsByActivity.has(interest.activityId)) {
+      interestsByActivity.set(interest.activityId, new Map());
     }
 
-    const activityInterests = interestsByActivity.get(interest.activity_id);
+    const activityInterests = interestsByActivity.get(interest.activityId);
     if (!activityInterests) continue;
 
-    if (!activityInterests.has(interest.invite_code)) {
-      activityInterests.set(interest.invite_code, {
+    const invCode = interest.inviteCode;
+    if (!invCode) continue;
+
+    if (!activityInterests.has(invCode)) {
+      activityInterests.set(invCode, {
         status: interest.status as "interested" | "committed",
-        plannedDate: interest.planned_date
-          ? (new Date(interest.planned_date).toISOString().split("T")[0] ??
-            null)
+        plannedDate: interest.plannedDate
+          ? (new Date(String(interest.plannedDate))
+              .toISOString()
+              .split("T")[0] ?? null)
           : null,
         guests: [],
       });
     }
 
-    activityInterests.get(interest.invite_code)?.guests.push({
-      firstName: interest.first_name,
-      lastName: interest.last_name,
-      isPlusOne: interest.is_plus_one,
-    });
+    if (interest.guest) {
+      activityInterests.get(invCode)?.guests.push({
+        firstName: interest.guest.firstName,
+        lastName: interest.guest.lastName,
+        isPlusOne: interest.guest.isPlusOne,
+      });
+    }
   }
 
   // Build response
@@ -146,12 +147,12 @@ export async function getActivities(
       description: activity.description,
       emoji: activity.emoji,
       address: activity.address,
-      imageUrl: activity.image_url,
-      latitude: activity.latitude,
-      longitude: activity.longitude,
-      isVenue: activity.is_venue,
-      venueType: activity.venue_type,
-      displayOrder: activity.display_order,
+      imageUrl: activity.imageUrl,
+      latitude: activity.latitude ? Number(activity.latitude) : null,
+      longitude: activity.longitude ? Number(activity.longitude) : null,
+      isVenue: activity.isVenue,
+      venueType: activity.venueType,
+      displayOrder: activity.displayOrder,
       userInterest: {
         status: userInterestData?.status ?? null,
         plannedDate: userInterestData?.plannedDate ?? null,
@@ -173,8 +174,7 @@ export async function setActivityInterest(params: {
   const { activityId, inviteCode, status, plannedDate } = params;
 
   try {
-    const { weddingId, slug } = await getWeddingContext();
-    const weddingDb = forWedding(weddingId);
+    const weddingId = await getWeddingId();
 
     // Verify the invite code is valid
     const party = await getGuestParty(inviteCode);
@@ -186,54 +186,57 @@ export async function setActivityInterest(params: {
 
     if (status === null) {
       // Remove interest
-      await weddingDb
-        .deleteFrom("guest_activity_interests")
-        .where("activity_id", "=", activityId)
-        .where("invite_code", "=", normalizedCode)
-        .execute();
+      await db.guestActivityInterest.deleteMany({
+        where: {
+          activityId,
+          inviteCode: normalizedCode,
+        },
+      });
     } else {
       // Check if interest already exists
-      const existing = await db
-        .selectFrom("guest_activity_interests")
-        .where("wedding_id", "=", weddingId)
-        .select("id")
-        .where("activity_id", "=", activityId)
-        .where("invite_code", "=", normalizedCode)
-        .executeTakeFirst();
+      const existing = await db.guestActivityInterest.findFirst({
+        where: {
+          activityId,
+          inviteCode: normalizedCode,
+        },
+        select: { id: true },
+      });
 
       if (existing) {
         // Update existing
-        await weddingDb
-          .updateTable("guest_activity_interests")
-          .set({
+        await db.guestActivityInterest.updateMany({
+          where: {
+            activityId,
+            inviteCode: normalizedCode,
+          },
+          data: {
             status,
-            planned_date: plannedDate || null,
-          })
-          .where("id", "=", existing.id)
-          .execute();
+            plannedDate: plannedDate || null,
+          },
+        });
       } else {
         // Insert new - we need to insert for each guest in the party
-        const guests = await db
-          .selectFrom("guests")
-          .where("wedding_id", "=", weddingId)
-          .select("id")
-          .where("invite_code", "=", normalizedCode)
-          .execute();
+        const guests = await db.guest.findMany({
+          where: { inviteCode: normalizedCode, weddingId },
+          select: { id: true },
+        });
 
         for (const guest of guests) {
-          await weddingDb
-            .insertInto("guest_activity_interests", {
-              guest_id: guest.id,
-              activity_id: activityId,
-              invite_code: normalizedCode,
+          await db.guestActivityInterest.create({
+            data: {
+              guestId: guest.id,
+              activityId,
+              inviteCode: normalizedCode,
               status,
-              planned_date: plannedDate || null,
-            })
-            .execute();
+              plannedDate: plannedDate || null,
+              weddingId,
+            },
+          });
         }
       }
     }
-    revalidatePath(`/${slug}/things-to-do`);
+
+    revalidatePath("/things-to-do");
     return { success: true };
   } catch (error) {
     console.error("Error setting activity interest:", error);
@@ -246,14 +249,10 @@ export async function setActivityInterest(params: {
  */
 export async function getVenues(): Promise<Activity[]> {
   const weddingId = await getWeddingId();
-
-  const venues = await db
-    .selectFrom("activities")
-    .selectAll()
-    .where("wedding_id", "=", weddingId)
-    .where("is_venue", "=", true)
-    .orderBy("display_order", "asc")
-    .execute();
+  const venues = await db.activity.findMany({
+    where: { isVenue: true, weddingId },
+    orderBy: { displayOrder: "asc" },
+  });
 
   return venues.map((v) => ({
     id: v.id,
@@ -261,12 +260,12 @@ export async function getVenues(): Promise<Activity[]> {
     description: v.description,
     emoji: v.emoji,
     address: v.address,
-    imageUrl: v.image_url,
-    latitude: v.latitude,
-    longitude: v.longitude,
-    isVenue: v.is_venue,
-    venueType: v.venue_type,
-    displayOrder: v.display_order,
+    imageUrl: v.imageUrl,
+    latitude: v.latitude ? Number(v.latitude) : null,
+    longitude: v.longitude ? Number(v.longitude) : null,
+    isVenue: v.isVenue,
+    venueType: v.venueType,
+    displayOrder: v.displayOrder,
   }));
 }
 
@@ -302,27 +301,31 @@ export async function searchGuests(query: string): Promise<{
     if (!query || query.length < 2) return { success: true, results: [] };
 
     const weddingId = await getWeddingId();
-
-    const guests = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .select(["first_name", "last_name", "invite_code"])
-      .where("is_plus_one", "=", false)
-      .where((eb) =>
-        eb.or([
-          eb("first_name", "ilike", `%${query}%`),
-          eb("last_name", "ilike", `%${query}%`),
-        ]),
-      )
-      .limit(10)
-      .execute();
+    const guests = await db.guest.findMany({
+      where: {
+        isPlusOne: false,
+        weddingId,
+        OR: [
+          { firstName: { contains: query, mode: "insensitive" } },
+          { lastName: { contains: query, mode: "insensitive" } },
+        ],
+      },
+      select: {
+        firstName: true,
+        lastName: true,
+        inviteCode: true,
+      },
+      take: 10,
+    });
 
     return {
       success: true,
-      results: guests.map((g) => ({
-        inviteCode: g.invite_code,
-        name: `${g.first_name} ${g.last_name ?? ""}`.trim(),
-      })),
+      results: guests
+        .filter((g) => g.inviteCode !== null)
+        .map((g) => ({
+          inviteCode: g.inviteCode as string,
+          name: `${g.firstName} ${g.lastName ?? ""}`.trim(),
+        })),
     };
   } catch (error) {
     console.error("Error searching guests:", error);
@@ -340,16 +343,13 @@ export async function setInviteCodeCookie(
     if (!inviteCode)
       return { success: false, error: "Invite code is required" };
 
-    const { weddingId, slug } = await getWeddingContext();
+    const weddingId = await getWeddingId();
 
     // Validate the invite code exists
-    const party = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .select("invite_code")
-      .where("invite_code", "=", inviteCode.toUpperCase())
-      .limit(1)
-      .executeTakeFirst();
+    const party = await db.guest.findFirst({
+      where: { inviteCode: inviteCode.toUpperCase(), weddingId },
+      select: { inviteCode: true },
+    });
 
     if (!party) {
       return { success: false, error: "Invalid invite code" };
@@ -361,7 +361,7 @@ export async function setInviteCodeCookie(
       maxAge: 60 * 60 * 24 * 365,
       httpOnly: true,
     });
-    revalidatePath(`/${slug}/things-to-do`);
+    revalidatePath("/things-to-do");
     return { success: true };
   } catch (error) {
     console.error("Error setting invite code cookie:", error);

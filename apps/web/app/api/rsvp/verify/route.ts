@@ -24,13 +24,9 @@ export async function GET(request: NextRequest) {
 
     const weddingId = await getWeddingId();
 
-    // Kysely query - find all guests with this invite code
-    const guests = await db
-      .selectFrom("guests")
-      .where("wedding_id", "=", weddingId)
-      .selectAll()
-      .where("invite_code", "=", code.toUpperCase())
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { inviteCode: code.toUpperCase(), weddingId },
+    });
 
     if (!guests || guests.length === 0) {
       return NextResponse.json(

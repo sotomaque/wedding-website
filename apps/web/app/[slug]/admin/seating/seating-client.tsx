@@ -132,10 +132,10 @@ export function SeatingClient({
                 <div>
                   <h3 className="font-medium">{chart.name}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {chart.default_seats_per_table} seats per table
+                    {chart.defaultSeatsPerTable} seats per table
                   </p>
                 </div>
-                {chart.is_active && (
+                {chart.isActive && (
                   <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
                     Active
                   </span>

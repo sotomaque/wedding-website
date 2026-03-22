@@ -1,8 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
-import { forWedding } from "@/lib/db/scoped";
-import { getWeddingId } from "@/lib/db/wedding-context";
+import { db } from "@/lib/db";
 
 async function getAdminEmail(
   _request: NextRequest,
@@ -43,25 +42,23 @@ export async function PATCH(
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await params;
-    const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
     const body = await request.json();
-    const { is_visible } = body as { is_visible: boolean };
+    const { isVisible } = body as { isVisible: boolean };
 
-    const photo = await weddingDb
-      .updateTable("guest_photos")
-      .set({
-        is_visible,
-        hidden_at: is_visible ? null : new Date(),
-        hidden_by: is_visible ? null : auth.email,
-      })
-      .where("id", "=", id)
-      .returningAll()
-      .executeTakeFirst();
-
-    if (!photo) {
+    // Check if photo exists first
+    const existing = await db.guestPhoto.findUnique({ where: { id } });
+    if (!existing) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
+
+    const photo = await db.guestPhoto.update({
+      where: { id },
+      data: {
+        isVisible,
+        hiddenAt: isVisible ? null : new Date(),
+        hiddenBy: isVisible ? null : auth.email,
+      },
+    });
 
     return NextResponse.json({ photo });
   } catch (error) {
@@ -90,18 +87,13 @@ export async function DELETE(
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await params;
-    const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
-    const photo = await weddingDb
-      .deleteFrom("guest_photos")
-      .where("id", "=", id)
-      .returningAll()
-      .executeTakeFirst();
-
-    if (!photo) {
+    const existing = await db.guestPhoto.findUnique({ where: { id } });
+    if (!existing) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
+
+    const photo = await db.guestPhoto.delete({ where: { id } });
 
     return NextResponse.json({ photo });
   } catch (error) {

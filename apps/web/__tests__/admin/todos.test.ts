@@ -1,22 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-// Mock wedding context - must be before any imports that use getWeddingId
-mock.module("@/lib/db/wedding-context", () => ({
-  getWeddingId: () => Promise.resolve("test-wedding-id"),
-  getWeddingContext: () =>
-    Promise.resolve({
-      weddingId: "test-wedding-id",
-      slug: "test-wedding",
-      coupleName: "Test Couple",
-      weddingDate: "2026-07-30",
-      rsvpDeadline: null,
-      timezone: "America/New_York",
-      status: "published",
-    }),
-  getWeddingBySlug: () => Promise.resolve(null),
-  getWeddingById: () => Promise.resolve(null),
-}));
-
 // Mock next/cache
 mock.module("next/cache", () => ({
   revalidatePath: mock(() => {}),
@@ -31,77 +14,79 @@ mock.module("@/env", () => ({
   },
 }));
 
-// Create db mock with tracking
-const mockExecute = mock(() => Promise.resolve([]));
-const mockExecuteTakeFirst = mock(() => Promise.resolve(null));
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
+
+// Create Prisma-style db mocks
+const mockFindMany = mock(() => Promise.resolve([]));
+const mockAggregate = mock(() =>
+  Promise.resolve({ _max: { displayOrder: 0 } }),
+);
+const mockCreate = mock(() => Promise.resolve({}));
+const mockUpdate = mock(() => Promise.resolve({}));
+const mockDelete = mock(() => Promise.resolve({}));
 
 const sampleTodos = [
   {
     id: "todo-1",
     title: "Book the florist",
-    is_completed: false,
-    display_order: 1,
-    created_at: "2026-01-01T00:00:00Z",
-    updated_at: "2026-01-01T00:00:00Z",
+    isCompleted: false,
+    displayOrder: 1,
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
   },
   {
     id: "todo-2",
     title: "Send invitations",
-    is_completed: false,
-    display_order: 2,
-    created_at: "2026-01-02T00:00:00Z",
-    updated_at: "2026-01-02T00:00:00Z",
+    isCompleted: false,
+    displayOrder: 2,
+    createdAt: "2026-01-02T00:00:00Z",
+    updatedAt: "2026-01-02T00:00:00Z",
   },
   {
     id: "todo-3",
     title: "Finalize menu",
-    is_completed: true,
-    display_order: 3,
-    created_at: "2026-01-03T00:00:00Z",
-    updated_at: "2026-01-05T00:00:00Z",
+    isCompleted: true,
+    displayOrder: 3,
+    createdAt: "2026-01-03T00:00:00Z",
+    updatedAt: "2026-01-05T00:00:00Z",
   },
 ];
 
-// Build a chainable mock that supports the query patterns used by the actions
-function createChainableMock(terminal: ReturnType<typeof mock>) {
-  const chain: Record<string, () => Record<string, unknown>> = {};
-  const self = () => chain;
-  chain.selectAll = self;
-  chain.select = self;
-  chain.orderBy = self;
-  chain.where = self;
-  chain.set = self;
-  chain.values = self;
-  chain.execute = terminal as unknown as () => Record<string, unknown>;
-  chain.executeTakeFirst = mockExecuteTakeFirst as unknown as () => Record<
-    string,
-    unknown
-  >;
-  return chain;
-}
-
-const mockDb = {
-  selectFrom: () => createChainableMock(mockExecute),
-  insertInto: () => createChainableMock(mockExecute),
-  updateTable: () => createChainableMock(mockExecute),
-  deleteFrom: () => createChainableMock(mockExecute),
-  fn: {
-    max: () => ({
-      as: () => "max_order",
-    }),
+mock.module("@/lib/db", () => ({
+  db: {
+    weddingTodo: {
+      findMany: mockFindMany,
+      findUnique: mock(() => Promise.resolve(null)),
+      findFirst: mock(() => Promise.resolve(null)),
+      create: mockCreate,
+      update: mockUpdate,
+      delete: mockDelete,
+      deleteMany: mock(() => Promise.resolve({ count: 0 })),
+      updateMany: mock(() => Promise.resolve({ count: 0 })),
+      count: mock(() => Promise.resolve(0)),
+      aggregate: mockAggregate,
+    },
   },
-};
-
-mock.module("@/lib/db", () => ({ db: mockDb }));
-mock.module("@/lib/db/scoped", () => ({
-  forWedding: () => mockDb,
 }));
 
 describe("Admin Todos - getTodos", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecute.mockResolvedValue(sampleTodos);
+    mockFindMany.mockClear();
+    mockFindMany.mockResolvedValue(sampleTodos);
   });
 
   it("should return all todos", async () => {
@@ -121,15 +106,15 @@ describe("Admin Todos - getTodos", () => {
     for (const todo of todos) {
       expect(todo.id).toBeDefined();
       expect(todo.title).toBeDefined();
-      expect(typeof todo.is_completed).toBe("boolean");
-      expect(typeof todo.display_order).toBe("number");
-      expect(todo.created_at).toBeDefined();
-      expect(todo.updated_at).toBeDefined();
+      expect(typeof todo.isCompleted).toBe("boolean");
+      expect(typeof todo.displayOrder).toBe("number");
+      expect(todo.createdAt).toBeDefined();
+      expect(todo.updatedAt).toBeDefined();
     }
   });
 
   it("should throw on database error", async () => {
-    mockExecute.mockRejectedValue(new Error("Database error"));
+    mockFindMany.mockRejectedValue(new Error("Database error"));
 
     const { getTodos } = await import("@/app/[slug]/admin/todos/actions");
 
@@ -139,10 +124,10 @@ describe("Admin Todos - getTodos", () => {
 
 describe("Admin Todos - addTodo", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecute.mockResolvedValue([]);
-    mockExecuteTakeFirst.mockResolvedValue({ max_order: 3 });
+    mockCreate.mockClear();
+    mockAggregate.mockClear();
+    mockAggregate.mockResolvedValue({ _max: { displayOrder: 3 } });
+    mockCreate.mockResolvedValue({});
   });
 
   it("should add a todo successfully", async () => {
@@ -173,7 +158,7 @@ describe("Admin Todos - addTodo", () => {
   });
 
   it("should return error on database failure", async () => {
-    mockExecute.mockRejectedValue(new Error("DB error"));
+    mockAggregate.mockRejectedValue(new Error("DB error"));
 
     const { addTodo } = await import("@/app/[slug]/admin/todos/actions");
 
@@ -186,8 +171,8 @@ describe("Admin Todos - addTodo", () => {
 
 describe("Admin Todos - toggleTodo", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecute.mockResolvedValue([]);
+    mockUpdate.mockClear();
+    mockUpdate.mockResolvedValue({});
   });
 
   it("should toggle a todo to completed", async () => {
@@ -207,7 +192,7 @@ describe("Admin Todos - toggleTodo", () => {
   });
 
   it("should return error on database failure", async () => {
-    mockExecute.mockRejectedValue(new Error("DB error"));
+    mockUpdate.mockRejectedValue(new Error("DB error"));
 
     const { toggleTodo } = await import("@/app/[slug]/admin/todos/actions");
 
@@ -220,8 +205,8 @@ describe("Admin Todos - toggleTodo", () => {
 
 describe("Admin Todos - deleteTodo", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecute.mockResolvedValue([]);
+    mockDelete.mockClear();
+    mockDelete.mockResolvedValue({});
   });
 
   it("should delete a todo successfully", async () => {
@@ -233,7 +218,7 @@ describe("Admin Todos - deleteTodo", () => {
   });
 
   it("should return error on database failure", async () => {
-    mockExecute.mockRejectedValue(new Error("DB error"));
+    mockDelete.mockRejectedValue(new Error("DB error"));
 
     const { deleteTodo } = await import("@/app/[slug]/admin/todos/actions");
 
@@ -246,8 +231,8 @@ describe("Admin Todos - deleteTodo", () => {
 
 describe("Admin Todos - updateTodoTitle", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecute.mockResolvedValue([]);
+    mockUpdate.mockClear();
+    mockUpdate.mockResolvedValue({});
   });
 
   it("should update a todo title successfully", async () => {
@@ -283,7 +268,7 @@ describe("Admin Todos - updateTodoTitle", () => {
   });
 
   it("should return error on database failure", async () => {
-    mockExecute.mockRejectedValue(new Error("DB error"));
+    mockUpdate.mockRejectedValue(new Error("DB error"));
 
     const { updateTodoTitle } = await import(
       "@/app/[slug]/admin/todos/actions"
@@ -298,15 +283,15 @@ describe("Admin Todos - updateTodoTitle", () => {
 
 describe("Admin Todos - Data Shape", () => {
   it("should have valid completion states", () => {
-    const incomplete = sampleTodos.filter((t) => !t.is_completed);
-    const completed = sampleTodos.filter((t) => t.is_completed);
+    const incomplete = sampleTodos.filter((t) => !t.isCompleted);
+    const completed = sampleTodos.filter((t) => t.isCompleted);
 
     expect(incomplete).toHaveLength(2);
     expect(completed).toHaveLength(1);
   });
 
-  it("should have sequential display_order values", () => {
-    const orders = sampleTodos.map((t) => t.display_order);
+  it("should have sequential displayOrder values", () => {
+    const orders = sampleTodos.map((t) => t.displayOrder);
     for (let i = 1; i < orders.length; i++) {
       expect(orders[i]).toBeGreaterThan(orders[i - 1]!);
     }
