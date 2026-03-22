@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * List seating charts
@@ -20,8 +22,11 @@ export async function GET() {
       );
     }
 
+    const weddingId = await getWeddingId();
+
     const charts = await db
       .selectFrom("seating_charts")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .orderBy("updated_at", "desc")
       .execute();
@@ -65,9 +70,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const chart = await db
-      .insertInto("seating_charts")
-      .values({
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
+    const chart = await weddingDb
+      .insertInto("seating_charts", {
         name,
         default_seats_per_table: defaultSeatsPerTable || 8,
         is_active: false,

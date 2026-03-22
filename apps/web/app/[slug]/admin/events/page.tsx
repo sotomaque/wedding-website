@@ -1,14 +1,20 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { EventsClient } from "./events-client";
 
 export const dynamic = "force-dynamic";
 
 async function getEvents() {
+  const weddingId = await getWeddingId();
+  const weddingDb = forWedding(weddingId);
+
   const events = await db
     .selectFrom("events")
     .selectAll()
+    .where("wedding_id", "=", weddingId)
     .orderBy("display_order", "asc")
     .orderBy("event_date", "asc")
     .execute();
@@ -26,7 +32,8 @@ async function getEvents() {
         // since all guests are automatically invited to these events
         const guests = await db
           .selectFrom("guests")
-          .select("rsvp_status")
+          .select(["rsvp_status"])
+          .where("wedding_id", "=", weddingId)
           .execute();
 
         total = guests.length;
@@ -37,7 +44,8 @@ async function getEvents() {
         // For non-default events, use event-specific invites
         const invites = await db
           .selectFrom("guest_event_invites")
-          .select("rsvp_status")
+          .select(["rsvp_status"])
+          .where("wedding_id", "=", weddingId)
           .where("event_id", "=", event.id)
           .execute();
 

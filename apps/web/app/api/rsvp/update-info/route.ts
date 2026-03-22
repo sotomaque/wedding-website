@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Update guest contact info
@@ -27,9 +29,13 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Fetch all guests with this invite code
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("invite_code", "=", inviteCode)
       .execute();
@@ -42,7 +48,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Update all guests with this invite code (primary + plus one)
-    await db
+    await weddingDb
       .updateTable("guests")
       .set({
         mailing_address: mailingAddress || null,
@@ -56,6 +62,7 @@ export async function PATCH(request: NextRequest) {
     // Fetch updated guests
     const updatedGuests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("invite_code", "=", inviteCode)
       .execute();

@@ -3,9 +3,12 @@ import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import {
   buildCalendarEmailHtml,
+  type CalendarEvent,
   generateIcs,
 } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { sendEmail } from "@/lib/email/resend-client";
 
 /**
@@ -44,8 +47,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select([
         "id",
         "first_name",
@@ -75,6 +82,7 @@ export async function POST(request: NextRequest) {
     // Fetch default events once — shared across all guests
     const defaultEvents = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .select([
         "id",
         "name",
@@ -103,7 +111,7 @@ export async function POST(request: NextRequest) {
           : e.event_date
             ? new Date(`${e.event_date}T00:00:00`)
             : null,
-    }));
+    })) as CalendarEvent[];
 
     let sentCount = 0;
     const errors: Array<{ guestId: string; error: string }> = [];
@@ -132,7 +140,7 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        await db
+        await weddingDb
           .updateTable("guests")
           .set({
             calendar_invite_sent: true,

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Verify invite code
@@ -21,9 +22,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+
     // Kysely query - find all guests with this invite code
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("invite_code", "=", code.toUpperCase())
       .execute();

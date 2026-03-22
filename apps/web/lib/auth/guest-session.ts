@@ -1,6 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 export interface GuestParty {
   inviteCode: string;
@@ -33,6 +35,7 @@ export async function getGuestParty(
   inviteCode?: string,
 ): Promise<GuestParty | null> {
   const user = await currentUser();
+  const weddingId = await getWeddingId();
 
   // Check if user is admin
   const adminEmails =
@@ -44,6 +47,7 @@ export async function getGuestParty(
   if (user) {
     const guestByClerk = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("clerk_user_id", "=", user.id)
       .executeTakeFirst();
@@ -54,6 +58,7 @@ export async function getGuestParty(
         guestByClerk.invite_code,
         true,
         isAdmin,
+        weddingId,
       );
     }
 
@@ -61,6 +66,7 @@ export async function getGuestParty(
     if (userEmail) {
       const guestByEmail = await db
         .selectFrom("guests")
+        .where("wedding_id", "=", weddingId)
         .selectAll()
         .where("email", "=", userEmail)
         .where("is_plus_one", "=", false) // Only match primary guests
@@ -68,7 +74,7 @@ export async function getGuestParty(
 
       if (guestByEmail) {
         // Auto-link the Clerk user to this guest for future lookups
-        await db
+        await forWedding(weddingId)
           .updateTable("guests")
           .set({ clerk_user_id: user.id })
           .where("id", "=", guestByEmail.id)
@@ -78,6 +84,7 @@ export async function getGuestParty(
           guestByEmail.invite_code,
           true,
           isAdmin,
+          weddingId,
         );
       }
     }
@@ -85,7 +92,12 @@ export async function getGuestParty(
 
   // Try to find guest by invite code
   if (inviteCode) {
-    const party = await getPartyByInviteCode(inviteCode, !!user, isAdmin);
+    const party = await getPartyByInviteCode(
+      inviteCode,
+      !!user,
+      isAdmin,
+      weddingId,
+    );
     return party;
   }
 
@@ -100,9 +112,11 @@ async function getPartyByInviteCode(
   inviteCode: string,
   isLoggedIn: boolean,
   isAdmin: boolean,
+  weddingId: string,
 ): Promise<GuestParty | null> {
   const guests = await db
     .selectFrom("guests")
+    .where("wedding_id", "=", weddingId)
     .selectAll()
     .where("invite_code", "=", inviteCode.toUpperCase())
     .execute();
@@ -155,9 +169,13 @@ export async function linkClerkUserToGuest(
       return { success: false, error: "Not authenticated" };
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Get guests with this invite code
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("invite_code", "=", inviteCode.toUpperCase())
       .execute();
@@ -190,7 +208,7 @@ export async function linkClerkUserToGuest(
     }
 
     // Link the user
-    await db
+    await weddingDb
       .updateTable("guests")
       .set({ clerk_user_id: clerkUserId })
       .where("id", "=", matchingGuest.id)

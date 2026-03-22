@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { getWeddingContext } from "@/lib/db/wedding-context";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
 
 export type DocumentCategory =
   | "contract"
@@ -30,8 +31,11 @@ export async function getDocuments(
   category?: DocumentCategory,
 ): Promise<WeddingDocument[]> {
   try {
+    const weddingId = await getWeddingId();
+
     let query = db
       .selectFrom("documents")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .orderBy("created_at", "desc");
 
@@ -67,9 +71,11 @@ export async function createDocument(data: {
     if (!data.file_url)
       return { success: false, error: "File URL is required" };
 
-    await db
-      .insertInto("documents")
-      .values({
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
+    await weddingDb
+      .insertInto("documents", {
         title,
         description: data.description.trim() || null,
         file_url: data.file_url,
@@ -79,8 +85,6 @@ export async function createDocument(data: {
         uploaded_by: data.uploaded_by,
       })
       .execute();
-
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/admin/documents`);
     return { success: true };
   } catch (error) {
@@ -102,7 +106,10 @@ export async function updateDocument(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
+    await weddingDb
       .updateTable("documents")
       .set({
         ...(data.title !== undefined && { title: data.title.trim() }),
@@ -114,8 +121,6 @@ export async function updateDocument(
       })
       .where("id", "=", id)
       .execute();
-
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/admin/documents`);
     return { success: true };
   } catch (error) {
@@ -132,8 +137,9 @@ export async function deleteDocument(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db.deleteFrom("documents").where("id", "=", id).execute();
-    const { slug } = await getWeddingContext();
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+    await weddingDb.deleteFrom("documents").where("id", "=", id).execute();
     revalidatePath(`/${slug}/admin/documents`);
     return { success: true };
   } catch (error) {

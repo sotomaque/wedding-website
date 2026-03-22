@@ -1,5 +1,6 @@
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { SlideshowClient } from "./slideshow-client";
 
 export const dynamic = "force-dynamic";
@@ -9,8 +10,11 @@ export const metadata = {
 };
 
 export default async function SlideshowPage() {
+  const weddingId = await getWeddingId();
+
   const photos = await db
     .selectFrom("guest_photos")
+    .where("wedding_id", "=", weddingId)
     .selectAll()
     .where("is_visible", "=", true)
     .orderBy("uploaded_at", "desc")

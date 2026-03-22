@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getEventRsvpNotificationEmail } from "@/lib/email/templates/event-rsvp-notification";
 
@@ -26,10 +28,13 @@ export async function POST(request: NextRequest) {
 
     // Normalize code to uppercase
     const normalizedCode = inviteCode.toUpperCase().trim();
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
 
     // Find guest with this invite code
     const guest = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("invite_code", "=", normalizedCode)
       .where("is_plus_one", "=", false) // Only match primary guests
@@ -45,6 +50,7 @@ export async function POST(request: NextRequest) {
     // Verify event exists
     const event = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", eventId)
       .executeTakeFirst();
@@ -56,6 +62,7 @@ export async function POST(request: NextRequest) {
     // Check if guest is invited to this event
     const invite = await db
       .selectFrom("guest_event_invites")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("guest_id", "=", guest.id)
       .where("event_id", "=", eventId)
@@ -70,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // Update the RSVP status
     const rsvpStatus = attending ? "yes" : "no";
-    await db
+    await weddingDb
       .updateTable("guest_event_invites")
       .set({ rsvp_status: rsvpStatus })
       .where("id", "=", invite.id)

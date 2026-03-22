@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { env } from "@/env";
+// TODO: Resolve wedding_id from Stripe metadata or donor_email lookup
+// Stripe webhooks bypass the proxy middleware so x-wedding-id headers are unavailable.
+// Queries in this file remain unscoped until a resolution strategy is implemented.
 import { db } from "@/lib/db";
 import { GIFT_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";

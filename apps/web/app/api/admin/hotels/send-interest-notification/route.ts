@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getHotelInterestNotificationEmail } from "@/lib/email/templates/hotel-interest-notification";
 
@@ -24,9 +25,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+
     // Fetch guest details
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("invite_code", "=", inviteCode.toUpperCase())
       .execute();
@@ -48,6 +52,7 @@ export async function POST(request: NextRequest) {
     // Fetch hotel details
     const hotel = await db
       .selectFrom("hotels")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", hotelId)
       .executeTakeFirst();
@@ -59,6 +64,7 @@ export async function POST(request: NextRequest) {
     // Fetch hotel interest details
     const interest = await db
       .selectFrom("guest_hotel_interests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("hotel_id", "=", hotelId)
       .where("invite_code", "=", inviteCode.toUpperCase())
@@ -81,7 +87,7 @@ export async function POST(request: NextRequest) {
       guestLastName: primaryGuest.last_name,
       guestEmail: primaryGuest.email,
       guestPhone: primaryGuest.phone_number,
-      hotelName: hotel.name,
+      hotelName: hotel.name as string,
       hotelAddress: hotel.address,
       checkInDate: interest?.check_in_date
         ? new Date(interest.check_in_date).toISOString()

@@ -2,6 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * List all photos
@@ -29,8 +31,11 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const weddingId = await getWeddingId();
+
     const photos = await db
       .selectFrom("photos")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .orderBy("display_order", "asc")
       .orderBy("created_at", "desc")
@@ -83,17 +88,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Get the highest display_order
     const maxOrder = await db
       .selectFrom("photos")
+      .where("wedding_id", "=", weddingId)
       .select(db.fn.max("display_order").as("max_order"))
       .executeTakeFirst();
 
     const newOrder = (maxOrder?.max_order ?? -1) + 1;
 
-    const photo = await db
-      .insertInto("photos")
-      .values({
+    const photo = await weddingDb
+      .insertInto("photos", {
         url,
         alt,
         description: description || null,

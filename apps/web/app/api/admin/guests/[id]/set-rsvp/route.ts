@@ -2,6 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Set RSVP status for a specific guest (admin override)
@@ -44,8 +46,12 @@ export async function POST(
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     const guest = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select(["id", "first_name"])
       .where("id", "=", guestId)
       .executeTakeFirst();
@@ -54,7 +60,7 @@ export async function POST(
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
-    await db
+    await weddingDb
       .updateTable("guests")
       .set({ rsvp_status: rsvpStatus })
       .where("id", "=", guestId)

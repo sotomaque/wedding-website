@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
@@ -25,9 +27,11 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedCode = inviteCode.toUpperCase();
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
 
     // Kysely query - update all guests with this invite code
-    await db
+    await weddingDb
       .updateTable("guests")
       .set({
         rsvp_status: attending ? "yes" : "no",
@@ -42,6 +46,7 @@ export async function POST(request: NextRequest) {
         // Fetch guests for the notification email
         const guests = await db
           .selectFrom("guests")
+          .where("wedding_id", "=", weddingId)
           .select(["first_name", "last_name", "email"])
           .where("invite_code", "=", normalizedCode)
           .execute();

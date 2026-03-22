@@ -2,6 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
@@ -50,9 +52,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Fetch all guests
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "in", guestIds)
       .execute();
@@ -91,6 +97,7 @@ export async function POST(request: NextRequest) {
     try {
       const ceremonyEvent = await db
         .selectFrom("events")
+        .where("wedding_id", "=", weddingId)
         .select(["event_date"])
         .where("name", "=", "Wedding Ceremony")
         .executeTakeFirst();
@@ -149,7 +156,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Increment number_of_resends
-        await db
+        await weddingDb
           .updateTable("guests")
           .set({
             number_of_resends: (guest.number_of_resends || 0) + 1,

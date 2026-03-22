@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { isValidUUID } from "@/lib/utils/uuid";
 
 /**
@@ -37,9 +39,13 @@ export async function POST(
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Verify the chart exists and get its tables
     const tables = await db
       .selectFrom("seating_tables")
+      .where("wedding_id", "=", weddingId)
       .select(["id"])
       .where("seating_chart_id", "=", chartId)
       .execute();
@@ -82,25 +88,26 @@ export async function POST(
 
     // Only delete if we have valid UUIDs
     if (guestIds.length > 0) {
-      await db
+      await weddingDb
         .deleteFrom("guest_table_assignments")
         .where("guest_id", "in", guestIds)
         .execute();
     }
 
     // Insert new assignments
-    const insertValues = uniqueAssignments.map(
-      (a: { guestId: string; tableId: string; seatNumber?: number }) => ({
-        guest_id: a.guestId,
-        seating_table_id: a.tableId,
-        seat_number: a.seatNumber || null,
-      }),
-    );
-
-    await db
-      .insertInto("guest_table_assignments")
-      .values(insertValues)
-      .execute();
+    for (const a of uniqueAssignments as Array<{
+      guestId: string;
+      tableId: string;
+      seatNumber?: number;
+    }>) {
+      await weddingDb
+        .insertInto("guest_table_assignments", {
+          guest_id: a.guestId,
+          seating_table_id: a.tableId,
+          seat_number: a.seatNumber || null,
+        })
+        .execute();
+    }
 
     return NextResponse.json({
       success: true,
@@ -142,12 +149,15 @@ export async function DELETE(
     }
 
     const { id: chartId } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
     const { searchParams } = new URL(request.url);
     const guestIdsParam = searchParams.get("guestIds");
 
     // Get all tables for this chart
     const tables = await db
       .selectFrom("seating_tables")
+      .where("wedding_id", "=", weddingId)
       .select(["id"])
       .where("seating_chart_id", "=", chartId)
       .execute();
@@ -161,14 +171,14 @@ export async function DELETE(
     if (guestIdsParam) {
       // Delete specific guest assignments
       const guestIds = guestIdsParam.split(",");
-      await db
+      await weddingDb
         .deleteFrom("guest_table_assignments")
         .where("seating_table_id", "in", tableIds)
         .where("guest_id", "in", guestIds)
         .execute();
     } else {
       // Delete all assignments for this chart's tables
-      await db
+      await weddingDb
         .deleteFrom("guest_table_assignments")
         .where("seating_table_id", "in", tableIds)
         .execute();

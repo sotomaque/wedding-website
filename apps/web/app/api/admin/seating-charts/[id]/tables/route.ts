@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Add table to seating chart
@@ -26,6 +28,8 @@ export async function POST(
     }
 
     const { id: chartId } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
     const body = await request.json();
     const {
       tableNumber,
@@ -40,6 +44,7 @@ export async function POST(
     // Verify the chart exists
     const chart = await db
       .selectFrom("seating_charts")
+      .where("wedding_id", "=", weddingId)
       .select("id")
       .where("id", "=", chartId)
       .executeTakeFirst();
@@ -53,6 +58,7 @@ export async function POST(
     if (finalTableNumber === undefined) {
       const lastTable = await db
         .selectFrom("seating_tables")
+        .where("wedding_id", "=", weddingId)
         .select("table_number")
         .where("seating_chart_id", "=", chartId)
         .orderBy("table_number", "desc")
@@ -62,9 +68,8 @@ export async function POST(
       finalTableNumber = (lastTable?.table_number || 0) + 1;
     }
 
-    const table = await db
-      .insertInto("seating_tables")
-      .values({
+    const table = await weddingDb
+      .insertInto("seating_tables", {
         seating_chart_id: chartId,
         table_number: finalTableNumber,
         table_name: tableName || null,
@@ -113,8 +118,10 @@ export async function DELETE(
     }
 
     const { id: chartId } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
 
-    await db
+    await weddingDb
       .deleteFrom("seating_tables")
       .where("seating_chart_id", "=", chartId)
       .execute();

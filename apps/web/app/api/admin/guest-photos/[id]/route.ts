@@ -1,7 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
-import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 async function getAdminEmail(
   _request: NextRequest,
@@ -42,10 +43,12 @@ export async function PATCH(
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
     const body = await request.json();
     const { is_visible } = body as { is_visible: boolean };
 
-    const photo = await db
+    const photo = await weddingDb
       .updateTable("guest_photos")
       .set({
         is_visible,
@@ -87,8 +90,10 @@ export async function DELETE(
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
 
-    const photo = await db
+    const photo = await weddingDb
       .deleteFrom("guest_photos")
       .where("id", "=", id)
       .returningAll()

@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * List all gifts
@@ -20,10 +22,13 @@ export async function GET() {
       );
     }
 
-    // Get all gifts with guest information via left join
+    const weddingId = await getWeddingId();
+
+    // Get all gifts with guest information via left join (manual scoping for join)
     const gifts = await db
       .selectFrom("gifts")
       .leftJoin("guests", "gifts.guest_id", "guests.id")
+      .where("gifts.wedding_id", "=", weddingId)
       .select([
         "gifts.id",
         "gifts.stripe_checkout_session_id",
@@ -119,6 +124,9 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Build update object
     const updates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -139,7 +147,7 @@ export async function PATCH(request: NextRequest) {
       updates.notes = notes;
     }
 
-    const updatedGift = await db
+    const updatedGift = await weddingDb
       .updateTable("gifts")
       .set(updates)
       .where("id", "=", id)

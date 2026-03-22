@@ -2,6 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -33,9 +35,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const weddingId = await getWeddingId();
+
     // Verify event exists and is not a default event
     const event = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", eventId)
       .executeTakeFirst();
@@ -51,7 +56,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Get all guests with their invite status for this event
+    // Get all guests with their invite status for this event (join query - manual scoping)
     const guests = await db
       .selectFrom("guests")
       .leftJoin("guest_event_invites", (join) =>
@@ -59,6 +64,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
           .onRef("guests.id", "=", "guest_event_invites.guest_id")
           .on("guest_event_invites.event_id", "=", eventId),
       )
+      .where("guests.wedding_id", "=", weddingId)
       .select([
         "guests.id",
         "guests.first_name",
@@ -176,9 +182,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Verify event exists and is not a default event
     const event = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", eventId)
       .executeTakeFirst();
@@ -198,9 +208,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     let addedCount = 0;
     for (const guestId of guestIds) {
       try {
-        await db
-          .insertInto("guest_event_invites")
-          .values({
+        await weddingDb
+          .insertInto("guest_event_invites", {
             guest_id: guestId,
             event_id: eventId,
           })
@@ -265,9 +274,13 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Verify event exists and is not a default event
     const event = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", eventId)
       .executeTakeFirst();
@@ -284,7 +297,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // Delete invite records
-    const result = await db
+    const result = await weddingDb
       .deleteFrom("guest_event_invites")
       .where("event_id", "=", eventId)
       .where("guest_id", "in", guestIds)

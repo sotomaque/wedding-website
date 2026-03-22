@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import type {
   GuestFilter,
   GuestListFilter,
@@ -28,9 +29,12 @@ function parseGuestFilter(searchParams: {
 }
 
 async function getChartWithDetails(id: string, filter: GuestFilter) {
+  const weddingId = await getWeddingId();
+
   // Fetch the chart
   const chart = await db
     .selectFrom("seating_charts")
+    .where("wedding_id", "=", weddingId)
     .selectAll()
     .where("id", "=", id)
     .executeTakeFirst();
@@ -42,6 +46,7 @@ async function getChartWithDetails(id: string, filter: GuestFilter) {
   // Fetch tables for this chart
   const tables = await db
     .selectFrom("seating_tables")
+    .where("wedding_id", "=", weddingId)
     .selectAll()
     .where("seating_chart_id", "=", id)
     .orderBy("table_number", "asc")
@@ -53,6 +58,7 @@ async function getChartWithDetails(id: string, filter: GuestFilter) {
     tableIds.length > 0
       ? await db
           .selectFrom("guest_table_assignments")
+          .where("wedding_id", "=", weddingId)
           .selectAll()
           .where("seating_table_id", "in", tableIds)
           .execute()
@@ -64,13 +70,17 @@ async function getChartWithDetails(id: string, filter: GuestFilter) {
     assignedGuestIds.length > 0
       ? await db
           .selectFrom("guests")
+          .where("wedding_id", "=", weddingId)
           .selectAll()
           .where("id", "in", assignedGuestIds)
           .execute()
       : [];
 
   // Build query for filtered guests based on filter options
-  let guestQuery = db.selectFrom("guests").selectAll();
+  let guestQuery = db
+    .selectFrom("guests")
+    .where("wedding_id", "=", weddingId)
+    .selectAll();
 
   // Apply RSVP filter
   if (filter.rsvp === "confirmed") {

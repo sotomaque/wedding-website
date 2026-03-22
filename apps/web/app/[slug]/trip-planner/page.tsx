@@ -12,6 +12,7 @@ import { SITE_CONFIG } from "@/app/site-config";
 import { getGuestParty } from "@/lib/auth/guest-session";
 import { toDateStr } from "@/lib/calendar/date-utils";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { TripPlannerClient } from "./trip-planner-client";
 
 export default async function TripPlannerPage() {
@@ -21,9 +22,12 @@ export default async function TripPlannerPage() {
   const inviteCode = party?.inviteCode || codeFromCookie;
 
   // Fetch events, guests with travel dates, and activity plans in parallel
+  const weddingId = await getWeddingId();
+
   const [eventsRaw, guestsRaw, activityPlansRaw] = await Promise.all([
     db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .select([
         "id",
         "name",
@@ -49,6 +53,7 @@ export default async function TripPlannerPage() {
         "guests.party_id",
         "parties.name as party_name",
       ])
+      .where("guests.wedding_id", "=", weddingId)
       .where((eb) =>
         eb.or([
           eb("guests.arrival_date", "is not", null),
@@ -73,6 +78,7 @@ export default async function TripPlannerPage() {
         "gai.status",
         "gai.planned_date",
       ])
+      .where("gai.wedding_id", "=", weddingId)
       .where("gai.planned_date", "is not", null)
       .execute(),
   ]);

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { getWeddingContext } from "@/lib/db/wedding-context";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
 
 export type ServiceLinkCategory =
   | "venue"
@@ -27,8 +28,10 @@ export type ServiceLink = {
 
 export async function getServiceLinks(): Promise<ServiceLink[]> {
   try {
+    const weddingId = await getWeddingId();
     const rows = await db
       .selectFrom("service_links")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .orderBy("sort_order", "asc")
       .orderBy("created_at", "asc")
@@ -64,17 +67,20 @@ export async function createServiceLink(data: {
       return { success: false, error: "Please enter a valid URL" };
     }
 
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
     // Get max sort_order to append at end
     const last = await db
       .selectFrom("service_links")
+      .where("wedding_id", "=", weddingId)
       .select(db.fn.max("sort_order").as("max_order"))
       .executeTakeFirst();
 
     const nextOrder = (Number(last?.max_order) || 0) + 1;
 
-    const rows = await db
-      .insertInto("service_links")
-      .values({
+    const rows = await weddingDb
+      .insertInto("service_links", {
         title,
         url,
         description: data.description.trim() || null,
@@ -83,8 +89,6 @@ export async function createServiceLink(data: {
       })
       .returningAll()
       .execute();
-
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/admin/vendors`);
     revalidatePath(`/${slug}/vendors`);
     // biome-ignore lint/suspicious/noExplicitAny: Date objects serialize to strings across the server/client boundary
@@ -117,7 +121,10 @@ export async function updateServiceLink(
       }
     }
 
-    const rows = await db
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
+    const rows = await weddingDb
       .updateTable("service_links")
       .set({
         ...(data.title !== undefined && { title: data.title.trim() }),
@@ -131,8 +138,6 @@ export async function updateServiceLink(
       .where("id", "=", id)
       .returningAll()
       .execute();
-
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/admin/vendors`);
     revalidatePath(`/${slug}/vendors`);
     // biome-ignore lint/suspicious/noExplicitAny: Date objects serialize to strings across the server/client boundary
@@ -151,8 +156,9 @@ export async function deleteServiceLink(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db.deleteFrom("service_links").where("id", "=", id).execute();
-    const { slug } = await getWeddingContext();
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+    await weddingDb.deleteFrom("service_links").where("id", "=", id).execute();
     revalidatePath(`/${slug}/admin/vendors`);
     revalidatePath(`/${slug}/vendors`);
     return { success: true };
@@ -170,17 +176,18 @@ export async function reorderServiceLinks(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
     await Promise.all(
       orderedIds.map((id, index) =>
-        db
+        weddingDb
           .updateTable("service_links")
           .set({ sort_order: index + 1, updated_at: new Date().toISOString() })
           .where("id", "=", id)
           .execute(),
       ),
     );
-
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/admin/vendors`);
     revalidatePath(`/${slug}/vendors`);
     return { success: true };

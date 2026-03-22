@@ -2,6 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -33,8 +35,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const weddingId = await getWeddingId();
+
     const event = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", id)
       .executeTakeFirst();
@@ -52,6 +57,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       // For default events, use guest's main RSVP status
       const guests = await db
         .selectFrom("guests")
+        .where("wedding_id", "=", weddingId)
         .select("rsvp_status")
         .execute();
 
@@ -61,6 +67,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     } else {
       const invites = await db
         .selectFrom("guest_event_invites")
+        .where("wedding_id", "=", weddingId)
         .select("rsvp_status")
         .where("event_id", "=", id)
         .execute();
@@ -131,9 +138,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       displayOrder,
     } = body;
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Get current event to check if is_default changed
     const currentEvent = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", id)
       .executeTakeFirst();
@@ -164,7 +175,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const event = await db
+    const event = await weddingDb
       .updateTable("events")
       .set(updateData)
       .where("id", "=", id)
@@ -173,12 +184,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     // If event became a default event, invite all guests who aren't already invited
     if (isDefault === true && currentEvent.is_default === false) {
-      const guests = await db.selectFrom("guests").select("id").execute();
+      const guests = await db
+        .selectFrom("guests")
+        .where("wedding_id", "=", weddingId)
+        .select("id")
+        .execute();
 
       for (const guest of guests) {
-        await db
-          .insertInto("guest_event_invites")
-          .values({
+        await weddingDb
+          .insertInto("guest_event_invites", {
             guest_id: guest.id,
             event_id: id,
           })
@@ -225,8 +239,11 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Deleting the event will cascade delete all guest_event_invites
-    const deleted = await db
+    const deleted = await weddingDb
       .deleteFrom("events")
       .where("id", "=", id)
       .executeTakeFirst();

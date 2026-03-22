@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { getGuestParty } from "@/lib/auth/guest-session";
 import { db } from "@/lib/db";
-import { getWeddingContext } from "@/lib/db/wedding-context";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
 
 export interface Hotel {
   id: string;
@@ -47,10 +48,13 @@ export interface HotelWithInterest extends Hotel {
 export async function getHotels(
   inviteCode?: string,
 ): Promise<HotelWithInterest[]> {
+  const weddingId = await getWeddingId();
+
   // Get all hotels
   const hotels = await db
     .selectFrom("hotels")
     .selectAll()
+    .where("wedding_id", "=", weddingId)
     .orderBy("display_order", "asc")
     .execute();
 
@@ -58,6 +62,7 @@ export async function getHotels(
   const allInterests = await db
     .selectFrom("guest_hotel_interests as ghi")
     .innerJoin("guests as g", "g.id", "ghi.guest_id")
+    .where("ghi.wedding_id", "=", weddingId)
     .select([
       "ghi.hotel_id",
       "ghi.invite_code",
@@ -203,6 +208,9 @@ export async function setHotelInterest(params: {
   } = params;
 
   try {
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
     // Verify the invite code is valid
     const party = await getGuestParty(inviteCode);
     if (!party) {
@@ -213,7 +221,7 @@ export async function setHotelInterest(params: {
 
     if (status === null) {
       // Remove interest
-      await db
+      await weddingDb
         .deleteFrom("guest_hotel_interests")
         .where("hotel_id", "=", hotelId)
         .where("invite_code", "=", normalizedCode)
@@ -222,6 +230,7 @@ export async function setHotelInterest(params: {
       // Check if interest already exists
       const existing = await db
         .selectFrom("guest_hotel_interests")
+        .where("wedding_id", "=", weddingId)
         .select("id")
         .where("hotel_id", "=", hotelId)
         .where("invite_code", "=", normalizedCode)
@@ -229,7 +238,7 @@ export async function setHotelInterest(params: {
 
       if (existing) {
         // Update existing
-        await db
+        await weddingDb
           .updateTable("guest_hotel_interests")
           .set({
             status,
@@ -244,14 +253,14 @@ export async function setHotelInterest(params: {
         // Insert new - we need to insert for each guest in the party
         const guests = await db
           .selectFrom("guests")
+          .where("wedding_id", "=", weddingId)
           .select("id")
           .where("invite_code", "=", normalizedCode)
           .execute();
 
         for (const guest of guests) {
-          await db
-            .insertInto("guest_hotel_interests")
-            .values({
+          await weddingDb
+            .insertInto("guest_hotel_interests", {
               guest_id: guest.id,
               hotel_id: hotelId,
               invite_code: normalizedCode,
@@ -285,7 +294,6 @@ export async function setHotelInterest(params: {
       }
     }
 
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/hotels`);
     return { success: true };
   } catch (error) {

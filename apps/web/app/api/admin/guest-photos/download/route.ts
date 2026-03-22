@@ -3,6 +3,7 @@ import JSZip from "jszip";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Download all guest photos as a ZIP archive
@@ -27,8 +28,11 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const weddingId = await getWeddingId();
+
     const photos = await db
       .selectFrom("guest_photos")
+      .where("wedding_id", "=", weddingId)
       .select(["id", "url", "uploader_name", "uploaded_at"])
       .orderBy("uploaded_at", "asc")
       .execute();

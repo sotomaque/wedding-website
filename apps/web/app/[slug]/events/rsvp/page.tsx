@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { EventRSVPForm } from "./event-rsvp-form";
 
 interface EventRSVPPageProps {
@@ -11,6 +12,8 @@ interface EventRSVPPageProps {
 
 async function verifyEventInvite(code: string, eventId: string) {
   try {
+    const weddingId = await getWeddingId();
+
     // Normalize code to uppercase
     const normalizedCode = code.toUpperCase().trim();
 
@@ -18,6 +21,7 @@ async function verifyEventInvite(code: string, eventId: string) {
     const guest = await db
       .selectFrom("guests")
       .selectAll()
+      .where("wedding_id", "=", weddingId)
       .where("invite_code", "=", normalizedCode)
       .where("is_plus_one", "=", false) // Only match primary guests
       .executeTakeFirst();
@@ -30,6 +34,7 @@ async function verifyEventInvite(code: string, eventId: string) {
     const event = await db
       .selectFrom("events")
       .selectAll()
+      .where("wedding_id", "=", weddingId)
       .where("id", "=", eventId)
       .executeTakeFirst();
 
@@ -41,6 +46,7 @@ async function verifyEventInvite(code: string, eventId: string) {
     const invite = await db
       .selectFrom("guest_event_invites")
       .selectAll()
+      .where("wedding_id", "=", weddingId)
       .where("guest_id", "=", guest.id)
       .where("event_id", "=", eventId)
       .executeTakeFirst();

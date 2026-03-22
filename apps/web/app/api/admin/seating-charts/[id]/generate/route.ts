@@ -8,6 +8,7 @@ import {
 } from "@/lib/ai/seating-prompt";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import type {
   AISeatingResponse,
   GuestListFilter,
@@ -45,6 +46,7 @@ export async function POST(
     }
 
     const { id: chartId } = await params;
+    const weddingId = await getWeddingId();
 
     // Parse filter from request body
     let listFilter: GuestListFilter = "abc";
@@ -62,6 +64,7 @@ export async function POST(
     // Fetch the chart
     const chart = await db
       .selectFrom("seating_charts")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", chartId)
       .executeTakeFirst();
@@ -73,6 +76,7 @@ export async function POST(
     // Fetch tables for this chart
     const tables = await db
       .selectFrom("seating_tables")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("seating_chart_id", "=", chartId)
       .orderBy("table_number", "asc")
@@ -91,6 +95,7 @@ export async function POST(
     // Build query for filtered guests
     let guestQuery = db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select([
         "id",
         "first_name",

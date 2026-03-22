@@ -1,13 +1,17 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { SeatingClient } from "./seating-client";
 
 export const dynamic = "force-dynamic";
 
 async function getSeatingCharts() {
+  const weddingId = await getWeddingId();
+
   const charts = await db
     .selectFrom("seating_charts")
+    .where("wedding_id", "=", weddingId)
     .selectAll()
     .orderBy("updated_at", "desc")
     .execute();
@@ -27,8 +31,11 @@ async function getSeatingCharts() {
 }
 
 async function getConfirmedGuestsCount() {
+  const weddingId = await getWeddingId();
+
   const result = await db
     .selectFrom("guests")
+    .where("wedding_id", "=", weddingId)
     .select((eb) => eb.fn.count("id").as("count"))
     .where("rsvp_status", "=", "yes")
     .executeTakeFirst();

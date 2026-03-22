@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { env } from "@/env";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { GuestPhotosClient } from "./guest-photos-client";
 
 export const metadata = {
@@ -21,8 +22,11 @@ export default async function GuestPhotosAdminPage({
   const { authorized } = await isAdmin();
   if (!authorized) redirect(`/${slug}/unauthorized`);
 
+  const weddingId = await getWeddingId();
+
   const photos = await db
     .selectFrom("guest_photos")
+    .where("wedding_id", "=", weddingId)
     .selectAll()
     .orderBy("uploaded_at", "desc")
     .execute();

@@ -2,6 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getActivitiesInvitationEmail } from "@/lib/email/templates/activities-invitation";
 
@@ -47,9 +49,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Fetch guest details
     const guest = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", guestId)
       .executeTakeFirst();
@@ -140,7 +146,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Update activities email tracking
-      await db
+      await weddingDb
         .updateTable("guests")
         .set({
           activities_email_sent: true,

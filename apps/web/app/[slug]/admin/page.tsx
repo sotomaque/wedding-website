@@ -10,6 +10,7 @@ import {
   WEDDING_DATE_FORMATTED,
 } from "@/app/constants";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 function getCountdown(targetDate: Date) {
   const now = new Date();
@@ -27,9 +28,12 @@ function getCountdown(targetDate: Date) {
 }
 
 async function getGuestStats() {
+  const weddingId = await getWeddingId();
+
   // Get count of accepted A-list guests (not plus-ones)
   const acceptedAListCount = await db
     .selectFrom("guests")
+    .where("wedding_id", "=", weddingId)
     .select((eb) => eb.fn.count("id").as("count"))
     .where("list", "=", "a")
     .where("rsvp_status", "=", "yes")
@@ -39,6 +43,7 @@ async function getGuestStats() {
   // Get total A-list guests (not plus-ones)
   const totalAListCount = await db
     .selectFrom("guests")
+    .where("wedding_id", "=", weddingId)
     .select((eb) => eb.fn.count("id").as("count"))
     .where("list", "=", "a")
     .where("is_plus_one", "=", false)
@@ -47,6 +52,7 @@ async function getGuestStats() {
   // Get total accepted guests (including plus-ones)
   const totalAcceptedCount = await db
     .selectFrom("guests")
+    .where("wedding_id", "=", weddingId)
     .select((eb) => eb.fn.count("id").as("count"))
     .where("rsvp_status", "=", "yes")
     .executeTakeFirst();

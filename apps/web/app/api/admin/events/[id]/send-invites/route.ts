@@ -2,6 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getEventInvitationEmail } from "@/lib/email/templates/event-invitation";
 
@@ -54,9 +56,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Verify event exists and is not a default event
     const event = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", eventId)
       .executeTakeFirst();
@@ -72,10 +78,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Get all invited guests that match the provided IDs
+    // Get all invited guests that match the provided IDs (join query - manual scoping)
     const invites = await db
       .selectFrom("guest_event_invites")
       .innerJoin("guests", "guests.id", "guest_event_invites.guest_id")
+      .where("guest_event_invites.wedding_id", "=", weddingId)
       .select([
         "guest_event_invites.id as invite_id",
         "guest_event_invites.email_resend_count",
@@ -156,7 +163,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
                 FIRST_NAME: invite.first_name,
                 LAST_NAME: invite.last_name || "",
                 INVITE_CODE: invite.invite_code,
-                EVENT_NAME: event.name,
+                EVENT_NAME: event.name as string,
                 EVENT_DESCRIPTION: event.description || "",
                 EVENT_DATE: eventDateStr || "",
                 EVENT_TIME: eventTime || "",
@@ -173,7 +180,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             firstName: invite.first_name,
             lastName: invite.last_name,
             inviteCode: invite.invite_code,
-            eventName: event.name,
+            eventName: event.name as string,
             eventDescription: event.description,
             eventDate: eventDateStr,
             eventTime,
@@ -196,7 +203,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
 
         // Update invite record with email sent status
-        await db
+        await weddingDb
           .updateTable("guest_event_invites")
           .set({
             email_sent: true,

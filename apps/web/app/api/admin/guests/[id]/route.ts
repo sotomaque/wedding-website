@@ -2,20 +2,27 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Helper function to delete a party if it has no guests remaining
  */
-async function deleteEmptyParty(partyId: string): Promise<void> {
+async function deleteEmptyParty(
+  partyId: string,
+  weddingId: string,
+  weddingDb: ReturnType<typeof forWedding>,
+): Promise<void> {
   try {
     const guestCount = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select(db.fn.count("id").as("count"))
       .where("party_id", "=", partyId)
       .executeTakeFirst();
 
     if (guestCount && Number(guestCount.count) === 0) {
-      await db.deleteFrom("parties").where("id", "=", partyId).execute();
+      await weddingDb.deleteFrom("parties").where("id", "=", partyId).execute();
     }
   } catch (error) {
     // Log but don't fail the main operation
@@ -54,10 +61,12 @@ export async function GET(
     }
 
     const { id } = await params;
+    const weddingId = await getWeddingId();
 
     // Fetch the guest
     const guest = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", id)
       .executeTakeFirst();
@@ -69,6 +78,7 @@ export async function GET(
     // Fetch plus-one if exists
     const plusOne = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("primary_guest_id", "=", id)
       .where("is_plus_one", "=", true)
@@ -116,6 +126,8 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
     const body = await request.json();
     const {
       firstName,
@@ -148,6 +160,7 @@ export async function PATCH(
     // Kysely query - fetch the current guest to check if they have a plus one
     const currentGuest = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", id)
       .executeTakeFirst();
@@ -166,6 +179,7 @@ export async function PATCH(
         // Moving to an existing party
         const targetParty = await db
           .selectFrom("parties")
+          .where("wedding_id", "=", weddingId)
           .select(["id", "invite_code"])
           .where("id", "=", partyId)
           .executeTakeFirst();
@@ -186,7 +200,7 @@ export async function PATCH(
     }
 
     // Update the primary guest
-    const updatedGuest = await db
+    const updatedGuest = await weddingDb
       .updateTable("guests")
       .set({
         first_name: firstName || currentGuest.first_name,
@@ -258,6 +272,7 @@ export async function PATCH(
       // Check if plus one already exists
       const existingPlusOne = await db
         .selectFrom("guests")
+        .where("wedding_id", "=", weddingId)
         .selectAll()
         .where("primary_guest_id", "=", id)
         .where("is_plus_one", "=", true)
@@ -278,7 +293,7 @@ export async function PATCH(
       if (existingPlusOne) {
         // Update existing plus one
         // Note: list and family are automatically cascaded by database trigger
-        await db
+        await weddingDb
           .updateTable("guests")
           .set({
             first_name: plusOneFirstNameFinal,
@@ -293,9 +308,8 @@ export async function PATCH(
         // Create new plus one
         // Note: list and family will be automatically set by database trigger on first update
         // For initial creation, we set them explicitly since trigger only runs on UPDATE
-        await db
-          .insertInto("guests")
-          .values({
+        await weddingDb
+          .insertInto("guests", {
             first_name: plusOneFirstNameFinal,
             last_name: plusOneLastNameFinal,
             email: null, // Plus-ones don't have their own email
@@ -320,7 +334,7 @@ export async function PATCH(
       }
     } else {
       // Remove plus one if it exists and plusOneAllowed is false
-      await db
+      await weddingDb
         .deleteFrom("guests")
         .where("primary_guest_id", "=", id)
         .where("is_plus_one", "=", true)
@@ -329,7 +343,7 @@ export async function PATCH(
 
     // Clean up the source party if it's now empty (guest was moved to a different party)
     if (sourcePartyId && sourcePartyId !== newPartyId) {
-      await deleteEmptyParty(sourcePartyId);
+      await deleteEmptyParty(sourcePartyId, weddingId, weddingDb);
     }
 
     return NextResponse.json({ guest: updatedGuest });

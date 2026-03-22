@@ -4,6 +4,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { InvitesClient } from "./invites-client";
 
 export const dynamic = "force-dynamic";
@@ -50,10 +52,14 @@ interface GuestData {
 }
 
 async function getEventWithInvites(eventId: string, filters: SearchParams) {
+  const weddingId = await getWeddingId();
+  const weddingDb = forWedding(weddingId);
+
   // Verify event exists and is not a default event
   const event = await db
     .selectFrom("events")
     .selectAll()
+    .where("wedding_id", "=", weddingId)
     .where("id", "=", eventId)
     .executeTakeFirst();
 
@@ -105,6 +111,7 @@ async function getEventWithInvites(eventId: string, filters: SearchParams) {
       "guest_event_invites.email_sent_at",
       "guest_event_invites.email_resend_count",
     ])
+    .where("guests.wedding_id", "=", weddingId)
     .where("guests.is_plus_one", "=", false) // Only show primary guests
     .orderBy("guests.first_name", "asc")
     .execute();

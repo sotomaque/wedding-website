@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import type { Database } from "@/lib/supabase/types";
 
 type Guest = Database["public"]["Tables"]["guests"]["Row"];
@@ -35,7 +36,12 @@ export async function getGuests(
   params: GetGuestsParams = {},
 ): Promise<Guest[]> {
   try {
-    let query = db.selectFrom("guests").selectAll();
+    const weddingId = await getWeddingId();
+
+    let query = db
+      .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
+      .selectAll();
 
     // Apply filters
     if (params.side) {
@@ -105,8 +111,11 @@ export async function getGuests(
 
 export async function getGuestWithPlusOne(guestId: string) {
   try {
+    const weddingId = await getWeddingId();
+
     const guest = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", guestId)
       .executeTakeFirst();
@@ -118,6 +127,7 @@ export async function getGuestWithPlusOne(guestId: string) {
     // Fetch plus-one if exists
     const plusOne = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("primary_guest_id", "=", guestId)
       .where("is_plus_one", "=", true)
@@ -144,8 +154,11 @@ export interface PartyOption {
  */
 export async function getPartiesForSelect(): Promise<PartyOption[]> {
   try {
+    const weddingId = await getWeddingId();
+
     const parties = await db
       .selectFrom("parties")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .orderBy("created_at", "desc")
       .execute();
@@ -155,6 +168,7 @@ export async function getPartiesForSelect(): Promise<PartyOption[]> {
       parties.map(async (party) => {
         const guests = await db
           .selectFrom("guests")
+          .where("wedding_id", "=", weddingId)
           .select(["first_name", "last_name"])
           .where("party_id", "=", party.id)
           .orderBy("is_plus_one", "asc")

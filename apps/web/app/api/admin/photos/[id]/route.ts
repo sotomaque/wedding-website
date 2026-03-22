@@ -1,7 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
-import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -51,7 +52,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const photo = await db
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
+    const photo = await weddingDb
       .updateTable("photos")
       .set(updateData)
       .where("id", "=", id)
@@ -100,7 +104,10 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const deleted = await db
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
+    const deleted = await weddingDb
       .deleteFrom("photos")
       .where("id", "=", id)
       .executeTakeFirst();

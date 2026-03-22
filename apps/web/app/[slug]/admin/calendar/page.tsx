@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { toDateStr } from "@/lib/calendar/date-utils";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { CalendarClient } from "./calendar-client";
 import { type ActivityPlan, type GuestTravel, groupByParty } from "./utils";
 
@@ -27,9 +28,12 @@ export default function CalendarPage() {
 }
 
 async function CalendarData() {
+  const weddingId = await getWeddingId();
+
   const [eventsRaw, guestsRaw, activityPlansRaw] = await Promise.all([
     db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .select([
         "id",
         "name",
@@ -39,7 +43,16 @@ async function CalendarData() {
         "location_name",
       ])
       .orderBy("event_date")
-      .execute(),
+      .execute() as Promise<
+      {
+        id: string;
+        name: string;
+        event_date: string | null;
+        start_time: string | null;
+        end_time: string | null;
+        location_name: string | null;
+      }[]
+    >,
     db
       .selectFrom("guests")
       .leftJoin("parties", "parties.id", "guests.party_id")
@@ -55,6 +68,7 @@ async function CalendarData() {
         "guests.party_id",
         "parties.name as party_name",
       ])
+      .where("guests.wedding_id", "=", weddingId)
       .where((eb) =>
         eb.or([
           eb("guests.arrival_date", "is not", null),
@@ -79,6 +93,7 @@ async function CalendarData() {
         "gai.status",
         "gai.planned_date",
       ])
+      .where("gai.wedding_id", "=", weddingId)
       .where("gai.planned_date", "is not", null)
       .execute(),
   ]);

@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Get seating chart details
@@ -25,10 +27,12 @@ export async function GET(
     }
 
     const { id } = await params;
+    const weddingId = await getWeddingId();
 
     // Fetch the chart
     const chart = await db
       .selectFrom("seating_charts")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", id)
       .executeTakeFirst();
@@ -40,6 +44,7 @@ export async function GET(
     // Fetch tables for this chart
     const tables = await db
       .selectFrom("seating_tables")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("seating_chart_id", "=", id)
       .orderBy("table_number", "asc")
@@ -51,6 +56,7 @@ export async function GET(
       tableIds.length > 0
         ? await db
             .selectFrom("guest_table_assignments")
+            .where("wedding_id", "=", weddingId)
             .selectAll()
             .where("seating_table_id", "in", tableIds)
             .execute()
@@ -62,6 +68,7 @@ export async function GET(
       assignedGuestIds.length > 0
         ? await db
             .selectFrom("guests")
+            .where("wedding_id", "=", weddingId)
             .selectAll()
             .where("id", "in", assignedGuestIds)
             .execute()
@@ -70,6 +77,7 @@ export async function GET(
     // Fetch all confirmed guests (for showing unassigned)
     const allConfirmedGuests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("rsvp_status", "=", "yes")
       .execute();
@@ -145,6 +153,8 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
     const body = await request.json();
     const { name, defaultSeatsPerTable, isActive, notes } = body;
 
@@ -158,7 +168,7 @@ export async function PATCH(
     if (isActive !== undefined) updateData.is_active = isActive;
     if (notes !== undefined) updateData.notes = notes;
 
-    const chart = await db
+    const chart = await weddingDb
       .updateTable("seating_charts")
       .set(updateData)
       .where("id", "=", id)
@@ -202,8 +212,10 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
 
-    await db.deleteFrom("seating_charts").where("id", "=", id).execute();
+    await weddingDb.deleteFrom("seating_charts").where("id", "=", id).execute();
 
     return NextResponse.json({ success: true });
   } catch (error) {

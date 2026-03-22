@@ -3,9 +3,12 @@ import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import {
   buildCalendarEmailHtml,
+  type CalendarEvent,
   generateIcs,
 } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { sendEmail } from "@/lib/email/resend-client";
 
 /**
@@ -37,9 +40,12 @@ export async function POST(
     }
 
     const { id: guestId } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
 
     const guest = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select([
         "id",
         "first_name",
@@ -71,6 +77,7 @@ export async function POST(
 
     const defaultEvents = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .select([
         "id",
         "name",
@@ -101,7 +108,7 @@ export async function POST(
           : e.event_date
             ? new Date(`${e.event_date}T00:00:00`)
             : null,
-    }));
+    })) as CalendarEvent[];
 
     const icsContent = generateIcs(eventsForIcs, guestName);
     const html = buildCalendarEmailHtml(eventsForIcs, guest.first_name);
@@ -127,7 +134,7 @@ export async function POST(
       );
     }
 
-    await db
+    await weddingDb
       .updateTable("guests")
       .set({
         calendar_invite_sent: true,

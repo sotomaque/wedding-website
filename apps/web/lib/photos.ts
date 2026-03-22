@@ -1,5 +1,6 @@
 import { HERO_PHOTOS, type HeroPhoto } from "@/app/constants";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 export interface Photo {
   id: string;
@@ -18,9 +19,12 @@ export interface Photo {
  */
 export async function getAllPhotos(): Promise<HeroPhoto[]> {
   try {
+    const weddingId = await getWeddingId();
+
     // Fetch active photos from database, ordered by display_order
     const dbPhotos = await db
       .selectFrom("photos")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("is_active", "=", true)
       .orderBy("display_order", "asc")
@@ -47,8 +51,11 @@ export async function getAllPhotos(): Promise<HeroPhoto[]> {
  * Server-side function that directly queries the database
  */
 export async function getAdminPhotos(): Promise<Photo[]> {
+  const weddingId = await getWeddingId();
+
   const photos = await db
     .selectFrom("photos")
+    .where("wedding_id", "=", weddingId)
     .selectAll()
     .orderBy("display_order", "asc")
     .orderBy("created_at", "desc")

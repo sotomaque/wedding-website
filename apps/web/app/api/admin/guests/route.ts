@@ -2,6 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { sendEmail } from "@/lib/email/resend-client";
 import { generateInviteCode } from "@/lib/utils/invite-code";
@@ -32,9 +34,12 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const weddingId = await getWeddingId();
+
     // Kysely query - fetch all guests ordered by created_at
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .orderBy("created_at", "desc")
       .execute();
@@ -107,6 +112,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     let inviteCode: string;
     let targetPartyId: string;
 
@@ -114,6 +122,7 @@ export async function POST(request: NextRequest) {
     if (partyId) {
       const existingParty = await db
         .selectFrom("parties")
+        .where("wedding_id", "=", weddingId)
         .select(["id", "invite_code"])
         .where("id", "=", partyId)
         .executeTakeFirst();
@@ -134,6 +143,7 @@ export async function POST(request: NextRequest) {
         // Kysely query - check if invite code exists in parties table
         const existing = await db
           .selectFrom("parties")
+          .where("wedding_id", "=", weddingId)
           .select("id")
           .where("invite_code", "=", inviteCode)
           .executeTakeFirst();
@@ -152,9 +162,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Create new party
-      const newParty = await db
-        .insertInto("parties")
-        .values({
+      const newParty = await weddingDb
+        .insertInto("parties", {
           invite_code: inviteCode,
           side: side || null,
           list: list || "a",
@@ -166,9 +175,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Kysely query - insert primary guest
-    const guest = await db
-      .insertInto("guests")
-      .values({
+    const guest = await weddingDb
+      .insertInto("guests", {
         first_name: firstName,
         last_name: lastName || null,
         email: email || null,
@@ -209,9 +217,8 @@ export async function POST(request: NextRequest) {
           : "- Plus One";
 
         // Kysely query - insert plus one guest
-        plusOneGuest = await db
-          .insertInto("guests")
-          .values({
+        plusOneGuest = await weddingDb
+          .insertInto("guests", {
             first_name: plusOneFirstNameFinal,
             last_name: plusOneLastNameFinal,
             email: null, // Plus-ones don't have their own email
@@ -252,6 +259,7 @@ export async function POST(request: NextRequest) {
       try {
         const ceremonyEvent = await db
           .selectFrom("events")
+          .where("wedding_id", "=", weddingId)
           .select(["event_date"])
           .where("name", "=", "Wedding Ceremony")
           .executeTakeFirst();
@@ -296,7 +304,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Update number_of_resends to 1 after successful email send
-        await db
+        await weddingDb
           .updateTable("guests")
           .set({ number_of_resends: 1 })
           .where("id", "=", guest.id)
@@ -357,8 +365,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Kysely query - delete guest by ID
-    await db.deleteFrom("guests").where("id", "=", id).execute();
+    await weddingDb.deleteFrom("guests").where("id", "=", id).execute();
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { getGuestParty } from "@/lib/auth/guest-session";
 import { db } from "@/lib/db";
-import { getWeddingContext } from "@/lib/db/wedding-context";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
 
 export interface Activity {
   id: string;
@@ -40,10 +41,13 @@ export interface ActivityWithInterest extends Activity {
 export async function getActivities(
   inviteCode?: string,
 ): Promise<ActivityWithInterest[]> {
+  const weddingId = await getWeddingId();
+
   // Get all activities
   const activities = await db
     .selectFrom("activities")
     .selectAll()
+    .where("wedding_id", "=", weddingId)
     .orderBy("display_order", "asc")
     .execute();
 
@@ -51,6 +55,7 @@ export async function getActivities(
   const allInterests = await db
     .selectFrom("guest_activity_interests as gai")
     .innerJoin("guests as g", "g.id", "gai.guest_id")
+    .where("gai.wedding_id", "=", weddingId)
     .select([
       "gai.activity_id",
       "gai.invite_code",
@@ -168,6 +173,9 @@ export async function setActivityInterest(params: {
   const { activityId, inviteCode, status, plannedDate } = params;
 
   try {
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
     // Verify the invite code is valid
     const party = await getGuestParty(inviteCode);
     if (!party) {
@@ -178,7 +186,7 @@ export async function setActivityInterest(params: {
 
     if (status === null) {
       // Remove interest
-      await db
+      await weddingDb
         .deleteFrom("guest_activity_interests")
         .where("activity_id", "=", activityId)
         .where("invite_code", "=", normalizedCode)
@@ -187,6 +195,7 @@ export async function setActivityInterest(params: {
       // Check if interest already exists
       const existing = await db
         .selectFrom("guest_activity_interests")
+        .where("wedding_id", "=", weddingId)
         .select("id")
         .where("activity_id", "=", activityId)
         .where("invite_code", "=", normalizedCode)
@@ -194,7 +203,7 @@ export async function setActivityInterest(params: {
 
       if (existing) {
         // Update existing
-        await db
+        await weddingDb
           .updateTable("guest_activity_interests")
           .set({
             status,
@@ -206,14 +215,14 @@ export async function setActivityInterest(params: {
         // Insert new - we need to insert for each guest in the party
         const guests = await db
           .selectFrom("guests")
+          .where("wedding_id", "=", weddingId)
           .select("id")
           .where("invite_code", "=", normalizedCode)
           .execute();
 
         for (const guest of guests) {
-          await db
-            .insertInto("guest_activity_interests")
-            .values({
+          await weddingDb
+            .insertInto("guest_activity_interests", {
               guest_id: guest.id,
               activity_id: activityId,
               invite_code: normalizedCode,
@@ -224,8 +233,6 @@ export async function setActivityInterest(params: {
         }
       }
     }
-
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/things-to-do`);
     return { success: true };
   } catch (error) {
@@ -238,9 +245,12 @@ export async function setActivityInterest(params: {
  * Get venues (ceremony and reception locations)
  */
 export async function getVenues(): Promise<Activity[]> {
+  const weddingId = await getWeddingId();
+
   const venues = await db
     .selectFrom("activities")
     .selectAll()
+    .where("wedding_id", "=", weddingId)
     .where("is_venue", "=", true)
     .orderBy("display_order", "asc")
     .execute();
@@ -291,8 +301,11 @@ export async function searchGuests(query: string): Promise<{
   try {
     if (!query || query.length < 2) return { success: true, results: [] };
 
+    const weddingId = await getWeddingId();
+
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select(["first_name", "last_name", "invite_code"])
       .where("is_plus_one", "=", false)
       .where((eb) =>
@@ -327,9 +340,12 @@ export async function setInviteCodeCookie(
     if (!inviteCode)
       return { success: false, error: "Invite code is required" };
 
+    const { weddingId, slug } = await getWeddingContext();
+
     // Validate the invite code exists
     const party = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select("invite_code")
       .where("invite_code", "=", inviteCode.toUpperCase())
       .limit(1)
@@ -345,7 +361,6 @@ export async function setInviteCodeCookie(
       maxAge: 60 * 60 * 24 * 365,
       httpOnly: true,
     });
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/things-to-do`);
     return { success: true };
   } catch (error) {

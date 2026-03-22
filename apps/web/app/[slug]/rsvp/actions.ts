@@ -9,7 +9,8 @@ import {
   generateIcs,
 } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
-import { getWeddingContext } from "@/lib/db/wedding-context";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
 import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { multiGuestRsvpSchema } from "@/lib/validations/rsvp";
@@ -87,9 +88,13 @@ export async function verifyInviteCode(code: string): Promise<{
       return { success: false, error: "Invite code is required" };
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     const party = await db
       .selectFrom("parties")
       .select(["id", "invite_code"])
+      .where("wedding_id", "=", weddingId)
       .where("invite_code", "=", code.toUpperCase())
       .executeTakeFirst();
 
@@ -98,6 +103,7 @@ export async function verifyInviteCode(code: string): Promise<{
       const guestsByCode = await db
         .selectFrom("guests")
         .select(RSVP_GUEST_COLUMNS)
+        .where("wedding_id", "=", weddingId)
         .where("invite_code", "=", code.toUpperCase())
         .execute();
 
@@ -111,6 +117,7 @@ export async function verifyInviteCode(code: string): Promise<{
     const guests = await db
       .selectFrom("guests")
       .select(RSVP_GUEST_COLUMNS)
+      .where("wedding_id", "=", weddingId)
       .where("party_id", "=", party.id)
       .execute();
 
@@ -190,9 +197,13 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       return { success: false, error: "Invite code is required" };
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     const party = await db
       .selectFrom("parties")
       .select(["id", "invite_code"])
+      .where("wedding_id", "=", weddingId)
       .where("invite_code", "=", inviteCode.toUpperCase())
       .executeTakeFirst();
 
@@ -200,10 +211,12 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       ? db
           .selectFrom("guests")
           .select(PARTY_GUEST_COLUMNS)
+          .where("wedding_id", "=", weddingId)
           .where("party_id", "=", party.id)
       : db
           .selectFrom("guests")
           .select(PARTY_GUEST_COLUMNS)
+          .where("wedding_id", "=", weddingId)
           .where("invite_code", "=", inviteCode.toUpperCase());
 
     const guests = await guestsQuery.execute();
@@ -219,7 +232,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       return { success: false, error: "Primary guest not found" };
     }
 
-    await db
+    await weddingDb
       .updateTable("guests")
       .set({
         first_name: firstName,
@@ -239,7 +252,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
     if (primaryGuest.plus_one_allowed) {
       if (!attending) {
         if (existingPlusOne) {
-          await db
+          await weddingDb
             .updateTable("guests")
             .set({ rsvp_status: "no", dietary_restrictions: null })
             .where("id", "=", existingPlusOne.id)
@@ -247,7 +260,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
         }
       } else if (plusOneAttending && plusOneFirstName?.trim()) {
         if (existingPlusOne) {
-          await db
+          await weddingDb
             .updateTable("guests")
             .set({
               first_name: plusOneFirstName,
@@ -265,9 +278,8 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
             .where("id", "=", existingPlusOne.id)
             .execute();
         } else {
-          await db
-            .insertInto("guests")
-            .values({
+          await weddingDb
+            .insertInto("guests", {
               first_name: plusOneFirstName,
               last_name: plusOneLastName || null,
               email: plusOneEmail || primaryGuest.email,
@@ -293,7 +305,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
             .execute();
         }
       } else if (existingPlusOne && plusOneAttending === false) {
-        await db
+        await weddingDb
           .updateTable("guests")
           .set({ rsvp_status: "no", dietary_restrictions: null })
           .where("id", "=", existingPlusOne.id)
@@ -308,11 +320,14 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       const capturedInviteCode = inviteCode;
       const capturedAttending = attending;
       const capturedDietary = dietaryRestrictions;
+      const capturedWeddingId = weddingId;
       after(async () => {
         try {
+          const afterWeddingDb = forWedding(capturedWeddingId);
           const updatedGuests = await db
             .selectFrom("guests")
             .select(["id", "first_name", "last_name", "email", "rsvp_status"])
+            .where("wedding_id", "=", capturedWeddingId)
             .where(
               capturedParty ? "party_id" : "invite_code",
               "=",
@@ -375,6 +390,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                 "location_name",
                 "location_address",
               ])
+              .where("wedding_id", "=", capturedWeddingId)
               .where("is_default", "=", true)
               .orderBy("display_order", "asc")
               .execute();
@@ -413,7 +429,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                     ],
                   });
 
-                  await db
+                  await afterWeddingDb
                     .updateTable("guests")
                     .set({
                       calendar_invite_sent: true,
@@ -529,9 +545,13 @@ export async function submitMultiGuestRSVP(
       accommodationNotes,
     } = parsed.data;
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     const party = await db
       .selectFrom("parties")
       .select(["id", "invite_code"])
+      .where("wedding_id", "=", weddingId)
       .where("invite_code", "=", inviteCode.toUpperCase())
       .executeTakeFirst();
 
@@ -539,11 +559,13 @@ export async function submitMultiGuestRSVP(
       ? await db
           .selectFrom("guests")
           .select(PARTY_GUEST_COLUMNS)
+          .where("wedding_id", "=", weddingId)
           .where("party_id", "=", party.id)
           .execute()
       : await db
           .selectFrom("guests")
           .select(PARTY_GUEST_COLUMNS)
+          .where("wedding_id", "=", weddingId)
           .where("invite_code", "=", inviteCode.toUpperCase())
           .execute();
 
@@ -562,7 +584,7 @@ export async function submitMultiGuestRSVP(
           return;
         }
 
-        await db
+        await weddingDb
           .updateTable("guests")
           .set({
             first_name: guestRsvp.firstName,
@@ -601,7 +623,7 @@ export async function submitMultiGuestRSVP(
 
           if (!guestRsvp.attending) {
             if (existingPlusOne) {
-              await db
+              await weddingDb
                 .updateTable("guests")
                 .set({ rsvp_status: "no", dietary_restrictions: null })
                 .where("id", "=", existingPlusOne.id)
@@ -612,7 +634,7 @@ export async function submitMultiGuestRSVP(
             guestRsvp.plusOneFirstName?.trim()
           ) {
             if (existingPlusOne) {
-              await db
+              await weddingDb
                 .updateTable("guests")
                 .set({
                   first_name: guestRsvp.plusOneFirstName,
@@ -629,9 +651,8 @@ export async function submitMultiGuestRSVP(
                 .where("id", "=", existingPlusOne.id)
                 .execute();
             } else {
-              await db
-                .insertInto("guests")
-                .values({
+              await weddingDb
+                .insertInto("guests", {
                   first_name: guestRsvp.plusOneFirstName,
                   last_name: guestRsvp.plusOneLastName || null,
                   email: existingGuest.email,
@@ -658,7 +679,7 @@ export async function submitMultiGuestRSVP(
                 .execute();
             }
           } else if (existingPlusOne && guestRsvp.plusOneAttending === false) {
-            await db
+            await weddingDb
               .updateTable("guests")
               .set({ rsvp_status: "no", dietary_restrictions: null })
               .where("id", "=", existingPlusOne.id)
@@ -674,11 +695,14 @@ export async function submitMultiGuestRSVP(
       const capturedParty = party;
       const capturedInviteCode = inviteCode;
       const capturedGuestRsvps = guestRsvps;
+      const capturedWeddingId = weddingId;
       after(async () => {
         try {
+          const afterWeddingDb = forWedding(capturedWeddingId);
           const updatedGuests = await db
             .selectFrom("guests")
             .select(["id", "first_name", "last_name", "email", "rsvp_status"])
+            .where("wedding_id", "=", capturedWeddingId)
             .where(
               capturedParty ? "party_id" : "invite_code",
               "=",
@@ -754,6 +778,7 @@ export async function submitMultiGuestRSVP(
                 "location_name",
                 "location_address",
               ])
+              .where("wedding_id", "=", capturedWeddingId)
               .where("is_default", "=", true)
               .orderBy("display_order", "asc")
               .execute();
@@ -792,7 +817,7 @@ export async function submitMultiGuestRSVP(
                     ],
                   });
 
-                  await db
+                  await afterWeddingDb
                     .updateTable("guests")
                     .set({
                       calendar_invite_sent: true,

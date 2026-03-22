@@ -1,7 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
-import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Bulk set RSVP status for a list of guests (admin override)
@@ -46,7 +47,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await db
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
+    const result = await weddingDb
       .updateTable("guests")
       .set({ rsvp_status: rsvpStatus })
       .where("id", "in", guestIds)

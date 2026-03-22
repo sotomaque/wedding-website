@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth/admin";
-import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Update a table
@@ -26,6 +27,8 @@ export async function PATCH(
     }
 
     const { tableId } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
     const body = await request.json();
     const {
       tableNumber,
@@ -48,7 +51,7 @@ export async function PATCH(
     if (shape !== undefined) updateData.shape = shape;
     if (notes !== undefined) updateData.notes = notes;
 
-    const table = await db
+    const table = await weddingDb
       .updateTable("seating_tables")
       .set(updateData)
       .where("id", "=", tableId)
@@ -95,8 +98,13 @@ export async function DELETE(
     }
 
     const { tableId } = await params;
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
 
-    await db.deleteFrom("seating_tables").where("id", "=", tableId).execute();
+    await weddingDb
+      .deleteFrom("seating_tables")
+      .where("id", "=", tableId)
+      .execute();
 
     return NextResponse.json({ success: true });
   } catch (error) {

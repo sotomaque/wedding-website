@@ -2,6 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * List all events
@@ -29,8 +31,11 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const weddingId = await getWeddingId();
+
     const events = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .orderBy("display_order", "asc")
       .orderBy("event_date", "asc")
@@ -47,6 +52,7 @@ export async function GET() {
           // For default events, use guest's main RSVP status
           const guests = await db
             .selectFrom("guests")
+            .where("wedding_id", "=", weddingId)
             .select("rsvp_status")
             .execute();
 
@@ -56,6 +62,7 @@ export async function GET() {
         } else {
           const invites = await db
             .selectFrom("guest_event_invites")
+            .where("wedding_id", "=", weddingId)
             .select("rsvp_status")
             .where("event_id", "=", event.id)
             .execute();
@@ -129,17 +136,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     // Get the highest display_order
     const maxOrder = await db
       .selectFrom("events")
+      .where("wedding_id", "=", weddingId)
       .select(db.fn.max("display_order").as("max_order"))
       .executeTakeFirst();
 
     const newOrder = (maxOrder?.max_order ?? 0) + 1;
 
-    const event = await db
-      .insertInto("events")
-      .values({
+    const event = await weddingDb
+      .insertInto("events", {
         name,
         description: description || null,
         event_date: eventDate || null,
@@ -157,12 +167,15 @@ export async function POST(request: NextRequest) {
 
     // If this is a default event, invite all guests
     if (isDefault) {
-      const guests = await db.selectFrom("guests").select("id").execute();
+      const guests = await db
+        .selectFrom("guests")
+        .where("wedding_id", "=", weddingId)
+        .select("id")
+        .execute();
 
       for (const guest of guests) {
-        await db
-          .insertInto("guest_event_invites")
-          .values({
+        await weddingDb
+          .insertInto("guest_event_invites", {
             guest_id: guest.id,
             event_id: event.id,
           })

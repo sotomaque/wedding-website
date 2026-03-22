@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * List visible guest photos
@@ -10,8 +11,11 @@ import { db } from "@/lib/db";
  */
 export async function GET() {
   try {
+    const weddingId = await getWeddingId();
+
     const photos = await db
       .selectFrom("guest_photos")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("is_visible", "=", true)
       .orderBy("uploaded_at", "desc")

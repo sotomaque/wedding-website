@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 interface Gift {
   id: string;
@@ -42,9 +43,12 @@ interface GetGiftsParams {
 
 export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
   try {
+    const weddingId = await getWeddingId();
+
     let query = db
       .selectFrom("gifts")
       .leftJoin("guests", "gifts.guest_id", "guests.id")
+      .where("gifts.wedding_id", "=", weddingId)
       .select([
         "gifts.id",
         "gifts.stripe_checkout_session_id",
@@ -125,9 +129,12 @@ export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
 
 export async function getGiftWithGuest(giftId: string) {
   try {
+    const weddingId = await getWeddingId();
+
     const gift = await db
       .selectFrom("gifts")
       .leftJoin("guests", "gifts.guest_id", "guests.id")
+      .where("gifts.wedding_id", "=", weddingId)
       .select([
         "gifts.id",
         "gifts.stripe_checkout_session_id",
@@ -174,8 +181,11 @@ interface GuestOption {
 
 export async function getGuestOptions(): Promise<GuestOption[]> {
   try {
+    const weddingId = await getWeddingId();
+
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select(["id", "first_name", "last_name", "email"])
       .where("is_plus_one", "=", false)
       .orderBy("first_name", "asc")
@@ -191,8 +201,11 @@ export async function getGuestOptions(): Promise<GuestOption[]> {
 
 export async function getGiftStats() {
   try {
+    const weddingId = await getWeddingId();
+
     const gifts = await db
       .selectFrom("gifts")
+      .where("wedding_id", "=", weddingId)
       .select([
         "gift_type",
         "status",

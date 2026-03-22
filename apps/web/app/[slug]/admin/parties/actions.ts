@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { getWeddingContext } from "@/lib/db/wedding-context";
+import { forWedding } from "@/lib/db/scoped";
+import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
 import type { Database } from "@/lib/supabase/types";
 
 type Party = Database["public"]["Tables"]["parties"]["Row"];
@@ -27,7 +28,13 @@ export async function getParties(
   params: GetPartiesParams = {},
 ): Promise<PartyWithGuests[]> {
   try {
-    let query = db.selectFrom("parties").selectAll();
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
+    let query = db
+      .selectFrom("parties")
+      .where("wedding_id", "=", weddingId)
+      .selectAll();
 
     // Apply filters
     if (params.side) {
@@ -50,6 +57,7 @@ export async function getParties(
       parties.map(async (party) => {
         const guests = await db
           .selectFrom("guests")
+          .where("wedding_id", "=", weddingId)
           .selectAll()
           .where("party_id", "=", party.id)
           .orderBy("is_plus_one", "asc")
@@ -79,8 +87,12 @@ export async function getPartyById(
   partyId: string,
 ): Promise<PartyWithGuests | null> {
   try {
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     const party = await db
       .selectFrom("parties")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("id", "=", partyId)
       .executeTakeFirst();
@@ -91,6 +103,7 @@ export async function getPartyById(
 
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .selectAll()
       .where("party_id", "=", partyId)
       .orderBy("is_plus_one", "asc")
@@ -122,7 +135,10 @@ export async function updateParty(
   },
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await db
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
+    await weddingDb
       .updateTable("parties")
       .set({
         ...data,
@@ -131,7 +147,6 @@ export async function updateParty(
       .where("id", "=", partyId)
       .execute();
 
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/admin/parties`);
     revalidatePath(`/${slug}/admin/parties/${partyId}`);
     return { success: true };
@@ -149,9 +164,13 @@ export async function moveGuestToParty(
   targetPartyId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
     // Get the guest's current party before moving
     const guest = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select(["party_id"])
       .where("id", "=", guestId)
       .executeTakeFirst();
@@ -161,6 +180,7 @@ export async function moveGuestToParty(
     // Get the target party to update the guest's invite_code as well
     const targetParty = await db
       .selectFrom("parties")
+      .where("wedding_id", "=", weddingId)
       .select(["id", "invite_code"])
       .where("id", "=", targetPartyId)
       .executeTakeFirst();
@@ -170,7 +190,7 @@ export async function moveGuestToParty(
     }
 
     // Update the guest
-    await db
+    await weddingDb
       .updateTable("guests")
       .set({
         party_id: targetPartyId,
@@ -183,8 +203,6 @@ export async function moveGuestToParty(
     if (sourcePartyId && sourcePartyId !== targetPartyId) {
       await deleteEmptyParty(sourcePartyId);
     }
-
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/admin/parties`);
     revalidatePath(`/${slug}/admin/guests`);
     return { success: true };
@@ -202,9 +220,13 @@ export async function mergeParties(
   targetPartyId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
     // Get the target party
     const targetParty = await db
       .selectFrom("parties")
+      .where("wedding_id", "=", weddingId)
       .select(["id", "invite_code"])
       .where("id", "=", targetPartyId)
       .executeTakeFirst();
@@ -214,7 +236,7 @@ export async function mergeParties(
     }
 
     // Move all guests from source to target
-    await db
+    await weddingDb
       .updateTable("guests")
       .set({
         party_id: targetPartyId,
@@ -224,9 +246,10 @@ export async function mergeParties(
       .execute();
 
     // Delete the source party
-    await db.deleteFrom("parties").where("id", "=", sourcePartyId).execute();
-
-    const { slug } = await getWeddingContext();
+    await weddingDb
+      .deleteFrom("parties")
+      .where("id", "=", sourcePartyId)
+      .execute();
     revalidatePath(`/${slug}/admin/parties`);
     revalidatePath(`/${slug}/admin/guests`);
     return { success: true };
@@ -248,9 +271,13 @@ export async function createPartyFromGuests(
       return { success: false, error: "No guests selected" };
     }
 
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
     // Get the first guest to use their data for the new party, and track source parties
     const guests = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select(["id", "party_id", "side", "list"])
       .where("id", "in", guestIds)
       .execute();
@@ -268,9 +295,8 @@ export async function createPartyFromGuests(
     const newInviteCode = generateInviteCode();
 
     // Create the new party
-    const newParty = await db
-      .insertInto("parties")
-      .values({
+    const newParty = await weddingDb
+      .insertInto("parties", {
         invite_code: newInviteCode,
         name: partyName || null,
         side: firstGuest.side,
@@ -284,7 +310,7 @@ export async function createPartyFromGuests(
     }
 
     // Move all selected guests to the new party
-    await db
+    await weddingDb
       .updateTable("guests")
       .set({
         party_id: newParty.id,
@@ -299,8 +325,6 @@ export async function createPartyFromGuests(
         await deleteEmptyParty(sourcePartyId);
       }
     }
-
-    const { slug } = await getWeddingContext();
     revalidatePath(`/${slug}/admin/parties`);
     revalidatePath(`/${slug}/admin/guests`);
     return { success: true, partyId: newParty.id };
@@ -317,9 +341,13 @@ export async function deleteParty(
   partyId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const { weddingId, slug } = await getWeddingContext();
+    const weddingDb = forWedding(weddingId);
+
     // Check if party has any guests
     const guestCount = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select(db.fn.count("id").as("count"))
       .where("party_id", "=", partyId)
       .executeTakeFirst();
@@ -332,9 +360,7 @@ export async function deleteParty(
       };
     }
 
-    await db.deleteFrom("parties").where("id", "=", partyId).execute();
-
-    const { slug } = await getWeddingContext();
+    await weddingDb.deleteFrom("parties").where("id", "=", partyId).execute();
     revalidatePath(`/${slug}/admin/parties`);
     return { success: true };
   } catch (error) {
@@ -426,14 +452,18 @@ function generateInviteCode(): string {
  */
 async function deleteEmptyParty(partyId: string): Promise<void> {
   try {
+    const weddingId = await getWeddingId();
+    const weddingDb = forWedding(weddingId);
+
     const guestCount = await db
       .selectFrom("guests")
+      .where("wedding_id", "=", weddingId)
       .select(db.fn.count("id").as("count"))
       .where("party_id", "=", partyId)
       .executeTakeFirst();
 
     if (guestCount && Number(guestCount.count) === 0) {
-      await db.deleteFrom("parties").where("id", "=", partyId).execute();
+      await weddingDb.deleteFrom("parties").where("id", "=", partyId).execute();
     }
   } catch (error) {
     // Log but don't fail the main operation
