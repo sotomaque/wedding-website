@@ -43,7 +43,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { is_visible } = body as { is_visible: boolean };
+    const { isVisible } = body as { isVisible: boolean };
 
     // Check if photo exists first
     const existing = await db.guestPhoto.findUnique({ where: { id } });
@@ -54,9 +54,9 @@ export async function PATCH(
     const photo = await db.guestPhoto.update({
       where: { id },
       data: {
-        isVisible: is_visible,
-        hiddenAt: is_visible ? null : new Date(),
-        hiddenBy: is_visible ? null : auth.email,
+        isVisible,
+        hiddenAt: isVisible ? null : new Date(),
+        hiddenBy: isVisible ? null : auth.email,
       },
     });
 

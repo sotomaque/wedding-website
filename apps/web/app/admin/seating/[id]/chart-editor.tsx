@@ -138,7 +138,7 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
     }
   };
 
-  // Helper to find all party members (same party_id or invite_code) for a guest
+  // Helper to find all party members (same partyId or inviteCode) for a guest
   const getPartyMembers = (guestId: string) => {
     // Get all guests from all sources
     const allGuests = [
@@ -150,13 +150,13 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
     const targetGuest = allGuests.find((g) => g.id === guestId);
     if (!targetGuest) return [];
 
-    // Use party_id if available, otherwise fall back to invite_code
-    if (targetGuest.party_id) {
-      return allGuests.filter((g) => g.party_id === targetGuest.party_id);
+    // Use partyId if available, otherwise fall back to inviteCode
+    if (targetGuest.partyId) {
+      return allGuests.filter((g) => g.partyId === targetGuest.partyId);
     }
 
-    // Fallback to invite_code for backwards compatibility
-    return allGuests.filter((g) => g.invite_code === targetGuest.invite_code);
+    // Fallback to inviteCode for backwards compatibility
+    return allGuests.filter((g) => g.inviteCode === targetGuest.inviteCode);
   };
 
   const handleAssignGuest = async (guestId: string, tableId: string) => {
@@ -574,7 +574,7 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
                 type="number"
                 min={1}
                 max={20}
-                placeholder={`Default: ${chart.default_seats_per_table}`}
+                placeholder={`Default: ${chart.defaultSeatsPerTable}`}
                 value={newTableCapacity ?? ""}
                 onChange={(e) =>
                   setNewTableCapacity(

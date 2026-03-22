@@ -37,7 +37,7 @@ export function DroppableTable({ table, onDeleteTable }: DroppableTableProps) {
       <div className="flex items-center justify-between mb-2">
         <div>
           <h4 className="font-medium text-sm">
-            {table.table_name || `Table ${table.table_number}`}
+            {table.tableName || `Table ${table.tableNumber}`}
           </h4>
           <div className="flex items-center gap-2 mt-0.5">
             <Badge

@@ -37,9 +37,9 @@ const sampleGifts = [
       email: "jane@example.com",
     },
     // Flattened after mapping in the action
-    guest_first_name: "Jane",
-    guest_last_name: "Guest",
-    guest_email: "jane@example.com",
+    guestFirstName: "Jane",
+    guestLastName: "Guest",
+    guestEmail: "jane@example.com",
   },
   {
     id: "gift-2",
@@ -59,9 +59,9 @@ const sampleGifts = [
     createdAt: "2025-01-02T00:00:00Z",
     updatedAt: "2025-01-02T00:00:00Z",
     guest: null,
-    guest_first_name: null,
-    guest_last_name: null,
-    guest_email: null,
+    guestFirstName: null,
+    guestLastName: null,
+    guestEmail: null,
   },
   {
     id: "gift-3",
@@ -81,9 +81,9 @@ const sampleGifts = [
     createdAt: "2025-01-03T00:00:00Z",
     updatedAt: "2025-01-03T00:00:00Z",
     guest: null,
-    guest_first_name: null,
-    guest_last_name: null,
-    guest_email: null,
+    guestFirstName: null,
+    guestLastName: null,
+    guestEmail: null,
   },
 ];
 
@@ -128,9 +128,9 @@ describe("Admin Gifts - getGifts", () => {
     const giftWithGuest = gifts.find((g) => g.guestId !== null);
 
     expect(giftWithGuest).toBeDefined();
-    expect(giftWithGuest?.guest_first_name).toBe("Jane");
-    expect(giftWithGuest?.guest_last_name).toBe("Guest");
-    expect(giftWithGuest?.guest_email).toBe("jane@example.com");
+    expect(giftWithGuest?.guestFirstName).toBe("Jane");
+    expect(giftWithGuest?.guestLastName).toBe("Guest");
+    expect(giftWithGuest?.guestEmail).toBe("jane@example.com");
   });
 
   it("should return gifts with all required fields", async () => {

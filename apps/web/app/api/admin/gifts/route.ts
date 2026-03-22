@@ -37,9 +37,9 @@ export async function GET() {
     // Flatten guest info onto each gift for backwards compatibility
     const giftsWithGuest = gifts.map((gift) => ({
       ...gift,
-      guest_first_name: gift.guest?.firstName ?? null,
-      guest_last_name: gift.guest?.lastName ?? null,
-      guest_invite_code: gift.guest?.inviteCode ?? null,
+      guestFirstName: gift.guest?.firstName ?? null,
+      guestLastName: gift.guest?.lastName ?? null,
+      guestInviteCode: gift.guest?.inviteCode ?? null,
     }));
 
     // Calculate totals
@@ -105,7 +105,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, thank_you_email_sent, guest_id, notes } = body;
+    const { id, thankYouEmailSent, guestId, notes } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -119,15 +119,15 @@ export async function PATCH(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
-    if (thank_you_email_sent !== undefined) {
-      updates.thankYouEmailSent = thank_you_email_sent;
-      if (thank_you_email_sent) {
+    if (thankYouEmailSent !== undefined) {
+      updates.thankYouEmailSent = thankYouEmailSent;
+      if (thankYouEmailSent) {
         updates.thankYouEmailSentAt = new Date().toISOString();
       }
     }
 
-    if (guest_id !== undefined) {
-      updates.guestId = guest_id;
+    if (guestId !== undefined) {
+      updates.guestId = guestId;
     }
 
     if (notes !== undefined) {

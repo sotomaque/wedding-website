@@ -44,9 +44,9 @@ interface Gift {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  guest_first_name?: string | null;
-  guest_last_name?: string | null;
-  guest_email?: string | null;
+  guestFirstName?: string | null;
+  guestLastName?: string | null;
+  guestEmail?: string | null;
 }
 
 interface GuestOption {
@@ -171,8 +171,8 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: gift.id,
-          guest_id: data.guestId,
-          thank_you_email_sent: data.thankYouEmailSent,
+          guestId: data.guestId,
+          thankYouEmailSent: data.thankYouEmailSent,
           notes: data.notes || null,
         }),
       });
@@ -401,14 +401,14 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
 
             {/* Current Match Info */}
             {gift.guestId &&
-              gift.guest_first_name &&
+              gift.guestFirstName &&
               selectedGuestId !== gift.guestId && (
                 <div className="border-t pt-4">
                   <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">
                       <strong>Note:</strong> This gift was originally matched to{" "}
                       <span className="font-medium">
-                        {gift.guest_first_name} {gift.guest_last_name || ""}
+                        {gift.guestFirstName} {gift.guestLastName || ""}
                       </span>
                       . Changing the match will update the association.
                     </p>

@@ -55,24 +55,24 @@ async function getEvents() {
         id: event.id,
         name: event.name,
         description: event.description,
-        event_date: eventDateStr,
-        start_time: event.startTime
+        eventDate: eventDateStr,
+        startTime: event.startTime
           ? event.startTime instanceof Date
             ? event.startTime.toISOString()
             : String(event.startTime)
           : null,
-        end_time: event.endTime
+        endTime: event.endTime
           ? event.endTime instanceof Date
             ? event.endTime.toISOString()
             : String(event.endTime)
           : null,
-        location_name: event.locationName,
-        location_address: event.locationAddress,
+        locationName: event.locationName,
+        locationAddress: event.locationAddress,
         latitude: event.latitude ? Number(event.latitude) : null,
         longitude: event.longitude ? Number(event.longitude) : null,
-        is_default: event.isDefault ?? false,
-        display_order: event.displayOrder ?? 0,
-        created_at: createdAtStr,
+        isDefault: event.isDefault ?? false,
+        displayOrder: event.displayOrder ?? 0,
+        createdAt: createdAtStr,
         inviteCount: total,
         confirmedCount: confirmed,
         declinedCount: declined,

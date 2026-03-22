@@ -18,24 +18,24 @@ interface GetGuestsParams {
     | "maid_of_honor"
     | "any";
   sortBy?:
-    | "first_name"
+    | "firstName"
     | "email"
     | "side"
     | "list"
-    | "rsvp_status"
-    | "number_of_resends"
-    | "created_at";
+    | "rsvpStatus"
+    | "numberOfResends"
+    | "createdAt";
   sortOrder?: "asc" | "desc";
 }
 
 const sortByMap: Record<string, string> = {
-  first_name: "firstName",
+  firstName: "firstName",
   email: "email",
   side: "side",
   list: "list",
-  rsvp_status: "rsvpStatus",
-  number_of_resends: "numberOfResends",
-  created_at: "createdAt",
+  rsvpStatus: "rsvpStatus",
+  numberOfResends: "numberOfResends",
+  createdAt: "createdAt",
 };
 
 export async function getGuests(params: GetGuestsParams = {}) {
@@ -91,7 +91,7 @@ export async function getGuests(params: GetGuestsParams = {}) {
     }
 
     // Apply sorting
-    const sortBy = sortByMap[params.sortBy || "created_at"] || "createdAt";
+    const sortBy = sortByMap[params.sortBy || "createdAt"] || "createdAt";
     const sortOrder = params.sortOrder || "desc";
 
     const guests = await db.guest.findMany({
@@ -135,7 +135,7 @@ export async function getGuestWithPlusOne(guestId: string) {
 
 export interface PartyOption {
   id: string;
-  invite_code: string;
+  inviteCode: string;
   name: string | null;
   guestNames: string;
   guestCount: number;
@@ -166,7 +166,7 @@ export async function getPartiesForSelect(): Promise<PartyOption[]> {
 
         return {
           id: party.id,
-          invite_code: party.inviteCode,
+          inviteCode: party.inviteCode,
           name: party.name,
           guestNames:
             guests.length > 3

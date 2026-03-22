@@ -79,46 +79,46 @@ async function CalendarData() {
   const events = eventsRaw.map((e) => ({
     id: e.id,
     name: e.name,
-    event_date: toDateStr(e.eventDate),
-    start_time: e.startTime
+    eventDate: toDateStr(e.eventDate),
+    startTime: e.startTime
       ? e.startTime instanceof Date
         ? e.startTime.toISOString()
         : String(e.startTime)
       : null,
-    end_time: e.endTime
+    endTime: e.endTime
       ? e.endTime instanceof Date
         ? e.endTime.toISOString()
         : String(e.endTime)
       : null,
-    location_name: e.locationName,
+    locationName: e.locationName,
   }));
 
   // Normalize dates and build GuestTravel[] (no party fields serialized)
   const guests: GuestTravel[] = guestsRaw.map((g) => ({
     kind: "guest" as const,
     id: g.id,
-    first_name: g.firstName,
-    last_name: g.lastName,
+    firstName: g.firstName,
+    lastName: g.lastName,
     side: g.side,
-    arrival_date: toDateStr(g.arrivalDate),
-    arrival_transport: g.arrivalTransport,
-    departure_date: toDateStr(g.departureDate),
-    departure_transport: g.departureTransport,
+    arrivalDate: toDateStr(g.arrivalDate),
+    arrivalTransport: g.arrivalTransport,
+    departureDate: toDateStr(g.departureDate),
+    departureTransport: g.departureTransport,
   }));
 
-  // Group by party server-side so party_id/party_name aren't serialized to the client
+  // Group by party server-side so partyId/partyName aren't serialized to the client
   const parties = groupByParty(
     guestsRaw.map((g) => ({
       id: g.id,
-      first_name: g.firstName,
-      last_name: g.lastName,
+      firstName: g.firstName,
+      lastName: g.lastName,
       side: g.side,
-      arrival_date: toDateStr(g.arrivalDate),
-      arrival_transport: g.arrivalTransport,
-      departure_date: toDateStr(g.departureDate),
-      departure_transport: g.departureTransport,
-      party_id: g.partyId,
-      party_name: g.party?.name ?? null,
+      arrivalDate: toDateStr(g.arrivalDate),
+      arrivalTransport: g.arrivalTransport,
+      departureDate: toDateStr(g.departureDate),
+      departureTransport: g.departureTransport,
+      partyId: g.partyId,
+      partyName: g.party?.name ?? null,
     })),
   );
 

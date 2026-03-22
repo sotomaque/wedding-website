@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { Guest } from "@prisma/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,14 +37,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import type { Database } from "@/lib/supabase/types";
 import {
   type EditGuestFormData,
   editGuestSchema,
 } from "@/lib/validations/guest";
 import type { PartyOption } from "./actions";
-
-type Guest = Database["public"]["Tables"]["guests"]["Row"];
 
 // PostgreSQL date columns are returned as Date objects by the pg driver.
 // Convert to the "YYYY-MM-DD" string that <input type="date"> requires.
@@ -73,48 +71,48 @@ export function EditGuestSheet({
   const [isResending, setIsResending] = useState(false);
   const [isSendingActivities, setIsSendingActivities] = useState(false);
   const [isSettingRsvp, setIsSettingRsvp] = useState(false);
-  const [localRsvpStatus, setLocalRsvpStatus] = useState(guest.rsvp_status);
+  const [localRsvpStatus, setLocalRsvpStatus] = useState(guest.rsvpStatus);
   const router = useRouter();
   const searchParams = useSearchParams();
 
   // Memoize initial values from DB to compare against current form values
   const initialValues = useMemo(
     (): EditGuestFormData => ({
-      firstName: guest.first_name,
-      lastName: guest.last_name || "",
+      firstName: guest.firstName,
+      lastName: guest.lastName || "",
       email: guest.email || "",
       side: (guest.side || "bride") as "bride" | "groom" | "both",
       list: guest.list as "a" | "b" | "c",
-      plusOneAllowed: guest.plus_one_allowed || false,
-      plusOneFirstName: plusOne?.first_name || "",
-      plusOneLastName: plusOne?.last_name || "",
-      mailingAddress: guest.mailing_address || "",
-      physicalInviteSent: guest.physical_invite_sent || false,
-      phoneNumber: guest.phone_number || "",
+      plusOneAllowed: guest.plusOneAllowed || false,
+      plusOneFirstName: plusOne?.firstName || "",
+      plusOneLastName: plusOne?.lastName || "",
+      mailingAddress: guest.mailingAddress || "",
+      physicalInviteSent: guest.physicalInviteSent || false,
+      phoneNumber: guest.phoneNumber || "",
       whatsapp: guest.whatsapp || "",
-      preferredContactMethod: (guest.preferred_contact_method || "") as
+      preferredContactMethod: (guest.preferredContactMethod || "") as
         | "email"
         | "text"
         | "whatsapp"
         | "phone_call"
         | "",
       family: guest.family || false,
-      under21: guest.under_21 || false,
-      threeAndUnder: guest.three_and_under || false,
+      under21: guest.under21 || false,
+      threeAndUnder: guest.threeAndUnder || false,
       notes: guest.notes || "",
       gender: (guest.gender || "") as "male" | "female" | "",
-      bridalPartyRole: (guest.bridal_party_role || "") as
+      bridalPartyRole: (guest.bridalPartyRole || "") as
         | "groomsman"
         | "best_man"
         | "bridesmaid"
         | "maid_of_honor"
         | "",
-      partyId: guest.party_id || "",
-      arrivalDate: toDateInput(guest.arrival_date),
-      arrivalTransport: guest.arrival_transport || "",
-      departureDate: toDateInput(guest.departure_date),
-      departureTransport: guest.departure_transport || "",
-      accommodationNotes: guest.accommodation_notes || "",
+      partyId: guest.partyId || "",
+      arrivalDate: toDateInput(guest.arrivalDate),
+      arrivalTransport: guest.arrivalTransport || "",
+      departureDate: toDateInput(guest.departureDate),
+      departureTransport: guest.departureTransport || "",
+      accommodationNotes: guest.accommodationNotes || "",
     }),
     [guest, plusOne],
   );
@@ -200,7 +198,7 @@ export function EditGuestSheet({
               ? "Declined"
               : "Pending";
         toast.success("RSVP updated!", {
-          description: `${guest.first_name} marked as ${label}`,
+          description: `${guest.firstName} marked as ${label}`,
         });
         router.refresh();
       } else {
@@ -324,7 +322,7 @@ export function EditGuestSheet({
       if (response.ok) {
         toast.success("Guest deleted", {
           description:
-            `${guest.first_name} ${guest.last_name || ""} has been removed`.trim(),
+            `${guest.firstName} ${guest.lastName || ""} has been removed`.trim(),
         });
         setShowDeleteDialog(false);
         closeSheet();
@@ -440,7 +438,7 @@ export function EditGuestSheet({
                   <SelectItem value="none">No party assigned</SelectItem>
                   {parties.map((party) => (
                     <SelectItem key={party.id} value={party.id}>
-                      {party.invite_code} -{" "}
+                      {party.inviteCode} -{" "}
                       {party.name || party.guestNames || "Empty party"} (
                       {party.guestCount} guests)
                     </SelectItem>
@@ -453,7 +451,7 @@ export function EditGuestSheet({
             </div>
 
             {/* Plus One Section - Only show for primary guests */}
-            {!guest.is_plus_one && (
+            {!guest.isPlusOne && (
               <div className="border-t pt-4 mt-2">
                 <div className="flex items-center justify-between mb-3">
                   <Label htmlFor="plusOneAllowed">Allow Plus One</Label>
@@ -606,13 +604,13 @@ export function EditGuestSheet({
               {/* Invite Email Status Display */}
               <div className="flex items-center justify-between">
                 <Label>Invite Email Status</Label>
-                {guest.number_of_resends === 0 ? (
+                {guest.numberOfResends === 0 ? (
                   <Badge variant="secondary">No invite email sent</Badge>
-                ) : guest.number_of_resends === 1 ? (
+                ) : guest.numberOfResends === 1 ? (
                   <Badge variant="default">Invite email sent</Badge>
                 ) : (
                   <Badge variant="outline">
-                    Sent {guest.number_of_resends} times
+                    Sent {guest.numberOfResends} times
                   </Badge>
                 )}
               </div>
@@ -620,13 +618,13 @@ export function EditGuestSheet({
               {/* Calendar Invite Status Display */}
               <div className="flex items-center justify-between">
                 <Label>Calendar Invite Status</Label>
-                {!guest.calendar_invite_sent ? (
+                {!guest.calendarInviteSent ? (
                   <Badge variant="secondary">No calendar invite sent</Badge>
-                ) : guest.calendar_invite_resend_count === 1 ? (
+                ) : guest.calendarInviteResendCount === 1 ? (
                   <Badge variant="default">Calendar invite sent</Badge>
                 ) : (
                   <Badge variant="outline">
-                    Sent {guest.calendar_invite_resend_count} times
+                    Sent {guest.calendarInviteResendCount} times
                   </Badge>
                 )}
               </div>
@@ -821,7 +819,7 @@ export function EditGuestSheet({
               >
                 {isResending
                   ? "Sending..."
-                  : guest.number_of_resends === 0
+                  : guest.numberOfResends === 0
                     ? "Send Email"
                     : "Resend Email"}
               </Button>
@@ -837,7 +835,7 @@ export function EditGuestSheet({
             </div>
 
             {/* Activities Email - only show for guests who RSVP'd yes */}
-            {guest.rsvp_status === "yes" && (
+            {guest.rsvpStatus === "yes" && (
               <Button
                 type="button"
                 variant="secondary"
@@ -847,7 +845,7 @@ export function EditGuestSheet({
               >
                 {isSendingActivities
                   ? "Sending..."
-                  : guest.activities_email_sent
+                  : guest.activitiesEmailSent
                     ? "Resend Activities Email"
                     : "Send Activities Email"}
               </Button>
@@ -879,7 +877,7 @@ export function EditGuestSheet({
             <AlertDialogDescription>
               This will permanently delete{" "}
               <strong>
-                {guest.first_name} {guest.last_name || ""}
+                {guest.firstName} {guest.lastName || ""}
               </strong>{" "}
               and their RSVP information. This action cannot be undone.
             </AlertDialogDescription>
@@ -909,7 +907,7 @@ export function EditGuestSheet({
             </AlertDialogTitle>
             <AlertDialogDescription>
               <strong>
-                {guest.first_name} {guest.last_name || ""}
+                {guest.firstName} {guest.lastName || ""}
               </strong>{" "}
               is on the {currentList.toUpperCase()}-List. Are you sure you want
               to send them an invitation email?

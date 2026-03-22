@@ -29,16 +29,16 @@ interface Event {
   id: string;
   name: string;
   description: string | null;
-  event_date: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  location_name: string | null;
-  location_address: string | null;
+  eventDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  locationName: string | null;
+  locationAddress: string | null;
   latitude: number | null;
   longitude: number | null;
-  is_default: boolean;
-  display_order: number;
-  created_at: string;
+  isDefault: boolean;
+  displayOrder: number;
+  createdAt: string;
   inviteCount: number;
   confirmedCount: number;
   declinedCount: number;
@@ -111,14 +111,14 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
     setFormData({
       name: event.name,
       description: event.description || "",
-      eventDate: event.event_date || "",
-      startTime: event.start_time?.slice(0, 5) || "",
-      endTime: event.end_time?.slice(0, 5) || "",
-      locationName: event.location_name || "",
-      locationAddress: event.location_address || "",
+      eventDate: event.eventDate || "",
+      startTime: event.startTime?.slice(0, 5) || "",
+      endTime: event.endTime?.slice(0, 5) || "",
+      locationName: event.locationName || "",
+      locationAddress: event.locationAddress || "",
       latitude: event.latitude?.toString() || "",
       longitude: event.longitude?.toString() || "",
-      isDefault: event.is_default,
+      isDefault: event.isDefault,
     });
     setIsDialogOpen(true);
   };
@@ -160,7 +160,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
             e.id === editingEvent.id
               ? {
                   ...data.event,
-                  event_date: data.event.event_date.split("T")[0],
+                  eventDate: data.event.eventDate.split("T")[0],
                   inviteCount: e.inviteCount,
                   confirmedCount: e.confirmedCount,
                   declinedCount: e.declinedCount,
@@ -182,18 +182,16 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
         const data = await response.json();
         const newEvent: Event = {
           ...data.event,
-          event_date: data.event.event_date?.split("T")[0] ?? null,
-          inviteCount: data.event.is_default
-            ? (events[0]?.inviteCount ?? 0)
-            : 0,
+          eventDate: data.event.eventDate?.split("T")[0] ?? null,
+          inviteCount: data.event.isDefault ? (events[0]?.inviteCount ?? 0) : 0,
           confirmedCount: 0,
           declinedCount: 0,
-          pendingCount: data.event.is_default
+          pendingCount: data.event.isDefault
             ? (events[0]?.inviteCount ?? 0)
             : 0,
         };
         setEvents((prev) =>
-          [...prev, newEvent].sort((a, b) => a.display_order - b.display_order),
+          [...prev, newEvent].sort((a, b) => a.displayOrder - b.displayOrder),
         );
         toast.success("Event created successfully");
       }
@@ -267,7 +265,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <h2 className="text-xl font-semibold">{event.name}</h2>
-                    {event.is_default && (
+                    {event.isDefault && (
                       <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                         All Guests Invited
                       </span>
@@ -281,10 +279,10 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                    {event.event_date ? (
+                    {event.eventDate ? (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        <span>{formatDate(event.event_date)}</span>
+                        <span>{formatDate(event.eventDate)}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-muted-foreground italic">
@@ -292,12 +290,12 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                         <span>Date TBD</span>
                       </div>
                     )}
-                    {event.start_time ? (
+                    {event.startTime ? (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Clock className="h-4 w-4" />
                         <span>
-                          {formatTime(event.start_time)}
-                          {event.end_time && ` - ${formatTime(event.end_time)}`}
+                          {formatTime(event.startTime)}
+                          {event.endTime && ` - ${formatTime(event.endTime)}`}
                         </span>
                       </div>
                     ) : (
@@ -306,10 +304,10 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                         <span>Time TBD</span>
                       </div>
                     )}
-                    {event.location_name ? (
+                    {event.locationName ? (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <MapPin className="h-4 w-4" />
-                        <span>{event.location_name}</span>
+                        <span>{event.locationName}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-muted-foreground italic">
@@ -326,15 +324,15 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                     </div>
                   </div>
 
-                  {event.location_address && (
+                  {event.locationAddress && (
                     <p className="text-sm text-muted-foreground mt-2">
-                      {event.location_address}
+                      {event.locationAddress}
                     </p>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {!event.is_default && (
+                  {!event.isDefault && (
                     <Button variant="outline" size="sm" asChild>
                       <a href={`/admin/events/${event.id}/invites`}>
                         <Users className="h-4 w-4 mr-1" />

@@ -56,9 +56,9 @@ interface Gift {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  guest_first_name?: string | null;
-  guest_last_name?: string | null;
-  guest_email?: string | null;
+  guestFirstName?: string | null;
+  guestLastName?: string | null;
+  guestEmail?: string | null;
 }
 
 interface GiftStats {
@@ -71,10 +71,10 @@ interface GiftStats {
 }
 
 type SortableColumn =
-  | "created_at"
-  | "amount_cents"
-  | "donor_name"
-  | "gift_type"
+  | "createdAt"
+  | "amountCents"
+  | "donorName"
+  | "giftType"
   | "status";
 
 interface GiftsTableProps {

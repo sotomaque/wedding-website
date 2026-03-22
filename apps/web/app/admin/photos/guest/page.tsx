@@ -37,9 +37,9 @@ export default async function GuestPhotosAdminPage() {
         photos={photos.map((p) => ({
           id: p.id,
           url: p.url,
-          uploader_name: p.uploaderName,
-          is_visible: p.isVisible,
-          uploaded_at: p.uploadedAt.toISOString(),
+          uploaderName: p.uploaderName,
+          isVisible: p.isVisible,
+          uploadedAt: p.uploadedAt.toISOString(),
         }))}
         uploadUrl={uploadUrl}
       />

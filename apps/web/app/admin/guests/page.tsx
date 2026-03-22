@@ -21,13 +21,13 @@ interface PageProps {
       | "maid_of_honor"
       | "any";
     sortBy?:
-      | "first_name"
+      | "firstName"
       | "email"
       | "side"
       | "list"
-      | "rsvp_status"
-      | "number_of_resends"
-      | "created_at";
+      | "rsvpStatus"
+      | "numberOfResends"
+      | "createdAt";
     sortOrder?: "asc" | "desc";
     page?: string;
     edit?: string;

@@ -6,10 +6,10 @@ export interface Photo {
   url: string;
   alt: string;
   description: string | null;
-  display_order: number;
-  is_active: boolean;
-  created_at: Date;
-  updated_at?: Date;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt?: Date;
 }
 
 /**
@@ -18,7 +18,7 @@ export interface Photo {
  */
 export async function getAllPhotos(): Promise<HeroPhoto[]> {
   try {
-    // Fetch active photos from database, ordered by display_order
+    // Fetch active photos from database, ordered by displayOrder
     const dbPhotos = await db.photo.findMany({
       where: { isActive: true },
       orderBy: { displayOrder: "asc" },

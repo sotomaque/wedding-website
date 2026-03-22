@@ -16,7 +16,7 @@ export function GuestChip({ guest, sourceTableId }: GuestChipProps) {
       id: `guest-${guest.id}`,
       data: {
         guestId: guest.id,
-        guestName: `${guest.first_name}${guest.last_name ? ` ${guest.last_name}` : ""}`,
+        guestName: `${guest.firstName}${guest.lastName ? ` ${guest.lastName}` : ""}`,
         sourceTableId,
       },
     });
@@ -43,19 +43,19 @@ export function GuestChip({ guest, sourceTableId }: GuestChipProps) {
         "px-2 py-1.5 bg-background border rounded text-sm cursor-grab active:cursor-grabbing transition-colors hover:bg-muted",
         sideColor && `border-l-4 ${sideColor}`,
         isDragging && "opacity-50",
-        guest.is_plus_one && "italic",
+        guest.isPlusOne && "italic",
         guest.family && "font-medium",
-        guest.bridal_party_role && "bg-accent/20",
+        guest.bridalPartyRole && "bg-accent/20",
       )}
     >
       <div className="flex items-center gap-1">
         <span className="truncate">
-          {guest.first_name}
-          {guest.last_name ? ` ${guest.last_name}` : ""}
+          {guest.firstName}
+          {guest.lastName ? ` ${guest.lastName}` : ""}
         </span>
-        {guest.bridal_party_role && (
+        {guest.bridalPartyRole && (
           <span className="text-xs text-muted-foreground">
-            ({guest.bridal_party_role.replace("_", " ")})
+            ({guest.bridalPartyRole.replace("_", " ")})
           </span>
         )}
       </div>

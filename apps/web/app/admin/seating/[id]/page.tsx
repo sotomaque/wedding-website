@@ -97,42 +97,16 @@ async function getChartWithDetails(id: string, filter: GuestFilter) {
 
     return {
       ...table,
-      created_at:
-        table.createdAt instanceof Date
-          ? table.createdAt.toISOString()
-          : String(table.createdAt),
-      guests: tableGuests.map((g) => ({
-        ...g,
-        created_at:
-          g.createdAt instanceof Date
-            ? g.createdAt.toISOString()
-            : String(g.createdAt),
-        activities_email_sent_at: g.activitiesEmailSentAt
-          ? g.activitiesEmailSentAt instanceof Date
-            ? g.activitiesEmailSentAt.toISOString()
-            : String(g.activitiesEmailSentAt)
-          : null,
-      })),
+      guests: tableGuests,
       assignedCount: tableGuests.length,
       capacity: table.capacityOverride || chart.defaultSeatsPerTable,
     };
   });
 
   // Find unassigned guests (from filtered pool)
-  const unassignedGuests = filteredGuests
-    .filter((g) => !assignedGuestIds.includes(g.id))
-    .map((g) => ({
-      ...g,
-      created_at:
-        g.createdAt instanceof Date
-          ? g.createdAt.toISOString()
-          : String(g.createdAt),
-      activities_email_sent_at: g.activitiesEmailSentAt
-        ? g.activitiesEmailSentAt instanceof Date
-          ? g.activitiesEmailSentAt.toISOString()
-          : String(g.activitiesEmailSentAt)
-        : null,
-    }));
+  const unassignedGuests = filteredGuests.filter(
+    (g) => !assignedGuestIds.includes(g.id),
+  );
 
   // Calculate totals
   const totalCapacity = tablesWithGuests.reduce(
@@ -143,16 +117,6 @@ async function getChartWithDetails(id: string, filter: GuestFilter) {
 
   return {
     ...chart,
-    default_seats_per_table: chart.defaultSeatsPerTable,
-    is_active: chart.isActive,
-    created_at:
-      chart.createdAt instanceof Date
-        ? chart.createdAt.toISOString()
-        : String(chart.createdAt),
-    updated_at:
-      chart.updatedAt instanceof Date
-        ? chart.updatedAt.toISOString()
-        : String(chart.updatedAt),
     tables: tablesWithGuests,
     totalAssigned,
     totalCapacity,
@@ -184,6 +148,5 @@ export default async function ChartEditorPage({
     notFound();
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: Prisma returns camelCase but SeatingChartWithTables uses Supabase snake_case types
-  return <ChartEditor chart={chart as any} filter={filter} />;
+  return <ChartEditor chart={chart} filter={filter} />;
 }

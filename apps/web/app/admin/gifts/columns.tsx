@@ -24,16 +24,16 @@ interface Gift {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  guest_first_name?: string | null;
-  guest_last_name?: string | null;
-  guest_email?: string | null;
+  guestFirstName?: string | null;
+  guestLastName?: string | null;
+  guestEmail?: string | null;
 }
 
 type SortableColumn =
-  | "created_at"
-  | "amount_cents"
-  | "donor_name"
-  | "gift_type"
+  | "createdAt"
+  | "amountCents"
+  | "donorName"
+  | "giftType"
   | "status";
 
 interface ColumnsConfig {
@@ -194,9 +194,9 @@ export function createColumns({
         <button
           type="button"
           className="flex items-center hover:text-foreground"
-          onClick={() => onSort("created_at")}
+          onClick={() => onSort("createdAt")}
         >
-          Date{getSortIcon("created_at")}
+          Date{getSortIcon("createdAt")}
         </button>
       ),
       cell: ({ row }) => (
@@ -211,9 +211,9 @@ export function createColumns({
         <button
           type="button"
           className="flex items-center hover:text-foreground"
-          onClick={() => onSort("donor_name")}
+          onClick={() => onSort("donorName")}
         >
-          Donor{getSortIcon("donor_name")}
+          Donor{getSortIcon("donorName")}
         </button>
       ),
       cell: ({ row }) => (
@@ -235,9 +235,9 @@ export function createColumns({
         <button
           type="button"
           className="flex items-center hover:text-foreground"
-          onClick={() => onSort("amount_cents")}
+          onClick={() => onSort("amountCents")}
         >
-          Amount{getSortIcon("amount_cents")}
+          Amount{getSortIcon("amountCents")}
         </button>
       ),
       cell: ({ row }) => (
@@ -252,9 +252,9 @@ export function createColumns({
         <button
           type="button"
           className="flex items-center hover:text-foreground"
-          onClick={() => onSort("gift_type")}
+          onClick={() => onSort("giftType")}
         >
-          Fund{getSortIcon("gift_type")}
+          Fund{getSortIcon("giftType")}
         </button>
       ),
       cell: ({ row }) => {
@@ -309,11 +309,11 @@ export function createColumns({
         return (
           <div className="flex flex-col">
             <span className="text-sm font-medium">
-              {row.original.guest_first_name} {row.original.guest_last_name}
+              {row.original.guestFirstName} {row.original.guestLastName}
             </span>
-            {row.original.guest_email && (
+            {row.original.guestEmail && (
               <span className="text-xs text-muted-foreground">
-                {row.original.guest_email}
+                {row.original.guestEmail}
               </span>
             )}
           </div>

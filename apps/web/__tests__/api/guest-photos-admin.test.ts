@@ -60,7 +60,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
       const response = await PATCH(
-        makeReq("PATCH", { is_visible: false }),
+        makeReq("PATCH", { isVisible: false }),
         PARAMS,
       );
       const data = await response.json();
@@ -74,7 +74,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
       const response = await PATCH(
-        makeReq("PATCH", { is_visible: false }),
+        makeReq("PATCH", { isVisible: false }),
         PARAMS,
       );
       const data = await response.json();
@@ -105,7 +105,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
       const response = await PATCH(
-        makeReq("PATCH", { is_visible: false }),
+        makeReq("PATCH", { isVisible: false }),
         PARAMS,
       );
       const data = await response.json();
@@ -137,7 +137,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
       const response = await PATCH(
-        makeReq("PATCH", { is_visible: true }),
+        makeReq("PATCH", { isVisible: true }),
         PARAMS,
       );
       const data = await response.json();
@@ -156,7 +156,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
       const response = await PATCH(
-        makeReq("PATCH", { is_visible: false }),
+        makeReq("PATCH", { isVisible: false }),
         PARAMS,
       );
       const data = await response.json();

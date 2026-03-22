@@ -53,16 +53,16 @@ export function TableView({
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
-                    {guest.first_name}
-                    {guest.last_name ? ` ${guest.last_name}` : ""}
+                    {guest.firstName}
+                    {guest.lastName ? ` ${guest.lastName}` : ""}
                   </p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     {guest.side && (
                       <span className="capitalize">{guest.side}</span>
                     )}
                     {guest.family && <span>• Family</span>}
-                    {guest.bridal_party_role && (
-                      <span>• {guest.bridal_party_role.replace("_", " ")}</span>
+                    {guest.bridalPartyRole && (
+                      <span>• {guest.bridalPartyRole.replace("_", " ")}</span>
                     )}
                   </div>
                 </div>
@@ -79,7 +79,7 @@ export function TableView({
                         value={table.id}
                         disabled={table.assignedCount >= table.capacity}
                       >
-                        {table.table_name || `Table ${table.table_number}`}
+                        {table.tableName || `Table ${table.tableNumber}`}
                         {table.assignedCount >= table.capacity && " (Full)"}
                       </SelectItem>
                     ))}
@@ -98,7 +98,7 @@ export function TableView({
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h4 className="font-medium">
-                  {table.table_name || `Table ${table.table_number}`}
+                  {table.tableName || `Table ${table.tableNumber}`}
                 </h4>
                 <p className="text-sm text-muted-foreground">
                   {table.assignedCount} of {table.capacity} seats filled
@@ -167,12 +167,12 @@ export function TableView({
                         />
                       )}
                       <span className="text-sm truncate">
-                        {guest.first_name}
-                        {guest.last_name ? ` ${guest.last_name}` : ""}
+                        {guest.firstName}
+                        {guest.lastName ? ` ${guest.lastName}` : ""}
                       </span>
-                      {guest.bridal_party_role && (
+                      {guest.bridalPartyRole && (
                         <span className="text-xs text-muted-foreground">
-                          ({guest.bridal_party_role.replace("_", " ")})
+                          ({guest.bridalPartyRole.replace("_", " ")})
                         </span>
                       )}
                     </div>

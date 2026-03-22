@@ -119,11 +119,11 @@ export function DocumentsManager({ initialDocuments }: DocumentsManagerProps) {
     const result = await createDocument({
       title: newTitle,
       description: newDescription,
-      file_url: pendingUpload.url,
-      file_type: pendingUpload.type,
-      file_size: pendingUpload.size,
+      fileUrl: pendingUpload.url,
+      fileType: pendingUpload.type,
+      fileSize: pendingUpload.size,
       category: newCategory,
-      uploaded_by: pendingUpload.uploadedBy,
+      uploadedBy: pendingUpload.uploadedBy,
     });
     setIsSaving(false);
 

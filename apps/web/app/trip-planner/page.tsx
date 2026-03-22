@@ -73,33 +73,33 @@ export default async function TripPlannerPage() {
   const events = eventsRaw.map((e) => ({
     id: e.id,
     name: e.name,
-    event_date: toDateStr(e.eventDate),
-    start_time: e.startTime
+    eventDate: toDateStr(e.eventDate),
+    startTime: e.startTime
       ? e.startTime instanceof Date
         ? e.startTime.toISOString()
         : String(e.startTime)
       : null,
-    end_time: e.endTime
+    endTime: e.endTime
       ? e.endTime instanceof Date
         ? e.endTime.toISOString()
         : String(e.endTime)
       : null,
-    location_name: e.locationName,
+    locationName: e.locationName,
   }));
 
   // Always group by party for the public view (privacy)
   const parties: PartyTravel[] = groupByParty(
     guestsRaw.map((g) => ({
       id: g.id,
-      first_name: g.firstName,
-      last_name: g.lastName,
+      firstName: g.firstName,
+      lastName: g.lastName,
       side: g.side,
-      arrival_date: toDateStr(g.arrivalDate),
-      arrival_transport: g.arrivalTransport,
-      departure_date: toDateStr(g.departureDate),
-      departure_transport: g.departureTransport,
-      party_id: g.partyId,
-      party_name: g.party?.name ?? null,
+      arrivalDate: toDateStr(g.arrivalDate),
+      arrivalTransport: g.arrivalTransport,
+      departureDate: toDateStr(g.departureDate),
+      departureTransport: g.departureTransport,
+      partyId: g.partyId,
+      partyName: g.party?.name ?? null,
     })),
   );
 

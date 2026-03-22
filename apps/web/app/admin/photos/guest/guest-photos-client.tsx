@@ -8,9 +8,9 @@ import QRCode from "react-qr-code";
 interface GuestPhoto {
   id: string;
   url: string;
-  uploader_name: string | null;
-  is_visible: boolean;
-  uploaded_at: string;
+  uploaderName: string | null;
+  isVisible: boolean;
+  uploadedAt: string;
 }
 
 type Filter = "all" | "visible" | "hidden";
@@ -52,8 +52,8 @@ export function GuestPhotosClient({
   }
 
   const filtered = photos.filter((p) => {
-    if (filter === "visible") return p.is_visible;
-    if (filter === "hidden") return !p.is_visible;
+    if (filter === "visible") return p.isVisible;
+    if (filter === "hidden") return !p.isVisible;
     return true;
   });
 
@@ -62,7 +62,7 @@ export function GuestPhotosClient({
     await fetch(`/api/admin/guest-photos/${photo.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_visible: !photo.is_visible }),
+      body: JSON.stringify({ isVisible: !photo.isVisible }),
     });
     setLoadingId(null);
     router.refresh();
@@ -125,8 +125,8 @@ export function GuestPhotosClient({
                 {f === "all"
                   ? photos.length
                   : f === "visible"
-                    ? photos.filter((p) => p.is_visible).length
-                    : photos.filter((p) => !p.is_visible).length}
+                    ? photos.filter((p) => p.isVisible).length
+                    : photos.filter((p) => !p.isVisible).length}
                 )
               </span>
             </button>
@@ -163,14 +163,14 @@ export function GuestPhotosClient({
             <div
               key={photo.id}
               className={`group relative rounded-lg overflow-hidden border border-border bg-muted aspect-square ${
-                !photo.is_visible ? "opacity-50" : ""
+                !photo.isVisible ? "opacity-50" : ""
               }`}
             >
               <Image
                 src={photo.url}
                 alt={
-                  photo.uploader_name
-                    ? `Photo by ${photo.uploader_name}`
+                  photo.uploaderName
+                    ? `Photo by ${photo.uploaderName}`
                     : "Guest photo"
                 }
                 fill
@@ -187,7 +187,7 @@ export function GuestPhotosClient({
                     onClick={() => toggleVisibility(photo)}
                     className="text-xs bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
                   >
-                    {photo.is_visible ? "Hide" : "Show"}
+                    {photo.isVisible ? "Hide" : "Show"}
                   </button>
                   <button
                     type="button"
@@ -198,15 +198,15 @@ export function GuestPhotosClient({
                     Delete
                   </button>
                 </div>
-                {photo.uploader_name && (
+                {photo.uploaderName && (
                   <p className="text-white text-xs truncate">
-                    {photo.uploader_name}
+                    {photo.uploaderName}
                   </p>
                 )}
               </div>
 
               {/* Hidden badge */}
-              {!photo.is_visible && (
+              {!photo.isVisible && (
                 <div className="absolute top-1 left-1 text-xs bg-black/60 text-white/70 px-1.5 py-0.5 rounded">
                   Hidden
                 </div>

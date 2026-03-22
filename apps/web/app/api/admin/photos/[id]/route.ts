@@ -35,14 +35,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const body = await request.json();
-    const { alt, description, display_order, is_active } = body;
+    const { alt, description, displayOrder, isActive } = body;
 
     const updateData: Record<string, unknown> = {};
 
     if (alt !== undefined) updateData.alt = alt;
     if (description !== undefined) updateData.description = description || null;
-    if (display_order !== undefined) updateData.displayOrder = display_order;
-    if (is_active !== undefined) updateData.isActive = is_active;
+    if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
+    if (isActive !== undefined) updateData.isActive = isActive;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(

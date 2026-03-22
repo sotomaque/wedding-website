@@ -21,9 +21,9 @@ interface Gift {
   createdAt: string;
   updatedAt: string;
   // Joined guest data
-  guest_first_name?: string | null;
-  guest_last_name?: string | null;
-  guest_email?: string | null;
+  guestFirstName?: string | null;
+  guestLastName?: string | null;
+  guestEmail?: string | null;
 }
 
 interface GetGiftsParams {
@@ -31,20 +31,15 @@ interface GetGiftsParams {
   status?: "pending" | "completed" | "refunded" | "failed";
   thankYouSent?: "true" | "false";
   hasGuest?: "true" | "false";
-  sortBy?:
-    | "created_at"
-    | "amount_cents"
-    | "donor_name"
-    | "gift_type"
-    | "status";
+  sortBy?: "createdAt" | "amountCents" | "donorName" | "giftType" | "status";
   sortOrder?: "asc" | "desc";
 }
 
 const sortByMap: Record<string, string> = {
-  created_at: "createdAt",
-  amount_cents: "amountCents",
-  donor_name: "donorName",
-  gift_type: "giftType",
+  createdAt: "createdAt",
+  amountCents: "amountCents",
+  donorName: "donorName",
+  giftType: "giftType",
   status: "status",
 };
 
@@ -75,7 +70,7 @@ export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
     }
 
     // Apply sorting
-    const sortBy = sortByMap[params.sortBy || "created_at"] || "createdAt";
+    const sortBy = sortByMap[params.sortBy || "createdAt"] || "createdAt";
     const sortOrder = params.sortOrder || "desc";
 
     const gifts = await db.gift.findMany({
@@ -95,9 +90,9 @@ export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
     // Map to expected shape with flattened guest data
     const mapped = gifts.map((gift) => ({
       ...gift,
-      guest_first_name: gift.guest?.firstName ?? null,
-      guest_last_name: gift.guest?.lastName ?? null,
-      guest_email: gift.guest?.email ?? null,
+      guestFirstName: gift.guest?.firstName ?? null,
+      guestLastName: gift.guest?.lastName ?? null,
+      guestEmail: gift.guest?.email ?? null,
       guest: undefined,
     }));
 
@@ -131,9 +126,9 @@ export async function getGiftWithGuest(giftId: string) {
     // Map to expected shape with flattened guest data
     const mapped = {
       ...gift,
-      guest_first_name: gift.guest?.firstName ?? null,
-      guest_last_name: gift.guest?.lastName ?? null,
-      guest_email: gift.guest?.email ?? null,
+      guestFirstName: gift.guest?.firstName ?? null,
+      guestLastName: gift.guest?.lastName ?? null,
+      guestEmail: gift.guest?.email ?? null,
       guest: undefined,
     };
 

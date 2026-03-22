@@ -43,11 +43,11 @@ export async function getDocuments(
 export async function createDocument(data: {
   title: string;
   description: string;
-  file_url: string;
-  file_type: string;
-  file_size: number | null;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number | null;
   category: DocumentCategory;
-  uploaded_by: string;
+  uploadedBy: string;
 }): Promise<{ success: boolean; error?: string }> {
   const auth = await isAdmin();
   if (!auth.authorized)
@@ -56,18 +56,17 @@ export async function createDocument(data: {
   try {
     const title = data.title.trim();
     if (!title) return { success: false, error: "Title is required" };
-    if (!data.file_url)
-      return { success: false, error: "File URL is required" };
+    if (!data.fileUrl) return { success: false, error: "File URL is required" };
 
     await db.document.create({
       data: {
         title,
         description: data.description.trim() || null,
-        fileUrl: data.file_url,
-        fileType: data.file_type,
-        fileSize: data.file_size,
+        fileUrl: data.fileUrl,
+        fileType: data.fileType,
+        fileSize: data.fileSize,
         category: data.category,
-        uploadedBy: data.uploaded_by,
+        uploadedBy: data.uploadedBy,
       },
     });
 
