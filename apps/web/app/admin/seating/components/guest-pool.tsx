@@ -18,7 +18,7 @@ export function GuestPool({ guests }: GuestPoolProps) {
   // Group guests by invite code for visual grouping
   const groupedGuests = guests.reduce(
     (acc, guest) => {
-      const code = guest.invite_code;
+      const code = guest.inviteCode ?? guest.id;
       if (!acc[code]) {
         acc[code] = [];
       }

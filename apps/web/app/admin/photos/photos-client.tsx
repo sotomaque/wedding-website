@@ -52,17 +52,17 @@ export function AdminPhotosClient({ initialPhotos }: AdminPhotosClientProps) {
       const response = await fetch(`/api/admin/photos/${photo.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: !photo.is_active }),
+        body: JSON.stringify({ isActive: !photo.isActive }),
       });
 
       if (!response.ok) throw new Error("Failed to update photo");
 
       setPhotos((prev) =>
         prev.map((p) =>
-          p.id === photo.id ? { ...p, is_active: !p.is_active } : p,
+          p.id === photo.id ? { ...p, isActive: !p.isActive } : p,
         ),
       );
-      toast.success(photo.is_active ? "Photo hidden" : "Photo visible");
+      toast.success(photo.isActive ? "Photo hidden" : "Photo visible");
     } catch (error) {
       console.error("Error updating photo:", error);
       toast.error("Failed to update photo");
@@ -141,7 +141,7 @@ export function AdminPhotosClient({ initialPhotos }: AdminPhotosClientProps) {
     newPhotos.splice(index, 1);
     newPhotos.splice(newIndex, 0, removed);
 
-    setPhotos(newPhotos.map((p, i) => ({ ...p, display_order: i })));
+    setPhotos(newPhotos.map((p, i) => ({ ...p, displayOrder: i })));
 
     // Update in database - only update the two swapped photos
     try {
@@ -149,12 +149,12 @@ export function AdminPhotosClient({ initialPhotos }: AdminPhotosClientProps) {
         fetch(`/api/admin/photos/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ display_order: newIndex }),
+          body: JSON.stringify({ displayOrder: newIndex }),
         }),
         fetch(`/api/admin/photos/${swapPhoto.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ display_order: index }),
+          body: JSON.stringify({ displayOrder: index }),
         }),
       ]);
     } catch (error) {
@@ -201,7 +201,7 @@ export function AdminPhotosClient({ initialPhotos }: AdminPhotosClientProps) {
             <div
               key={photo.id}
               className={`relative border rounded-lg overflow-hidden ${
-                !photo.is_active ? "opacity-50" : ""
+                !photo.isActive ? "opacity-50" : ""
               }`}
             >
               {/* Image */}
@@ -278,11 +278,11 @@ export function AdminPhotosClient({ initialPhotos }: AdminPhotosClientProps) {
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-2">
                         <Switch
-                          checked={photo.is_active}
+                          checked={photo.isActive}
                           onCheckedChange={() => handleToggleActive(photo)}
                         />
                         <span className="text-sm text-muted-foreground">
-                          {photo.is_active ? "Visible" : "Hidden"}
+                          {photo.isActive ? "Visible" : "Hidden"}
                         </span>
                       </div>
                       <div className="flex gap-1">

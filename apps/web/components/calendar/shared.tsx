@@ -144,7 +144,7 @@ export function PartyRow({
   party: PartyTravel;
   transport: string | null;
 }) {
-  const name = `${party.first_name} ${party.last_name ?? ""}`.trim();
+  const name = `${party.firstName} ${party.lastName ?? ""}`.trim();
   return (
     <div className="rounded-md border px-3 py-2 text-sm">
       <div className="flex items-center justify-between">
@@ -156,7 +156,7 @@ export function PartyRow({
       {party.members.length > 1 && (
         <div className="mt-1 text-xs text-muted-foreground">
           {party.members
-            .map((m) => `${m.first_name} ${m.last_name ?? ""}`.trim())
+            .map((m) => `${m.firstName} ${m.lastName ?? ""}`.trim())
             .join(", ")}
         </div>
       )}

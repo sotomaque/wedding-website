@@ -38,24 +38,23 @@ export async function POST(
 
     const { id: guestId } = await params;
 
-    const guest = await db
-      .selectFrom("guests")
-      .select([
-        "id",
-        "first_name",
-        "last_name",
-        "email",
-        "rsvp_status",
-        "calendar_invite_resend_count",
-      ])
-      .where("id", "=", guestId)
-      .executeTakeFirst();
+    const guest = await db.guest.findUnique({
+      where: { id: guestId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        rsvpStatus: true,
+        calendarInviteResendCount: true,
+      },
+    });
 
     if (!guest) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
-    if (guest.rsvp_status !== "yes") {
+    if (guest.rsvpStatus !== "yes") {
       return NextResponse.json(
         { error: "Guest has not confirmed attendance" },
         { status: 400 },
@@ -69,20 +68,19 @@ export async function POST(
       );
     }
 
-    const defaultEvents = await db
-      .selectFrom("events")
-      .select([
-        "id",
-        "name",
-        "event_date",
-        "start_time",
-        "end_time",
-        "location_name",
-        "location_address",
-      ])
-      .where("is_default", "=", true)
-      .orderBy("display_order", "asc")
-      .execute();
+    const defaultEvents = await db.event.findMany({
+      where: { isDefault: true },
+      select: {
+        id: true,
+        name: true,
+        eventDate: true,
+        startTime: true,
+        endTime: true,
+        locationName: true,
+        locationAddress: true,
+      },
+      orderBy: { displayOrder: "asc" },
+    });
 
     if (defaultEvents.length === 0) {
       return NextResponse.json(
@@ -91,20 +89,33 @@ export async function POST(
       );
     }
 
-    const guestName = `${guest.first_name}${guest.last_name ? ` ${guest.last_name}` : ""}`;
+    const guestName = `${guest.firstName}${guest.lastName ? ` ${guest.lastName}` : ""}`;
 
     const eventsForIcs = defaultEvents.map((e) => ({
-      ...e,
+      id: e.id,
+      name: e.name,
       event_date:
-        e.event_date instanceof Date
-          ? e.event_date
-          : e.event_date
-            ? new Date(`${e.event_date}T00:00:00`)
+        e.eventDate instanceof Date
+          ? e.eventDate
+          : e.eventDate
+            ? new Date(`${e.eventDate}T00:00:00`)
             : null,
+      start_time: e.startTime
+        ? e.startTime instanceof Date
+          ? e.startTime.toISOString()
+          : String(e.startTime)
+        : null,
+      end_time: e.endTime
+        ? e.endTime instanceof Date
+          ? e.endTime.toISOString()
+          : String(e.endTime)
+        : null,
+      location_name: e.locationName,
+      location_address: e.locationAddress,
     }));
 
     const icsContent = generateIcs(eventsForIcs, guestName);
-    const html = buildCalendarEmailHtml(eventsForIcs, guest.first_name);
+    const html = buildCalendarEmailHtml(eventsForIcs, guest.firstName);
 
     const result = await sendEmail({
       from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
@@ -127,16 +138,14 @@ export async function POST(
       );
     }
 
-    await db
-      .updateTable("guests")
-      .set({
-        calendar_invite_sent: true,
-        calendar_invite_sent_at: new Date().toISOString(),
-        calendar_invite_resend_count:
-          (guest.calendar_invite_resend_count || 0) + 1,
-      })
-      .where("id", "=", guestId)
-      .execute();
+    await db.guest.update({
+      where: { id: guestId },
+      data: {
+        calendarInviteSent: true,
+        calendarInviteSentAt: new Date().toISOString(),
+        calendarInviteResendCount: (guest.calendarInviteResendCount || 0) + 1,
+      },
+    });
 
     return NextResponse.json({
       success: true,

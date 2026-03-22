@@ -8,32 +8,32 @@ import { toast } from "sonner";
 
 interface Gift {
   id: string;
-  stripe_checkout_session_id: string | null;
-  stripe_payment_intent_id: string | null;
-  stripe_payment_link_id: string | null;
-  stripe_charge_id: string | null;
-  donor_email: string | null;
-  donor_name: string | null;
-  amount_cents: number;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
+  stripePaymentLinkId: string | null;
+  stripeChargeId: string | null;
+  donorEmail: string | null;
+  donorName: string | null;
+  amountCents: number;
   currency: string;
-  gift_type: "baby_fund" | "honeymoon" | "student_loans" | null;
-  guest_id: string | null;
+  giftType: "baby_fund" | "honeymoon" | "student_loans" | null;
+  guestId: string | null;
   status: "pending" | "completed" | "refunded" | "failed";
-  thank_you_email_sent: boolean;
-  thank_you_email_sent_at: string | null;
+  thankYouEmailSent: boolean;
+  thankYouEmailSentAt: string | null;
   notes: string | null;
-  created_at: string;
-  updated_at: string;
-  guest_first_name?: string | null;
-  guest_last_name?: string | null;
-  guest_email?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  guestFirstName?: string | null;
+  guestLastName?: string | null;
+  guestEmail?: string | null;
 }
 
 type SortableColumn =
-  | "created_at"
-  | "amount_cents"
-  | "donor_name"
-  | "gift_type"
+  | "createdAt"
+  | "amountCents"
+  | "donorName"
+  | "giftType"
   | "status";
 
 interface ColumnsConfig {
@@ -189,76 +189,76 @@ export function createColumns({
 
   return [
     {
-      accessorKey: "created_at",
+      accessorKey: "createdAt",
       header: () => (
         <button
           type="button"
           className="flex items-center hover:text-foreground"
-          onClick={() => onSort("created_at")}
+          onClick={() => onSort("createdAt")}
         >
-          Date{getSortIcon("created_at")}
+          Date{getSortIcon("createdAt")}
         </button>
       ),
       cell: ({ row }) => (
         <span className="text-sm whitespace-nowrap">
-          {formatDate(row.original.created_at)}
+          {formatDate(row.original.createdAt)}
         </span>
       ),
     },
     {
-      accessorKey: "donor_name",
+      accessorKey: "donorName",
       header: () => (
         <button
           type="button"
           className="flex items-center hover:text-foreground"
-          onClick={() => onSort("donor_name")}
+          onClick={() => onSort("donorName")}
         >
-          Donor{getSortIcon("donor_name")}
+          Donor{getSortIcon("donorName")}
         </button>
       ),
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-medium">
-            {row.original.donor_name || "Anonymous"}
+            {row.original.donorName || "Anonymous"}
           </span>
-          {row.original.donor_email && (
+          {row.original.donorEmail && (
             <span className="text-xs text-muted-foreground">
-              {row.original.donor_email}
+              {row.original.donorEmail}
             </span>
           )}
         </div>
       ),
     },
     {
-      accessorKey: "amount_cents",
+      accessorKey: "amountCents",
       header: () => (
         <button
           type="button"
           className="flex items-center hover:text-foreground"
-          onClick={() => onSort("amount_cents")}
+          onClick={() => onSort("amountCents")}
         >
-          Amount{getSortIcon("amount_cents")}
+          Amount{getSortIcon("amountCents")}
         </button>
       ),
       cell: ({ row }) => (
         <span className="font-semibold text-green-600 dark:text-green-400">
-          {formatCurrency(row.original.amount_cents, row.original.currency)}
+          {formatCurrency(row.original.amountCents, row.original.currency)}
         </span>
       ),
     },
     {
-      accessorKey: "gift_type",
+      accessorKey: "giftType",
       header: () => (
         <button
           type="button"
           className="flex items-center hover:text-foreground"
-          onClick={() => onSort("gift_type")}
+          onClick={() => onSort("giftType")}
         >
-          Fund{getSortIcon("gift_type")}
+          Fund{getSortIcon("giftType")}
         </button>
       ),
       cell: ({ row }) => {
-        const type = row.original.gift_type;
+        const type = row.original.giftType;
         if (!type) {
           return (
             <span className="text-xs text-muted-foreground italic">
@@ -301,7 +301,7 @@ export function createColumns({
       id: "matched_guest",
       header: "Matched Guest",
       cell: ({ row }) => {
-        if (!row.original.guest_id) {
+        if (!row.original.guestId) {
           return (
             <span className="text-xs text-muted-foreground">No match</span>
           );
@@ -309,11 +309,11 @@ export function createColumns({
         return (
           <div className="flex flex-col">
             <span className="text-sm font-medium">
-              {row.original.guest_first_name} {row.original.guest_last_name}
+              {row.original.guestFirstName} {row.original.guestLastName}
             </span>
-            {row.original.guest_email && (
+            {row.original.guestEmail && (
               <span className="text-xs text-muted-foreground">
-                {row.original.guest_email}
+                {row.original.guestEmail}
               </span>
             )}
           </div>
@@ -321,10 +321,10 @@ export function createColumns({
       },
     },
     {
-      accessorKey: "thank_you_email_sent",
+      accessorKey: "thankYouEmailSent",
       header: "Thank You",
       cell: ({ row }) => {
-        if (row.original.thank_you_email_sent) {
+        if (row.original.thankYouEmailSent) {
           return (
             <span className="text-xs text-green-600 font-medium">Sent</span>
           );
@@ -336,13 +336,13 @@ export function createColumns({
       id: "stripe",
       header: "Stripe",
       cell: ({ row }) => {
-        const chargeId = row.original.stripe_charge_id;
+        const chargeId = row.original.stripeChargeId;
         if (!chargeId) {
           return <span className="text-xs text-muted-foreground">—</span>;
         }
         return (
           <a
-            href={`https://dashboard.stripe.com/payments/${row.original.stripe_payment_intent_id || chargeId}`}
+            href={`https://dashboard.stripe.com/payments/${row.original.stripePaymentIntentId || chargeId}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"

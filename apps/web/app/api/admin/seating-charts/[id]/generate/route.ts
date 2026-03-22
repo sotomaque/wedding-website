@@ -60,23 +60,19 @@ export async function POST(
     }
 
     // Fetch the chart
-    const chart = await db
-      .selectFrom("seating_charts")
-      .selectAll()
-      .where("id", "=", chartId)
-      .executeTakeFirst();
+    const chart = await db.seatingChart.findUnique({
+      where: { id: chartId },
+    });
 
     if (!chart) {
       return NextResponse.json({ error: "Chart not found" }, { status: 404 });
     }
 
     // Fetch tables for this chart
-    const tables = await db
-      .selectFrom("seating_tables")
-      .selectAll()
-      .where("seating_chart_id", "=", chartId)
-      .orderBy("table_number", "asc")
-      .execute();
+    const tables = await db.seatingTable.findMany({
+      where: { seatingChartId: chartId },
+      orderBy: { tableNumber: "asc" },
+    });
 
     if (tables.length === 0) {
       return NextResponse.json(
@@ -89,40 +85,41 @@ export async function POST(
     }
 
     // Build query for filtered guests
-    let guestQuery = db
-      .selectFrom("guests")
-      .select([
-        "id",
-        "first_name",
-        "last_name",
-        "side",
-        "family",
-        "bridal_party_role",
-        "notes",
-        "is_plus_one",
-        "primary_guest_id",
-        "invite_code",
-        "party_id",
-      ]);
+    const whereClause: Record<string, unknown> = {};
 
     // Apply RSVP filter
     if (rsvpFilter === "confirmed") {
-      guestQuery = guestQuery.where("rsvp_status", "=", "yes");
+      whereClause.rsvpStatus = "yes";
     }
 
     // Apply list filter
     if (listFilter === "a") {
-      guestQuery = guestQuery.where("list", "=", "a");
+      whereClause.list = "a";
     } else if (listFilter === "b") {
-      guestQuery = guestQuery.where("list", "=", "b");
+      whereClause.list = "b";
     } else if (listFilter === "c") {
-      guestQuery = guestQuery.where("list", "=", "c");
+      whereClause.list = "c";
     } else if (listFilter === "ab") {
-      guestQuery = guestQuery.where("list", "in", ["a", "b"]);
+      whereClause.list = { in: ["a", "b"] };
     }
     // "abc" means all lists, no filter needed
 
-    const guests = await guestQuery.execute();
+    const guests = await db.guest.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        side: true,
+        family: true,
+        bridalPartyRole: true,
+        notes: true,
+        isPlusOne: true,
+        primaryGuestId: true,
+        inviteCode: true,
+        partyId: true,
+      },
+    });
 
     if (guests.length === 0) {
       return NextResponse.json(
@@ -141,7 +138,7 @@ export async function POST(
     const prompt = buildSeatingPrompt(
       formattedGuests,
       tables.length,
-      chart.default_seats_per_table,
+      chart.defaultSeatsPerTable,
     );
 
     // Create OpenAI client
@@ -179,7 +176,7 @@ export async function POST(
     }
 
     // Map table numbers to table IDs
-    const tableNumberToId = new Map(tables.map((t) => [t.table_number, t.id]));
+    const tableNumberToId = new Map(tables.map((t) => [t.tableNumber, t.id]));
 
     // Create a set of valid guest IDs from our query
     const validGuestIds = new Set(guests.map((g) => g.id));

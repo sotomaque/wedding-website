@@ -21,12 +21,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Kysely query - find all guests with this invite code
-    const guests = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("invite_code", "=", code.toUpperCase())
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { inviteCode: code.toUpperCase() },
+    });
 
     if (!guests || guests.length === 0) {
       return NextResponse.json(

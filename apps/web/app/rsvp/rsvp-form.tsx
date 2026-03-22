@@ -44,18 +44,18 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
   const router = useRouter();
 
   // Separate primary guests from plus-ones
-  const primaryGuests = guests.filter((g) => !g.is_plus_one);
-  const plusOnes = guests.filter((g) => g.is_plus_one);
+  const primaryGuests = guests.filter((g) => !g.isPlusOne);
+  const plusOnes = guests.filter((g) => g.isPlusOne);
 
   // Check if any guest has already RSVP'd
-  const hasRSVPd = primaryGuests.some((g) => g.rsvp_status !== "pending");
+  const hasRSVPd = primaryGuests.some((g) => g.rsvpStatus !== "pending");
 
   // Get first non-plus-one guest for contact info defaults
   const firstGuest = primaryGuests[0];
 
   // Find plus-one for a specific guest
   const findPlusOneFor = useCallback(
-    (guestId: string) => plusOnes.find((p) => p.primary_guest_id === guestId),
+    (guestId: string) => plusOnes.find((p) => p.primaryGuestId === guestId),
     [plusOnes],
   );
 
@@ -64,40 +64,40 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
     return {
       guests: primaryGuests.map((guest) => {
         const existingPlusOne = plusOnes.find(
-          (p) => p.primary_guest_id === guest.id,
+          (p) => p.primaryGuestId === guest.id,
         );
         return {
           guestId: guest.id,
-          firstName: guest.first_name || "",
-          lastName: guest.last_name || "",
-          attending: guest.rsvp_status !== "no",
-          dietaryRestrictions: guest.dietary_restrictions || "",
-          under21: guest.under_21 || false,
-          threeAndUnder: guest.three_and_under || false,
-          plusOneAllowed: guest.plus_one_allowed || false,
+          firstName: guest.firstName || "",
+          lastName: guest.lastName || "",
+          attending: guest.rsvpStatus !== "no",
+          dietaryRestrictions: guest.dietaryRestrictions || "",
+          under21: guest.under21 || false,
+          threeAndUnder: guest.threeAndUnder || false,
+          plusOneAllowed: guest.plusOneAllowed || false,
           existingPlusOneId: existingPlusOne?.id,
           plusOneAttending: existingPlusOne
-            ? existingPlusOne.rsvp_status === "yes"
+            ? existingPlusOne.rsvpStatus === "yes"
             : false,
-          plusOneFirstName: existingPlusOne?.first_name || "",
-          plusOneLastName: existingPlusOne?.last_name || "",
+          plusOneFirstName: existingPlusOne?.firstName || "",
+          plusOneLastName: existingPlusOne?.lastName || "",
           plusOneDietaryRestrictions:
-            existingPlusOne?.dietary_restrictions || "",
-          plusOneUnder21: existingPlusOne?.under_21 || false,
-          plusOneThreeAndUnder: existingPlusOne?.three_and_under || false,
+            existingPlusOne?.dietaryRestrictions || "",
+          plusOneUnder21: existingPlusOne?.under21 || false,
+          plusOneThreeAndUnder: existingPlusOne?.threeAndUnder || false,
         };
       }),
-      mailingAddress: firstGuest?.mailing_address || "",
-      phoneNumber: firstGuest?.phone_number || "",
+      mailingAddress: firstGuest?.mailingAddress || "",
+      phoneNumber: firstGuest?.phoneNumber || "",
       whatsapp: firstGuest?.whatsapp || "",
       preferredContactMethod:
-        (firstGuest?.preferred_contact_method as MultiGuestRsvpFormData["preferredContactMethod"]) ||
+        (firstGuest?.preferredContactMethod as MultiGuestRsvpFormData["preferredContactMethod"]) ||
         "",
-      arrivalDate: toDateInput(firstGuest?.arrival_date),
-      arrivalTransport: firstGuest?.arrival_transport || "",
-      departureDate: toDateInput(firstGuest?.departure_date),
-      departureTransport: firstGuest?.departure_transport || "",
-      accommodationNotes: firstGuest?.accommodation_notes || "",
+      arrivalDate: toDateInput(firstGuest?.arrivalDate),
+      arrivalTransport: firstGuest?.arrivalTransport || "",
+      departureDate: toDateInput(firstGuest?.departureDate),
+      departureTransport: firstGuest?.departureTransport || "",
+      accommodationNotes: firstGuest?.accommodationNotes || "",
     };
   }, [primaryGuests, firstGuest, plusOnes]);
 

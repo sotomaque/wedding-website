@@ -33,11 +33,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const event = await db
-      .selectFrom("events")
-      .selectAll()
-      .where("id", "=", id)
-      .executeTakeFirst();
+    const event = await db.event.findUnique({
+      where: { id },
+    });
 
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -48,26 +46,24 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     let confirmed: number;
     let declined: number;
 
-    if (event.is_default) {
+    if (event.isDefault) {
       // For default events, use guest's main RSVP status
-      const guests = await db
-        .selectFrom("guests")
-        .select("rsvp_status")
-        .execute();
+      const guests = await db.guest.findMany({
+        select: { rsvpStatus: true },
+      });
 
       total = guests.length;
-      confirmed = guests.filter((g) => g.rsvp_status === "yes").length;
-      declined = guests.filter((g) => g.rsvp_status === "no").length;
+      confirmed = guests.filter((g) => g.rsvpStatus === "yes").length;
+      declined = guests.filter((g) => g.rsvpStatus === "no").length;
     } else {
-      const invites = await db
-        .selectFrom("guest_event_invites")
-        .select("rsvp_status")
-        .where("event_id", "=", id)
-        .execute();
+      const invites = await db.guestEventInvite.findMany({
+        where: { eventId: id },
+        select: { rsvpStatus: true },
+      });
 
       total = invites.length;
-      confirmed = invites.filter((i) => i.rsvp_status === "yes").length;
-      declined = invites.filter((i) => i.rsvp_status === "no").length;
+      confirmed = invites.filter((i) => i.rsvpStatus === "yes").length;
+      declined = invites.filter((i) => i.rsvpStatus === "no").length;
     }
 
     return NextResponse.json({
@@ -131,12 +127,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       displayOrder,
     } = body;
 
-    // Get current event to check if is_default changed
-    const currentEvent = await db
-      .selectFrom("events")
-      .selectAll()
-      .where("id", "=", id)
-      .executeTakeFirst();
+    // Get current event to check if isDefault changed
+    const currentEvent = await db.event.findUnique({
+      where: { id },
+    });
 
     if (!currentEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -146,16 +140,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description || null;
-    if (eventDate !== undefined) updateData.event_date = eventDate;
-    if (startTime !== undefined) updateData.start_time = startTime;
-    if (endTime !== undefined) updateData.end_time = endTime || null;
-    if (locationName !== undefined) updateData.location_name = locationName;
+    if (eventDate !== undefined) updateData.eventDate = eventDate;
+    if (startTime !== undefined) updateData.startTime = startTime;
+    if (endTime !== undefined) updateData.endTime = endTime || null;
+    if (locationName !== undefined) updateData.locationName = locationName;
     if (locationAddress !== undefined)
-      updateData.location_address = locationAddress || null;
+      updateData.locationAddress = locationAddress || null;
     if (latitude !== undefined) updateData.latitude = latitude || null;
     if (longitude !== undefined) updateData.longitude = longitude || null;
-    if (isDefault !== undefined) updateData.is_default = isDefault;
-    if (displayOrder !== undefined) updateData.display_order = displayOrder;
+    if (isDefault !== undefined) updateData.isDefault = isDefault;
+    if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
@@ -164,27 +158,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const event = await db
-      .updateTable("events")
-      .set(updateData)
-      .where("id", "=", id)
-      .returningAll()
-      .executeTakeFirst();
+    const event = await db.event.update({
+      where: { id },
+      data: updateData,
+    });
 
     // If event became a default event, invite all guests who aren't already invited
-    if (isDefault === true && currentEvent.is_default === false) {
-      const guests = await db.selectFrom("guests").select("id").execute();
+    if (isDefault === true && currentEvent.isDefault === false) {
+      const guests = await db.guest.findMany({ select: { id: true } });
 
-      for (const guest of guests) {
-        await db
-          .insertInto("guest_event_invites")
-          .values({
-            guest_id: guest.id,
-            event_id: id,
-          })
-          .onConflict((oc) => oc.columns(["guest_id", "event_id"]).doNothing())
-          .execute();
-      }
+      await db.guestEventInvite.createMany({
+        data: guests.map((guest) => ({
+          guestId: guest.id,
+          eventId: id,
+        })),
+        skipDuplicates: true,
+      });
     }
 
     return NextResponse.json({ event });
@@ -226,12 +215,11 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     }
 
     // Deleting the event will cascade delete all guest_event_invites
-    const deleted = await db
-      .deleteFrom("events")
-      .where("id", "=", id)
-      .executeTakeFirst();
-
-    if (deleted.numDeletedRows === 0n) {
+    try {
+      await db.event.delete({
+        where: { id },
+      });
+    } catch {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 

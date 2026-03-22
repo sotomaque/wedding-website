@@ -26,12 +26,12 @@ export async function GET(request: NextRequest) {
     const normalizedCode = code.toUpperCase().trim();
 
     // Find guest with this invite code
-    const guest = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("invite_code", "=", normalizedCode)
-      .where("is_plus_one", "=", false) // Only match primary guests
-      .executeTakeFirst();
+    const guest = await db.guest.findFirst({
+      where: {
+        inviteCode: normalizedCode,
+        isPlusOne: false, // Only match primary guests
+      },
+    });
 
     if (!guest) {
       return NextResponse.json(
@@ -41,23 +41,21 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify event exists
-    const event = await db
-      .selectFrom("events")
-      .selectAll()
-      .where("id", "=", eventId)
-      .executeTakeFirst();
+    const event = await db.event.findUnique({
+      where: { id: eventId },
+    });
 
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
     // Check if guest is invited to this event
-    const invite = await db
-      .selectFrom("guest_event_invites")
-      .selectAll()
-      .where("guest_id", "=", guest.id)
-      .where("event_id", "=", eventId)
-      .executeTakeFirst();
+    const invite = await db.guestEventInvite.findFirst({
+      where: {
+        guestId: guest.id,
+        eventId: eventId,
+      },
+    });
 
     if (!invite) {
       return NextResponse.json(
@@ -67,33 +65,33 @@ export async function GET(request: NextRequest) {
     }
 
     // Format event date if present
-    const eventDateStr = event.event_date
-      ? event.event_date instanceof Date
-        ? event.event_date.toISOString().split("T")[0]
-        : String(event.event_date)
+    const eventDateStr = event.eventDate
+      ? event.eventDate instanceof Date
+        ? event.eventDate.toISOString().split("T")[0]
+        : String(event.eventDate)
       : null;
 
     return NextResponse.json({
       guest: {
         id: guest.id,
-        firstName: guest.first_name,
-        lastName: guest.last_name,
+        firstName: guest.firstName,
+        lastName: guest.lastName,
         email: guest.email,
-        inviteCode: guest.invite_code,
+        inviteCode: guest.inviteCode,
       },
       event: {
         id: event.id,
         name: event.name,
         description: event.description,
         eventDate: eventDateStr,
-        startTime: event.start_time,
-        endTime: event.end_time,
-        locationName: event.location_name,
-        locationAddress: event.location_address,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        locationName: event.locationName,
+        locationAddress: event.locationAddress,
       },
       invite: {
         id: invite.id,
-        rsvpStatus: invite.rsvp_status,
+        rsvpStatus: invite.rsvpStatus,
       },
     });
   } catch (error) {

@@ -131,13 +131,13 @@ function makeGuest(
   return {
     kind: "guest" as const,
     id,
-    first_name: "Guest",
-    last_name: id,
+    firstName: "Guest",
+    lastName: id,
     side: null,
-    arrival_date: arrival,
-    arrival_transport: null,
-    departure_date: departure,
-    departure_transport: null,
+    arrivalDate: arrival,
+    arrivalTransport: null,
+    departureDate: departure,
+    departureTransport: null,
   };
 }
 
@@ -291,15 +291,15 @@ function makeGuestWithParty(
 ) {
   return {
     id,
-    first_name: `First-${id}`,
-    last_name: `Last-${id}`,
+    firstName: `First-${id}`,
+    lastName: `Last-${id}`,
     side: "bride" as const,
-    arrival_date: arrival,
-    arrival_transport: arrival ? "Flight" : null,
-    departure_date: departure,
-    departure_transport: departure ? "Car" : null,
-    party_id: partyId,
-    party_name: partyName,
+    arrivalDate: arrival,
+    arrivalTransport: arrival ? "Flight" : null,
+    departureDate: departure,
+    departureTransport: departure ? "Car" : null,
+    partyId: partyId,
+    partyName: partyName,
   };
 }
 
@@ -308,19 +308,19 @@ describe("groupByParty", () => {
     expect(groupByParty([])).toEqual([]);
   });
 
-  it("wraps ungrouped guests (no party_id) as single-member parties", () => {
+  it("wraps ungrouped guests (no partyId) as single-member parties", () => {
     const guests = [makeGuestWithParty("g1", "2026-06-15", "2026-06-20")];
     const result = groupByParty(guests);
 
     expect(result.length).toBe(1);
     expect(result[0]?.kind).toBe("party");
     expect(result[0]?.id).toBe("g1");
-    expect(result[0]?.first_name).toBe("First-g1");
-    expect(result[0]?.last_name).toBe("Last-g1");
+    expect(result[0]?.firstName).toBe("First-g1");
+    expect(result[0]?.lastName).toBe("Last-g1");
     expect(result[0]?.members.length).toBe(1);
   });
 
-  it("groups guests with the same party_id into one entry", () => {
+  it("groups guests with the same partyId into one entry", () => {
     const guests = [
       makeGuestWithParty("g1", "2026-06-15", "2026-06-18", "p1", "The Smiths"),
       makeGuestWithParty("g2", "2026-06-16", "2026-06-20", "p1", "The Smiths"),
@@ -340,11 +340,11 @@ describe("groupByParty", () => {
     ];
     const result = groupByParty(guests);
 
-    expect(result[0]?.arrival_date).toBe("2026-06-13");
-    expect(result[0]?.departure_date).toBe("2026-06-20");
+    expect(result[0]?.arrivalDate).toBe("2026-06-13");
+    expect(result[0]?.departureDate).toBe("2026-06-20");
   });
 
-  it("uses party_name as display name when available", () => {
+  it("uses partyName as display name when available", () => {
     const guests = [
       makeGuestWithParty(
         "g1",
@@ -356,17 +356,17 @@ describe("groupByParty", () => {
     ];
     const result = groupByParty(guests);
 
-    expect(result[0]?.first_name).toBe("The Johnsons");
+    expect(result[0]?.firstName).toBe("The Johnsons");
   });
 
-  it("joins first names with & when no party_name", () => {
+  it("joins first names with & when no partyName", () => {
     const guests = [
       makeGuestWithParty("g1", "2026-06-15", "2026-06-18", "p1", null),
       makeGuestWithParty("g2", "2026-06-16", "2026-06-20", "p1", null),
     ];
     const result = groupByParty(guests);
 
-    expect(result[0]?.first_name).toBe("First-g1 & First-g2");
+    expect(result[0]?.firstName).toBe("First-g1 & First-g2");
   });
 
   it("handles a mix of grouped and ungrouped guests", () => {
@@ -391,8 +391,8 @@ describe("groupByParty", () => {
     ];
     const result = groupByParty(guests);
 
-    expect(result[0]?.arrival_date).toBe("2026-06-15");
-    expect(result[0]?.departure_date).toBe("2026-06-20");
+    expect(result[0]?.arrivalDate).toBe("2026-06-15");
+    expect(result[0]?.departureDate).toBe("2026-06-20");
   });
 
   it("takes side from first member", () => {

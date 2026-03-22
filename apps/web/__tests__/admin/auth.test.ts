@@ -17,48 +17,27 @@ mock.module("@/env", () => ({
   },
 }));
 
-// Mock the db module
+// Mock the db module with Prisma-style mocks
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => ({
-      selectAll: () => ({
-        orderBy: () => ({
-          execute: () => Promise.resolve([]),
-        }),
-        where: () => ({
-          execute: () => Promise.resolve([]),
-          executeTakeFirst: () => Promise.resolve(null),
-        }),
-      }),
-      select: () => ({
-        where: () => ({
-          executeTakeFirst: () => Promise.resolve(null),
-        }),
-      }),
-    }),
-    insertInto: () => ({
-      values: () => ({
-        returningAll: () => ({
-          executeTakeFirstOrThrow: () => Promise.resolve({ id: "test-id" }),
-          executeTakeFirst: () => Promise.resolve({ id: "test-id" }),
-        }),
-      }),
-    }),
-    updateTable: () => ({
-      set: () => ({
-        where: () => ({
-          execute: () => Promise.resolve([]),
-          returningAll: () => ({
-            executeTakeFirst: () => Promise.resolve({ id: "test-id" }),
-          }),
-        }),
-      }),
-    }),
-    deleteFrom: () => ({
-      where: () => ({
-        execute: () => Promise.resolve([]),
-      }),
-    }),
+    guest: {
+      findMany: mock(() => Promise.resolve([])),
+      findUnique: mock(() => Promise.resolve(null)),
+      findFirst: mock(() => Promise.resolve(null)),
+      create: mock(() => Promise.resolve({ id: "test-id" })),
+      update: mock(() => Promise.resolve({ id: "test-id" })),
+      delete: mock(() => Promise.resolve({})),
+      deleteMany: mock(() => Promise.resolve({ count: 0 })),
+      count: mock(() => Promise.resolve(0)),
+    },
+    party: {
+      findUnique: mock(() => Promise.resolve(null)),
+      create: mock(() => Promise.resolve({ id: "test-id" })),
+      delete: mock(() => Promise.resolve({})),
+    },
+    event: {
+      findFirst: mock(() => Promise.resolve(null)),
+    },
   },
 }));
 

@@ -20,11 +20,9 @@ export async function GET() {
       );
     }
 
-    const charts = await db
-      .selectFrom("seating_charts")
-      .selectAll()
-      .orderBy("updated_at", "desc")
-      .execute();
+    const charts = await db.seatingChart.findMany({
+      orderBy: { updatedAt: "desc" },
+    });
 
     return NextResponse.json({ charts });
   } catch (error) {
@@ -65,16 +63,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const chart = await db
-      .insertInto("seating_charts")
-      .values({
+    const chart = await db.seatingChart.create({
+      data: {
         name,
-        default_seats_per_table: defaultSeatsPerTable || 8,
-        is_active: false,
+        defaultSeatsPerTable: defaultSeatsPerTable || 8,
+        isActive: false,
         notes: notes || null,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+      },
+    });
 
     return NextResponse.json({ chart });
   } catch (error) {

@@ -46,15 +46,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await db
-      .updateTable("guests")
-      .set({ rsvp_status: rsvpStatus })
-      .where("id", "in", guestIds)
-      .execute();
+    const result = await db.guest.updateMany({
+      where: { id: { in: guestIds } },
+      data: { rsvpStatus },
+    });
 
     return NextResponse.json({
       success: true,
-      updatedCount: Number(result[0]?.numUpdatedRows ?? 0),
+      updatedCount: result.count,
       rsvpStatus,
     });
   } catch (error) {

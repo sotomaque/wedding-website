@@ -6,24 +6,23 @@ import { db } from "@/lib/db";
 export interface WeddingTodo {
   id: string;
   title: string;
-  is_completed: boolean;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
+  isCompleted: boolean;
+  displayOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export async function getTodos(): Promise<WeddingTodo[]> {
   try {
-    const todos = await db
-      .selectFrom("wedding_todos")
-      .selectAll()
-      .orderBy("is_completed", "asc")
-      .orderBy("display_order", "asc")
-      .orderBy("created_at", "desc")
-      .execute();
+    const todos = await db.weddingTodo.findMany({
+      orderBy: [
+        { isCompleted: "asc" },
+        { displayOrder: "asc" },
+        { createdAt: "desc" },
+      ],
+    });
 
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    return todos as any;
+    return todos;
   } catch (error) {
     console.error("Error fetching todos:", error);
     throw error;
@@ -39,21 +38,19 @@ export async function addTodo(
       return { success: false, error: "Title is required" };
     }
 
-    // Get the max display_order to place new todo at the end
-    const last = await db
-      .selectFrom("wedding_todos")
-      .select(db.fn.max("display_order").as("max_order"))
-      .executeTakeFirst();
+    // Get the max displayOrder to place new todo at the end
+    const result = await db.weddingTodo.aggregate({
+      _max: { displayOrder: true },
+    });
 
-    const nextOrder = (Number(last?.max_order) || 0) + 1;
+    const nextOrder = (result._max.displayOrder ?? 0) + 1;
 
-    await db
-      .insertInto("wedding_todos")
-      .values({
+    await db.weddingTodo.create({
+      data: {
         title: trimmed,
-        display_order: nextOrder,
-      })
-      .execute();
+        displayOrder: nextOrder,
+      },
+    });
 
     revalidatePath("/admin/todos");
     return { success: true };
@@ -68,14 +65,10 @@ export async function toggleTodo(
   isCompleted: boolean,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await db
-      .updateTable("wedding_todos")
-      .set({
-        is_completed: isCompleted,
-        updated_at: new Date().toISOString(),
-      })
-      .where("id", "=", id)
-      .execute();
+    await db.weddingTodo.update({
+      where: { id },
+      data: { isCompleted },
+    });
 
     revalidatePath("/admin/todos");
     return { success: true };
@@ -89,7 +82,7 @@ export async function deleteTodo(
   id: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await db.deleteFrom("wedding_todos").where("id", "=", id).execute();
+    await db.weddingTodo.delete({ where: { id } });
 
     revalidatePath("/admin/todos");
     return { success: true };
@@ -109,14 +102,10 @@ export async function updateTodoTitle(
       return { success: false, error: "Title is required" };
     }
 
-    await db
-      .updateTable("wedding_todos")
-      .set({
-        title: trimmed,
-        updated_at: new Date().toISOString(),
-      })
-      .where("id", "=", id)
-      .execute();
+    await db.weddingTodo.update({
+      where: { id },
+      data: { title: trimmed },
+    });
 
     revalidatePath("/admin/todos");
     return { success: true };

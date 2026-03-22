@@ -19,105 +19,89 @@ mock.module("@clerk/nextjs/server", () => ({
     }),
 }));
 
-// Create db mock with tracking
-const mockExecute = mock(() => Promise.resolve([]));
-const mockExecuteTakeFirst = mock(() => Promise.resolve(null));
-const mockExecuteTakeFirstOrThrow = mock(() => Promise.resolve({}));
-const mockInsertValues = mock(() => {});
-const mockUpdateSet = mock(() => {});
-const mockDeleteWhere = mock(() => {});
+// Create Prisma-style db mocks
+const mockGuestFindMany = mock(() => Promise.resolve([]));
+const mockGuestFindUnique = mock(() => Promise.resolve(null));
+const mockGuestFindFirst = mock(() => Promise.resolve(null));
+const mockGuestCreate = mock(() => Promise.resolve({}));
+const mockGuestUpdate = mock(() => Promise.resolve({}));
+const mockGuestDelete = mock(() => Promise.resolve({}));
+const mockGuestDeleteMany = mock(() => Promise.resolve({ count: 0 }));
+const mockGuestCount = mock(() => Promise.resolve(0));
 
-// Mock for party creation - returns a party with id
-const mockPartyId = "party-123";
+const mockPartyFindUnique = mock(() => Promise.resolve(null));
+const mockPartyCreate = mock(() =>
+  Promise.resolve({ id: "party-123", inviteCode: "ABCD-1234" }),
+);
+const mockPartyDelete = mock(() => Promise.resolve({}));
+
+const mockEventFindFirst = mock(() => Promise.resolve(null));
 
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: (table: string) => ({
-      selectAll: () => ({
-        orderBy: () => ({
-          execute: mockExecute,
-        }),
-        where: () => ({
-          execute: mockExecute,
-          executeTakeFirst: mockExecuteTakeFirst,
-          where: () => ({
-            executeTakeFirst: mockExecuteTakeFirst,
-          }),
-        }),
-      }),
-      select: () => ({
-        where: () => ({
-          executeTakeFirst:
-            table === "parties"
-              ? mock(() => Promise.resolve(null)) // No existing party with that invite code
-              : mockExecuteTakeFirst,
-        }),
-      }),
-    }),
-    insertInto: (table: string) => ({
-      values: (data: unknown) => {
-        mockInsertValues(data);
-        return {
-          returningAll: () => ({
-            executeTakeFirstOrThrow: mockExecuteTakeFirstOrThrow,
-            executeTakeFirst: mockExecuteTakeFirst,
-          }),
-          returning: () => ({
-            executeTakeFirstOrThrow:
-              table === "parties"
-                ? mock(() => Promise.resolve({ id: mockPartyId }))
-                : mockExecuteTakeFirstOrThrow,
-          }),
-          execute: mockExecute,
-        };
-      },
-    }),
-    updateTable: () => ({
-      set: (data: unknown) => {
-        mockUpdateSet(data);
-        return {
-          where: () => ({
-            execute: mockExecute,
-            returningAll: () => ({
-              executeTakeFirst: mockExecuteTakeFirst,
-            }),
-          }),
-        };
-      },
-    }),
-    deleteFrom: () => ({
-      where: (field: string, op: string, value: string) => {
-        mockDeleteWhere(field, op, value);
-        return {
-          execute: mockExecute,
-          where: () => ({
-            execute: mockExecute,
-          }),
-        };
-      },
-    }),
+    guest: {
+      findMany: mockGuestFindMany,
+      findUnique: mockGuestFindUnique,
+      findFirst: mockGuestFindFirst,
+      create: mockGuestCreate,
+      update: mockGuestUpdate,
+      delete: mockGuestDelete,
+      deleteMany: mockGuestDeleteMany,
+      count: mockGuestCount,
+    },
+    party: {
+      findUnique: mockPartyFindUnique,
+      create: mockPartyCreate,
+      delete: mockPartyDelete,
+    },
+    event: {
+      findFirst: mockEventFindFirst,
+    },
   },
+}));
+
+// Mock email sending (sendEmail is used in the guest route)
+mock.module("@/lib/email/resend-client", () => ({
+  sendEmail: mock(() =>
+    Promise.resolve({ data: { id: "email-123" }, error: null }),
+  ),
+  getResendClient: () => ({
+    emails: { send: mock(() => Promise.resolve({})) },
+  }),
+}));
+
+mock.module("@/lib/email/constants", () => ({
+  WEDDING_INVITATION_TEMPLATE_ALIAS: "wedding-invitation",
 }));
 
 // Note: Email sending now uses Resend templates directly, no local template mock needed
 
 describe("Guest CRUD - Create User", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockUpdateSet.mockClear();
-    mockDeleteWhere.mockClear();
+    mockGuestFindMany.mockClear();
+    mockGuestFindUnique.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGuestCreate.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestDelete.mockClear();
+    mockGuestDeleteMany.mockClear();
+    mockGuestCount.mockClear();
+    mockPartyFindUnique.mockClear();
+    mockPartyCreate.mockClear();
+    mockPartyDelete.mockClear();
 
-    mockExecuteTakeFirstOrThrow.mockResolvedValue({
+    mockGuestCreate.mockResolvedValue({
       id: "guest-123",
-      first_name: "John",
-      last_name: "Doe",
-      invite_code: "ABCD-1234",
-      plus_one_allowed: false,
+      firstName: "John",
+      lastName: "Doe",
+      inviteCode: "ABCD-1234",
+      plusOneAllowed: false,
     });
-    mockExecuteTakeFirst.mockResolvedValue(null); // No existing invite code
+    mockPartyFindUnique.mockResolvedValue(null); // No existing party with that invite code
+    mockPartyCreate.mockResolvedValue({
+      id: "party-123",
+      inviteCode: "ABCD-1234",
+    });
   });
 
   it("should create a new guest", async () => {
@@ -143,7 +127,7 @@ describe("Guest CRUD - Create User", () => {
 
     expect(response.status).toBe(200);
     expect(data.guest).toBeDefined();
-    expect(mockInsertValues).toHaveBeenCalled();
+    expect(mockGuestCreate).toHaveBeenCalled();
   });
 
   it("should require firstName", async () => {
@@ -167,11 +151,20 @@ describe("Guest CRUD - Create User", () => {
   });
 
   it("should create plus one when plusOneAllowed is true", async () => {
-    // First call for checking invite code uniqueness returns null (code is unique)
-    // Then the executeTakeFirst for plus one insert returns the plus one guest
-    mockExecuteTakeFirst
-      .mockResolvedValueOnce(null) // No existing invite code
-      .mockResolvedValueOnce({ id: "plus-one-123" }); // Plus one created
+    mockGuestCreate
+      .mockResolvedValueOnce({
+        id: "guest-123",
+        firstName: "John",
+        lastName: "Doe",
+        inviteCode: "ABCD-1234",
+        plusOneAllowed: true,
+      })
+      .mockResolvedValueOnce({
+        id: "plus-one-123",
+        firstName: "Jane",
+        lastName: null,
+        isPlusOne: true,
+      });
 
     const { POST } = await import("@/app/api/admin/guests/route");
 
@@ -195,13 +188,15 @@ describe("Guest CRUD - Create User", () => {
 
     expect(response.status).toBe(200);
     expect(data.guest).toBeDefined();
-    // Primary guest should be created
-    expect(mockInsertValues).toHaveBeenCalled();
-    // First insert should have plusOneAllowed: true
-    expect(mockInsertValues).toHaveBeenCalledWith(
+    // Primary guest and plus one should both be created
+    expect(mockGuestCreate).toHaveBeenCalledTimes(2);
+    // First create call should have plusOneAllowed: true
+    expect(mockGuestCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        first_name: "John",
-        plus_one_allowed: true,
+        data: expect.objectContaining({
+          firstName: "John",
+          plusOneAllowed: true,
+        }),
       }),
     );
   });
@@ -209,25 +204,44 @@ describe("Guest CRUD - Create User", () => {
 
 describe("Guest CRUD - Edit User", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockUpdateSet.mockClear();
-    mockDeleteWhere.mockClear();
+    mockGuestFindMany.mockClear();
+    mockGuestFindUnique.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGuestCreate.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestDelete.mockClear();
+    mockGuestDeleteMany.mockClear();
+    mockGuestCount.mockClear();
+    mockPartyFindUnique.mockClear();
+    mockPartyCreate.mockClear();
+    mockPartyDelete.mockClear();
 
-    mockExecuteTakeFirst.mockResolvedValue({
+    mockGuestFindUnique.mockResolvedValue({
       id: "guest-123",
-      first_name: "John",
-      last_name: "Doe",
-      invite_code: "ABCD-1234",
-      plus_one_allowed: false,
+      firstName: "John",
+      lastName: "Doe",
+      inviteCode: "ABCD-1234",
+      plusOneAllowed: false,
       side: "bride",
       list: "a",
+      partyId: "party-123",
+    });
+    mockGuestUpdate.mockResolvedValue({
+      id: "guest-123",
+      firstName: "John",
+      lastName: "Doe",
     });
   });
 
   it("should update guest details", async () => {
+    mockGuestUpdate.mockResolvedValue({
+      id: "guest-123",
+      firstName: "Johnny",
+      lastName: "Doe",
+      side: "groom",
+      family: true,
+    });
+
     const { PATCH } = await import("@/app/api/admin/guests/[id]/route");
 
     const request = new Request(
@@ -251,11 +265,14 @@ describe("Guest CRUD - Edit User", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        first_name: "Johnny",
-        side: "groom",
-        family: true,
+        where: { id: "guest-123" },
+        data: expect.objectContaining({
+          firstName: "Johnny",
+          side: "groom",
+          family: true,
+        }),
       }),
     );
   });
@@ -283,31 +300,44 @@ describe("Guest CRUD - Edit User", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mockUpdateSet).toHaveBeenCalledWith(
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        list: "b",
+        data: expect.objectContaining({
+          list: "b",
+        }),
       }),
     );
   });
 
   it("should add plus one when enabling plusOneAllowed", async () => {
-    // First call returns current guest, second returns no existing plus one
-    mockExecuteTakeFirst
-      .mockResolvedValueOnce({
-        id: "guest-123",
-        first_name: "John",
-        last_name: "Doe",
-        invite_code: "ABCD-1234",
-        plus_one_allowed: false,
-        side: "bride",
-        list: "a",
-      })
-      .mockResolvedValueOnce({
-        id: "guest-123",
-        first_name: "John",
-        last_name: "Doe",
-      })
-      .mockResolvedValueOnce(null); // No existing plus one
+    // findUnique returns the current guest
+    mockGuestFindUnique.mockResolvedValue({
+      id: "guest-123",
+      firstName: "John",
+      lastName: "Doe",
+      inviteCode: "ABCD-1234",
+      plusOneAllowed: false,
+      side: "bride",
+      list: "a",
+      partyId: "party-123",
+    });
+
+    // findFirst returns null (no existing plus one)
+    mockGuestFindFirst.mockResolvedValue(null);
+
+    // update returns updated guest
+    mockGuestUpdate.mockResolvedValue({
+      id: "guest-123",
+      firstName: "John",
+      lastName: "Doe",
+    });
+
+    // create returns new plus one
+    mockGuestCreate.mockResolvedValue({
+      id: "plus-one-123",
+      firstName: "Jane",
+      isPlusOne: true,
+    });
 
     const { PATCH } = await import("@/app/api/admin/guests/[id]/route");
 
@@ -333,11 +363,11 @@ describe("Guest CRUD - Edit User", () => {
 
     expect(response.status).toBe(200);
     // Should have created a plus one
-    expect(mockInsertValues).toHaveBeenCalled();
+    expect(mockGuestCreate).toHaveBeenCalled();
   });
 
   it("should return 404 for non-existent guest", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
+    mockGuestFindUnique.mockResolvedValue(null);
 
     const { PATCH } = await import("@/app/api/admin/guests/[id]/route");
 
@@ -364,12 +394,17 @@ describe("Guest CRUD - Edit User", () => {
 
 describe("Guest CRUD - Delete User", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockUpdateSet.mockClear();
-    mockDeleteWhere.mockClear();
+    mockGuestFindMany.mockClear();
+    mockGuestFindUnique.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGuestCreate.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestDelete.mockClear();
+    mockGuestDeleteMany.mockClear();
+    mockGuestCount.mockClear();
+    mockPartyFindUnique.mockClear();
+    mockPartyCreate.mockClear();
+    mockPartyDelete.mockClear();
   });
 
   it("should delete a guest", async () => {
@@ -387,7 +422,9 @@ describe("Guest CRUD - Delete User", () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(mockDeleteWhere).toHaveBeenCalledWith("id", "=", "guest-123");
+    expect(mockGuestDelete).toHaveBeenCalledWith({
+      where: { id: "guest-123" },
+    });
   });
 
   it("should require guest ID", async () => {
@@ -407,19 +444,29 @@ describe("Guest CRUD - Delete User", () => {
 
 describe("Guest CRUD - List Assignment (A/B/C)", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockUpdateSet.mockClear();
-    mockDeleteWhere.mockClear();
+    mockGuestFindMany.mockClear();
+    mockGuestFindUnique.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGuestCreate.mockClear();
+    mockGuestUpdate.mockClear();
+    mockGuestDelete.mockClear();
+    mockGuestDeleteMany.mockClear();
+    mockGuestCount.mockClear();
+    mockPartyFindUnique.mockClear();
+    mockPartyCreate.mockClear();
+    mockPartyDelete.mockClear();
 
-    mockExecuteTakeFirst.mockResolvedValue({
+    mockGuestFindUnique.mockResolvedValue({
       id: "guest-123",
-      first_name: "John",
-      invite_code: "ABCD-1234",
+      firstName: "John",
+      inviteCode: "ABCD-1234",
       side: "bride",
       list: "a",
+      partyId: "party-123",
+    });
+    mockGuestUpdate.mockResolvedValue({
+      id: "guest-123",
+      firstName: "John",
     });
   });
 
@@ -446,8 +493,10 @@ describe("Guest CRUD - List Assignment (A/B/C)", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mockUpdateSet).toHaveBeenCalledWith(
-      expect.objectContaining({ list: "a" }),
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ list: "a" }),
+      }),
     );
   });
 
@@ -474,8 +523,10 @@ describe("Guest CRUD - List Assignment (A/B/C)", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mockUpdateSet).toHaveBeenCalledWith(
-      expect.objectContaining({ list: "b" }),
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ list: "b" }),
+      }),
     );
   });
 
@@ -502,8 +553,10 @@ describe("Guest CRUD - List Assignment (A/B/C)", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mockUpdateSet).toHaveBeenCalledWith(
-      expect.objectContaining({ list: "c" }),
+    expect(mockGuestUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ list: "c" }),
+      }),
     );
   });
 });

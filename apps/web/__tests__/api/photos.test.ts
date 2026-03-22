@@ -7,30 +7,30 @@ const mockPhotos = [
     url: "https://example.com/photo1.jpg",
     alt: "Photo 1",
     description: "Description 1",
-    display_order: 0,
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    displayOrder: 0,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     id: "photo-2",
     url: "https://example.com/photo2.jpg",
     alt: "Photo 2",
     description: "Description 2",
-    display_order: 1,
-    is_active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    displayOrder: 1,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     id: "photo-3",
     url: "https://example.com/photo3.jpg",
     alt: "Photo 3",
     description: null,
-    display_order: 2,
-    is_active: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    displayOrder: 2,
+    isActive: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
 ];
 
@@ -42,49 +42,20 @@ mock.module("@/env", () => ({
 }));
 
 // Mock the db module
+const mockPhotoFindMany = mock(() =>
+  Promise.resolve(mockPhotos.filter((p) => p.isActive)),
+);
+const mockPhotoCreate = mock(() => Promise.resolve(mockPhotos[0]));
+const mockPhotoAggregate = mock(() =>
+  Promise.resolve({ _max: { displayOrder: 2 } }),
+);
+
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => ({
-      selectAll: () => ({
-        where: () => ({
-          orderBy: () => ({
-            execute: () =>
-              Promise.resolve(mockPhotos.filter((p) => p.is_active)),
-          }),
-        }),
-        orderBy: () => ({
-          orderBy: () => ({
-            execute: () => Promise.resolve(mockPhotos),
-          }),
-        }),
-      }),
-      select: () => ({
-        executeTakeFirst: () => Promise.resolve({ max_order: 2 }),
-      }),
-    }),
-    insertInto: () => ({
-      values: () => ({
-        returningAll: () => ({
-          executeTakeFirstOrThrow: () => Promise.resolve(mockPhotos[0]),
-        }),
-      }),
-    }),
-    updateTable: () => ({
-      set: () => ({
-        where: () => ({
-          returningAll: () => ({
-            executeTakeFirst: () => Promise.resolve(mockPhotos[0]),
-          }),
-        }),
-      }),
-    }),
-    deleteFrom: () => ({
-      where: () => ({
-        execute: () => Promise.resolve([]),
-      }),
-    }),
-    fn: {
-      max: () => ({ as: () => "max_order" }),
+    photo: {
+      findMany: mockPhotoFindMany,
+      create: mockPhotoCreate,
+      aggregate: mockPhotoAggregate,
     },
   },
 }));
@@ -128,6 +99,10 @@ describe("Public Photos API", () => {
 describe("Admin Photos API", () => {
   beforeEach(() => {
     mockCurrentUser.mockClear();
+    mockPhotoFindMany.mockClear();
+    mockPhotoCreate.mockClear();
+    // Reset findMany to return all photos for admin
+    mockPhotoFindMany.mockResolvedValue(mockPhotos);
   });
 
   describe("GET /api/admin/photos", () => {

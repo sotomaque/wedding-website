@@ -44,21 +44,19 @@ export async function POST(
       );
     }
 
-    const guest = await db
-      .selectFrom("guests")
-      .select(["id", "first_name"])
-      .where("id", "=", guestId)
-      .executeTakeFirst();
+    const guest = await db.guest.findUnique({
+      where: { id: guestId },
+      select: { id: true, firstName: true },
+    });
 
     if (!guest) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
-    await db
-      .updateTable("guests")
-      .set({ rsvp_status: rsvpStatus })
-      .where("id", "=", guestId)
-      .execute();
+    await db.guest.update({
+      where: { id: guestId },
+      data: { rsvpStatus },
+    });
 
     return NextResponse.json({ success: true, rsvpStatus });
   } catch (error) {

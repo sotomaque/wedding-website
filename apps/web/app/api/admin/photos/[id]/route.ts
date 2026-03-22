@@ -35,14 +35,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const body = await request.json();
-    const { alt, description, display_order, is_active } = body;
+    const { alt, description, displayOrder, isActive } = body;
 
     const updateData: Record<string, unknown> = {};
 
     if (alt !== undefined) updateData.alt = alt;
     if (description !== undefined) updateData.description = description || null;
-    if (display_order !== undefined) updateData.display_order = display_order;
-    if (is_active !== undefined) updateData.is_active = is_active;
+    if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
+    if (isActive !== undefined) updateData.isActive = isActive;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
@@ -51,16 +51,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const photo = await db
-      .updateTable("photos")
-      .set(updateData)
-      .where("id", "=", id)
-      .returningAll()
-      .executeTakeFirst();
-
-    if (!photo) {
+    // Check if photo exists first
+    const existing = await db.photo.findUnique({ where: { id } });
+    if (!existing) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
+
+    const photo = await db.photo.update({
+      where: { id },
+      data: updateData,
+    });
 
     return NextResponse.json({ photo });
   } catch (error) {
@@ -100,14 +100,12 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const deleted = await db
-      .deleteFrom("photos")
-      .where("id", "=", id)
-      .executeTakeFirst();
-
-    if (deleted.numDeletedRows === 0n) {
+    const existing = await db.photo.findUnique({ where: { id } });
+    if (!existing) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
+
+    await db.photo.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

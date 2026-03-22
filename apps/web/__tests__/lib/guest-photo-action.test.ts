@@ -1,17 +1,13 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 // ----- mock setup -----
-const mockInsertValues = mock((_data: unknown) => {});
-const mockExecute = mock(() => Promise.resolve());
+const mockGuestPhotoCreate = mock(() => Promise.resolve({}));
 
 mock.module("@/lib/db", () => ({
   db: {
-    insertInto: () => ({
-      values: (data: unknown) => {
-        mockInsertValues(data);
-        return { execute: mockExecute };
-      },
-    }),
+    guestPhoto: {
+      create: mockGuestPhotoCreate,
+    },
   },
 }));
 
@@ -19,8 +15,7 @@ mock.module("@/lib/db", () => ({
 
 describe("saveGuestPhoto server action", () => {
   beforeEach(() => {
-    mockInsertValues.mockClear();
-    mockExecute.mockClear();
+    mockGuestPhotoCreate.mockClear();
   });
 
   it("returns { success: true } when the insert succeeds", async () => {
@@ -31,47 +26,55 @@ describe("saveGuestPhoto server action", () => {
     expect(result.error).toBeUndefined();
   });
 
-  it("inserts with correct url and uploader_name", async () => {
+  it("inserts with correct url and uploaderName", async () => {
     const { saveGuestPhoto } = await import("@/app/photos/actions");
     await saveGuestPhoto("https://utfs.io/f/photo.jpg", "Bob");
 
-    expect(mockInsertValues).toHaveBeenCalledWith(
+    expect(mockGuestPhotoCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: "https://utfs.io/f/photo.jpg",
-        uploader_name: "Bob",
+        data: expect.objectContaining({
+          url: "https://utfs.io/f/photo.jpg",
+          uploaderName: "Bob",
+        }),
       }),
     );
   });
 
-  it("always inserts with is_visible: true", async () => {
+  it("always inserts with isVisible: true", async () => {
     const { saveGuestPhoto } = await import("@/app/photos/actions");
     await saveGuestPhoto("https://utfs.io/f/photo.jpg", "Alice");
 
-    expect(mockInsertValues).toHaveBeenCalledWith(
-      expect.objectContaining({ is_visible: true }),
+    expect(mockGuestPhotoCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ isVisible: true }),
+      }),
     );
   });
 
-  it("stores null for uploader_name when empty string is passed", async () => {
+  it("stores null for uploaderName when empty string is passed", async () => {
     const { saveGuestPhoto } = await import("@/app/photos/actions");
     await saveGuestPhoto("https://utfs.io/f/photo.jpg", "");
 
-    expect(mockInsertValues).toHaveBeenCalledWith(
-      expect.objectContaining({ uploader_name: null }),
+    expect(mockGuestPhotoCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ uploaderName: null }),
+      }),
     );
   });
 
-  it("stores null for uploader_name when null is passed", async () => {
+  it("stores null for uploaderName when null is passed", async () => {
     const { saveGuestPhoto } = await import("@/app/photos/actions");
     await saveGuestPhoto("https://utfs.io/f/photo.jpg", null);
 
-    expect(mockInsertValues).toHaveBeenCalledWith(
-      expect.objectContaining({ uploader_name: null }),
+    expect(mockGuestPhotoCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ uploaderName: null }),
+      }),
     );
   });
 
   it("returns { success: false, error } on database error", async () => {
-    mockExecute.mockRejectedValueOnce(new Error("connection refused"));
+    mockGuestPhotoCreate.mockRejectedValueOnce(new Error("connection refused"));
 
     const { saveGuestPhoto } = await import("@/app/photos/actions");
     const result = await saveGuestPhoto("https://utfs.io/f/photo.jpg", "Alice");
@@ -81,7 +84,7 @@ describe("saveGuestPhoto server action", () => {
   });
 
   it("does not throw when the database errors", async () => {
-    mockExecute.mockRejectedValueOnce(new Error("fail"));
+    mockGuestPhotoCreate.mockRejectedValueOnce(new Error("fail"));
 
     const { saveGuestPhoto } = await import("@/app/photos/actions");
 

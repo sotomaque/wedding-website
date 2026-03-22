@@ -29,117 +29,84 @@ function parseGuestFilter(searchParams: {
 
 async function getChartWithDetails(id: string, filter: GuestFilter) {
   // Fetch the chart
-  const chart = await db
-    .selectFrom("seating_charts")
-    .selectAll()
-    .where("id", "=", id)
-    .executeTakeFirst();
+  const chart = await db.seatingChart.findUnique({
+    where: { id },
+  });
 
   if (!chart) {
     return null;
   }
 
   // Fetch tables for this chart
-  const tables = await db
-    .selectFrom("seating_tables")
-    .selectAll()
-    .where("seating_chart_id", "=", id)
-    .orderBy("table_number", "asc")
-    .execute();
+  const tables = await db.seatingTable.findMany({
+    where: { seatingChartId: id },
+    orderBy: { tableNumber: "asc" },
+  });
 
   // Fetch all assignments for these tables
   const tableIds = tables.map((t) => t.id);
   const assignments =
     tableIds.length > 0
-      ? await db
-          .selectFrom("guest_table_assignments")
-          .selectAll()
-          .where("seating_table_id", "in", tableIds)
-          .execute()
+      ? await db.guestTableAssignment.findMany({
+          where: { seatingTableId: { in: tableIds } },
+        })
       : [];
 
   // Fetch guest details for all assigned guests
-  const assignedGuestIds = assignments.map((a) => a.guest_id);
+  const assignedGuestIds = assignments.map((a) => a.guestId);
   const assignedGuests =
     assignedGuestIds.length > 0
-      ? await db
-          .selectFrom("guests")
-          .selectAll()
-          .where("id", "in", assignedGuestIds)
-          .execute()
+      ? await db.guest.findMany({
+          where: { id: { in: assignedGuestIds } },
+        })
       : [];
 
-  // Build query for filtered guests based on filter options
-  let guestQuery = db.selectFrom("guests").selectAll();
+  // Build where clause for filtered guests based on filter options
+  const guestWhere: Record<string, unknown> = {};
 
   // Apply RSVP filter
   if (filter.rsvp === "confirmed") {
-    guestQuery = guestQuery.where("rsvp_status", "=", "yes");
+    guestWhere.rsvpStatus = "yes";
   }
 
   // Apply list filter
   if (filter.list === "a") {
-    guestQuery = guestQuery.where("list", "=", "a");
+    guestWhere.list = "a";
   } else if (filter.list === "b") {
-    guestQuery = guestQuery.where("list", "=", "b");
+    guestWhere.list = "b";
   } else if (filter.list === "c") {
-    guestQuery = guestQuery.where("list", "=", "c");
+    guestWhere.list = "c";
   } else if (filter.list === "ab") {
-    guestQuery = guestQuery.where("list", "in", ["a", "b"]);
+    guestWhere.list = { in: ["a", "b"] };
   }
   // "abc" means all lists, no filter needed
 
-  const filteredGuests = await guestQuery
-    .orderBy("first_name", "asc")
-    .execute();
+  const filteredGuests = await db.guest.findMany({
+    where: guestWhere,
+    orderBy: { firstName: "asc" },
+  });
 
   // Build tables with guests
   const tablesWithGuests = tables.map((table) => {
     const tableAssignments = assignments.filter(
-      (a) => a.seating_table_id === table.id,
+      (a) => a.seatingTableId === table.id,
     );
     const tableGuests = tableAssignments
-      .map((a) => assignedGuests.find((g) => g.id === a.guest_id))
+      .map((a) => assignedGuests.find((g) => g.id === a.guestId))
       .filter((g): g is NonNullable<typeof g> => g !== undefined);
 
     return {
       ...table,
-      created_at:
-        table.created_at instanceof Date
-          ? table.created_at.toISOString()
-          : String(table.created_at),
-      guests: tableGuests.map((g) => ({
-        ...g,
-        created_at:
-          g.created_at instanceof Date
-            ? g.created_at.toISOString()
-            : String(g.created_at),
-        activities_email_sent_at: g.activities_email_sent_at
-          ? g.activities_email_sent_at instanceof Date
-            ? g.activities_email_sent_at.toISOString()
-            : String(g.activities_email_sent_at)
-          : null,
-      })),
+      guests: tableGuests,
       assignedCount: tableGuests.length,
-      capacity: table.capacity_override || chart.default_seats_per_table,
+      capacity: table.capacityOverride || chart.defaultSeatsPerTable,
     };
   });
 
   // Find unassigned guests (from filtered pool)
-  const unassignedGuests = filteredGuests
-    .filter((g) => !assignedGuestIds.includes(g.id))
-    .map((g) => ({
-      ...g,
-      created_at:
-        g.created_at instanceof Date
-          ? g.created_at.toISOString()
-          : String(g.created_at),
-      activities_email_sent_at: g.activities_email_sent_at
-        ? g.activities_email_sent_at instanceof Date
-          ? g.activities_email_sent_at.toISOString()
-          : String(g.activities_email_sent_at)
-        : null,
-    }));
+  const unassignedGuests = filteredGuests.filter(
+    (g) => !assignedGuestIds.includes(g.id),
+  );
 
   // Calculate totals
   const totalCapacity = tablesWithGuests.reduce(
@@ -150,14 +117,6 @@ async function getChartWithDetails(id: string, filter: GuestFilter) {
 
   return {
     ...chart,
-    created_at:
-      chart.created_at instanceof Date
-        ? chart.created_at.toISOString()
-        : String(chart.created_at),
-    updated_at:
-      chart.updated_at instanceof Date
-        ? chart.updated_at.toISOString()
-        : String(chart.updated_at),
     tables: tablesWithGuests,
     totalAssigned,
     totalCapacity,

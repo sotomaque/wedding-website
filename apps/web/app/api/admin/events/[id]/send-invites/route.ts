@@ -55,17 +55,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Verify event exists and is not a default event
-    const event = await db
-      .selectFrom("events")
-      .selectAll()
-      .where("id", "=", eventId)
-      .executeTakeFirst();
+    const event = await db.event.findUnique({
+      where: { id: eventId },
+    });
 
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    if (event.is_default) {
+    if (event.isDefault) {
       return NextResponse.json(
         { error: "Cannot send event invites for default events" },
         { status: 400 },
@@ -73,21 +71,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Get all invited guests that match the provided IDs
-    const invites = await db
-      .selectFrom("guest_event_invites")
-      .innerJoin("guests", "guests.id", "guest_event_invites.guest_id")
-      .select([
-        "guest_event_invites.id as invite_id",
-        "guest_event_invites.email_resend_count",
-        "guests.id as guest_id",
-        "guests.first_name",
-        "guests.last_name",
-        "guests.email",
-        "guests.invite_code",
-      ])
-      .where("guest_event_invites.event_id", "=", eventId)
-      .where("guests.id", "in", guestIds)
-      .execute();
+    const invites = await db.guestEventInvite.findMany({
+      where: {
+        eventId,
+        guest: { id: { in: guestIds } },
+      },
+      include: {
+        guest: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            inviteCode: true,
+          },
+        },
+      },
+    });
 
     if (invites.length === 0) {
       return NextResponse.json(
@@ -97,12 +97,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Validate all guests have emails
-    const guestsWithoutEmail = invites.filter((g) => !g.email?.includes("@"));
+    const guestsWithoutEmail = invites.filter(
+      (i) => !i.guest.email?.includes("@"),
+    );
     if (guestsWithoutEmail.length > 0) {
       return NextResponse.json(
         {
           error: `${guestsWithoutEmail.length} guest(s) don't have valid email addresses`,
-          guestsWithoutEmail: guestsWithoutEmail.map((g) => g.first_name),
+          guestsWithoutEmail: guestsWithoutEmail.map((i) => i.guest.firstName),
         },
         { status: 400 },
       );
@@ -112,14 +114,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     // Format event time if available
     let eventTime: string | null = null;
-    if (event.start_time) {
-      const [hours, minutes] = event.start_time.split(":");
+    if (event.startTime) {
+      const startTimeStr =
+        event.startTime instanceof Date
+          ? event.startTime.toISOString()
+          : String(event.startTime);
+      const [hours, minutes] = startTimeStr.split(":");
       const hour = Number.parseInt(hours || "0", 10);
       const ampm = hour >= 12 ? "PM" : "AM";
       const hour12 = hour % 12 || 12;
       eventTime = `${hour12}:${minutes} ${ampm}`;
-      if (event.end_time) {
-        const [endHours, endMinutes] = event.end_time.split(":");
+      if (event.endTime) {
+        const endTimeStr =
+          event.endTime instanceof Date
+            ? event.endTime.toISOString()
+            : String(event.endTime);
+        const [endHours, endMinutes] = endTimeStr.split(":");
         const endHour = Number.parseInt(endHours || "0", 10);
         const endAmpm = endHour >= 12 ? "PM" : "AM";
         const endHour12 = endHour % 12 || 12;
@@ -128,10 +138,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Format event date string for email template
-    const eventDateStr = event.event_date
-      ? event.event_date instanceof Date
-        ? event.event_date.toISOString().split("T")[0]
-        : String(event.event_date)
+    const eventDateStr = event.eventDate
+      ? event.eventDate instanceof Date
+        ? event.eventDate.toISOString().split("T")[0]
+        : String(event.eventDate)
       : null;
 
     // Send emails to all guests
@@ -139,7 +149,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const errors: { guest: string; error: string }[] = [];
 
     for (const invite of invites) {
-      const rsvpUrl = `${appUrl}/events/rsvp?code=${invite.invite_code}&event=${eventId}`;
+      const rsvpUrl = `${appUrl}/events/rsvp?code=${invite.guest.inviteCode}&event=${eventId}`;
 
       try {
         let result: { error: Error | null };
@@ -148,20 +158,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
           // Use Resend template with variables
           result = await sendEmail({
             from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
-            to: invite.email as string,
+            to: invite.guest.email as string,
             subject: customSubject || `You're Invited to the ${event.name}!`,
             template: {
               id: templateId,
               variables: {
-                FIRST_NAME: invite.first_name,
-                LAST_NAME: invite.last_name || "",
-                INVITE_CODE: invite.invite_code,
+                FIRST_NAME: invite.guest.firstName,
+                LAST_NAME: invite.guest.lastName || "",
+                INVITE_CODE: invite.guest.inviteCode ?? "",
                 EVENT_NAME: event.name,
                 EVENT_DESCRIPTION: event.description || "",
                 EVENT_DATE: eventDateStr || "",
                 EVENT_TIME: eventTime || "",
-                LOCATION_NAME: event.location_name || "",
-                LOCATION_ADDRESS: event.location_address || "",
+                LOCATION_NAME: event.locationName || "",
+                LOCATION_ADDRESS: event.locationAddress || "",
                 RSVP_URL: rsvpUrl,
                 APP_URL: appUrl,
               },
@@ -170,22 +180,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
         } else {
           // Use hardcoded template
           const emailHtml = getEventInvitationEmail({
-            firstName: invite.first_name,
-            lastName: invite.last_name,
-            inviteCode: invite.invite_code,
+            firstName: invite.guest.firstName,
+            lastName: invite.guest.lastName,
+            inviteCode: invite.guest.inviteCode ?? "",
             eventName: event.name,
             eventDescription: event.description,
             eventDate: eventDateStr,
             eventTime,
-            locationName: event.location_name,
-            locationAddress: event.location_address,
+            locationName: event.locationName,
+            locationAddress: event.locationAddress,
             rsvpUrl,
             appUrl,
           });
 
           result = await sendEmail({
             from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
-            to: invite.email as string,
+            to: invite.guest.email as string,
             subject: `You're Invited to the ${event.name}!`,
             html: emailHtml,
           });
@@ -196,21 +206,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
 
         // Update invite record with email sent status
-        await db
-          .updateTable("guest_event_invites")
-          .set({
-            email_sent: true,
-            email_sent_at: new Date().toISOString(),
-            email_resend_count: (invite.email_resend_count || 0) + 1,
-          })
-          .where("id", "=", invite.invite_id)
-          .execute();
+        await db.guestEventInvite.update({
+          where: { id: invite.id },
+          data: {
+            emailSent: true,
+            emailSentAt: new Date().toISOString(),
+            emailResendCount: (invite.emailResendCount || 0) + 1,
+          },
+        });
 
         sentCount++;
       } catch (emailError) {
-        console.error(`Error sending email to ${invite.email}:`, emailError);
+        console.error(
+          `Error sending email to ${invite.guest.email}:`,
+          emailError,
+        );
         errors.push({
-          guest: `${invite.first_name} ${invite.last_name || ""}`.trim(),
+          guest:
+            `${invite.guest.firstName} ${invite.guest.lastName || ""}`.trim(),
           error: "Failed to send email",
         });
       }

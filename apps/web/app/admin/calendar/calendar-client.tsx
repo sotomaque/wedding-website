@@ -27,10 +27,10 @@ import {
 interface CalendarEvent {
   id: string;
   name: string;
-  event_date: string | null; // serialized Date → "YYYY-MM-DD"
-  start_time: string | null;
-  end_time: string | null;
-  location_name: string | null;
+  eventDate: string | null; // serialized Date → "YYYY-MM-DD"
+  startTime: string | null;
+  endTime: string | null;
+  locationName: string | null;
 }
 
 interface CalendarClientProps {
@@ -56,7 +56,7 @@ function StayOverview({
   const weeks = getWeeksInMonth(year, monthIndex);
 
   const guestsWithBothDates = guests.filter(
-    (g) => g.arrival_date && g.departure_date,
+    (g) => g.arrivalDate && g.departureDate,
   );
 
   if (guestsWithBothDates.length === 0) {
@@ -126,11 +126,11 @@ function StayOverview({
                       style={{
                         gridColumn: `${bar.colStart} / ${bar.colEnd + 1}`,
                       }}
-                      title={`${bar.guest.first_name} ${bar.guest.last_name ?? ""}`.trim()}
+                      title={`${bar.guest.firstName} ${bar.guest.lastName ?? ""}`.trim()}
                     >
                       {bar.isStart && (
                         <span className="truncate">
-                          {bar.guest.first_name} {bar.guest.last_name ?? ""}
+                          {bar.guest.firstName} {bar.guest.lastName ?? ""}
                         </span>
                       )}
                     </div>
@@ -152,7 +152,7 @@ function StayOverview({
               colorMap.get(g.id),
             )}
           >
-            {g.first_name} {g.last_name ?? ""}
+            {g.firstName} {g.lastName ?? ""}
           </span>
         ))}
       </div>
@@ -206,7 +206,7 @@ export function CalendarClient({
     const set = new Set<string>();
     if (!showEvents) return set;
     for (const e of events) {
-      if (e.event_date) set.add(normalizeKey(e.event_date));
+      if (e.eventDate) set.add(normalizeKey(e.eventDate));
     }
     return set;
   }, [events, showEvents]);
@@ -215,7 +215,7 @@ export function CalendarClient({
     const set = new Set<string>();
     if (!showArrivals) return set;
     for (const g of filteredGuests) {
-      if (g.arrival_date) set.add(normalizeKey(g.arrival_date));
+      if (g.arrivalDate) set.add(normalizeKey(g.arrivalDate));
     }
     return set;
   }, [filteredGuests, showArrivals]);
@@ -224,7 +224,7 @@ export function CalendarClient({
     const set = new Set<string>();
     if (!showDepartures) return set;
     for (const g of filteredGuests) {
-      if (g.departure_date) set.add(normalizeKey(g.departure_date));
+      if (g.departureDate) set.add(normalizeKey(g.departureDate));
     }
     return set;
   }, [filteredGuests, showDepartures]);
@@ -254,7 +254,7 @@ export function CalendarClient({
     () =>
       selectedKey && showEvents
         ? events.filter(
-            (e) => e.event_date && normalizeKey(e.event_date) === selectedKey,
+            (e) => e.eventDate && normalizeKey(e.eventDate) === selectedKey,
           )
         : [],
     [selectedKey, events, showEvents],
@@ -264,8 +264,7 @@ export function CalendarClient({
     () =>
       selectedKey && showArrivals
         ? filteredGuests.filter(
-            (g) =>
-              g.arrival_date && normalizeKey(g.arrival_date) === selectedKey,
+            (g) => g.arrivalDate && normalizeKey(g.arrivalDate) === selectedKey,
           )
         : [],
     [selectedKey, filteredGuests, showArrivals],
@@ -276,8 +275,7 @@ export function CalendarClient({
       selectedKey && showDepartures
         ? filteredGuests.filter(
             (g) =>
-              g.departure_date &&
-              normalizeKey(g.departure_date) === selectedKey,
+              g.departureDate && normalizeKey(g.departureDate) === selectedKey,
           )
         : [],
     [selectedKey, filteredGuests, showDepartures],
@@ -476,15 +474,15 @@ export function CalendarClient({
                             className="rounded-md border p-3 text-sm"
                           >
                             <p className="font-medium">{e.name}</p>
-                            {(e.start_time || e.end_time) && (
+                            {(e.startTime || e.endTime) && (
                               <p className="text-muted-foreground text-xs mt-0.5">
-                                {e.start_time}
-                                {e.end_time ? ` – ${e.end_time}` : ""}
+                                {e.startTime}
+                                {e.endTime ? ` – ${e.endTime}` : ""}
                               </p>
                             )}
-                            {e.location_name && (
+                            {e.locationName && (
                               <p className="text-muted-foreground text-xs">
-                                {e.location_name}
+                                {e.locationName}
                               </p>
                             )}
                           </div>
@@ -505,13 +503,13 @@ export function CalendarClient({
                             <PartyRow
                               key={g.id}
                               party={g}
-                              transport={g.arrival_transport}
+                              transport={g.arrivalTransport}
                             />
                           ) : (
                             <GuestRow
                               key={g.id}
-                              name={`${g.first_name} ${g.last_name ?? ""}`.trim()}
-                              transport={g.arrival_transport}
+                              name={`${g.firstName} ${g.lastName ?? ""}`.trim()}
+                              transport={g.arrivalTransport}
                             />
                           ),
                         )}
@@ -531,13 +529,13 @@ export function CalendarClient({
                             <PartyRow
                               key={g.id}
                               party={g}
-                              transport={g.departure_transport}
+                              transport={g.departureTransport}
                             />
                           ) : (
                             <GuestRow
                               key={g.id}
-                              name={`${g.first_name} ${g.last_name ?? ""}`.trim()}
-                              transport={g.departure_transport}
+                              name={`${g.firstName} ${g.lastName ?? ""}`.trim()}
+                              transport={g.departureTransport}
                             />
                           ),
                         )}

@@ -14,26 +14,22 @@ export type ServiceLinkCategory =
 
 export type ServiceLink = {
   id: string;
-  wedding_id: string | null;
+  weddingId: string | null;
   title: string;
   url: string;
   description: string | null;
   category: ServiceLinkCategory;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export async function getServiceLinks(): Promise<ServiceLink[]> {
   try {
-    const rows = await db
-      .selectFrom("service_links")
-      .selectAll()
-      .orderBy("sort_order", "asc")
-      .orderBy("created_at", "asc")
-      .execute();
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    return rows as any;
+    const rows = await db.serviceLink.findMany({
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
+    return rows as ServiceLink[];
   } catch (error) {
     console.error("Error fetching service links:", error);
     throw error;
@@ -63,30 +59,26 @@ export async function createServiceLink(data: {
       return { success: false, error: "Please enter a valid URL" };
     }
 
-    // Get max sort_order to append at end
-    const last = await db
-      .selectFrom("service_links")
-      .select(db.fn.max("sort_order").as("max_order"))
-      .executeTakeFirst();
+    // Get max sortOrder to append at end
+    const last = await db.serviceLink.aggregate({
+      _max: { sortOrder: true },
+    });
 
-    const nextOrder = (Number(last?.max_order) || 0) + 1;
+    const nextOrder = (last._max.sortOrder ?? 0) + 1;
 
-    const rows = await db
-      .insertInto("service_links")
-      .values({
+    const link = await db.serviceLink.create({
+      data: {
         title,
         url,
         description: data.description.trim() || null,
         category: data.category,
-        sort_order: nextOrder,
-      })
-      .returningAll()
-      .execute();
+        sortOrder: nextOrder,
+      },
+    });
 
     revalidatePath("/admin/vendors");
     revalidatePath("/vendors");
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects serialize to strings across the server/client boundary
-    return { success: true, link: rows[0] as any as ServiceLink };
+    return { success: true, link: link as ServiceLink };
   } catch (error) {
     console.error("Error creating service link:", error);
     return { success: false, error: "Failed to create link" };
@@ -115,25 +107,21 @@ export async function updateServiceLink(
       }
     }
 
-    const rows = await db
-      .updateTable("service_links")
-      .set({
+    const link = await db.serviceLink.update({
+      where: { id },
+      data: {
         ...(data.title !== undefined && { title: data.title.trim() }),
         ...(data.url !== undefined && { url: data.url.trim() }),
         ...(data.description !== undefined && {
           description: data.description.trim() || null,
         }),
         ...(data.category !== undefined && { category: data.category }),
-        updated_at: new Date().toISOString(),
-      })
-      .where("id", "=", id)
-      .returningAll()
-      .execute();
+      },
+    });
 
     revalidatePath("/admin/vendors");
     revalidatePath("/vendors");
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects serialize to strings across the server/client boundary
-    return { success: true, link: rows[0] as any as ServiceLink };
+    return { success: true, link: link as ServiceLink };
   } catch (error) {
     console.error("Error updating service link:", error);
     return { success: false, error: "Failed to update link" };
@@ -148,7 +136,7 @@ export async function deleteServiceLink(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db.deleteFrom("service_links").where("id", "=", id).execute();
+    await db.serviceLink.delete({ where: { id } });
     revalidatePath("/admin/vendors");
     revalidatePath("/vendors");
     return { success: true };
@@ -168,11 +156,10 @@ export async function reorderServiceLinks(
   try {
     await Promise.all(
       orderedIds.map((id, index) =>
-        db
-          .updateTable("service_links")
-          .set({ sort_order: index + 1, updated_at: new Date().toISOString() })
-          .where("id", "=", id)
-          .execute(),
+        db.serviceLink.update({
+          where: { id },
+          data: { sortOrder: index + 1 },
+        }),
       ),
     );
 

@@ -10,14 +10,12 @@ mock.module("@clerk/nextjs/server", () => ({
   currentUser: mockCurrentUser,
 }));
 
-const mockExecute = mock(() => Promise.resolve([]));
+const mockGuestPhotoFindMany = mock(() => Promise.resolve([]));
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => ({
-      select: () => ({
-        orderBy: () => ({ execute: mockExecute }),
-      }),
-    }),
+    guestPhoto: {
+      findMany: mockGuestPhotoFindMany,
+    },
   },
 }));
 
@@ -38,7 +36,7 @@ beforeEach(() => {
   global.fetch = mockFetch;
   mockFetch.mockClear();
   mockCurrentUser.mockClear();
-  mockExecute.mockClear();
+  mockGuestPhotoFindMany.mockClear();
 });
 
 afterEach(() => {
@@ -59,14 +57,14 @@ const MOCK_PHOTOS = [
   {
     id: "p1",
     url: "https://utfs.io/f/a.jpg",
-    uploader_name: "Alice",
-    uploaded_at: new Date(),
+    uploaderName: "Alice",
+    uploadedAt: new Date(),
   },
   {
     id: "p2",
     url: "https://utfs.io/f/b.jpg",
-    uploader_name: null,
-    uploaded_at: new Date(),
+    uploaderName: null,
+    uploadedAt: new Date(),
   },
 ];
 
@@ -107,7 +105,7 @@ describe("GET /api/admin/guest-photos/download", () => {
   describe("empty state", () => {
     it("returns 404 when no photos exist", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecute.mockResolvedValueOnce([]);
+      mockGuestPhotoFindMany.mockResolvedValueOnce([]);
 
       const { GET } = await import(
         "@/app/api/admin/guest-photos/download/route"
@@ -123,7 +121,7 @@ describe("GET /api/admin/guest-photos/download", () => {
   describe("successful download", () => {
     it("returns 200 with correct ZIP headers", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecute.mockResolvedValueOnce(MOCK_PHOTOS);
+      mockGuestPhotoFindMany.mockResolvedValueOnce(MOCK_PHOTOS);
 
       const { GET } = await import(
         "@/app/api/admin/guest-photos/download/route"
@@ -140,7 +138,7 @@ describe("GET /api/admin/guest-photos/download", () => {
 
     it("returns non-empty body", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecute.mockResolvedValueOnce(MOCK_PHOTOS);
+      mockGuestPhotoFindMany.mockResolvedValueOnce(MOCK_PHOTOS);
 
       const { GET } = await import(
         "@/app/api/admin/guest-photos/download/route"
@@ -155,7 +153,7 @@ describe("GET /api/admin/guest-photos/download", () => {
   describe("resilience", () => {
     it("still returns ZIP when one photo URL fetch fails", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecute.mockResolvedValueOnce(MOCK_PHOTOS);
+      mockGuestPhotoFindMany.mockResolvedValueOnce(MOCK_PHOTOS);
 
       // First fetch returns 404, second returns the image
       mockFetch
@@ -180,7 +178,9 @@ describe("GET /api/admin/guest-photos/download", () => {
   describe("database error", () => {
     it("returns 500 on database error", async () => {
       mockCurrentUser.mockResolvedValueOnce(ADMIN);
-      mockExecute.mockRejectedValueOnce(new Error("DB connection refused"));
+      mockGuestPhotoFindMany.mockRejectedValueOnce(
+        new Error("DB connection refused"),
+      );
 
       const { GET } = await import(
         "@/app/api/admin/guest-photos/download/route"

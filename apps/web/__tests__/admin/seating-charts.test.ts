@@ -23,83 +23,55 @@ mock.module("@clerk/nextjs/server", () => ({
   currentUser: mockCurrentUser,
 }));
 
-// Create db mock with tracking
-const mockExecute = mock(() => Promise.resolve([]));
-const mockExecuteTakeFirst = mock(() => Promise.resolve(null));
-const mockExecuteTakeFirstOrThrow = mock(() => Promise.resolve({}));
-const mockInsertValues = mock(() => {});
-const mockDeleteWhere = mock(() => {});
+// Create Prisma-style db mocks
+const mockSeatingChartFindMany = mock(() => Promise.resolve([]));
+const mockSeatingChartCreate = mock(() => Promise.resolve({}));
+
+const mockSeatingTableFindMany = mock(() => Promise.resolve([]));
+
+const mockGuestTableAssignmentDeleteMany = mock(() =>
+  Promise.resolve({ count: 0 }),
+);
+const mockGuestTableAssignmentCreateMany = mock(() =>
+  Promise.resolve({ count: 0 }),
+);
 
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: (table: string) => ({
-      selectAll: () => ({
-        orderBy: () => ({
-          asc: () => ({
-            execute: mockExecute,
-          }),
-          execute: mockExecute,
-        }),
-        where: () => ({
-          execute: mockExecute,
-          executeTakeFirst: mockExecuteTakeFirst,
-          orderBy: () => ({
-            execute: mockExecute,
-          }),
-        }),
-        execute: mockExecute,
-      }),
-      select: () => ({
-        where: () => ({
-          executeTakeFirst: mockExecuteTakeFirst,
-          execute: mockExecute,
-          orderBy: () => ({
-            execute: mockExecute,
-          }),
-        }),
-      }),
-    }),
-    insertInto: () => ({
-      values: (data: unknown) => {
-        mockInsertValues(data);
-        return {
-          returningAll: () => ({
-            executeTakeFirstOrThrow: mockExecuteTakeFirstOrThrow,
-            executeTakeFirst: mockExecuteTakeFirst,
-          }),
-          execute: mockExecute,
-        };
-      },
-    }),
-    updateTable: () => ({
-      set: () => ({
-        where: () => ({
-          execute: mockExecute,
-          returningAll: () => ({
-            executeTakeFirst: mockExecuteTakeFirst,
-          }),
-        }),
-      }),
-    }),
-    deleteFrom: () => ({
-      where: (field: string, op: string, value: unknown) => {
-        mockDeleteWhere(field, op, value);
-        return {
-          execute: mockExecute,
-          where: () => ({
-            execute: mockExecute,
-          }),
-        };
-      },
-    }),
+    seatingChart: {
+      findMany: mockSeatingChartFindMany,
+      findUnique: mock(() => Promise.resolve(null)),
+      findFirst: mock(() => Promise.resolve(null)),
+      create: mockSeatingChartCreate,
+      update: mock(() => Promise.resolve({})),
+      delete: mock(() => Promise.resolve({})),
+      deleteMany: mock(() => Promise.resolve({ count: 0 })),
+    },
+    seatingTable: {
+      findMany: mockSeatingTableFindMany,
+      findUnique: mock(() => Promise.resolve(null)),
+      findFirst: mock(() => Promise.resolve(null)),
+      create: mock(() => Promise.resolve({})),
+      update: mock(() => Promise.resolve({})),
+      delete: mock(() => Promise.resolve({})),
+      deleteMany: mock(() => Promise.resolve({ count: 0 })),
+    },
+    guestTableAssignment: {
+      findMany: mock(() => Promise.resolve([])),
+      findUnique: mock(() => Promise.resolve(null)),
+      create: mock(() => Promise.resolve({})),
+      createMany: mockGuestTableAssignmentCreateMany,
+      update: mock(() => Promise.resolve({})),
+      delete: mock(() => Promise.resolve({})),
+      deleteMany: mockGuestTableAssignmentDeleteMany,
+    },
   },
 }));
 
 describe("Seating Charts API - Authentication", () => {
   beforeEach(() => {
     mockCurrentUser.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
+    mockSeatingChartFindMany.mockClear();
   });
 
   describe("Unauthorized access", () => {
@@ -137,7 +109,7 @@ describe("Seating Charts API - Authentication", () => {
         id: "admin-123",
         emailAddresses: [{ emailAddress: "admin@example.com" }],
       });
-      mockExecute.mockResolvedValue([]);
+      mockSeatingChartFindMany.mockResolvedValue([]);
 
       const { GET } = await import("@/app/api/admin/seating-charts/route");
 
@@ -151,11 +123,8 @@ describe("Seating Charts API - Authentication", () => {
 describe("Seating Charts API - CRUD Operations", () => {
   beforeEach(() => {
     mockCurrentUser.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockDeleteWhere.mockClear();
+    mockSeatingChartFindMany.mockClear();
+    mockSeatingChartCreate.mockClear();
 
     // Default to authenticated admin
     mockCurrentUser.mockResolvedValue({
@@ -170,14 +139,14 @@ describe("Seating Charts API - CRUD Operations", () => {
         {
           id: "chart-1",
           name: "Wedding Reception",
-          default_seats_per_table: 8,
-          is_active: true,
+          defaultSeatsPerTable: 8,
+          isActive: true,
           notes: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       ];
-      mockExecute.mockResolvedValue(mockCharts);
+      mockSeatingChartFindMany.mockResolvedValue(mockCharts);
 
       const { GET } = await import("@/app/api/admin/seating-charts/route");
 
@@ -194,13 +163,13 @@ describe("Seating Charts API - CRUD Operations", () => {
       const newChart = {
         id: "chart-new",
         name: "New Chart",
-        default_seats_per_table: 10,
-        is_active: false,
+        defaultSeatsPerTable: 10,
+        isActive: false,
         notes: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
-      mockExecuteTakeFirstOrThrow.mockResolvedValue(newChart);
+      mockSeatingChartCreate.mockResolvedValue(newChart);
 
       const { POST } = await import("@/app/api/admin/seating-charts/route");
 
@@ -221,7 +190,7 @@ describe("Seating Charts API - CRUD Operations", () => {
 
       expect(response.status).toBe(200);
       expect(data.chart).toBeDefined();
-      expect(mockInsertValues).toHaveBeenCalled();
+      expect(mockSeatingChartCreate).toHaveBeenCalled();
     });
 
     it("should require chart name", async () => {
@@ -248,10 +217,9 @@ describe("Seating Charts API - CRUD Operations", () => {
 describe("Seating Charts Assignments API", () => {
   beforeEach(() => {
     mockCurrentUser.mockClear();
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockInsertValues.mockClear();
-    mockDeleteWhere.mockClear();
+    mockSeatingTableFindMany.mockClear();
+    mockGuestTableAssignmentDeleteMany.mockClear();
+    mockGuestTableAssignmentCreateMany.mockClear();
 
     // Default to authenticated admin
     mockCurrentUser.mockResolvedValue({
@@ -262,7 +230,7 @@ describe("Seating Charts Assignments API", () => {
 
   describe("POST /api/admin/seating-charts/[id]/assignments", () => {
     it("should require assignments array", async () => {
-      mockExecute.mockResolvedValue([{ id: "table-1" }]); // tables exist
+      mockSeatingTableFindMany.mockResolvedValue([{ id: "table-1" }]);
 
       const { POST } = await import(
         "@/app/api/admin/seating-charts/[id]/assignments/route"
@@ -287,7 +255,7 @@ describe("Seating Charts Assignments API", () => {
     });
 
     it("should filter out invalid UUIDs", async () => {
-      mockExecute.mockResolvedValue([{ id: "table-1" }]); // tables exist
+      mockSeatingTableFindMany.mockResolvedValue([{ id: "table-1" }]);
 
       const { POST } = await import(
         "@/app/api/admin/seating-charts/[id]/assignments/route"
@@ -318,7 +286,7 @@ describe("Seating Charts Assignments API", () => {
 
     it("should accept valid UUID guest IDs", async () => {
       const validUUID = "30355773-01ab-48f3-877a-6376c6be0026";
-      mockExecute.mockResolvedValue([{ id: "table-1" }]); // tables exist
+      mockSeatingTableFindMany.mockResolvedValue([{ id: "table-1" }]);
 
       const { POST } = await import(
         "@/app/api/admin/seating-charts/[id]/assignments/route"
@@ -347,7 +315,10 @@ describe("Seating Charts Assignments API", () => {
 
     it("should deduplicate guest assignments", async () => {
       const validUUID = "30355773-01ab-48f3-877a-6376c6be0026";
-      mockExecute.mockResolvedValue([{ id: "table-1" }, { id: "table-2" }]);
+      mockSeatingTableFindMany.mockResolvedValue([
+        { id: "table-1" },
+        { id: "table-2" },
+      ]);
 
       const { POST } = await import(
         "@/app/api/admin/seating-charts/[id]/assignments/route"
@@ -379,7 +350,10 @@ describe("Seating Charts Assignments API", () => {
 
   describe("DELETE /api/admin/seating-charts/[id]/assignments", () => {
     it("should clear all assignments for a chart", async () => {
-      mockExecute.mockResolvedValue([{ id: "table-1" }, { id: "table-2" }]);
+      mockSeatingTableFindMany.mockResolvedValue([
+        { id: "table-1" },
+        { id: "table-2" },
+      ]);
 
       const { DELETE } = await import(
         "@/app/api/admin/seating-charts/[id]/assignments/route"

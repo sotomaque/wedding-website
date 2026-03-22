@@ -12,63 +12,32 @@ mock.module("@/env", () => ({
 }));
 
 // Create db mock with tracking
-const mockExecute = mock(() => Promise.resolve([]));
-const mockExecuteTakeFirst = mock(() => Promise.resolve(null));
-const mockExecuteTakeFirstOrThrow = mock(() =>
+const mockGuestFindFirst = mock(() => Promise.resolve(null));
+const mockGiftFindFirst = mock(() => Promise.resolve(null));
+const mockGiftCreate = mock(() =>
   Promise.resolve({
     id: "gift-123",
-    donor_email: "test@example.com",
-    donor_name: "Test User",
-    amount_cents: 5000,
+    donorEmail: "test@example.com",
+    donorName: "Test User",
+    amountCents: 5000,
     currency: "usd",
-    gift_type: "baby_fund",
-    guest_id: null,
+    giftType: "baby_fund",
+    guestId: null,
     status: "completed",
   }),
 );
-const mockInsertValues = mock(() => {});
-const mockUpdateSet = mock(() => {});
+const mockGiftUpdate = mock(() => Promise.resolve({}));
 
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => ({
-      selectAll: () => ({
-        where: (field: string, op: string, value: unknown) => {
-          return {
-            executeTakeFirst: mockExecuteTakeFirst,
-            where: () => ({
-              executeTakeFirst: mockExecuteTakeFirst,
-            }),
-          };
-        },
-      }),
-      select: () => ({
-        where: () => ({
-          executeTakeFirst: mockExecuteTakeFirst,
-        }),
-      }),
-    }),
-    insertInto: () => ({
-      values: (data: unknown) => {
-        mockInsertValues(data);
-        return {
-          returningAll: () => ({
-            executeTakeFirstOrThrow: mockExecuteTakeFirstOrThrow,
-          }),
-        };
-      },
-    }),
-    updateTable: () => ({
-      set: (data: unknown) => {
-        mockUpdateSet(data);
-        return {
-          where: () => ({
-            execute: mockExecute,
-            executeTakeFirst: mockExecuteTakeFirst,
-          }),
-        };
-      },
-    }),
+    guest: {
+      findFirst: mockGuestFindFirst,
+    },
+    gift: {
+      findFirst: mockGiftFindFirst,
+      create: mockGiftCreate,
+      update: mockGiftUpdate,
+    },
   },
 }));
 
@@ -123,11 +92,10 @@ mock.module("stripe", () => {
 
 describe("Stripe Webhook - Request Validation", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockUpdateSet.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGiftFindFirst.mockClear();
+    mockGiftCreate.mockClear();
+    mockGiftUpdate.mockClear();
     mockConstructEvent.mockClear();
     mockPaymentIntentRetrieve.mockClear();
   });
@@ -169,16 +137,16 @@ describe("Stripe Webhook - Gift Type Mapping", () => {
 
 describe("Stripe Webhook - Charge Event Handling", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockUpdateSet.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGiftFindFirst.mockClear();
+    mockGiftCreate.mockClear();
+    mockGiftUpdate.mockClear();
     mockConstructEvent.mockClear();
     mockPaymentIntentRetrieve.mockClear();
 
     // Reset mock to return null for existing gift checks
-    mockExecuteTakeFirst.mockResolvedValue(null);
+    mockGiftFindFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
   });
 
   it("should handle charge.succeeded event", async () => {
@@ -311,10 +279,10 @@ describe("Stripe Webhook - Charge Event Handling", () => {
 
   it("should handle charge.refunded event", async () => {
     // First set up existing gift for refund
-    mockExecuteTakeFirst.mockResolvedValue({
+    mockGiftFindFirst.mockResolvedValue({
       id: "gift-123",
       status: "completed",
-      amount_cents: 5000,
+      amountCents: 5000,
     });
 
     mockConstructEvent.mockImplementation(() => ({
@@ -391,17 +359,15 @@ describe("Stripe Webhook - Charge Event Handling", () => {
 
 describe("Stripe Webhook - Idempotency", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockUpdateSet.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGiftFindFirst.mockClear();
+    mockGiftCreate.mockClear();
+    mockGiftUpdate.mockClear();
     mockConstructEvent.mockClear();
+    mockPaymentIntentRetrieve.mockClear();
   });
 
   it("should skip processing when gift already exists for charge ID", async () => {
-    // This tests the idempotency check - when a gift already exists for a charge ID,
-    // the webhook should not create a duplicate
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_duplicate",
       type: "charge.succeeded",
@@ -436,9 +402,6 @@ describe("Stripe Webhook - Idempotency", () => {
       body: JSON.stringify({ type: "charge.succeeded" }),
     });
 
-    // The route will call constructEvent, then process the charge
-    // Since mocking the full DB flow is complex, we just verify the route returns 200
-    // and processes without error (the idempotency logic exists in the route code)
     const response = await POST(request);
     const data = await response.json();
 
@@ -447,20 +410,16 @@ describe("Stripe Webhook - Idempotency", () => {
   });
 
   it("should have idempotency check that queries by charge ID", () => {
-    // The route code checks for existing gifts by charge ID before inserting
-    // This is a documentation test showing the expected behavior
-    // Real idempotency testing would require integration tests with a real database
     expect(true).toBe(true);
   });
 });
 
 describe("Stripe Webhook - Guest Matching", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockUpdateSet.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGiftFindFirst.mockClear();
+    mockGiftCreate.mockClear();
+    mockGiftUpdate.mockClear();
     mockConstructEvent.mockClear();
     mockPaymentIntentRetrieve.mockClear();
     // Reset to default behavior
@@ -470,12 +429,11 @@ describe("Stripe Webhook - Guest Matching", () => {
         order_reference: "prod_baby_fund",
       },
     });
+    mockGiftFindFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
   });
 
   it("should attempt to match guest by email", async () => {
-    // Set up mock to return null for guest lookups (no match found)
-    mockExecuteTakeFirst.mockResolvedValue(null);
-
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_email_match",
       type: "charge.succeeded",
@@ -511,11 +469,11 @@ describe("Stripe Webhook - Guest Matching", () => {
     const response = await POST(request);
     expect(response.status).toBe(200);
     // The findGuest function queries the database
-    expect(mockExecuteTakeFirst).toHaveBeenCalled();
+    expect(mockGuestFindFirst).toHaveBeenCalled();
   });
 
   it("should attempt to match guest by name when email not found", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
 
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_name_match",
@@ -554,7 +512,7 @@ describe("Stripe Webhook - Guest Matching", () => {
   });
 
   it("should attempt to match guest by phone number", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
 
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_phone_match",
@@ -595,16 +553,16 @@ describe("Stripe Webhook - Guest Matching", () => {
 
 describe("Stripe Webhook - Gift Type from Product ID", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGiftFindFirst.mockClear();
+    mockGiftCreate.mockClear();
     mockConstructEvent.mockClear();
     mockPaymentIntentRetrieve.mockClear();
+    mockGiftFindFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
   });
 
   it("should determine baby_fund gift type from product ID", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
     mockPaymentIntentRetrieve.mockResolvedValue({
       id: "pi_baby",
       payment_details: {
@@ -650,7 +608,6 @@ describe("Stripe Webhook - Gift Type from Product ID", () => {
   });
 
   it("should determine honeymoon gift type from product ID", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
     mockPaymentIntentRetrieve.mockResolvedValue({
       id: "pi_honeymoon",
       payment_details: {
@@ -696,7 +653,6 @@ describe("Stripe Webhook - Gift Type from Product ID", () => {
   });
 
   it("should determine student_loans gift type from product ID", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
     mockPaymentIntentRetrieve.mockResolvedValue({
       id: "pi_loans",
       payment_details: {
@@ -742,7 +698,6 @@ describe("Stripe Webhook - Gift Type from Product ID", () => {
   });
 
   it("should return null for unknown product ID", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
     mockPaymentIntentRetrieve.mockResolvedValue({
       id: "pi_unknown",
       payment_details: {
@@ -789,10 +744,9 @@ describe("Stripe Webhook - Gift Type from Product ID", () => {
 
 describe("Stripe Webhook - Error Handling", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGiftFindFirst.mockClear();
+    mockGiftCreate.mockClear();
     mockConstructEvent.mockClear();
     mockPaymentIntentRetrieve.mockClear();
     // Reset to default behavior
@@ -802,14 +756,14 @@ describe("Stripe Webhook - Error Handling", () => {
         order_reference: "prod_baby_fund",
       },
     });
-    mockExecuteTakeFirstOrThrow.mockResolvedValue({
+    mockGiftCreate.mockResolvedValue({
       id: "gift-123",
-      donor_email: "test@example.com",
-      donor_name: "Test User",
-      amount_cents: 5000,
+      donorEmail: "test@example.com",
+      donorName: "Test User",
+      amountCents: 5000,
       currency: "usd",
-      gift_type: "baby_fund",
-      guest_id: null,
+      giftType: "baby_fund",
+      guestId: null,
       status: "completed",
     });
   });
@@ -835,7 +789,8 @@ describe("Stripe Webhook - Error Handling", () => {
   });
 
   it("should handle PaymentIntent retrieval failure gracefully", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
+    mockGiftFindFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
     mockPaymentIntentRetrieve.mockRejectedValue(
       new Error("PaymentIntent not found"),
     );
@@ -878,10 +833,9 @@ describe("Stripe Webhook - Error Handling", () => {
   });
 
   it("should handle database insert failure", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
-    mockExecuteTakeFirstOrThrow.mockRejectedValue(
-      new Error("Database insert failed"),
-    );
+    mockGiftFindFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
+    mockGiftCreate.mockRejectedValue(new Error("Database insert failed"));
 
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_db_fail",
@@ -922,10 +876,9 @@ describe("Stripe Webhook - Error Handling", () => {
 
 describe("Stripe Webhook - Gift Notification Email", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGiftFindFirst.mockClear();
+    mockGiftCreate.mockClear();
     mockConstructEvent.mockClear();
     mockPaymentIntentRetrieve.mockClear();
     // Reset to default behavior
@@ -935,20 +888,21 @@ describe("Stripe Webhook - Gift Notification Email", () => {
         order_reference: "prod_baby_fund",
       },
     });
-    mockExecuteTakeFirstOrThrow.mockResolvedValue({
+    mockGiftCreate.mockResolvedValue({
       id: "gift-123",
-      donor_email: "test@example.com",
-      donor_name: "Test User",
-      amount_cents: 5000,
+      donorEmail: "test@example.com",
+      donorName: "Test User",
+      amountCents: 5000,
       currency: "usd",
-      gift_type: "baby_fund",
-      guest_id: null,
+      giftType: "baby_fund",
+      guestId: null,
       status: "completed",
     });
   });
 
   it("should attempt to send gift notification email after successful charge", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
+    mockGiftFindFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
 
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_email_test",
@@ -984,20 +938,19 @@ describe("Stripe Webhook - Gift Notification Email", () => {
 
     const response = await POST(request);
     expect(response.status).toBe(200);
-    // Note: The actual email sending is skipped in tests due to missing Resend client
-    // This test verifies the webhook processes successfully with email logic in place
   });
 
   it("should format gift notification with matched guest info", async () => {
     // Mock finding a guest match
-    mockExecuteTakeFirst
+    mockGuestFindFirst
       .mockResolvedValueOnce({
         id: "guest-123",
-        first_name: "Jane",
-        last_name: "Doe",
+        firstName: "Jane",
+        lastName: "Doe",
         email: "jane@example.com",
       })
       .mockResolvedValue(null);
+    mockGiftFindFirst.mockResolvedValue(null);
 
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_matched",
@@ -1036,7 +989,8 @@ describe("Stripe Webhook - Gift Notification Email", () => {
   });
 
   it("should format gift notification without guest match", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
+    mockGiftFindFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
 
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_unmatched",
@@ -1077,8 +1031,9 @@ describe("Stripe Webhook - Gift Notification Email", () => {
 
 describe("Stripe Webhook - Currency Handling", () => {
   beforeEach(() => {
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
+    mockGiftFindFirst.mockClear();
+    mockGiftCreate.mockClear();
+    mockGuestFindFirst.mockClear();
     mockConstructEvent.mockClear();
     mockPaymentIntentRetrieve.mockClear();
     // Reset to default behavior
@@ -1088,21 +1043,21 @@ describe("Stripe Webhook - Currency Handling", () => {
         order_reference: "prod_baby_fund",
       },
     });
-    mockExecuteTakeFirstOrThrow.mockResolvedValue({
+    mockGiftCreate.mockResolvedValue({
       id: "gift-123",
-      donor_email: "test@example.com",
-      donor_name: "Test User",
-      amount_cents: 5000,
+      donorEmail: "test@example.com",
+      donorName: "Test User",
+      amountCents: 5000,
       currency: "usd",
-      gift_type: "baby_fund",
-      guest_id: null,
+      giftType: "baby_fund",
+      guestId: null,
       status: "completed",
     });
+    mockGiftFindFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
   });
 
   it("should handle USD currency correctly", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
-
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_usd",
       type: "charge.succeeded",
@@ -1140,8 +1095,6 @@ describe("Stripe Webhook - Currency Handling", () => {
   });
 
   it("should handle EUR currency correctly", async () => {
-    mockExecuteTakeFirst.mockResolvedValue(null);
-
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_eur",
       type: "charge.succeeded",
@@ -1151,7 +1104,7 @@ describe("Stripe Webhook - Currency Handling", () => {
       data: {
         object: {
           id: "ch_eur",
-          amount: 10000, // €100.00
+          amount: 10000, // 100.00
           currency: "eur",
           status: "succeeded",
           paid: true,
@@ -1181,11 +1134,10 @@ describe("Stripe Webhook - Currency Handling", () => {
 
 describe("Stripe Webhook - Existing Gift Updates", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockExecuteTakeFirstOrThrow.mockClear();
-    mockInsertValues.mockClear();
-    mockUpdateSet.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGiftFindFirst.mockClear();
+    mockGiftCreate.mockClear();
+    mockGiftUpdate.mockClear();
     mockConstructEvent.mockClear();
     mockPaymentIntentRetrieve.mockClear();
     // Reset to default behavior
@@ -1195,23 +1147,21 @@ describe("Stripe Webhook - Existing Gift Updates", () => {
         order_reference: "prod_baby_fund",
       },
     });
-    mockExecuteTakeFirstOrThrow.mockResolvedValue({
+    mockGiftCreate.mockResolvedValue({
       id: "gift-123",
-      donor_email: "test@example.com",
-      donor_name: "Test User",
-      amount_cents: 5000,
+      donorEmail: "test@example.com",
+      donorName: "Test User",
+      amountCents: 5000,
       currency: "usd",
-      gift_type: "baby_fund",
-      guest_id: null,
+      giftType: "baby_fund",
+      guestId: null,
       status: "completed",
     });
   });
 
   it("should successfully process charge when existing gift found by payment intent", async () => {
-    // This test verifies the webhook can handle duplicate charges (idempotency)
-    // When processing a charge.succeeded for a payment intent that already has a gift record,
-    // the webhook should still return 200 (success)
-    mockExecuteTakeFirst.mockResolvedValue(null);
+    mockGiftFindFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
 
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_update",
@@ -1248,14 +1198,13 @@ describe("Stripe Webhook - Existing Gift Updates", () => {
     const response = await POST(request);
     // Webhook should process successfully
     expect(response.status).toBe(200);
-    // Verify that insert was called (new gift created when no existing found)
-    expect(mockExecuteTakeFirstOrThrow).toHaveBeenCalled();
+    // Verify that create was called (new gift created when no existing found)
+    expect(mockGiftCreate).toHaveBeenCalled();
   });
 
   it("should not duplicate gift records (idempotency)", async () => {
-    // When a charge.succeeded event is received multiple times for the same charge,
-    // the webhook should check for existing records first
-    mockExecuteTakeFirst.mockResolvedValue(null);
+    mockGiftFindFirst.mockResolvedValue(null);
+    mockGuestFindFirst.mockResolvedValue(null);
 
     mockConstructEvent.mockImplementation(() => ({
       id: "evt_idempotent",

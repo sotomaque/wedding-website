@@ -42,40 +42,33 @@ export async function getGuestParty(
 
   // Try to find guest by Clerk user ID first (if logged in)
   if (user) {
-    const guestByClerk = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("clerk_user_id", "=", user.id)
-      .executeTakeFirst();
+    const guestByClerk = await db.guest.findFirst({
+      where: { clerkUserId: user.id },
+    });
 
-    if (guestByClerk) {
+    if (guestByClerk && guestByClerk.inviteCode) {
       // Found guest by Clerk ID - get their party
-      return await getPartyByInviteCode(
-        guestByClerk.invite_code,
-        true,
-        isAdmin,
-      );
+      return await getPartyByInviteCode(guestByClerk.inviteCode, true, isAdmin);
     }
 
     // If no clerk_user_id link, try to find guest by email and auto-link
     if (userEmail) {
-      const guestByEmail = await db
-        .selectFrom("guests")
-        .selectAll()
-        .where("email", "=", userEmail)
-        .where("is_plus_one", "=", false) // Only match primary guests
-        .executeTakeFirst();
+      const guestByEmail = await db.guest.findFirst({
+        where: {
+          email: userEmail,
+          isPlusOne: false, // Only match primary guests
+        },
+      });
 
-      if (guestByEmail) {
+      if (guestByEmail && guestByEmail.inviteCode) {
         // Auto-link the Clerk user to this guest for future lookups
-        await db
-          .updateTable("guests")
-          .set({ clerk_user_id: user.id })
-          .where("id", "=", guestByEmail.id)
-          .execute();
+        await db.guest.update({
+          where: { id: guestByEmail.id },
+          data: { clerkUserId: user.id },
+        });
 
         return await getPartyByInviteCode(
-          guestByEmail.invite_code,
+          guestByEmail.inviteCode,
           true,
           isAdmin,
         );
@@ -101,18 +94,16 @@ async function getPartyByInviteCode(
   isLoggedIn: boolean,
   isAdmin: boolean,
 ): Promise<GuestParty | null> {
-  const guests = await db
-    .selectFrom("guests")
-    .selectAll()
-    .where("invite_code", "=", inviteCode.toUpperCase())
-    .execute();
+  const guests = await db.guest.findMany({
+    where: { inviteCode: inviteCode.toUpperCase() },
+  });
 
   if (guests.length === 0) {
     return null;
   }
 
-  const primaryGuest = guests.find((g) => !g.is_plus_one);
-  const plusOne = guests.find((g) => g.is_plus_one);
+  const primaryGuest = guests.find((g) => !g.isPlusOne);
+  const plusOne = guests.find((g) => g.isPlusOne);
 
   if (!primaryGuest) {
     return null;
@@ -122,18 +113,18 @@ async function getPartyByInviteCode(
     inviteCode: inviteCode.toUpperCase(),
     primaryGuest: {
       id: primaryGuest.id,
-      firstName: primaryGuest.first_name,
-      lastName: primaryGuest.last_name,
+      firstName: primaryGuest.firstName,
+      lastName: primaryGuest.lastName,
       email: primaryGuest.email,
-      rsvpStatus: primaryGuest.rsvp_status,
+      rsvpStatus: primaryGuest.rsvpStatus as "pending" | "yes" | "no",
     },
     plusOne: plusOne
       ? {
           id: plusOne.id,
-          firstName: plusOne.first_name,
-          lastName: plusOne.last_name,
+          firstName: plusOne.firstName,
+          lastName: plusOne.lastName,
           email: plusOne.email,
-          rsvpStatus: plusOne.rsvp_status,
+          rsvpStatus: plusOne.rsvpStatus as "pending" | "yes" | "no",
         }
       : null,
     isLoggedIn,
@@ -156,11 +147,9 @@ export async function linkClerkUserToGuest(
     }
 
     // Get guests with this invite code
-    const guests = await db
-      .selectFrom("guests")
-      .selectAll()
-      .where("invite_code", "=", inviteCode.toUpperCase())
-      .execute();
+    const guests = await db.guest.findMany({
+      where: { inviteCode: inviteCode.toUpperCase() },
+    });
 
     if (guests.length === 0) {
       return { success: false, error: "Invalid invite code" };
@@ -174,7 +163,7 @@ export async function linkClerkUserToGuest(
 
     // If no email match, link to primary guest
     if (!matchingGuest) {
-      matchingGuest = guests.find((g) => !g.is_plus_one);
+      matchingGuest = guests.find((g) => !g.isPlusOne);
     }
 
     if (!matchingGuest) {
@@ -183,18 +172,17 @@ export async function linkClerkUserToGuest(
 
     // Check if another user is already linked
     if (
-      matchingGuest.clerk_user_id &&
-      matchingGuest.clerk_user_id !== clerkUserId
+      matchingGuest.clerkUserId &&
+      matchingGuest.clerkUserId !== clerkUserId
     ) {
       return { success: false, error: "Guest already linked to another user" };
     }
 
     // Link the user
-    await db
-      .updateTable("guests")
-      .set({ clerk_user_id: clerkUserId })
-      .where("id", "=", matchingGuest.id)
-      .execute();
+    await db.guest.update({
+      where: { id: matchingGuest.id },
+      data: { clerkUserId },
+    });
 
     return { success: true };
   } catch (error) {

@@ -1,22 +1,20 @@
 "use client";
 
+import type { Guest } from "@prisma/client";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@workspace/ui/components/button";
 import { CalendarCheck, Check, Link, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Database } from "@/lib/supabase/types";
-
-type Guest = Database["public"]["Tables"]["guests"]["Row"];
 
 type SortableColumn =
-  | "first_name"
+  | "firstName"
   | "email"
   | "side"
   | "list"
-  | "rsvp_status"
-  | "number_of_resends"
-  | "plus_one_allowed"
+  | "rsvpStatus"
+  | "numberOfResends"
+  | "plusOneAllowed"
   | "family"
   | "notes";
 
@@ -136,7 +134,7 @@ function EditableSideCell({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState<"bride" | "groom" | "both">(
-    guest.side || "bride",
+    (guest.side as "bride" | "groom" | "both") || "bride",
   );
   const [isSaving, setIsSaving] = useState(false);
 
@@ -158,7 +156,7 @@ function EditableSideCell({
   }
 
   function handleCancel() {
-    setValue(guest.side || "bride");
+    setValue((guest.side as "bride" | "groom" | "both") || "bride");
     setIsEditing(false);
   }
 
@@ -221,7 +219,9 @@ function EditableListCell({
   onSave: (guestId: string, list: "a" | "b" | "c") => Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState<"a" | "b" | "c">(guest.list);
+  const [value, setValue] = useState<"a" | "b" | "c">(
+    guest.list as "a" | "b" | "c",
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   async function handleSave() {
@@ -242,7 +242,7 @@ function EditableListCell({
   }
 
   function handleCancel() {
-    setValue(guest.list);
+    setValue(guest.list as "a" | "b" | "c");
     setIsEditing(false);
   }
 
@@ -304,7 +304,7 @@ function EditableRsvpCell({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState<"yes" | "no" | "pending">(
-    guest.rsvp_status,
+    guest.rsvpStatus as "yes" | "no" | "pending",
   );
   const [isSaving, setIsSaving] = useState(false);
 
@@ -324,7 +324,7 @@ function EditableRsvpCell({
   }
 
   function handleCancel() {
-    setValue(guest.rsvp_status);
+    setValue(guest.rsvpStatus as "yes" | "no" | "pending");
     setIsEditing(false);
   }
 
@@ -380,10 +380,10 @@ function EditableRsvpCell({
     <button
       type="button"
       onClick={() => setIsEditing(true)}
-      className={`px-2 py-1 rounded text-xs font-medium hover:opacity-80 transition-opacity ${colors[guest.rsvp_status]}`}
+      className={`px-2 py-1 rounded text-xs font-medium hover:opacity-80 transition-opacity ${colors[guest.rsvpStatus]}`}
       title="Click to change RSVP status"
     >
-      {labels[guest.rsvp_status]}
+      {labels[guest.rsvpStatus]}
     </button>
   );
 }
@@ -514,24 +514,24 @@ export function createColumns({
     },
     {
       id: "name",
-      accessorFn: (row) => `${row.first_name} ${row.last_name || ""}`.trim(),
+      accessorFn: (row) => `${row.firstName} ${row.lastName || ""}`.trim(),
       header: () => {
         return (
           <button
             type="button"
             className="flex items-center hover:text-foreground"
-            onClick={() => onSort("first_name")}
+            onClick={() => onSort("firstName")}
           >
-            Name{getSortIcon("first_name")}
+            Name{getSortIcon("firstName")}
           </button>
         );
       },
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <span>
-            {`${row.original.first_name} ${row.original.last_name || ""}`.trim()}
+            {`${row.original.firstName} ${row.original.lastName || ""}`.trim()}
           </span>
-          {row.original.is_plus_one && (
+          {row.original.isPlusOne && (
             <span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 px-2 py-0.5 rounded">
               +1
             </span>
@@ -554,7 +554,7 @@ export function createColumns({
       },
     },
     {
-      accessorKey: "invite_code",
+      accessorKey: "inviteCode",
       header: "Invite Code",
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
@@ -562,7 +562,7 @@ export function createColumns({
             type="button"
             className="text-sm bg-secondary px-2 py-1 rounded cursor-pointer hover:bg-secondary/80 transition-colors font-mono"
             onClick={() => {
-              const code = row.original.invite_code;
+              const code = row.original.inviteCode ?? "";
               navigator.clipboard.writeText(code);
               toast.success("Copied!", {
                 description: "Invite code copied to clipboard",
@@ -570,13 +570,13 @@ export function createColumns({
             }}
             title="Click to copy invite code"
           >
-            {row.original.invite_code}
+            {row.original.inviteCode}
           </button>
           <button
             type="button"
             className="p-1 rounded cursor-pointer hover:bg-secondary/80 transition-colors text-muted-foreground hover:text-foreground"
             onClick={() => {
-              const url = `${window.location.origin}/rsvp?code=${row.original.invite_code}`;
+              const url = `${window.location.origin}/rsvp?code=${row.original.inviteCode}`;
               navigator.clipboard.writeText(url);
               toast.success("RSVP link copied!", {
                 description: "Full RSVP URL copied to clipboard",
@@ -624,15 +624,15 @@ export function createColumns({
       ),
     },
     {
-      accessorKey: "rsvp_status",
+      accessorKey: "rsvpStatus",
       header: () => {
         return (
           <button
             type="button"
             className="flex items-center hover:text-foreground"
-            onClick={() => onSort("rsvp_status")}
+            onClick={() => onSort("rsvpStatus")}
           >
-            Status{getSortIcon("rsvp_status")}
+            Status{getSortIcon("rsvpStatus")}
           </button>
         );
       },
@@ -641,20 +641,20 @@ export function createColumns({
       ),
     },
     {
-      accessorKey: "number_of_resends",
+      accessorKey: "numberOfResends",
       header: () => {
         return (
           <button
             type="button"
             className="flex items-center hover:text-foreground"
-            onClick={() => onSort("number_of_resends")}
+            onClick={() => onSort("numberOfResends")}
           >
-            Email{getSortIcon("number_of_resends")}
+            Email{getSortIcon("numberOfResends")}
           </button>
         );
       },
       cell: ({ row }) => {
-        const count = row.original.number_of_resends || 0;
+        const count = row.original.numberOfResends || 0;
         if (count === 0) {
           return (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
@@ -677,20 +677,20 @@ export function createColumns({
       },
     },
     {
-      accessorKey: "plus_one_allowed",
+      accessorKey: "plusOneAllowed",
       header: () => {
         return (
           <button
             type="button"
             className="flex items-center hover:text-foreground"
-            onClick={() => onSort("plus_one_allowed")}
+            onClick={() => onSort("plusOneAllowed")}
           >
-            Plus One{getSortIcon("plus_one_allowed")}
+            Plus One{getSortIcon("plusOneAllowed")}
           </button>
         );
       },
       cell: ({ row }) => {
-        const allowed = row.original.plus_one_allowed;
+        const allowed = row.original.plusOneAllowed;
 
         if (allowed) {
           return (
@@ -744,7 +744,7 @@ export function createColumns({
       cell: ({ row }) => {
         const guest = row.original;
         const canSendCalendarInvite =
-          guest.rsvp_status === "yes" && !!guest.email;
+          guest.rsvpStatus === "yes" && !!guest.email;
         return (
           <div className="flex items-center gap-1">
             {canSendCalendarInvite && (

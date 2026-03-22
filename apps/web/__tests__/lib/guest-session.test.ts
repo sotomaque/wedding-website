@@ -3,55 +3,41 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 // Mock data
 const mockPrimaryGuest = {
   id: "guest-123",
-  first_name: "John",
-  last_name: "Doe",
+  firstName: "John",
+  lastName: "Doe",
   email: "john@example.com",
-  invite_code: "ABCD-1234",
-  is_plus_one: false,
-  rsvp_status: "pending" as const,
-  clerk_user_id: null,
+  inviteCode: "ABCD-1234",
+  isPlusOne: false,
+  rsvpStatus: "pending" as const,
+  clerkUserId: null,
 };
 
 const mockPlusOne = {
   id: "guest-456",
-  first_name: "Jane",
-  last_name: "Doe",
+  firstName: "Jane",
+  lastName: "Doe",
   email: null,
-  invite_code: "ABCD-1234",
-  is_plus_one: true,
-  rsvp_status: "pending" as const,
-  clerk_user_id: null,
-  primary_guest_id: "guest-123",
+  inviteCode: "ABCD-1234",
+  isPlusOne: true,
+  rsvpStatus: "pending" as const,
+  clerkUserId: null,
+  primaryGuestId: "guest-123",
 };
 
 // Mock functions
-const mockExecute = mock(() => Promise.resolve([]));
-const mockExecuteTakeFirst = mock(() => Promise.resolve(undefined));
-const mockUpdateExecute = mock(() => Promise.resolve(undefined));
+const mockGuestFindMany = mock(() => Promise.resolve([]));
+const mockGuestFindFirst = mock(() => Promise.resolve(null));
+const mockGuestUpdate = mock(() => Promise.resolve({}));
 const mockCurrentUser = mock(() => Promise.resolve(null));
 
 // Mock db
 mock.module("@/lib/db", () => ({
   db: {
-    selectFrom: () => ({
-      selectAll: () => ({
-        where: () => ({
-          where: () => ({
-            executeTakeFirst: mockExecuteTakeFirst,
-          }),
-          execute: mockExecute,
-          executeTakeFirst: mockExecuteTakeFirst,
-        }),
-        execute: mockExecute,
-      }),
-    }),
-    updateTable: () => ({
-      set: () => ({
-        where: () => ({
-          execute: mockUpdateExecute,
-        }),
-      }),
-    }),
+    guest: {
+      findMany: mockGuestFindMany,
+      findFirst: mockGuestFindFirst,
+      update: mockGuestUpdate,
+    },
   },
 }));
 
@@ -69,9 +55,9 @@ mock.module("@/env", () => ({
 
 describe("Guest Session - getGuestParty", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockUpdateExecute.mockClear();
+    mockGuestFindMany.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGuestUpdate.mockClear();
     mockCurrentUser.mockClear();
   });
 
@@ -86,7 +72,7 @@ describe("Guest Session - getGuestParty", () => {
 
   it("should find guest by invite code when not logged in", async () => {
     mockCurrentUser.mockResolvedValue(null);
-    mockExecute.mockResolvedValue([mockPrimaryGuest, mockPlusOne]);
+    mockGuestFindMany.mockResolvedValue([mockPrimaryGuest, mockPlusOne]);
 
     const { getGuestParty } = await import("@/lib/auth/guest-session");
     const result = await getGuestParty("ABCD-1234");
@@ -98,22 +84,22 @@ describe("Guest Session - getGuestParty", () => {
     expect(result?.isLoggedIn).toBe(false);
   });
 
-  it("should find guest by clerk_user_id when logged in", async () => {
+  it("should find guest by clerkUserId when logged in", async () => {
     const mockUser = {
       id: "clerk-user-123",
       emailAddresses: [{ emailAddress: "john@example.com" }],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
 
-    // First call: find by clerk_user_id
-    mockExecuteTakeFirst.mockResolvedValueOnce({
+    // First call: find by clerkUserId
+    mockGuestFindFirst.mockResolvedValueOnce({
       ...mockPrimaryGuest,
-      clerk_user_id: "clerk-user-123",
+      clerkUserId: "clerk-user-123",
     });
 
     // Second call: get party by invite code
-    mockExecute.mockResolvedValueOnce([
-      { ...mockPrimaryGuest, clerk_user_id: "clerk-user-123" },
+    mockGuestFindMany.mockResolvedValueOnce([
+      { ...mockPrimaryGuest, clerkUserId: "clerk-user-123" },
       mockPlusOne,
     ]);
 
@@ -125,21 +111,21 @@ describe("Guest Session - getGuestParty", () => {
     expect(result?.primaryGuest.firstName).toBe("John");
   });
 
-  it("should auto-link guest by email when logged in but no clerk_user_id link", async () => {
+  it("should auto-link guest by email when logged in but no clerkUserId link", async () => {
     const mockUser = {
       id: "clerk-user-new",
       emailAddresses: [{ emailAddress: "john@example.com" }],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
 
-    // First call: no guest by clerk_user_id
-    mockExecuteTakeFirst
-      .mockResolvedValueOnce(undefined)
+    // First call: no guest by clerkUserId
+    mockGuestFindFirst
+      .mockResolvedValueOnce(null)
       // Second call: find guest by email
       .mockResolvedValueOnce(mockPrimaryGuest);
 
     // Get party after auto-link
-    mockExecute.mockResolvedValueOnce([mockPrimaryGuest, mockPlusOne]);
+    mockGuestFindMany.mockResolvedValueOnce([mockPrimaryGuest, mockPlusOne]);
 
     const { getGuestParty } = await import("@/lib/auth/guest-session");
     const result = await getGuestParty();
@@ -149,7 +135,7 @@ describe("Guest Session - getGuestParty", () => {
     expect(result?.primaryGuest.email).toBe("john@example.com");
 
     // Verify auto-link was called
-    expect(mockUpdateExecute).toHaveBeenCalled();
+    expect(mockGuestUpdate).toHaveBeenCalled();
   });
 
   it("should not auto-link plus-one guests by email", async () => {
@@ -159,18 +145,18 @@ describe("Guest Session - getGuestParty", () => {
     };
     mockCurrentUser.mockResolvedValue(mockUser);
 
-    // First call: no guest by clerk_user_id
-    mockExecuteTakeFirst
-      .mockResolvedValueOnce(undefined)
-      // Second call: no primary guest matches email (is_plus_one=false filter)
-      .mockResolvedValueOnce(undefined);
+    // First call: no guest by clerkUserId
+    mockGuestFindFirst
+      .mockResolvedValueOnce(null)
+      // Second call: no primary guest matches email (isPlusOne=false filter)
+      .mockResolvedValueOnce(null);
 
     const { getGuestParty } = await import("@/lib/auth/guest-session");
     const result = await getGuestParty();
 
     // No auto-link should happen, no party returned
     expect(result).toBeNull();
-    expect(mockUpdateExecute).not.toHaveBeenCalled();
+    expect(mockGuestUpdate).not.toHaveBeenCalled();
   });
 
   it("should identify admin users", async () => {
@@ -181,14 +167,14 @@ describe("Guest Session - getGuestParty", () => {
     mockCurrentUser.mockResolvedValue(mockAdmin);
 
     // Admin with linked guest
-    mockExecuteTakeFirst.mockResolvedValueOnce({
+    mockGuestFindFirst.mockResolvedValueOnce({
       ...mockPrimaryGuest,
-      clerk_user_id: "clerk-admin",
+      clerkUserId: "clerk-admin",
       email: "admin@example.com",
     });
 
-    mockExecute.mockResolvedValueOnce([
-      { ...mockPrimaryGuest, clerk_user_id: "clerk-admin" },
+    mockGuestFindMany.mockResolvedValueOnce([
+      { ...mockPrimaryGuest, clerkUserId: "clerk-admin" },
     ]);
 
     const { getGuestParty } = await import("@/lib/auth/guest-session");
@@ -200,7 +186,7 @@ describe("Guest Session - getGuestParty", () => {
 
   it("should handle case-insensitive invite codes", async () => {
     mockCurrentUser.mockResolvedValue(null);
-    mockExecute.mockResolvedValue([mockPrimaryGuest]);
+    mockGuestFindMany.mockResolvedValue([mockPrimaryGuest]);
 
     const { getGuestParty } = await import("@/lib/auth/guest-session");
     const result = await getGuestParty("abcd-1234"); // lowercase
@@ -212,9 +198,9 @@ describe("Guest Session - getGuestParty", () => {
 
 describe("Guest Session - linkClerkUserToGuest", () => {
   beforeEach(() => {
-    mockExecute.mockClear();
-    mockExecuteTakeFirst.mockClear();
-    mockUpdateExecute.mockClear();
+    mockGuestFindMany.mockClear();
+    mockGuestFindFirst.mockClear();
+    mockGuestUpdate.mockClear();
     mockCurrentUser.mockClear();
   });
 
@@ -224,13 +210,13 @@ describe("Guest Session - linkClerkUserToGuest", () => {
       emailAddresses: [{ emailAddress: "john@example.com" }],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
-    mockExecute.mockResolvedValue([mockPrimaryGuest, mockPlusOne]);
+    mockGuestFindMany.mockResolvedValue([mockPrimaryGuest, mockPlusOne]);
 
     const { linkClerkUserToGuest } = await import("@/lib/auth/guest-session");
     const result = await linkClerkUserToGuest("clerk-user-123", "ABCD-1234");
 
     expect(result.success).toBe(true);
-    expect(mockUpdateExecute).toHaveBeenCalled();
+    expect(mockGuestUpdate).toHaveBeenCalled();
   });
 
   it("should link to primary guest when no email match", async () => {
@@ -239,13 +225,13 @@ describe("Guest Session - linkClerkUserToGuest", () => {
       emailAddresses: [{ emailAddress: "different@example.com" }],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
-    mockExecute.mockResolvedValue([mockPrimaryGuest, mockPlusOne]);
+    mockGuestFindMany.mockResolvedValue([mockPrimaryGuest, mockPlusOne]);
 
     const { linkClerkUserToGuest } = await import("@/lib/auth/guest-session");
     const result = await linkClerkUserToGuest("clerk-user-123", "ABCD-1234");
 
     expect(result.success).toBe(true);
-    expect(mockUpdateExecute).toHaveBeenCalled();
+    expect(mockGuestUpdate).toHaveBeenCalled();
   });
 
   it("should fail when guest already linked to another user", async () => {
@@ -254,8 +240,8 @@ describe("Guest Session - linkClerkUserToGuest", () => {
       emailAddresses: [{ emailAddress: "john@example.com" }],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
-    mockExecute.mockResolvedValue([
-      { ...mockPrimaryGuest, clerk_user_id: "clerk-user-existing" },
+    mockGuestFindMany.mockResolvedValue([
+      { ...mockPrimaryGuest, clerkUserId: "clerk-user-existing" },
     ]);
 
     const { linkClerkUserToGuest } = await import("@/lib/auth/guest-session");
@@ -271,7 +257,7 @@ describe("Guest Session - linkClerkUserToGuest", () => {
       emailAddresses: [{ emailAddress: "john@example.com" }],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
-    mockExecute.mockResolvedValue([]);
+    mockGuestFindMany.mockResolvedValue([]);
 
     const { linkClerkUserToGuest } = await import("@/lib/auth/guest-session");
     const result = await linkClerkUserToGuest("clerk-user-123", "INVALID-CODE");

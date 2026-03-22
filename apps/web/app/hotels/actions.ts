@@ -14,11 +14,11 @@ export interface Hotel {
   imageUrl: string | null;
   latitude: number | null;
   longitude: number | null;
-  hotelType: "luxury" | "moderate" | "budget" | null;
+  hotelType: string | null;
   distanceToVenue: string | null;
   parkingInfo: string | null;
   amenities: string | null;
-  displayOrder: number;
+  displayOrder: number | null;
 }
 
 export interface HotelWithInterest extends Hotel {
@@ -47,28 +47,22 @@ export async function getHotels(
   inviteCode?: string,
 ): Promise<HotelWithInterest[]> {
   // Get all hotels
-  const hotels = await db
-    .selectFrom("hotels")
-    .selectAll()
-    .orderBy("display_order", "asc")
-    .execute();
+  const hotels = await db.hotel.findMany({
+    orderBy: { displayOrder: "asc" },
+  });
 
   // Get all interests with guest info
-  const allInterests = await db
-    .selectFrom("guest_hotel_interests as ghi")
-    .innerJoin("guests as g", "g.id", "ghi.guest_id")
-    .select([
-      "ghi.hotel_id",
-      "ghi.invite_code",
-      "ghi.status",
-      "ghi.check_in_date",
-      "ghi.check_out_date",
-      "ghi.number_of_rooms",
-      "g.first_name",
-      "g.last_name",
-      "g.is_plus_one",
-    ])
-    .execute();
+  const allInterests = await db.guestHotelInterest.findMany({
+    include: {
+      guest: {
+        select: {
+          firstName: true,
+          lastName: true,
+          isPlusOne: true,
+        },
+      },
+    },
+  });
 
   // Group interests by hotel and invite code
   const interestsByHotel = new Map<
@@ -90,34 +84,41 @@ export async function getHotels(
   >();
 
   for (const interest of allInterests) {
-    if (!interestsByHotel.has(interest.hotel_id)) {
-      interestsByHotel.set(interest.hotel_id, new Map());
+    const invCode = interest.inviteCode;
+    if (!invCode || !interest.hotelId) continue;
+
+    if (!interestsByHotel.has(interest.hotelId)) {
+      interestsByHotel.set(interest.hotelId, new Map());
     }
 
-    const hotelInterests = interestsByHotel.get(interest.hotel_id);
+    const hotelInterests = interestsByHotel.get(interest.hotelId);
     if (!hotelInterests) continue;
 
-    if (!hotelInterests.has(interest.invite_code)) {
-      hotelInterests.set(interest.invite_code, {
+    if (!hotelInterests.has(invCode)) {
+      hotelInterests.set(invCode, {
         status: interest.status as "interested" | "booked",
-        checkInDate: interest.check_in_date
-          ? (new Date(interest.check_in_date).toISOString().split("T")[0] ??
-            null)
+        checkInDate: interest.checkInDate
+          ? (new Date(String(interest.checkInDate))
+              .toISOString()
+              .split("T")[0] ?? null)
           : null,
-        checkOutDate: interest.check_out_date
-          ? (new Date(interest.check_out_date).toISOString().split("T")[0] ??
-            null)
+        checkOutDate: interest.checkOutDate
+          ? (new Date(String(interest.checkOutDate))
+              .toISOString()
+              .split("T")[0] ?? null)
           : null,
-        numberOfRooms: interest.number_of_rooms,
+        numberOfRooms: interest.numberOfRooms,
         guests: [],
       });
     }
 
-    hotelInterests.get(interest.invite_code)?.guests.push({
-      firstName: interest.first_name,
-      lastName: interest.last_name,
-      isPlusOne: interest.is_plus_one,
-    });
+    if (interest.guest) {
+      hotelInterests.get(invCode)?.guests.push({
+        firstName: interest.guest.firstName,
+        lastName: interest.guest.lastName,
+        isPlusOne: interest.guest.isPlusOne,
+      });
+    }
   }
 
   // Build response
@@ -157,16 +158,16 @@ export async function getHotels(
       name: hotel.name,
       description: hotel.description,
       address: hotel.address,
-      websiteUrl: hotel.website_url,
+      websiteUrl: hotel.websiteUrl,
       phone: hotel.phone,
-      imageUrl: hotel.image_url,
-      latitude: hotel.latitude,
-      longitude: hotel.longitude,
-      hotelType: hotel.hotel_type,
-      distanceToVenue: hotel.distance_to_venue,
-      parkingInfo: hotel.parking_info,
+      imageUrl: hotel.imageUrl,
+      latitude: hotel.latitude ? Number(hotel.latitude) : null,
+      longitude: hotel.longitude ? Number(hotel.longitude) : null,
+      hotelType: hotel.hotelType,
+      distanceToVenue: hotel.distanceToVenue,
+      parkingInfo: hotel.parkingInfo,
       amenities: hotel.amenities,
-      displayOrder: hotel.display_order,
+      displayOrder: hotel.displayOrder,
       userInterest: {
         status: userInterestData?.status ?? null,
         checkInDate: userInterestData?.checkInDate ?? null,
@@ -212,55 +213,57 @@ export async function setHotelInterest(params: {
 
     if (status === null) {
       // Remove interest
-      await db
-        .deleteFrom("guest_hotel_interests")
-        .where("hotel_id", "=", hotelId)
-        .where("invite_code", "=", normalizedCode)
-        .execute();
+      await db.guestHotelInterest.deleteMany({
+        where: {
+          hotelId,
+          inviteCode: normalizedCode,
+        },
+      });
     } else {
       // Check if interest already exists
-      const existing = await db
-        .selectFrom("guest_hotel_interests")
-        .select("id")
-        .where("hotel_id", "=", hotelId)
-        .where("invite_code", "=", normalizedCode)
-        .executeTakeFirst();
+      const existing = await db.guestHotelInterest.findFirst({
+        where: {
+          hotelId,
+          inviteCode: normalizedCode,
+        },
+        select: { id: true },
+      });
 
       if (existing) {
         // Update existing
-        await db
-          .updateTable("guest_hotel_interests")
-          .set({
+        await db.guestHotelInterest.updateMany({
+          where: {
+            hotelId,
+            inviteCode: normalizedCode,
+          },
+          data: {
             status,
-            check_in_date: checkInDate || null,
-            check_out_date: checkOutDate || null,
-            number_of_rooms: numberOfRooms || null,
+            checkInDate: checkInDate || null,
+            checkOutDate: checkOutDate || null,
+            numberOfRooms: numberOfRooms || null,
             notes: notes || null,
-          })
-          .where("id", "=", existing.id)
-          .execute();
+          },
+        });
       } else {
         // Insert new - we need to insert for each guest in the party
-        const guests = await db
-          .selectFrom("guests")
-          .select("id")
-          .where("invite_code", "=", normalizedCode)
-          .execute();
+        const guests = await db.guest.findMany({
+          where: { inviteCode: normalizedCode },
+          select: { id: true },
+        });
 
         for (const guest of guests) {
-          await db
-            .insertInto("guest_hotel_interests")
-            .values({
-              guest_id: guest.id,
-              hotel_id: hotelId,
-              invite_code: normalizedCode,
+          await db.guestHotelInterest.create({
+            data: {
+              guestId: guest.id,
+              hotelId,
+              inviteCode: normalizedCode,
               status,
-              check_in_date: checkInDate || null,
-              check_out_date: checkOutDate || null,
-              number_of_rooms: numberOfRooms || null,
+              checkInDate: checkInDate || null,
+              checkOutDate: checkOutDate || null,
+              numberOfRooms: numberOfRooms || null,
               notes: notes || null,
-            })
-            .execute();
+            },
+          });
         }
 
         // Send notification email to admin for new interest

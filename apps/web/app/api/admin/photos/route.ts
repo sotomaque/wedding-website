@@ -29,12 +29,9 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const photos = await db
-      .selectFrom("photos")
-      .selectAll()
-      .orderBy("display_order", "asc")
-      .orderBy("created_at", "desc")
-      .execute();
+    const photos = await db.photo.findMany({
+      orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }],
+    });
 
     return NextResponse.json({ photos });
   } catch (error) {
@@ -84,24 +81,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the highest display_order
-    const maxOrder = await db
-      .selectFrom("photos")
-      .select(db.fn.max("display_order").as("max_order"))
-      .executeTakeFirst();
+    const maxOrderResult = await db.photo.aggregate({
+      _max: { displayOrder: true },
+    });
 
-    const newOrder = (maxOrder?.max_order ?? -1) + 1;
+    const newOrder = (maxOrderResult._max.displayOrder ?? -1) + 1;
 
-    const photo = await db
-      .insertInto("photos")
-      .values({
+    const photo = await db.photo.create({
+      data: {
         url,
         alt,
         description: description || null,
-        display_order: newOrder,
-        is_active: true,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        displayOrder: newOrder,
+        isActive: true,
+      },
+    });
 
     return NextResponse.json({ photo }, { status: 201 });
   } catch (error) {
