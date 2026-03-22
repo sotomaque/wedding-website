@@ -25,6 +25,7 @@ const RESERVED_PATHS = new Set([
   "sitemap.xml",
   "dashboard",
   "onboarding",
+  "platform-admin",
 ]);
 
 /** Legacy flat paths that should redirect to /[slug]/... */
@@ -46,6 +47,7 @@ const isProtectedRoute = createRouteMatcher([
   "/(.*)/admin(.*)",
   "/dashboard(.*)",
   "/onboarding(.*)",
+  "/platform-admin(.*)",
 ]);
 
 function getSlugFromPath(pathname: string): string | null {

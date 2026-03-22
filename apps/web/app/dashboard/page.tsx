@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { env } from "@/env";
 import { db } from "@/lib/db";
 
 export default async function DashboardPage() {
@@ -8,6 +9,10 @@ export default async function DashboardPage() {
   if (!user) redirect("/sign-in");
 
   const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
+
+  const superAdmins =
+    env.ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ?? [];
+  const isSuperAdmin = !!userEmail && superAdmins.includes(userEmail);
 
   // Find all weddings this user is admin of
   const adminEntries = await db.weddingAdmin.findMany({
@@ -46,12 +51,22 @@ export default async function DashboardPage() {
       <div className="max-w-4xl mx-auto px-4 py-16">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-serif">My Weddings</h1>
-          <Link
-            href="/onboarding"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
-          >
-            Create New Wedding
-          </Link>
+          <div className="flex items-center gap-3">
+            {isSuperAdmin && (
+              <Link
+                href="/platform-admin"
+                className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                Platform Admin
+              </Link>
+            )}
+            <Link
+              href="/onboarding"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+            >
+              Create New Wedding
+            </Link>
+          </div>
         </div>
 
         <div className="grid gap-4">
