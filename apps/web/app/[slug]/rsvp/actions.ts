@@ -9,7 +9,6 @@ import {
   generateIcs,
 } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
 import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
@@ -89,7 +88,6 @@ export async function verifyInviteCode(code: string): Promise<{
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     const party = await db
       .selectFrom("parties")
@@ -198,7 +196,6 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
     }
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     const party = await db
       .selectFrom("parties")
@@ -323,7 +320,6 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       const capturedWeddingId = weddingId;
       after(async () => {
         try {
-          const afterWeddingDb = forWedding(capturedWeddingId);
           const updatedGuests = await db
             .selectFrom("guests")
             .select(["id", "first_name", "last_name", "email", "rsvp_status"])
@@ -546,7 +542,6 @@ export async function submitMultiGuestRSVP(
     } = parsed.data;
 
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     const party = await db
       .selectFrom("parties")
@@ -698,7 +693,6 @@ export async function submitMultiGuestRSVP(
       const capturedWeddingId = weddingId;
       after(async () => {
         try {
-          const afterWeddingDb = forWedding(capturedWeddingId);
           const updatedGuests = await db
             .selectFrom("guests")
             .select(["id", "first_name", "last_name", "email", "rsvp_status"])

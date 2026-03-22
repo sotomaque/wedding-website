@@ -1,7 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { EventsClient } from "./events-client";
 
@@ -9,7 +8,6 @@ export const dynamic = "force-dynamic";
 
 async function getEvents() {
   const weddingId = await getWeddingId();
-  const weddingDb = forWedding(weddingId);
 
   const events = await db
     .selectFrom("events")

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { db } from "@/lib/db";
-import { forWedding } from "@/lib/db/scoped";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { InvitesClient } from "./invites-client";
 
@@ -53,7 +52,6 @@ interface GuestData {
 
 async function getEventWithInvites(eventId: string, filters: SearchParams) {
   const weddingId = await getWeddingId();
-  const weddingDb = forWedding(weddingId);
 
   // Verify event exists and is not a default event
   const event = await db

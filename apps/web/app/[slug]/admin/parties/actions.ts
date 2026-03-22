@@ -29,7 +29,6 @@ export async function getParties(
 ): Promise<PartyWithGuests[]> {
   try {
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     let query = db
       .selectFrom("parties")
@@ -88,7 +87,6 @@ export async function getPartyById(
 ): Promise<PartyWithGuests | null> {
   try {
     const weddingId = await getWeddingId();
-    const weddingDb = forWedding(weddingId);
 
     const party = await db
       .selectFrom("parties")
