@@ -15,10 +15,15 @@ export default async function SettingsPage() {
     where: { id: weddingId },
   });
 
+  const admins = await db.weddingAdmin.findMany({
+    where: { weddingId },
+    orderBy: { createdAt: "asc" },
+  });
+
   return (
     <div className="min-h-screen bg-background px-2 py-4 sm:px-4 md:px-8 md:py-8">
       <div className="max-w-4xl mx-auto">
-        <SettingsClient wedding={wedding} />
+        <SettingsClient wedding={wedding} admins={admins} />
       </div>
     </div>
   );
