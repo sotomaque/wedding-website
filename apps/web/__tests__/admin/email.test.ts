@@ -1,16 +1,14 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-// Mock email sending - must be a proper class
-const mockSendEmail = mock(() => Promise.resolve({ id: "email-123" }));
+// Mock email sending at the resend-client layer (more reliable than mocking the resend package)
+const mockSendEmail = mock(() =>
+  Promise.resolve({ data: { id: "email-123" }, error: null }),
+);
+const mockGetResendClient = mock(() => ({})); // truthy = client exists
 
-class MockResend {
-  emails = {
-    send: mockSendEmail,
-  };
-}
-
-mock.module("resend", () => ({
-  Resend: MockResend,
+mock.module("@/lib/email/resend-client", () => ({
+  sendEmail: mockSendEmail,
+  getResendClient: mockGetResendClient,
 }));
 
 // Mock env
