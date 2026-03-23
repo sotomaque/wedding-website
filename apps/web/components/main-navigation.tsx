@@ -1,14 +1,14 @@
 "use client";
 
-import { Navigation } from "@workspace/ui/components/navigation";
+import { type NavItem, Navigation } from "@workspace/ui/components/navigation";
 import { useMemo } from "react";
 import { getNavigationConfig } from "@/app/navigation-config";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 
 interface NavConfig {
   brandImage: { src: string; alt: string; width: number; height: number };
-  leftLinks: { href: string; label: string }[];
-  rightLinks: { href: string; label: string }[];
+  leftLinks: NavItem[];
+  rightLinks: NavItem[];
 }
 
 interface MainNavigationProps {
@@ -24,7 +24,6 @@ export function MainNavigation({
   const fallbackConfig = useMemo(() => getNavigationConfig(slug), [slug]);
   const navConfig = navConfigProp ?? fallbackConfig;
 
-  // Add admin link to right links if user is admin
   const rightLinks = useMemo(
     () =>
       isAdmin

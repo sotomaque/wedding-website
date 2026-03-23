@@ -1,7 +1,7 @@
 import { Footer } from "@workspace/ui/components/footer";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MainNavigation } from "@/components/main-navigation";
+import { WeddingNavigation } from "@/components/wedding-navigation";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 
 export default async function RegistryThankYouPage({
@@ -16,7 +16,7 @@ export default async function RegistryThankYouPage({
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <MainNavigation />
+      <WeddingNavigation />
 
       <main className="grow flex items-center justify-center">
         <section className="relative overflow-hidden">

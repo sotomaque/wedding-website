@@ -1,3 +1,4 @@
+import type { NavItem } from "@workspace/ui/components/navigation";
 import type { FeatureToggles } from "@/lib/validations/wedding-content";
 
 export function getNavigationConfig(
@@ -8,22 +9,25 @@ export function getNavigationConfig(
   },
 ) {
   const base = `/${slug}`;
-
-  const rightLinks: { href: string; label: string }[] = [];
-
   const toggles = options?.featureToggles;
 
+  // Build "Planning" group (Things To Do + Hotels)
+  const planningLinks: { href: string; label: string }[] = [];
   if (toggles?.thingsToDo !== false) {
-    rightLinks.push({ href: `${base}/things-to-do`, label: "Things To Do" });
-  }
-  if (toggles?.tripPlanner !== false) {
-    rightLinks.push({ href: `${base}/trip-planner`, label: "Trip Planner" });
+    planningLinks.push({ href: `${base}/things-to-do`, label: "Things To Do" });
   }
   if (toggles?.hotels !== false) {
-    rightLinks.push({ href: `${base}/hotels`, label: "Hotels" });
+    planningLinks.push({ href: `${base}/hotels`, label: "Hotels" });
   }
-  if (toggles?.vendors !== false) {
-    rightLinks.push({ href: `${base}/vendors`, label: "Vendors" });
+  if (toggles?.tripPlanner !== false) {
+    planningLinks.push({ href: `${base}/trip-planner`, label: "Trip Planner" });
+  }
+
+  const rightLinks: NavItem[] = [];
+
+  // Add Planning group if it has links
+  if (planningLinks.length > 0) {
+    rightLinks.push({ label: "Planning", links: planningLinks });
   }
   if (toggles?.registry !== false) {
     rightLinks.push({ href: `${base}/registry`, label: "Registry" });
@@ -41,7 +45,7 @@ export function getNavigationConfig(
       { href: `${base}#story`, label: "Our Story" },
       { href: `${base}#details`, label: "Details" },
       { href: `${base}#schedule`, label: "Schedule" },
-    ],
+    ] as NavItem[],
     rightLinks,
   };
 }

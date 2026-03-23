@@ -63,7 +63,7 @@ export function RSVPFormView({
           </p>
           <p className="text-center mt-2">
             <Link
-              href="/#details"
+              href={`/${slug}#details`}
               className="text-sm text-primary hover:text-primary/80 underline font-medium"
             >
               View Wedding Details
@@ -114,7 +114,7 @@ export function RSVPFormView({
             </p>
             <p className="text-center mb-8">
               <Link
-                href="/#details"
+                href={`/${slug}#details`}
                 className="text-white hover:text-white/80 underline font-medium drop-shadow-md"
               >
                 View Wedding Details

@@ -73,7 +73,7 @@ export function RSVPCodeEntry({
           </p>
           <p className="text-center mb-12">
             <Link
-              href="/#details"
+              href={`/${slug}#details`}
               className="text-white hover:text-white/80 underline font-medium drop-shadow-md"
             >
               View Wedding Details

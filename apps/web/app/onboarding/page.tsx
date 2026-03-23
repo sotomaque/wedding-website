@@ -3,6 +3,7 @@
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { TIMEZONES } from "@/lib/constants/timezones";
 import { createWedding, validateSlug } from "./actions";
 
 interface FormData {
@@ -16,24 +17,6 @@ interface FormData {
   receptionVenue: string;
   receptionAddress: string;
 }
-
-const TIMEZONES = [
-  { value: "America/New_York", label: "Eastern Time (ET)" },
-  { value: "America/Chicago", label: "Central Time (CT)" },
-  { value: "America/Denver", label: "Mountain Time (MT)" },
-  { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
-  { value: "America/Anchorage", label: "Alaska Time (AKT)" },
-  { value: "Pacific/Honolulu", label: "Hawaii Time (HT)" },
-  { value: "Europe/London", label: "London (GMT/BST)" },
-  { value: "Europe/Paris", label: "Paris (CET/CEST)" },
-  { value: "Europe/Berlin", label: "Berlin (CET/CEST)" },
-  { value: "Asia/Tokyo", label: "Tokyo (JST)" },
-  { value: "Asia/Shanghai", label: "Shanghai (CST)" },
-  { value: "Asia/Kolkata", label: "India (IST)" },
-  { value: "Australia/Sydney", label: "Sydney (AEST)" },
-  { value: "America/Mexico_City", label: "Mexico City (CST)" },
-  { value: "America/Sao_Paulo", label: "Sao Paulo (BRT)" },
-];
 
 function generateSlug(person1: string, person2: string): string {
   if (!person1 && !person2) return "";
