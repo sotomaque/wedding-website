@@ -80,7 +80,12 @@ async function truncateAll() {
       activities,
       photos,
       hotels,
-      guest_photos
+      guest_photos,
+      wedding_content,
+      registry_items,
+      wedding_admins,
+      service_links,
+      documents
     CASCADE
   `);
 }

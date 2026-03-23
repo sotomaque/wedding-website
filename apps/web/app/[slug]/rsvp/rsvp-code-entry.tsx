@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { MainNavigation } from "@/components/main-navigation";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import { CodeEntry } from "./code-entry";
 
 interface RSVPCodeEntryProps {
@@ -22,6 +23,7 @@ export function RSVPCodeEntry({
   rsvpDeadlineText,
 }: RSVPCodeEntryProps) {
   const router = useRouter();
+  const slug = useWeddingSlug();
 
   // Show error toast if an invalid code was provided
   useEffect(() => {
@@ -35,7 +37,7 @@ export function RSVPCodeEntry({
   function handleCodeSuccess(code: string) {
     // Navigate to the same page with the code as a query param
     // The server will verify and show the form
-    router.push(`/rsvp?code=${encodeURIComponent(code)}`);
+    router.push(`/${slug}/rsvp?code=${encodeURIComponent(code)}`);
   }
 
   return (
