@@ -82,9 +82,14 @@ test.describe("Trip Planner - Public Access", () => {
     await page.goto("/helen-and-enrique");
     await waitForHydration(page);
 
-    // Find and click the Trip Planner nav link
-    const navLink = page.getByRole("link", { name: /trip planner/i });
-    await expect(navLink).toBeVisible({ timeout: 10000 });
+    // Trip Planner is inside the "Planning" dropdown — open it first
+    const planningButton = page.getByRole("button", { name: /planning/i });
+    await expect(planningButton).toBeVisible({ timeout: 10000 });
+    await planningButton.click();
+
+    // Now click the Trip Planner link in the dropdown
+    const navLink = page.getByRole("menuitem", { name: /trip planner/i });
+    await expect(navLink).toBeVisible({ timeout: 5000 });
     await navLink.click();
 
     // Should navigate to the trip planner page
