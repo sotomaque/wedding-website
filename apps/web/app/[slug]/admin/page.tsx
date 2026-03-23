@@ -63,15 +63,28 @@ export default async function AdminPage() {
   ]);
 
   const weddingCountdown = getCountdown(settings.weddingDate);
-  const rsvpDeadline = settings.rsvpDeadline
-    ? new Date(settings.rsvpDeadline)
-    : settings.weddingDate;
-  const rsvpCountdown = getCountdown(rsvpDeadline);
-  const rsvpDeadlineFormatted = rsvpDeadline.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+
+  // rsvpDeadline is a free-text string — try to parse it as a date
+  // Strip common prefixes and ordinal suffixes (1st, 2nd, 3rd, 4th, etc.)
+  const rsvpDeadlineParsed = settings.rsvpDeadline
+    ? new Date(
+        settings.rsvpDeadline
+          .replace(/^Please respond by\s*/i, "")
+          .replace(/(\d+)(st|nd|rd|th)/gi, "$1"),
+      )
+    : null;
+  const rsvpDeadlineDate =
+    rsvpDeadlineParsed && !Number.isNaN(rsvpDeadlineParsed.getTime())
+      ? rsvpDeadlineParsed
+      : settings.weddingDate;
+  const rsvpCountdown = getCountdown(rsvpDeadlineDate);
+  const rsvpDeadlineFormatted =
+    settings.rsvpDeadline ??
+    rsvpDeadlineDate.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
   const weddingDateFormatted = settings.weddingDate.toLocaleDateString(
     "en-US",
     {
