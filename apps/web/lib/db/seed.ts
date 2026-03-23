@@ -275,6 +275,94 @@ async function seedData() {
     ],
   });
 
+  // --- Wedding 1 content + registry (truncated by E2E reset) ---
+
+  await db.weddingContent.createMany({
+    data: [
+      {
+        weddingId,
+        section: "hero",
+        content: { title: "Helen & Enrique" },
+      },
+      {
+        weddingId,
+        section: "story",
+        content: {
+          title: "Our Story",
+          paragraphs: [
+            "We met in Seattle in 2020.",
+            "Our journey took us to Hawaii and then San Diego.",
+          ],
+        },
+      },
+      {
+        weddingId,
+        section: "details",
+        content: {
+          title: "Wedding Details",
+          dateFormatted: "Thursday, July 30, 2026",
+          ceremony: {
+            title: "Ceremony",
+            time: "4:00 PM",
+            venue: "St. Therese of Carmel",
+            address: "4355 Del Mar Trails Rd, San Diego, CA 92130",
+          },
+          reception: {
+            title: "Reception",
+            time: "6:00 PM",
+            venue: "Headquarters",
+            address: "789 W Harbor Dr Suite 148, San Diego, CA 92101",
+          },
+        },
+      },
+      {
+        weddingId,
+        section: "schedule",
+        content: {
+          title: "Schedule",
+          events: [
+            { id: "ceremony", time: "4:00 PM", event: "Ceremony" },
+            { id: "reception", time: "6:00 PM", event: "Reception" },
+          ],
+        },
+      },
+      {
+        weddingId,
+        section: "rsvp",
+        content: { title: "RSVP", deadline: "Please respond by March 1, 2026" },
+      },
+    ],
+  });
+
+  await db.registryItem.createMany({
+    data: [
+      {
+        weddingId,
+        title: "Future Tiny Humans Fund",
+        description: "Help us prepare for the chaos ahead.",
+        imageUrl: "/registry/future-babies.jpg",
+        emoji: "👶",
+        displayOrder: 0,
+      },
+      {
+        weddingId,
+        title: "Send Us Somewhere Pretty",
+        description: "Fund our first adventure as a married couple.",
+        imageUrl: "/registry/honeymoon.jpg",
+        emoji: "✈️",
+        displayOrder: 1,
+      },
+      {
+        weddingId,
+        title: "Bye Bye Student Loans",
+        description: "Contribute to our freedom fund.",
+        imageUrl: "/registry/student-loan-relief.jpg",
+        emoji: "🎓",
+        displayOrder: 2,
+      },
+    ],
+  });
+
   // --- Second wedding for multi-tenancy testing ---
 
   // Delete existing second wedding if present (clean slate)
