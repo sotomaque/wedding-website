@@ -51,6 +51,11 @@ export const SEED = {
     hidden1: { id: crypto.randomUUID() },
     deletable: { id: crypto.randomUUID() },
   },
+  wedding2: {
+    slug: "e2e-test-wedding",
+    inviteCode: "E2E3-WED2",
+    guestFirstName: "E2E-W2Guest",
+  },
 };
 
 /**
@@ -261,6 +266,97 @@ async function seedData() {
         isCompleted: true,
         displayOrder: 3,
         weddingId,
+      },
+    ],
+  });
+
+  // --- Second wedding for multi-tenancy testing ---
+
+  // Delete existing second wedding if present (clean slate)
+  await db.wedding.deleteMany({ where: { slug: SEED.wedding2.slug } });
+
+  const wedding2 = await db.wedding.create({
+    data: {
+      slug: SEED.wedding2.slug,
+      coupleName: "E2E-Test & Partner",
+      person1Name: "E2E-Test",
+      person2Name: "E2E-Partner",
+      weddingDate: new Date("2027-01-15"),
+      timezone: "America/Los_Angeles",
+      contactEmail: "e2e-test@example.com",
+      notificationEmails: "e2e-test@example.com",
+      emailFromName: "E2E Test Wedding",
+      status: "published",
+      featureToggles: {
+        hotels: true,
+        vendors: true,
+        thingsToDo: true,
+        tripPlanner: true,
+        registry: true,
+        guestPhotos: true,
+        slideshow: true,
+      },
+      themeId: "sage-garden",
+    },
+  });
+
+  // Create admin for the second wedding
+  await db.weddingAdmin.create({
+    data: {
+      weddingId: wedding2.id,
+      email: process.env.TEST_ADMIN_EMAIL || "admin@example.com",
+      role: "owner",
+    },
+  });
+
+  // Create a party and guest in the second wedding
+  await db.party.create({
+    data: {
+      inviteCode: SEED.wedding2.inviteCode,
+      name: "Wedding 2 Party",
+      side: "bride",
+      list: "a",
+      weddingId: wedding2.id,
+    },
+  });
+
+  await db.guest.create({
+    data: {
+      firstName: SEED.wedding2.guestFirstName,
+      lastName: "TestGuest",
+      email: "e2e-w2guest@example.com",
+      inviteCode: SEED.wedding2.inviteCode,
+      rsvpStatus: "pending",
+      plusOneAllowed: false,
+      isPlusOne: false,
+      numberOfResends: 0,
+      physicalInviteSent: false,
+      family: false,
+      under21: false,
+      threeAndUnder: false,
+      weddingId: wedding2.id,
+      side: "bride",
+      list: "a",
+    },
+  });
+
+  // Create default content for second wedding
+  await db.weddingContent.createMany({
+    data: [
+      {
+        weddingId: wedding2.id,
+        section: "hero",
+        content: { title: "E2E-Test & Partner" },
+      },
+      {
+        weddingId: wedding2.id,
+        section: "story",
+        content: { title: "Our Story", paragraphs: ["Test story."] },
+      },
+      {
+        weddingId: wedding2.id,
+        section: "rsvp",
+        content: { title: "RSVP" },
       },
     ],
   });

@@ -118,6 +118,34 @@ export const TEST_DATA = {
 } as const;
 
 /**
+ * Second wedding test data for multi-tenancy tests
+ */
+export const SECOND_WEDDING = {
+  slug: "e2e-test-wedding",
+  inviteCode: "E2E3-WED2",
+  guestFirstName: "E2E-W2Guest",
+} as const;
+
+/**
+ * Generate slug-based routes for a given wedding slug
+ */
+export function slugRoutes(slug: string) {
+  return {
+    home: `/${slug}`,
+    rsvp: `/${slug}/rsvp`,
+    thingsToDo: `/${slug}/things-to-do`,
+    registry: `/${slug}/registry`,
+    admin: `/${slug}/admin`,
+    adminGuests: `/${slug}/admin/guests`,
+    adminEvents: `/${slug}/admin/events`,
+    adminSettings: `/${slug}/admin/settings`,
+    adminContent: `/${slug}/admin/content`,
+    adminSeating: `/${slug}/admin/seating`,
+    adminTodos: `/${slug}/admin/todos`,
+  };
+}
+
+/**
  * Helper to wait for Next.js hydration
  */
 export async function waitForHydration(page: Page) {
