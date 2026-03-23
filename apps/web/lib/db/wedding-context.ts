@@ -111,7 +111,7 @@ export const getWeddingContext = cache(async (): Promise<WeddingContext> => {
   }
 
   // Fall back to DEFAULT_WEDDING_SLUG for backward compat
-  const defaultSlug = process.env.DEFAULT_WEDDING_SLUG;
+  const defaultSlug = process.env.DEFAULT_WEDDING_SLUG || "helen-and-enrique";
   if (defaultSlug) {
     const ctx = await getWeddingBySlug(defaultSlug);
     if (ctx) return ctx;

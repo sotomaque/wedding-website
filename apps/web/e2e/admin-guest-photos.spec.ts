@@ -177,12 +177,17 @@ test("hide a visible photo: card gets opacity-50 and Hidden badge", async ({
   await card.hover();
   await card.getByRole("button", { name: "Hide" }).click();
 
-  // Wait for page refresh after action
-  await page.waitForLoadState("networkidle");
+  // Wait for router.refresh() to re-render with updated data
+  await page.waitForTimeout(2000);
+
+  // Re-locate the card (DOM may have been replaced by router.refresh)
+  const updatedCard = page
+    .locator(".group")
+    .filter({ has: page.getByAltText("Photo by E2E-Guest") });
 
   // Card should now be hidden
-  await expect(card).toHaveClass(/opacity-50/);
-  await expect(card.getByText("Hidden", { exact: true })).toBeVisible();
+  await expect(updatedCard).toHaveClass(/opacity-50/, { timeout: 10000 });
+  await expect(updatedCard.getByText("Hidden", { exact: true })).toBeVisible();
 });
 
 test("show a hidden photo: card loses opacity-50 and Hidden badge", async ({
@@ -195,15 +200,21 @@ test("show a hidden photo: card loses opacity-50 and Hidden badge", async ({
     .locator(".group")
     .filter({ has: page.getByAltText("Photo by E2E-Guest") });
 
-  await expect(card).toHaveClass(/opacity-50/);
+  await expect(card).toHaveClass(/opacity-50/, { timeout: 10000 });
 
   await card.hover();
   await card.getByRole("button", { name: "Show" }).click();
 
-  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(2000);
 
-  await expect(card).not.toHaveClass(/opacity-50/);
-  await expect(card.getByText("Hidden", { exact: true })).not.toBeVisible();
+  const updatedCard = page
+    .locator(".group")
+    .filter({ has: page.getByAltText("Photo by E2E-Guest") });
+
+  await expect(updatedCard).not.toHaveClass(/opacity-50/, { timeout: 10000 });
+  await expect(
+    updatedCard.getByText("Hidden", { exact: true }),
+  ).not.toBeVisible();
 });
 
 // ----- Delete (serial — mutates state) -----

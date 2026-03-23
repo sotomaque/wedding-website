@@ -100,9 +100,10 @@ export const TEST_DATA = {
     family: "E2E2-FMLY",
   },
 
-  // Known routes
+  // Known routes (slug-based for default wedding)
   routes: {
-    home: "/",
+    landing: "/",
+    home: "/helen-and-enrique",
     rsvp: "/rsvp",
     thingsToDo: "/things-to-do",
     registry: "/registry",
