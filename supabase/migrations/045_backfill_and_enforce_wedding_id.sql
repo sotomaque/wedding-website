@@ -1,9 +1,8 @@
--- Migration 041: Make wedding_id NOT NULL on all tables.
--- First backfill ALL remaining nulls — production may have rows created
--- between migration 033 (added nullable wedding_id) and code deployment
--- (scoped queries). Uses the default wedding for backfill.
+-- Migration 045: Backfill ALL null wedding_id values and enforce NOT NULL.
+-- Migration 041 failed on production because guests/parties/etc had null wedding_id
+-- from rows created between migration 033 (added column) and code deployment (scoped queries).
+-- This migration backfills everything to the default wedding, then re-attempts NOT NULL.
 
--- Get the default wedding ID
 DO $$
 DECLARE
   default_wedding_id UUID;
@@ -11,10 +10,11 @@ BEGIN
   SELECT id INTO default_wedding_id FROM weddings WHERE slug = 'helen-and-enrique' LIMIT 1;
 
   IF default_wedding_id IS NULL THEN
-    RAISE EXCEPTION 'Default wedding (helen-and-enrique) not found — cannot backfill';
+    RAISE NOTICE 'Default wedding not found — skipping backfill (no data to fix)';
+    RETURN;
   END IF;
 
-  -- Backfill ALL tables with null wedding_id to the default wedding
+  -- Backfill ALL main tables
   UPDATE guests SET wedding_id = default_wedding_id WHERE wedding_id IS NULL;
   UPDATE parties SET wedding_id = default_wedding_id WHERE wedding_id IS NULL;
   UPDATE events SET wedding_id = default_wedding_id WHERE wedding_id IS NULL;
@@ -29,7 +29,7 @@ BEGIN
   UPDATE documents SET wedding_id = default_wedding_id WHERE wedding_id IS NULL;
   UPDATE service_links SET wedding_id = default_wedding_id WHERE wedding_id IS NULL;
 
-  -- Backfill junction tables from their parent guest's wedding_id
+  -- Backfill junction tables from their parent guest
   UPDATE guest_event_invites gei
   SET wedding_id = g.wedding_id
   FROM guests g
@@ -50,28 +50,36 @@ BEGIN
   FROM guests g
   WHERE gta.guest_id = g.id AND gta.wedding_id IS NULL;
 
-  -- Delete any truly orphaned rows that still can't be backfilled
+  -- Delete any truly orphaned rows
   DELETE FROM guest_event_invites WHERE wedding_id IS NULL;
   DELETE FROM guest_activity_interests WHERE wedding_id IS NULL;
   DELETE FROM guest_hotel_interests WHERE wedding_id IS NULL;
   DELETE FROM guest_table_assignments WHERE wedding_id IS NULL;
 END $$;
 
--- Now safe to enforce NOT NULL on all tables
-ALTER TABLE activities ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE documents ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE events ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE gifts ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE guest_activity_interests ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE guest_event_invites ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE guest_hotel_interests ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE guest_photos ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE guest_table_assignments ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE guests ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE hotels ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE parties ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE photos ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE seating_charts ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE seating_tables ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE service_links ALTER COLUMN wedding_id SET NOT NULL;
-ALTER TABLE wedding_todos ALTER COLUMN wedding_id SET NOT NULL;
+-- Now enforce NOT NULL (idempotent — safe to run even if 041 partially succeeded)
+-- Using DO block to handle columns that are already NOT NULL
+DO $$
+DECLARE
+  tbl TEXT;
+BEGIN
+  FOR tbl IN SELECT unnest(ARRAY[
+    'activities', 'documents', 'events', 'gifts',
+    'guest_activity_interests', 'guest_event_invites',
+    'guest_hotel_interests', 'guest_photos', 'guest_table_assignments',
+    'guests', 'hotels', 'parties', 'photos',
+    'seating_charts', 'seating_tables', 'service_links', 'wedding_todos'
+  ])
+  LOOP
+    -- Check if column is still nullable before altering
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = tbl AND column_name = 'wedding_id' AND is_nullable = 'YES'
+    ) THEN
+      EXECUTE format('ALTER TABLE %I ALTER COLUMN wedding_id SET NOT NULL', tbl);
+      RAISE NOTICE 'Set NOT NULL on %.wedding_id', tbl;
+    ELSE
+      RAISE NOTICE '%.wedding_id already NOT NULL — skipping', tbl;
+    END IF;
+  END LOOP;
+END $$;
