@@ -1,12 +1,30 @@
 "use client";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
 import { cn } from "@workspace/ui/lib/utils";
+import { ChevronDown } from "lucide-react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 export interface NavLink {
   href: string;
   label: string;
+}
+
+export interface NavGroup {
+  label: string;
+  links: NavLink[];
+}
+
+export type NavItem = NavLink | NavGroup;
+
+function isNavGroup(item: NavItem): item is NavGroup {
+  return "links" in item;
 }
 
 export interface NavigationProps {
@@ -17,9 +35,87 @@ export interface NavigationProps {
     width?: number;
     height?: number;
   };
-  leftLinks?: NavLink[];
-  rightLinks?: NavLink[];
+  leftLinks?: NavItem[];
+  rightLinks?: NavItem[];
   className?: string;
+}
+
+function NavItemLink({
+  link,
+  pathname,
+  className,
+  onClick,
+}: {
+  link: NavLink;
+  pathname: string;
+  className?: string;
+  onClick?: (e: React.MouseEvent) => void;
+}) {
+  const isActive = pathname === link.href;
+  return (
+    <a
+      href={link.href}
+      onClick={onClick}
+      className={cn(className, isActive && "font-bold")}
+    >
+      {link.label}
+    </a>
+  );
+}
+
+function NavGroupDropdown({
+  group,
+  pathname,
+}: {
+  group: NavGroup;
+  pathname: string;
+}) {
+  const isGroupActive = group.links.some((l) => pathname.startsWith(l.href));
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(
+          "flex items-center gap-1 text-sm uppercase transition-colors hover:text-accent focus:outline-none",
+          isGroupActive && "font-bold",
+        )}
+      >
+        {group.label}
+        <ChevronDown className="h-3 w-3" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" className="min-w-[140px]">
+        {group.links.map((link) => {
+          const isActive = pathname === link.href;
+          return (
+            <DropdownMenuItem key={link.href} asChild>
+              <a
+                href={link.href}
+                className={cn("cursor-pointer", isActive && "font-bold")}
+              >
+                {link.label}
+              </a>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function renderNavItem(item: NavItem, pathname: string) {
+  if (isNavGroup(item)) {
+    return (
+      <NavGroupDropdown key={item.label} group={item} pathname={pathname} />
+    );
+  }
+  return (
+    <NavItemLink
+      key={item.href}
+      link={item}
+      pathname={pathname}
+      className="text-sm uppercase transition-colors hover:text-accent"
+    />
+  );
 }
 
 function Navigation({
@@ -30,6 +126,11 @@ function Navigation({
   className,
 }: NavigationProps) {
   const pathname = usePathname();
+
+  // Flatten groups for mobile menu
+  const allLinksMobile = [...leftLinks, ...rightLinks].flatMap((item) =>
+    isNavGroup(item) ? item.links : [item],
+  );
 
   return (
     <header
@@ -42,21 +143,7 @@ function Navigation({
         <nav className="grid grid-cols-2 lg:grid-cols-3 items-center text-foreground">
           {/* Left Navigation Links */}
           <div className="hidden lg:flex items-center gap-6 mr-auto">
-            {leftLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "text-sm uppercase transition-colors hover:text-accent",
-                    isActive && "font-bold",
-                  )}
-                >
-                  {link.label}
-                </a>
-              );
-            })}
+            {leftLinks.map((item) => renderNavItem(item, pathname))}
           </div>
 
           {/* Brand/Logo */}
@@ -83,24 +170,10 @@ function Navigation({
 
           {/* Right Navigation Links */}
           <div className="hidden lg:flex items-center gap-6 ml-auto">
-            {rightLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "text-sm uppercase transition-colors hover:text-accent",
-                    isActive && "font-bold",
-                  )}
-                >
-                  {link.label}
-                </a>
-              );
-            })}
+            {rightLinks.map((item) => renderNavItem(item, pathname))}
           </div>
 
-          {/* Mobile Menu */}
+          {/* Mobile Menu — flattened (no dropdowns on mobile) */}
           <div className="lg:hidden ml-auto">
             <details className="group">
               <summary className="list-none text-2xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground cursor-pointer">
@@ -108,7 +181,7 @@ function Navigation({
               </summary>
               <div className="absolute top-full left-0 right-0 bg-background border-b border-border md:mt-4 overflow-hidden transition-all duration-900 ease-in-out group-open:opacity-100 group-open:max-h-[600px] opacity-0 max-h-0">
                 <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full py-4 flex flex-col gap-4">
-                  {leftLinks.map((link) => {
+                  {allLinksMobile.map((link) => {
                     const isActive = pathname === link.href;
                     return (
                       <a
@@ -118,32 +191,7 @@ function Navigation({
                           const details = (e.target as HTMLElement).closest(
                             "details",
                           );
-                          if (details) {
-                            details.removeAttribute("open");
-                          }
-                        }}
-                        className={cn(
-                          "text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground",
-                          isActive && "font-bold",
-                        )}
-                      >
-                        {link.label}
-                      </a>
-                    );
-                  })}
-                  {rightLinks.map((link) => {
-                    const isActive = pathname === link.href;
-                    return (
-                      <a
-                        key={link.href}
-                        href={link.href}
-                        onClick={(e) => {
-                          const details = (e.target as HTMLElement).closest(
-                            "details",
-                          );
-                          if (details) {
-                            details.removeAttribute("open");
-                          }
+                          if (details) details.removeAttribute("open");
                         }}
                         className={cn(
                           "text-3xl font-medium tracking-tight font-serif uppercase focus:outline-none text-foreground",

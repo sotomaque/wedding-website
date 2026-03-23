@@ -7,7 +7,7 @@ import {
   type PartyTravel,
 } from "@/app/[slug]/admin/calendar/utils";
 import { GuestIdentifier } from "@/app/[slug]/things-to-do/guest-identifier";
-import { MainNavigation } from "@/components/main-navigation";
+import { WeddingNavigation } from "@/components/wedding-navigation";
 import { getGuestParty } from "@/lib/auth/guest-session";
 import { toDateStr } from "@/lib/calendar/date-utils";
 import { db } from "@/lib/db";
@@ -130,7 +130,7 @@ export default async function TripPlannerPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <MainNavigation />
+      <WeddingNavigation />
 
       <main className="grow">
         <div className="max-w-screen-2xl mx-auto px-4 md:px-6 lg:px-8 py-8">

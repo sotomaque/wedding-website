@@ -7,6 +7,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Switch } from "@workspace/ui/components/switch";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { TIMEZONES } from "@/lib/constants/timezones";
 import { THEME_PRESETS } from "@/lib/themes";
 import {
   inviteAdmin,
@@ -169,13 +170,18 @@ function GeneralSection({ wedding }: { wedding: Wedding }) {
       </div>
       <div>
         <Label htmlFor="timezone">Timezone</Label>
-        <Input
+        <select
           id="timezone"
           value={timezone}
           onChange={(e) => setTimezone(e.target.value)}
-          placeholder="America/New_York"
-          className="mt-1"
-        />
+          className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          {TIMEZONES.map((tz) => (
+            <option key={tz.value} value={tz.value}>
+              {tz.label}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <Label htmlFor="rsvpDeadline">RSVP Deadline</Label>

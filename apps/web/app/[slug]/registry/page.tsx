@@ -1,6 +1,6 @@
 import { Footer } from "@workspace/ui/components/footer";
 import { notFound } from "next/navigation";
-import { MainNavigation } from "@/components/main-navigation";
+import { WeddingNavigation } from "@/components/wedding-navigation";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
@@ -21,7 +21,7 @@ export default async function RegistryPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <MainNavigation />
+      <WeddingNavigation />
 
       <main className="grow">
         {/* Hero Section */}

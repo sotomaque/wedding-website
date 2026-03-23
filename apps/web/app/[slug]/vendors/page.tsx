@@ -1,7 +1,7 @@
 import { Footer } from "@workspace/ui/components/footer";
 import { ExternalLink } from "lucide-react";
 import { notFound } from "next/navigation";
-import { MainNavigation } from "@/components/main-navigation";
+import { WeddingNavigation } from "@/components/wedding-navigation";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import type { ServiceLinkCategory } from "../admin/vendors/actions";
 import { getServiceLinks } from "../admin/vendors/actions";
@@ -36,7 +36,7 @@ export default async function VendorsPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <MainNavigation />
+      <WeddingNavigation />
 
       <main className="grow">
         <div className="max-w-3xl mx-auto px-4 py-12 md:py-16">

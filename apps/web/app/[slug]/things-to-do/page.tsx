@@ -1,7 +1,7 @@
 import { Footer } from "@workspace/ui/components/footer";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { MainNavigation } from "@/components/main-navigation";
+import { WeddingNavigation } from "@/components/wedding-navigation";
 import { getGuestParty } from "@/lib/auth/guest-session";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getActivities, getBeaches, getVenues } from "./actions";
@@ -56,7 +56,7 @@ export default async function ThingsToDoPage({
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <MainNavigation />
+      <WeddingNavigation />
 
       <main className="grow">
         <ThingsToDoContent

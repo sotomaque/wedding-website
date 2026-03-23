@@ -1,0 +1,25 @@
+export const TIMEZONES = [
+  { value: "America/New_York", label: "Eastern Time (ET)" },
+  { value: "America/Chicago", label: "Central Time (CT)" },
+  { value: "America/Denver", label: "Mountain Time (MT)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+  { value: "America/Anchorage", label: "Alaska Time (AKT)" },
+  { value: "Pacific/Honolulu", label: "Hawaii Time (HT)" },
+  { value: "America/Puerto_Rico", label: "Puerto Rico (AST)" },
+  { value: "Europe/London", label: "London (GMT/BST)" },
+  { value: "Europe/Paris", label: "Paris (CET/CEST)" },
+  { value: "Europe/Berlin", label: "Berlin (CET/CEST)" },
+  { value: "Europe/Madrid", label: "Madrid (CET/CEST)" },
+  { value: "Europe/Rome", label: "Rome (CET/CEST)" },
+  { value: "Asia/Tokyo", label: "Tokyo (JST)" },
+  { value: "Asia/Shanghai", label: "Shanghai (CST)" },
+  { value: "Asia/Kolkata", label: "India (IST)" },
+  { value: "Asia/Dubai", label: "Dubai (GST)" },
+  { value: "Australia/Sydney", label: "Sydney (AEST)" },
+  { value: "America/Mexico_City", label: "Mexico City (CST)" },
+  { value: "America/Sao_Paulo", label: "Sao Paulo (BRT)" },
+  { value: "America/Bogota", label: "Bogota (COT)" },
+  { value: "America/Lima", label: "Lima (PET)" },
+] as const;
+
+export type TimezoneValue = (typeof TIMEZONES)[number]["value"];
