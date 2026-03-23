@@ -207,7 +207,17 @@ The core multi-tenancy infrastructure is **done**. Any couple can sign up, creat
 |------|--------|-------|
 | Stripe webhook wedding resolution | Partial | `resolveGiftWeddingId()` uses guest match or default; needs Stripe metadata on Payment Links |
 | Custom domains | Not started | Vercel domain API — nice-to-have for premium tier |
-| Data isolation E2E test | Done | Unit tests verify query scoping |
+
+### Testing coverage
+
+- **Unit tests**: 371 tests covering query scoping, auth, RSVP, email, gifts, seating, photos, guest session, data isolation
+- **E2E tests** (Playwright):
+  - `multi-tenancy.spec.ts` — admin data isolation, public page isolation, invalid slug 404, theme injection
+  - `platform-admin.spec.ts` — wedding list, stats, view admin links, status badges
+  - `rsvp-isolation.noauth.spec.ts` — cross-wedding invite code rejection
+  - `onboarding.noauth.spec.ts` — landing page, CTAs, dashboard auth redirect
+  - Plus existing E2E suites for RSVP flow, admin guests, seating, vendors, photos, registry
+- **Seed**: Two weddings seeded for isolation testing (`helen-and-enrique` + `e2e-test-wedding`)
 
 ---
 
