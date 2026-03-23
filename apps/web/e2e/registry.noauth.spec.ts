@@ -76,14 +76,16 @@ test.describe("Registry - Public Access", () => {
     await page.goto(TEST_DATA.routes.registry);
     await waitForHydration(page);
 
-    // Check for descriptions
+    // Check for descriptions (from seed data)
     await expect(
-      page.getByText(/we're not pregnant—just planners/i),
+      page.getByText(/help us prepare for the chaos ahead/i),
     ).toBeVisible();
     await expect(
       page.getByText(/fund our first adventure as a married couple/i),
     ).toBeVisible();
-    await expect(page.getByText(/sallie mae freedom fund/i)).toBeVisible();
+    await expect(
+      page.getByText(/contribute to our freedom fund/i),
+    ).toBeVisible();
   });
 
   test("displays emojis for each gift", async ({ page }) => {

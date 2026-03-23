@@ -25,10 +25,10 @@ test.describe("RSVP Isolation", () => {
     await page.getByRole("button", { name: /continue/i }).click();
 
     // Should get a toast error — this code belongs to wedding 2, not wedding 1
-    // The error appears as a sonner toast with description text
-    await expect(page.getByText(/not valid|invalid|not found/i)).toBeVisible({
-      timeout: 5000,
-    });
+    // The sonner toast has both a title and description that match, so use .first()
+    await expect(
+      page.getByText(/not valid|invalid|not found/i).first(),
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test("wedding 2 RSVP with its own code should work", async ({ page }) => {
@@ -42,13 +42,16 @@ test.describe("RSVP Isolation", () => {
 
     await page.getByRole("button", { name: /continue/i }).click();
 
-    // Should navigate to the optional login step or RSVP form
-    // The URL should contain the code parameter or show the guest name
-    await page.waitForTimeout(2000);
-    const pageContent = await page.textContent("body");
-    // Either the guest name is visible, or we're on a login/form page (not an error)
-    const hasGuestName = pageContent?.includes(SECOND_WEDDING.guestFirstName);
-    const hasNoError = !pageContent?.match(/not valid|invalid code/i);
-    expect(hasGuestName || hasNoError).toBeTruthy();
+    // Should navigate to the optional login step or RSVP form (not show an error)
+    // Wait for navigation after code verification
+    await page.waitForURL(/code=/, { timeout: 10000 }).catch(() => {
+      // URL might not change if using client-side navigation
+    });
+    await page.waitForTimeout(1000);
+
+    // Verify no error toast appeared (or if it did, the test fails)
+    const errorToast = page.getByText(/invalid code|no guests found/i).first();
+    const hasError = await errorToast.isVisible().catch(() => false);
+    expect(hasError).toBe(false);
   });
 });

@@ -403,7 +403,7 @@ async function seedData() {
   });
 
   // Create a party and guest in the second wedding
-  await db.party.create({
+  const w2Party = await db.party.create({
     data: {
       inviteCode: SEED.wedding2.inviteCode,
       name: "Wedding 2 Party",
@@ -419,6 +419,7 @@ async function seedData() {
       lastName: "TestGuest",
       email: "e2e-w2guest@example.com",
       inviteCode: SEED.wedding2.inviteCode,
+      partyId: w2Party.id,
       rsvpStatus: "pending",
       plusOneAllowed: false,
       isPlusOne: false,
