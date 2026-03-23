@@ -3,12 +3,32 @@ import Stripe from "stripe";
 import { env } from "@/env";
 import { db } from "@/lib/db";
 import { GIFT_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
+import {
+  getEmailFromAddress,
+  getNotificationRecipients,
+} from "@/lib/email/helpers";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
 // Initialize Stripe
 const stripe = new Stripe(env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2025-12-15.clover",
 });
+
+/** Resolve a weddingId for gift records — from guest match or default wedding */
+async function resolveGiftWeddingId(
+  guestWeddingId?: string | null,
+): Promise<string> {
+  if (guestWeddingId) return guestWeddingId;
+  const defaultWedding = await db.wedding.findFirst({
+    where: {
+      slug: process.env.DEFAULT_WEDDING_SLUG || "helen-and-enrique",
+    },
+    select: { id: true },
+  });
+  if (!defaultWedding)
+    throw new Error("No default wedding found for gift creation");
+  return defaultWedding.id;
+}
 
 // Log prefix for easy filtering
 const LOG_PREFIX = "[Stripe Webhook]";
@@ -176,19 +196,8 @@ async function sendGiftNotificationEmail(params: {
   giftType: "baby_fund" | "honeymoon" | "student_loans" | null;
   matchedGuest: { firstName: string; lastName: string | null } | null;
   chargeId: string;
+  weddingId: string | null;
 }) {
-  if (!getResendClient() || !env.RSVP_EMAIL) {
-    log(
-      "debug",
-      "Skipping gift notification email - no Resend client or RSVP_EMAIL",
-      {
-        hasResendClient: !!getResendClient(),
-        hasRsvpEmail: !!env.RSVP_EMAIL,
-      },
-    );
-    return;
-  }
-
   const {
     donorName,
     donorEmail,
@@ -197,7 +206,55 @@ async function sendGiftNotificationEmail(params: {
     giftType,
     matchedGuest,
     chargeId,
+    weddingId,
   } = params;
+
+  // Try to get wedding-specific email config
+  let fromAddress: string;
+  let recipients: string[];
+
+  if (weddingId) {
+    const wedding = await db.wedding.findUnique({
+      where: { id: weddingId },
+      select: {
+        slug: true,
+        coupleName: true,
+        emailFromName: true,
+        emailFromAddress: true,
+        notificationEmails: true,
+        contactEmail: true,
+      },
+    });
+
+    if (wedding) {
+      fromAddress = getEmailFromAddress(wedding, "Wedding Registry");
+      recipients = getNotificationRecipients(wedding);
+    } else {
+      // Fallback to env vars
+      fromAddress = `Wedding Registry <${env.RSVP_EMAIL || "noreply@wedding-platform.com"}>`;
+      recipients = env.RSVP_EMAIL
+        ? env.RSVP_EMAIL.split(",").map((e) => e.trim())
+        : [];
+    }
+  } else {
+    // Legacy: no weddingId, fall back to env vars
+    fromAddress = `Wedding Registry <${env.RSVP_EMAIL || "noreply@wedding-platform.com"}>`;
+    recipients = env.RSVP_EMAIL
+      ? env.RSVP_EMAIL.split(",").map((e) => e.trim())
+      : [];
+  }
+
+  if (!getResendClient() || recipients.length === 0) {
+    log(
+      "debug",
+      "Skipping gift notification email - no Resend client or recipients",
+      {
+        hasResendClient: !!getResendClient(),
+        recipientCount: recipients.length,
+      },
+    );
+    return;
+  }
 
   const amountDollars = amount / 100;
   const formattedAmount = new Intl.NumberFormat("en-US", {
@@ -219,9 +276,8 @@ async function sendGiftNotificationEmail(params: {
           : "\uD83C\uDF81";
 
   try {
-    const recipients = env.RSVP_EMAIL.split(",").map((e) => e.trim());
     await sendEmail({
-      from: "Wedding Registry <rsvp@helen-and-enrique.com>",
+      from: fromAddress,
       to: recipients,
       subject: `${giftEmoji} New Gift: ${formattedAmount} for ${giftTypeLabel}${donorName ? ` from ${donorName}` : ""}`,
       template: {
@@ -521,6 +577,7 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
         currency: currency,
         giftType: giftType,
         guestId: guestId,
+        weddingId: await resolveGiftWeddingId(guest?.weddingId),
         status: "completed",
         thankYouEmailSent: false,
       },
@@ -550,6 +607,7 @@ async function handleChargeSucceeded(charge: Stripe.Charge) {
         ? { firstName: guest.firstName, lastName: guest.lastName }
         : null,
       chargeId: charge.id,
+      weddingId: guest?.weddingId ?? null,
     });
   } catch (error) {
     log("error", "Failed to create gift record from charge", {
@@ -686,6 +744,7 @@ async function handleChargeFailed(charge: Stripe.Charge) {
         currency: currency,
         giftType: null,
         guestId: null,
+        weddingId: await resolveGiftWeddingId(),
         status: "failed",
         thankYouEmailSent: false,
       },
@@ -886,6 +945,7 @@ async function handleChargePending(charge: Stripe.Charge) {
         currency: currency,
         giftType: giftType,
         guestId: guestId,
+        weddingId: await resolveGiftWeddingId(guest?.weddingId),
         status: "pending",
         thankYouEmailSent: false,
       },

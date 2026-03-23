@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Update a table
@@ -17,13 +18,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; tableId: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { tableId } = await params;
     const body = await request.json();
@@ -84,13 +81,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; tableId: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { tableId } = await params;
 

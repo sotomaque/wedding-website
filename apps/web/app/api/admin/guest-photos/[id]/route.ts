@@ -1,28 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-
-async function getAdminEmail(
-  _request: NextRequest,
-): Promise<{ email: string } | NextResponse> {
-  const user = await currentUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-    e.trim().toLowerCase(),
-  );
-  const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase() ?? "";
-
-  if (!adminEmails?.includes(userEmail)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  return { email: userEmail };
-}
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Toggle guest photo visibility
@@ -38,8 +18,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const auth = await getAdminEmail(request);
-    if (auth instanceof NextResponse) return auth;
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id } = await params;
     const body = await request.json();
@@ -51,12 +32,17 @@ export async function PATCH(
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
 
+    // Get current user's email for audit trail
+    const user = await currentUser();
+    const userEmail =
+      user?.emailAddresses[0]?.emailAddress?.toLowerCase() ?? null;
+
     const photo = await db.guestPhoto.update({
       where: { id },
       data: {
         isVisible,
         hiddenAt: isVisible ? null : new Date(),
-        hiddenBy: isVisible ? null : auth.email,
+        hiddenBy: isVisible ? null : userEmail,
       },
     });
 
@@ -79,12 +65,13 @@ export async function PATCH(
  * @openapi
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const auth = await getAdminEmail(request);
-    if (auth instanceof NextResponse) return auth;
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id } = await params;
 

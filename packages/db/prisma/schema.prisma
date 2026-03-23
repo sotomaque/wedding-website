@@ -22,8 +22,8 @@ model Activity {
   isVenue                Boolean?                @default(false) @map("is_venue")
   venueType              VenueType?              @map("venue_type")
   displayOrder           Int?                    @default(0) @map("display_order")
-  weddingId              String?                 @map("wedding_id") @db.Uuid
-  wedding                Wedding?                @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  weddingId              String                 @map("wedding_id") @db.Uuid
+  wedding                Wedding                @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   guestActivityInterests GuestActivityInterest[]
 
   @@index([displayOrder], map: "idx_activities_display_order")
@@ -34,7 +34,7 @@ model Activity {
 
 model Document {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  weddingId   String?  @map("wedding_id") @db.Uuid
+  weddingId   String  @map("wedding_id") @db.Uuid
   title       String
   description String?
   fileUrl     String   @map("file_url")
@@ -44,7 +44,7 @@ model Document {
   uploadedBy  String           @map("uploaded_by")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  wedding     Wedding? @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding     Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([category], map: "idx_documents_category")
   @@index([weddingId], map: "idx_documents_wedding_id")
@@ -65,8 +65,8 @@ model Event {
   isDefault        Boolean?           @default(false) @map("is_default")
   displayOrder     Int?               @default(0) @map("display_order")
   createdAt        DateTime?          @default(now()) @map("created_at") @db.Timestamptz(6)
-  weddingId        String?            @map("wedding_id") @db.Uuid
-  wedding          Wedding?           @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  weddingId        String            @map("wedding_id") @db.Uuid
+  wedding          Wedding           @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   guestEventInvites GuestEventInvite[]
 
   @@index([displayOrder], map: "idx_events_display_order")
@@ -93,9 +93,11 @@ model Gift {
   createdAt                DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
   notes                    String?
-  weddingId                String?   @map("wedding_id") @db.Uuid
+  weddingId                String   @map("wedding_id") @db.Uuid
+  registryItemId           String?   @map("registry_item_id") @db.Uuid
   guest                    Guest?    @relation(fields: [guestId], references: [id], onUpdate: NoAction)
-  wedding                  Wedding?  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding                  Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  registryItem             RegistryItem? @relation(fields: [registryItemId], references: [id], onUpdate: NoAction)
 
   @@index([createdAt(sort: Desc)], map: "idx_gifts_created_at")
   @@index([donorEmail], map: "idx_gifts_donor_email")
@@ -106,6 +108,7 @@ model Gift {
   @@index([stripePaymentIntentId], map: "idx_gifts_stripe_payment_intent")
   @@index([stripeCheckoutSessionId], map: "idx_gifts_stripe_session")
   @@index([weddingId], map: "idx_gifts_wedding_id")
+  @@index([registryItemId], map: "idx_gifts_registry_item_id")
   @@map("gifts")
 }
 
@@ -117,10 +120,10 @@ model GuestActivityInterest {
   inviteCode  String?  @map("invite_code")
   plannedDate DateTime? @map("planned_date") @db.Date
   status      ActivityInterestStatus? @default(interested)
-  weddingId   String?  @map("wedding_id") @db.Uuid
+  weddingId   String  @map("wedding_id") @db.Uuid
   activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   guest       Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  wedding     Wedding? @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding     Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([activityId, status], map: "idx_guest_activity_interests_activity_status")
   @@index([inviteCode], map: "idx_guest_activity_interests_invite_code")
@@ -137,10 +140,10 @@ model GuestEventInvite {
   emailSent        Boolean?  @default(false) @map("email_sent")
   emailSentAt      DateTime? @map("email_sent_at") @db.Timestamptz(6)
   emailResendCount Int?      @default(0) @map("email_resend_count")
-  weddingId        String?   @map("wedding_id") @db.Uuid
+  weddingId        String   @map("wedding_id") @db.Uuid
   event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   guest            Guest     @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  wedding          Wedding?  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding          Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([guestId, eventId])
   @@index([eventId, emailSent], map: "idx_guest_event_invites_email_sent")
@@ -162,10 +165,10 @@ model GuestHotelInterest {
   notes          String?
   createdAt      DateTime?           @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt      DateTime?           @default(now()) @map("updated_at") @db.Timestamp(6)
-  weddingId      String?             @map("wedding_id") @db.Uuid
+  weddingId      String             @map("wedding_id") @db.Uuid
   guest          Guest?              @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   hotel          Hotel?              @relation(fields: [hotelId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  wedding        Wedding?            @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding        Wedding            @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([guestId, hotelId])
   @@index([guestId], map: "idx_guest_hotel_interests_guest_id")
@@ -184,8 +187,8 @@ model GuestPhoto {
   uploadedAt   DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(6)
   hiddenAt     DateTime? @map("hidden_at") @db.Timestamptz(6)
   hiddenBy     String?   @map("hidden_by")
-  weddingId    String?   @map("wedding_id") @db.Uuid
-  wedding      Wedding?  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  weddingId    String   @map("wedding_id") @db.Uuid
+  wedding      Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([weddingId], map: "idx_guest_photos_wedding_id")
   @@map("guest_photos")
@@ -197,10 +200,10 @@ model GuestTableAssignment {
   guestId        String       @unique @map("guest_id") @db.Uuid
   seatNumber     Int?         @map("seat_number")
   createdAt      DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
-  weddingId      String?      @map("wedding_id") @db.Uuid
+  weddingId      String      @map("wedding_id") @db.Uuid
   guest          Guest        @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   seatingTable   SeatingTable @relation(fields: [seatingTableId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  wedding        Wedding?     @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding        Wedding     @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([seatingTableId, guestId])
   @@index([guestId], map: "idx_guest_table_assignments_guest_id")
@@ -248,7 +251,7 @@ model Guest {
   departureDate                       DateTime?               @map("departure_date") @db.Date
   departureTransport                  String?                 @map("departure_transport")
   accommodationNotes                  String?                 @map("accommodation_notes")
-  weddingId                           String?                 @map("wedding_id") @db.Uuid
+  weddingId                           String                 @map("wedding_id") @db.Uuid
   calendarInviteSent                  Boolean                 @default(false) @map("calendar_invite_sent")
   calendarInviteSentAt                DateTime?               @map("calendar_invite_sent_at") @db.Timestamptz(6)
   calendarInviteResendCount           Int                     @default(0) @map("calendar_invite_resend_count")
@@ -260,7 +263,7 @@ model Guest {
   party                               Party?                  @relation(fields: [partyId], references: [id], onUpdate: NoAction)
   primaryGuest                        Guest?                  @relation("GuestPlusOne", fields: [primaryGuestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   plusOnes                            Guest[]                 @relation("GuestPlusOne")
-  wedding                             Wedding?                @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding                             Wedding                @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([bridalPartyRole], map: "idx_guests_bridal_party_role")
   @@index([clerkUserId], map: "idx_guests_clerk_user_id")
@@ -293,9 +296,9 @@ model Hotel {
   displayOrder        Int?                 @default(0) @map("display_order")
   createdAt           DateTime?            @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt           DateTime?            @default(now()) @map("updated_at") @db.Timestamp(6)
-  weddingId           String?              @map("wedding_id") @db.Uuid
+  weddingId           String              @map("wedding_id") @db.Uuid
   guestHotelInterests GuestHotelInterest[]
-  wedding             Wedding?             @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding             Wedding             @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([displayOrder], map: "idx_hotels_display_order")
   @@index([hotelType], map: "idx_hotels_hotel_type")
@@ -313,9 +316,9 @@ model Party {
   notes      String?
   createdAt  DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime?  @default(now()) @map("updated_at") @db.Timestamptz(6)
-  weddingId  String?    @map("wedding_id") @db.Uuid
+  weddingId  String    @map("wedding_id") @db.Uuid
   guests     Guest[]
-  wedding    Wedding?   @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding    Wedding   @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([inviteCode], map: "idx_parties_invite_code")
   @@index([weddingId], map: "idx_parties_wedding_id")
@@ -330,8 +333,8 @@ model Photo {
   displayOrder Int      @default(0) @map("display_order")
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  weddingId    String?  @map("wedding_id") @db.Uuid
-  wedding      Wedding? @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  weddingId    String  @map("wedding_id") @db.Uuid
+  wedding      Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([weddingId], map: "idx_photos_wedding_id")
   @@map("photos")
@@ -345,8 +348,8 @@ model SeatingChart {
   notes                 String?
   createdAt             DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime?      @default(now()) @map("updated_at") @db.Timestamptz(6)
-  weddingId             String?        @map("wedding_id") @db.Uuid
-  wedding               Wedding?       @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  weddingId             String        @map("wedding_id") @db.Uuid
+  wedding               Wedding       @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   seatingTables         SeatingTable[]
 
   @@index([isActive], map: "idx_seating_charts_is_active")
@@ -365,10 +368,10 @@ model SeatingTable {
   shape                 SeatingShape?          @default(round)
   notes                 String?
   createdAt             DateTime?              @default(now()) @map("created_at") @db.Timestamptz(6)
-  weddingId             String?                @map("wedding_id") @db.Uuid
+  weddingId             String                @map("wedding_id") @db.Uuid
   guestTableAssignments GuestTableAssignment[]
   seatingChart          SeatingChart           @relation(fields: [seatingChartId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  wedding               Wedding?               @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding               Wedding               @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([seatingChartId, tableNumber])
   @@index([seatingChartId], map: "idx_seating_tables_chart_id")
@@ -378,7 +381,7 @@ model SeatingTable {
 
 model ServiceLink {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  weddingId   String?  @map("wedding_id") @db.Uuid
+  weddingId   String  @map("wedding_id") @db.Uuid
   title       String
   url         String
   description String?
@@ -386,7 +389,7 @@ model ServiceLink {
   sortOrder   Int                 @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  wedding     Wedding? @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding     Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([sortOrder], map: "idx_service_links_sort_order")
   @@index([weddingId], map: "idx_service_links_wedding_id")
@@ -400,8 +403,8 @@ model WeddingTodo {
   displayOrder Int      @default(0) @map("display_order")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  weddingId    String?  @map("wedding_id") @db.Uuid
-  wedding      Wedding? @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  weddingId    String  @map("wedding_id") @db.Uuid
+  wedding      Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([isCompleted, displayOrder], map: "idx_wedding_todos_order")
   @@index([weddingId], map: "idx_wedding_todos_wedding_id")
@@ -418,6 +421,28 @@ model Wedding {
   status                WeddingStatus           @default(published)
   createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  // Contact & email
+  contactEmail          String?                @map("contact_email")
+  notificationEmails    String?                @map("notification_emails")
+  emailFromName         String?                @map("email_from_name")
+  emailFromAddress      String?                @map("email_from_address")
+
+  // Couple details
+  person1Name           String?                @map("person1_name")
+  person2Name           String?                @map("person2_name")
+
+  // Branding
+  brandImageUrl         String?                @map("brand_image_url")
+  brandImageAlt         String?                @map("brand_image_alt")
+
+  // Theme
+  themeId               String?                @map("theme_id")
+
+  // Feature toggles
+  featureToggles        Json                   @default("{}") @map("feature_toggles") @db.JsonB
+
+  // Relations
   activities            Activity[]
   documents             Document[]
   events                Event[]
@@ -431,13 +456,66 @@ model Wedding {
   hotels                Hotel[]
   parties               Party[]
   photos                Photo[]
+  registryItems         RegistryItem[]
   seatingCharts         SeatingChart[]
   seatingTables         SeatingTable[]
   serviceLinks          ServiceLink[]
+  weddingAdmins         WeddingAdmin[]
+  weddingContent        WeddingContent[]
   weddingTodos          WeddingTodo[]
 
   @@index([slug], map: "idx_weddings_slug")
   @@map("weddings")
+}
+
+model WeddingContent {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId String   @map("wedding_id") @db.Uuid
+  section   String
+  content   Json     @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  wedding   Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+
+  @@unique([weddingId, section])
+  @@index([weddingId], map: "idx_wedding_content_wedding_id")
+  @@map("wedding_content")
+}
+
+model RegistryItem {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId       String   @map("wedding_id") @db.Uuid
+  title           String
+  description     String?
+  imageUrl        String?  @map("image_url")
+  emoji           String?
+  stripeUrl       String?  @map("stripe_url")
+  stripeProductId String?  @map("stripe_product_id")
+  displayOrder    Int      @default(0) @map("display_order")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  wedding         Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  gifts           Gift[]
+
+  @@index([weddingId, displayOrder], map: "idx_registry_items_wedding_order")
+  @@map("registry_items")
+}
+
+model WeddingAdmin {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId   String   @map("wedding_id") @db.Uuid
+  clerkUserId String?  @map("clerk_user_id")
+  email       String
+  role        String   @default("owner")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  wedding     Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+
+  @@unique([weddingId, email])
+  @@index([weddingId], map: "idx_wedding_admins_wedding_id")
+  @@index([clerkUserId], map: "idx_wedding_admins_clerk_user_id")
+  @@index([email], map: "idx_wedding_admins_email")
+  @@map("wedding_admins")
 }
 
 enum ActivityInterestStatus {

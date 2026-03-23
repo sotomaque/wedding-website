@@ -28,6 +28,10 @@ const mockGiftCreate = mock(() =>
 );
 const mockGiftUpdate = mock(() => Promise.resolve({}));
 
+const mockWeddingFindFirst = mock(() =>
+  Promise.resolve({ id: "test-wedding-id" }),
+);
+
 mock.module("@/lib/db", () => ({
   db: {
     guest: {
@@ -37,6 +41,20 @@ mock.module("@/lib/db", () => ({
       findFirst: mockGiftFindFirst,
       create: mockGiftCreate,
       update: mockGiftUpdate,
+    },
+    wedding: {
+      findFirst: mockWeddingFindFirst,
+      findUnique: mock(() =>
+        Promise.resolve({
+          id: "test-wedding-id",
+          slug: "test-wedding",
+          coupleName: "Test Couple",
+          emailFromName: "Test Couple",
+          emailFromAddress: "rsvp@test.com",
+          notificationEmails: "admin@example.com",
+          contactEmail: "admin@example.com",
+        }),
+      ),
     },
   },
 }));

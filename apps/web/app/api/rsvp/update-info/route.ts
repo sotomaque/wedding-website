@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Update guest contact info
@@ -27,9 +28,11 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+
     // Fetch all guests with this invite code
     const guests = await db.guest.findMany({
-      where: { inviteCode },
+      where: { inviteCode, weddingId },
     });
 
     if (guests.length === 0) {
@@ -41,7 +44,7 @@ export async function PATCH(request: NextRequest) {
 
     // Update all guests with this invite code (primary + plus one)
     await db.guest.updateMany({
-      where: { inviteCode },
+      where: { inviteCode, weddingId },
       data: {
         mailingAddress: mailingAddress || null,
         phoneNumber: phoneNumber || null,
@@ -52,7 +55,7 @@ export async function PATCH(request: NextRequest) {
 
     // Fetch updated guests
     const updatedGuests = await db.guest.findMany({
-      where: { inviteCode },
+      where: { inviteCode, weddingId },
     });
 
     return NextResponse.json({ guests: updatedGuests });

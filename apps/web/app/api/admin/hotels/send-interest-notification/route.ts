@@ -1,8 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
+import { getWeddingId } from "@/lib/db/wedding-context";
+import {
+  getEmailFromAddress,
+  getNotificationRecipients,
+} from "@/lib/email/helpers";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { getHotelInterestNotificationEmail } from "@/lib/email/templates/hotel-interest-notification";
+import { weddingUrl } from "@/lib/url";
 
 /**
  * Send hotel interest notification
@@ -24,9 +30,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+
     // Fetch guest details
     const guests = await db.guest.findMany({
-      where: { inviteCode: inviteCode.toUpperCase() },
+      where: { inviteCode: inviteCode.toUpperCase(), weddingId },
     });
 
     if (guests.length === 0) {
@@ -57,19 +65,21 @@ export async function POST(request: NextRequest) {
       where: {
         hotelId: hotelId,
         inviteCode: inviteCode.toUpperCase(),
+        weddingId,
       },
     });
 
     // Check if email is configured
-    if (!getResendClient() || !env.RSVP_EMAIL) {
+    const settings = await getWeddingSettings();
+    const recipients = getNotificationRecipients(settings);
+    if (!getResendClient() || recipients.length === 0) {
       return NextResponse.json(
         { error: "Email not configured" },
         { status: 500 },
       );
     }
 
-    const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const adminUrl = `${appUrl}/admin/guests`;
+    const adminUrl = `${weddingUrl(settings.slug, "/admin/guests")}`;
 
     // Generate email HTML
     const emailHtml = getHotelInterestNotificationEmail({
@@ -90,13 +100,10 @@ export async function POST(request: NextRequest) {
       adminUrl,
     });
 
-    // Determine recipients (only admin for now)
-    const recipients = [env.RSVP_EMAIL];
-
     try {
       // Send email to admin and travel agent
       const result = await sendEmail({
-        from: "Wedding Website <rsvp@helen-and-enrique.com>",
+        from: getEmailFromAddress(settings, "Wedding Website"),
         to: recipients,
         subject: `Hotel Interest: ${primaryGuest.firstName} ${primaryGuest.lastName || ""} - ${hotel.name}`,
         html: emailHtml,

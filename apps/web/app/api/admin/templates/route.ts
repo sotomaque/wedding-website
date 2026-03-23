@@ -1,6 +1,6 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { env } from "@/env";
+import { requireAdmin } from "@/lib/auth/admin";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { getResendClient } from "@/lib/email/resend-client";
 
 /**
@@ -13,18 +13,9 @@ import { getResendClient } from "@/lib/email/resend-client";
  */
 export async function GET(): Promise<NextResponse> {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-      e.trim().toLowerCase(),
-    );
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-    if (!adminEmails?.includes(userEmail || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const resend = getResendClient();
     if (!resend) {
@@ -65,18 +56,9 @@ export async function GET(): Promise<NextResponse> {
  */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-      e.trim().toLowerCase(),
-    );
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-    if (!adminEmails?.includes(userEmail || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const body = await request.json();
     const { name, subject, html, variables, publish } = body;

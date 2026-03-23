@@ -1,7 +1,7 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Set RSVP status for a specific guest (admin override)
@@ -18,20 +18,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await currentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-      e.trim().toLowerCase(),
-    );
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-
-    if (!adminEmails?.includes(userEmail || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id: guestId } = await params;
     const body = await request.json();

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Verify invite code
@@ -21,8 +22,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const weddingId = await getWeddingId();
+
     const guests = await db.guest.findMany({
-      where: { inviteCode: code.toUpperCase() },
+      where: { inviteCode: code.toUpperCase(), weddingId },
     });
 
     if (!guests || guests.length === 0) {

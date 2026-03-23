@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Verify event invite code
@@ -24,12 +25,14 @@ export async function GET(request: NextRequest) {
 
     // Normalize code to uppercase
     const normalizedCode = code.toUpperCase().trim();
+    const weddingId = await getWeddingId();
 
     // Find guest with this invite code
     const guest = await db.guest.findFirst({
       where: {
         inviteCode: normalizedCode,
         isPlusOne: false, // Only match primary guests
+        weddingId,
       },
     });
 

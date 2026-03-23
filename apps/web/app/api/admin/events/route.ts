@@ -1,7 +1,7 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * List all events
@@ -13,23 +13,12 @@ import { db } from "@/lib/db";
  */
 export async function GET() {
   try {
-    const user = await currentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-      e.trim().toLowerCase(),
-    );
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-
-    if (!adminEmails?.includes(userEmail || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const events = await db.event.findMany({
+      where: { weddingId },
       orderBy: [{ displayOrder: "asc" }, { eventDate: "asc" }],
     });
 
@@ -43,6 +32,7 @@ export async function GET() {
         if (event.isDefault) {
           // For default events, use guest's main RSVP status
           const guests = await db.guest.findMany({
+            where: { weddingId },
             select: { rsvpStatus: true },
           });
 
@@ -51,7 +41,7 @@ export async function GET() {
           declined = guests.filter((g) => g.rsvpStatus === "no").length;
         } else {
           const invites = await db.guestEventInvite.findMany({
-            where: { eventId: event.id },
+            where: { eventId: event.id, weddingId },
             select: { rsvpStatus: true },
           });
 
@@ -90,21 +80,9 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await currentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-      e.trim().toLowerCase(),
-    );
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-
-    if (!adminEmails?.includes(userEmail || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const body = await request.json();
     const {
@@ -126,6 +104,7 @@ export async function POST(request: NextRequest) {
 
     // Get the highest display_order
     const maxOrder = await db.event.aggregate({
+      where: { weddingId },
       _max: { displayOrder: true },
     });
 
@@ -144,17 +123,22 @@ export async function POST(request: NextRequest) {
         longitude: longitude || null,
         isDefault: isDefault || false,
         displayOrder: newOrder,
+        weddingId,
       },
     });
 
     // If this is a default event, invite all guests
     if (isDefault) {
-      const guests = await db.guest.findMany({ select: { id: true } });
+      const guests = await db.guest.findMany({
+        where: { weddingId },
+        select: { id: true },
+      });
 
       await db.guestEventInvite.createMany({
         data: guests.map((guest) => ({
           guestId: guest.id,
           eventId: event.id,
+          weddingId,
         })),
         skipDuplicates: true,
       });

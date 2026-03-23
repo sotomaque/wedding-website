@@ -51,6 +51,11 @@ export const SEED = {
     hidden1: { id: crypto.randomUUID() },
     deletable: { id: crypto.randomUUID() },
   },
+  wedding2: {
+    slug: "e2e-test-wedding",
+    inviteCode: "E2E3-WED2",
+    guestFirstName: "E2E-W2Guest",
+  },
 };
 
 /**
@@ -75,7 +80,12 @@ async function truncateAll() {
       activities,
       photos,
       hotels,
-      guest_photos
+      guest_photos,
+      wedding_content,
+      registry_items,
+      wedding_admins,
+      service_links,
+      documents
     CASCADE
   `);
 }
@@ -84,6 +94,14 @@ async function truncateAll() {
  * Seed the database with deterministic E2E test data.
  */
 async function seedData() {
+  // Get the default wedding ID
+  const wedding = await db.wedding.findFirst({
+    where: { slug: process.env.DEFAULT_WEDDING_SLUG || "helen-and-enrique" },
+    select: { id: true },
+  });
+  if (!wedding) throw new Error("Default wedding not found for seeding");
+  const weddingId = wedding.id;
+
   // Events first (needed before guests, since guest insert trigger creates invites for default events)
   await db.event.createMany({
     data: [
@@ -93,6 +111,7 @@ async function seedData() {
         description: "Wedding ceremony",
         isDefault: true,
         displayOrder: 1,
+        weddingId,
       },
       {
         id: SEED.events.reception.id,
@@ -100,6 +119,7 @@ async function seedData() {
         description: "Wedding reception",
         isDefault: true,
         displayOrder: 2,
+        weddingId,
       },
     ],
   });
@@ -113,6 +133,7 @@ async function seedData() {
         name: "Alice Solo",
         side: "bride",
         list: "a",
+        weddingId,
       },
       {
         id: SEED.parties.family.id,
@@ -120,6 +141,7 @@ async function seedData() {
         name: "Bob Family",
         side: "groom",
         list: "a",
+        weddingId,
       },
     ],
   });
@@ -144,6 +166,7 @@ async function seedData() {
         under21: false,
         threeAndUnder: false,
         partyId: SEED.parties.single.id,
+        weddingId,
       },
       {
         id: SEED.guests.bob.id,
@@ -162,6 +185,7 @@ async function seedData() {
         under21: false,
         threeAndUnder: false,
         partyId: SEED.parties.family.id,
+        weddingId,
       },
       {
         id: SEED.guests.carol.id,
@@ -180,6 +204,7 @@ async function seedData() {
         under21: true,
         threeAndUnder: false,
         partyId: SEED.parties.family.id,
+        weddingId,
       },
     ],
   });
@@ -200,12 +225,14 @@ async function seedData() {
         url: "https://utfs.io/f/e2e-photo-1.jpg",
         uploaderName: "E2E-Guest",
         isVisible: true,
+        weddingId,
       },
       {
         id: SEED.guestPhotos.visible2.id,
         url: "https://utfs.io/f/e2e-photo-2.jpg",
         uploaderName: null,
         isVisible: true,
+        weddingId,
       },
       {
         id: SEED.guestPhotos.hidden1.id,
@@ -214,12 +241,14 @@ async function seedData() {
         isVisible: false,
         hiddenAt: new Date("2026-01-15T10:00:00Z"),
         hiddenBy: "admin@example.com",
+        weddingId,
       },
       {
         id: SEED.guestPhotos.deletable.id,
         url: "https://utfs.io/f/e2e-photo-4.jpg",
         uploaderName: "E2E-Delete-Me",
         isVisible: true,
+        weddingId,
       },
     ],
   });
@@ -230,15 +259,198 @@ async function seedData() {
       {
         title: "Book the florist",
         displayOrder: 1,
+        weddingId,
       },
       {
         title: "Order wedding cake",
         displayOrder: 2,
+        weddingId,
       },
       {
         title: "Finalize seating chart",
         isCompleted: true,
         displayOrder: 3,
+        weddingId,
+      },
+    ],
+  });
+
+  // --- Wedding 1 content + registry (truncated by E2E reset) ---
+
+  await db.weddingContent.createMany({
+    data: [
+      {
+        weddingId,
+        section: "hero",
+        content: { title: "Helen & Enrique" },
+      },
+      {
+        weddingId,
+        section: "story",
+        content: {
+          title: "Our Story",
+          paragraphs: [
+            "We met in Seattle in 2020.",
+            "Our journey took us to Hawaii and then San Diego.",
+          ],
+        },
+      },
+      {
+        weddingId,
+        section: "details",
+        content: {
+          title: "Wedding Details",
+          dateFormatted: "Thursday, July 30, 2026",
+          ceremony: {
+            title: "Ceremony",
+            time: "4:00 PM",
+            venue: "St. Therese of Carmel",
+            address: "4355 Del Mar Trails Rd, San Diego, CA 92130",
+          },
+          reception: {
+            title: "Reception",
+            time: "6:00 PM",
+            venue: "Headquarters",
+            address: "789 W Harbor Dr Suite 148, San Diego, CA 92101",
+          },
+        },
+      },
+      {
+        weddingId,
+        section: "schedule",
+        content: {
+          title: "Schedule",
+          events: [
+            { id: "ceremony", time: "4:00 PM", event: "Ceremony" },
+            { id: "reception", time: "6:00 PM", event: "Reception" },
+          ],
+        },
+      },
+      {
+        weddingId,
+        section: "rsvp",
+        content: { title: "RSVP", deadline: "Please respond by March 1, 2026" },
+      },
+    ],
+  });
+
+  await db.registryItem.createMany({
+    data: [
+      {
+        weddingId,
+        title: "Future Tiny Humans Fund",
+        description: "Help us prepare for the chaos ahead.",
+        imageUrl: "/registry/future-babies.jpg",
+        emoji: "👶",
+        displayOrder: 0,
+      },
+      {
+        weddingId,
+        title: "Send Us Somewhere Pretty",
+        description: "Fund our first adventure as a married couple.",
+        imageUrl: "/registry/honeymoon.jpg",
+        emoji: "✈️",
+        displayOrder: 1,
+      },
+      {
+        weddingId,
+        title: "Bye Bye Student Loans",
+        description: "Contribute to our freedom fund.",
+        imageUrl: "/registry/student-loan-relief.jpg",
+        emoji: "🎓",
+        displayOrder: 2,
+      },
+    ],
+  });
+
+  // --- Second wedding for multi-tenancy testing ---
+
+  // Delete existing second wedding if present (clean slate)
+  await db.wedding.deleteMany({ where: { slug: SEED.wedding2.slug } });
+
+  const wedding2 = await db.wedding.create({
+    data: {
+      slug: SEED.wedding2.slug,
+      coupleName: "E2E-Test & Partner",
+      person1Name: "E2E-Test",
+      person2Name: "E2E-Partner",
+      weddingDate: new Date("2027-01-15"),
+      timezone: "America/Los_Angeles",
+      contactEmail: "e2e-test@example.com",
+      notificationEmails: "e2e-test@example.com",
+      emailFromName: "E2E Test Wedding",
+      status: "published",
+      featureToggles: {
+        hotels: true,
+        vendors: true,
+        thingsToDo: true,
+        tripPlanner: true,
+        registry: true,
+        guestPhotos: true,
+        slideshow: true,
+      },
+      themeId: "sage-garden",
+    },
+  });
+
+  // Create admin for the second wedding
+  await db.weddingAdmin.create({
+    data: {
+      weddingId: wedding2.id,
+      email: process.env.TEST_ADMIN_EMAIL || "admin@example.com",
+      role: "owner",
+    },
+  });
+
+  // Create a party and guest in the second wedding
+  const w2Party = await db.party.create({
+    data: {
+      inviteCode: SEED.wedding2.inviteCode,
+      name: "Wedding 2 Party",
+      side: "bride",
+      list: "a",
+      weddingId: wedding2.id,
+    },
+  });
+
+  await db.guest.create({
+    data: {
+      firstName: SEED.wedding2.guestFirstName,
+      lastName: "TestGuest",
+      email: "e2e-w2guest@example.com",
+      inviteCode: SEED.wedding2.inviteCode,
+      partyId: w2Party.id,
+      rsvpStatus: "pending",
+      plusOneAllowed: false,
+      isPlusOne: false,
+      numberOfResends: 0,
+      physicalInviteSent: false,
+      family: false,
+      under21: false,
+      threeAndUnder: false,
+      weddingId: wedding2.id,
+      side: "bride",
+      list: "a",
+    },
+  });
+
+  // Create default content for second wedding
+  await db.weddingContent.createMany({
+    data: [
+      {
+        weddingId: wedding2.id,
+        section: "hero",
+        content: { title: "E2E-Test & Partner" },
+      },
+      {
+        weddingId: wedding2.id,
+        section: "story",
+        content: { title: "Our Story", paragraphs: ["Test story."] },
+      },
+      {
+        weddingId: wedding2.id,
+        section: "rsvp",
+        content: { title: "RSVP" },
       },
     ],
   });

@@ -38,6 +38,68 @@ mock.module("@/lib/email/templates/rsvp-notification", () => ({
   getRsvpNotificationEmail: () => "<html>RSVP Notification</html>",
 }));
 
+// Mock wedding settings (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-content-data", () => ({
+  getWeddingSettings: mock(() =>
+    Promise.resolve({
+      id: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      person1Name: "Person1",
+      person2Name: "Person2",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+      contactEmail: "test@example.com",
+      notificationEmails: "admin@example.com",
+      emailFromName: "Test Couple",
+      emailFromAddress: "rsvp@test-wedding.com",
+      brandImageUrl: null,
+      brandImageAlt: null,
+      featureToggles: {
+        hotels: true,
+        vendors: true,
+        thingsToDo: true,
+        tripPlanner: true,
+        registry: true,
+        guestPhotos: true,
+        slideshow: true,
+      },
+    }),
+  ),
+  getWeddingContentSections: mock(() => Promise.resolve({})),
+}));
+
+// Mock URL helper
+mock.module("@/lib/url", () => ({
+  weddingUrl: mock(
+    (slug: string, path: string) => `http://localhost:3000/${slug}${path}`,
+  ),
+}));
+
+// Mock email helpers
+mock.module("@/lib/email/helpers", () => ({
+  getEmailFromAddress: mock(() => "Test Couple <rsvp@test-wedding.com>"),
+  getNotificationRecipients: mock(() => ["admin@example.com"]),
+}));
+
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
+
 // Mock db
 const mockGuestFindMany = mock(() => Promise.resolve([]));
 const mockGuestUpdate = mock(() => Promise.resolve({}));
@@ -93,7 +155,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
   });
 
   it("should submit RSVP for attending guest", async () => {
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -117,7 +179,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
   });
 
   it("should submit RSVP for declining guest", async () => {
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -136,7 +198,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
   });
 
   it("should require invite code", async () => {
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "",
@@ -151,7 +213,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
   it("should return error for invalid invite code", async () => {
     mockGuestFindMany.mockResolvedValue([]);
 
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "INVALID",
@@ -197,7 +259,7 @@ describe("RSVP - Plus One Scenarios", () => {
       },
     ]);
 
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -243,7 +305,7 @@ describe("RSVP - Plus One Scenarios", () => {
       },
     ]);
 
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -291,7 +353,7 @@ describe("RSVP - Plus One Scenarios", () => {
       },
     ]);
 
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -328,7 +390,7 @@ describe("RSVP - Plus One Scenarios", () => {
       },
     ]);
 
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -380,7 +442,7 @@ describe("RSVP - Contact Information", () => {
   });
 
   it("should save mailing address", async () => {
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -399,7 +461,7 @@ describe("RSVP - Contact Information", () => {
   });
 
   it("should save phone number", async () => {
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -418,7 +480,7 @@ describe("RSVP - Contact Information", () => {
   });
 
   it("should save preferred contact method", async () => {
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -437,7 +499,7 @@ describe("RSVP - Contact Information", () => {
   });
 
   it("should save under21 status", async () => {
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -482,7 +544,7 @@ describe("RSVP - Notification Email", () => {
   });
 
   it("should schedule notification email via after() on RSVP submission", async () => {
-    const { submitRSVP } = await import("@/app/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",

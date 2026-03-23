@@ -1,6 +1,22 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 // ----- mock setup -----
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
+
 const mockGuestPhotoCreate = mock(() => Promise.resolve({}));
 
 mock.module("@/lib/db", () => ({
@@ -19,7 +35,7 @@ describe("saveGuestPhoto server action", () => {
   });
 
   it("returns { success: true } when the insert succeeds", async () => {
-    const { saveGuestPhoto } = await import("@/app/photos/actions");
+    const { saveGuestPhoto } = await import("@/app/[slug]/photos/actions");
     const result = await saveGuestPhoto("https://utfs.io/f/photo.jpg", "Alice");
 
     expect(result.success).toBe(true);
@@ -27,7 +43,7 @@ describe("saveGuestPhoto server action", () => {
   });
 
   it("inserts with correct url and uploaderName", async () => {
-    const { saveGuestPhoto } = await import("@/app/photos/actions");
+    const { saveGuestPhoto } = await import("@/app/[slug]/photos/actions");
     await saveGuestPhoto("https://utfs.io/f/photo.jpg", "Bob");
 
     expect(mockGuestPhotoCreate).toHaveBeenCalledWith(
@@ -41,7 +57,7 @@ describe("saveGuestPhoto server action", () => {
   });
 
   it("always inserts with isVisible: true", async () => {
-    const { saveGuestPhoto } = await import("@/app/photos/actions");
+    const { saveGuestPhoto } = await import("@/app/[slug]/photos/actions");
     await saveGuestPhoto("https://utfs.io/f/photo.jpg", "Alice");
 
     expect(mockGuestPhotoCreate).toHaveBeenCalledWith(
@@ -52,7 +68,7 @@ describe("saveGuestPhoto server action", () => {
   });
 
   it("stores null for uploaderName when empty string is passed", async () => {
-    const { saveGuestPhoto } = await import("@/app/photos/actions");
+    const { saveGuestPhoto } = await import("@/app/[slug]/photos/actions");
     await saveGuestPhoto("https://utfs.io/f/photo.jpg", "");
 
     expect(mockGuestPhotoCreate).toHaveBeenCalledWith(
@@ -63,7 +79,7 @@ describe("saveGuestPhoto server action", () => {
   });
 
   it("stores null for uploaderName when null is passed", async () => {
-    const { saveGuestPhoto } = await import("@/app/photos/actions");
+    const { saveGuestPhoto } = await import("@/app/[slug]/photos/actions");
     await saveGuestPhoto("https://utfs.io/f/photo.jpg", null);
 
     expect(mockGuestPhotoCreate).toHaveBeenCalledWith(
@@ -76,7 +92,7 @@ describe("saveGuestPhoto server action", () => {
   it("returns { success: false, error } on database error", async () => {
     mockGuestPhotoCreate.mockRejectedValueOnce(new Error("connection refused"));
 
-    const { saveGuestPhoto } = await import("@/app/photos/actions");
+    const { saveGuestPhoto } = await import("@/app/[slug]/photos/actions");
     const result = await saveGuestPhoto("https://utfs.io/f/photo.jpg", "Alice");
 
     expect(result.success).toBe(false);
@@ -86,7 +102,7 @@ describe("saveGuestPhoto server action", () => {
   it("does not throw when the database errors", async () => {
     mockGuestPhotoCreate.mockRejectedValueOnce(new Error("fail"));
 
-    const { saveGuestPhoto } = await import("@/app/photos/actions");
+    const { saveGuestPhoto } = await import("@/app/[slug]/photos/actions");
 
     // Should resolve (not reject)
     await expect(

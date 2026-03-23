@@ -118,6 +118,7 @@ export function buildCalendarEmailHtml(
 export function generateIcs(
   events: CalendarEvent[],
   guestName: string,
+  coupleName?: string,
 ): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
@@ -135,14 +136,18 @@ export function generateIcs(
       event.end_time ?? (startTime ? addTwoHours(startTime) : null);
     const dtStart = formatIcsDateTime(event.event_date, startTime);
     const dtEnd = formatIcsDateTime(event.event_date, endTime);
-    const summary = escapeIcsText(`${event.name} — Helen & Enrique`);
+    const couple = coupleName ?? "the couple";
+    const summary = escapeIcsText(`${event.name} — ${couple}`);
     const location = escapeIcsText(
       event.location_address ?? event.location_name ?? "",
     );
     const description = escapeIcsText(
-      `You're invited to ${event.name} for Helen & Enrique's wedding!${guestName ? ` We can't wait to celebrate with you, ${guestName}.` : ""}`,
+      `You're invited to ${event.name} for ${couple}'s wedding!${guestName ? ` We can't wait to celebrate with you, ${guestName}.` : ""}`,
     );
-    const uid = `${event.id}@helen-and-enrique.com`;
+    const domain =
+      process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, "") ??
+      "wedding-platform.com";
+    const uid = `${event.id}@${domain}`;
     const now = new Date();
     const dtstamp = formatIcsDateTime(
       now,

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { isValidUUID } from "@/lib/utils/uuid";
 
 /**
@@ -18,13 +19,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id: chartId } = await params;
     const body = await request.json();
@@ -39,7 +36,7 @@ export async function POST(
 
     // Verify the chart exists and get its tables
     const tables = await db.seatingTable.findMany({
-      where: { seatingChartId: chartId },
+      where: { seatingChartId: chartId, weddingId },
       select: { id: true },
     });
 
@@ -93,6 +90,7 @@ export async function POST(
           guestId: a.guestId,
           seatingTableId: a.tableId,
           seatNumber: a.seatNumber || null,
+          weddingId,
         }),
       ),
     });
@@ -128,13 +126,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id: chartId } = await params;
     const { searchParams } = new URL(request.url);
@@ -142,7 +136,7 @@ export async function DELETE(
 
     // Get all tables for this chart
     const tables = await db.seatingTable.findMany({
-      where: { seatingChartId: chartId },
+      where: { seatingChartId: chartId, weddingId },
       select: { id: true },
     });
 
@@ -159,12 +153,13 @@ export async function DELETE(
         where: {
           seatingTableId: { in: tableIds },
           guestId: { in: guestIds },
+          weddingId,
         },
       });
     } else {
       // Delete all assignments for this chart's tables
       await db.guestTableAssignment.deleteMany({
-        where: { seatingTableId: { in: tableIds } },
+        where: { seatingTableId: { in: tableIds }, weddingId },
       });
     }
 

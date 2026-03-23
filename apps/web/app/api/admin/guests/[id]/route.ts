@@ -1,15 +1,18 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Helper function to delete a party if it has no guests remaining
  */
-async function deleteEmptyParty(partyId: string): Promise<void> {
+async function deleteEmptyParty(
+  partyId: string,
+  weddingId: string,
+): Promise<void> {
   try {
     const guestCount = await db.guest.count({
-      where: { partyId },
+      where: { partyId, weddingId },
     });
 
     if (guestCount === 0) {
@@ -37,21 +40,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await currentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-      e.trim().toLowerCase(),
-    );
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-
-    if (!adminEmails?.includes(userEmail || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id } = await params;
 
@@ -69,6 +60,7 @@ export async function GET(
       where: {
         primaryGuestId: id,
         isPlusOne: true,
+        weddingId,
       },
     });
 
@@ -97,21 +89,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await currentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-      e.trim().toLowerCase(),
-    );
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-
-    if (!adminEmails?.includes(userEmail || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id } = await params;
     const body = await request.json();
@@ -253,6 +233,7 @@ export async function PATCH(
         where: {
           primaryGuestId: id,
           isPlusOne: true,
+          weddingId,
         },
       });
 
@@ -306,6 +287,7 @@ export async function PATCH(
               threeAndUnder !== undefined
                 ? threeAndUnder
                 : currentGuest.threeAndUnder,
+            weddingId,
           },
         });
       }
@@ -321,7 +303,7 @@ export async function PATCH(
 
     // Clean up the source party if it's now empty (guest was moved to a different party)
     if (sourcePartyId && sourcePartyId !== newPartyId) {
-      await deleteEmptyParty(sourcePartyId);
+      await deleteEmptyParty(sourcePartyId, weddingId);
     }
 
     return NextResponse.json({ guest: updatedGuest });

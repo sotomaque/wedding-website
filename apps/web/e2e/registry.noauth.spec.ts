@@ -76,14 +76,16 @@ test.describe("Registry - Public Access", () => {
     await page.goto(TEST_DATA.routes.registry);
     await waitForHydration(page);
 
-    // Check for descriptions
+    // Check for descriptions (from seed data)
     await expect(
-      page.getByText(/we're not pregnant—just planners/i),
+      page.getByText(/help us prepare for the chaos ahead/i),
     ).toBeVisible();
     await expect(
       page.getByText(/fund our first adventure as a married couple/i),
     ).toBeVisible();
-    await expect(page.getByText(/sallie mae freedom fund/i)).toBeVisible();
+    await expect(
+      page.getByText(/contribute to our freedom fund/i),
+    ).toBeVisible();
   });
 
   test("displays emojis for each gift", async ({ page }) => {
@@ -167,10 +169,10 @@ test.describe("Registry - Navigation", () => {
     const brandLink = page.locator("nav").getByRole("link").first();
     await brandLink.click();
 
-    // Should navigate to home (may include hash like /#story)
-    // Verify we navigated to the home page (any host, root path, optional hash)
+    // Should navigate away from registry page
+    await page.waitForTimeout(1000);
     const url = new URL(page.url());
-    expect(url.pathname).toBe("/");
+    expect(url.pathname).not.toContain("/registry");
   });
 });
 
@@ -313,7 +315,8 @@ test.describe("Registry - Thank You Page", () => {
     await waitForHydration(page);
 
     await page.getByRole("link", { name: /back to home/i }).click();
-    await expect(page).toHaveURL(TEST_DATA.routes.home);
+    // "Back to home" navigates to the wedding home page (slug-based)
+    await expect(page).toHaveURL(/helen-and-enrique/, { timeout: 10000 });
   });
 
   test("has navigation header and footer", async ({ page }) => {

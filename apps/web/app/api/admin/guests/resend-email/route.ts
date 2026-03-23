@@ -1,9 +1,15 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
+import {
+  getEmailFromAddress,
+  getNotificationRecipients,
+} from "@/lib/email/helpers";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
+import { weddingUrl } from "@/lib/url";
 
 /**
  * Resend invitation email
@@ -16,21 +22,9 @@ import { getResendClient, sendEmail } from "@/lib/email/resend-client";
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await currentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-      e.trim().toLowerCase(),
-    );
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-
-    if (!adminEmails?.includes(userEmail || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const body = await request.json();
     const { guestId, email: emailOverride } = body;
@@ -67,21 +61,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email is configured
-    if (!getResendClient() || !env.RSVP_EMAIL) {
+    const settings = await getWeddingSettings();
+    const notificationRecipients = getNotificationRecipients(settings);
+    if (!getResendClient() || notificationRecipients.length === 0) {
       return NextResponse.json(
         { error: "Email not configured" },
         { status: 500 },
       );
     }
 
-    const appUrl = env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const rsvpUrl = `${appUrl}/rsvp?code=${guest.inviteCode}`;
+    const rsvpUrl = `${weddingUrl(settings.slug, "/rsvp")}?code=${guest.inviteCode}`;
+    const appUrl = weddingUrl(settings.slug);
 
     // Fetch wedding date from the Wedding Ceremony event
     let weddingDate = "";
     try {
       const ceremonyEvent = await db.event.findFirst({
-        where: { name: "Wedding Ceremony" },
+        where: { name: "Wedding Ceremony", weddingId },
         select: { eventDate: true },
       });
 
@@ -109,7 +105,7 @@ export async function POST(request: NextRequest) {
     // Send email using Resend template
     try {
       const result = await sendEmail({
-        from: "Wedding Invitation <rsvp@helen-and-enrique.com>",
+        from: getEmailFromAddress(settings, "Wedding Invitation"),
         to: recipientEmail,
         subject: "You're Invited to Our Wedding! 💕",
         template: {

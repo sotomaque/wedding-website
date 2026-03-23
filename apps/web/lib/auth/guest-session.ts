@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
-import { env } from "@/env";
+import { isAdmin as checkIsAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 export interface GuestParty {
   inviteCode: string;
@@ -33,34 +34,39 @@ export async function getGuestParty(
   inviteCode?: string,
 ): Promise<GuestParty | null> {
   const user = await currentUser();
+  const weddingId = await getWeddingId();
 
   // Check if user is admin
-  const adminEmails =
-    env.ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) || [];
-  const userEmail = user?.emailAddresses[0]?.emailAddress?.toLowerCase();
-  const isAdmin = userEmail ? adminEmails.includes(userEmail) : false;
+  const { authorized: isAdmin } = await checkIsAdmin(weddingId);
 
   // Try to find guest by Clerk user ID first (if logged in)
   if (user) {
     const guestByClerk = await db.guest.findFirst({
-      where: { clerkUserId: user.id },
+      where: { clerkUserId: user.id, weddingId },
     });
 
-    if (guestByClerk && guestByClerk.inviteCode) {
+    if (guestByClerk?.inviteCode) {
       // Found guest by Clerk ID - get their party
-      return await getPartyByInviteCode(guestByClerk.inviteCode, true, isAdmin);
+      return await getPartyByInviteCode(
+        guestByClerk.inviteCode,
+        true,
+        isAdmin,
+        weddingId,
+      );
     }
 
     // If no clerk_user_id link, try to find guest by email and auto-link
+    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
     if (userEmail) {
       const guestByEmail = await db.guest.findFirst({
         where: {
           email: userEmail,
           isPlusOne: false, // Only match primary guests
+          weddingId,
         },
       });
 
-      if (guestByEmail && guestByEmail.inviteCode) {
+      if (guestByEmail?.inviteCode) {
         // Auto-link the Clerk user to this guest for future lookups
         await db.guest.update({
           where: { id: guestByEmail.id },
@@ -71,6 +77,7 @@ export async function getGuestParty(
           guestByEmail.inviteCode,
           true,
           isAdmin,
+          weddingId,
         );
       }
     }
@@ -78,7 +85,12 @@ export async function getGuestParty(
 
   // Try to find guest by invite code
   if (inviteCode) {
-    const party = await getPartyByInviteCode(inviteCode, !!user, isAdmin);
+    const party = await getPartyByInviteCode(
+      inviteCode,
+      !!user,
+      isAdmin,
+      weddingId,
+    );
     return party;
   }
 
@@ -93,9 +105,10 @@ async function getPartyByInviteCode(
   inviteCode: string,
   isLoggedIn: boolean,
   isAdmin: boolean,
+  weddingId: string,
 ): Promise<GuestParty | null> {
   const guests = await db.guest.findMany({
-    where: { inviteCode: inviteCode.toUpperCase() },
+    where: { inviteCode: inviteCode.toUpperCase(), weddingId },
   });
 
   if (guests.length === 0) {
@@ -146,9 +159,11 @@ export async function linkClerkUserToGuest(
       return { success: false, error: "Not authenticated" };
     }
 
+    const weddingId = await getWeddingId();
+
     // Get guests with this invite code
     const guests = await db.guest.findMany({
-      where: { inviteCode: inviteCode.toUpperCase() },
+      where: { inviteCode: inviteCode.toUpperCase(), weddingId },
     });
 
     if (guests.length === 0) {

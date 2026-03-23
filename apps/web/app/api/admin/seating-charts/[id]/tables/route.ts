@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Add table to seating chart
@@ -17,13 +18,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id: chartId } = await params;
     const body = await request.json();
@@ -51,7 +48,7 @@ export async function POST(
     let finalTableNumber = tableNumber;
     if (finalTableNumber === undefined) {
       const maxTable = await db.seatingTable.aggregate({
-        where: { seatingChartId: chartId },
+        where: { seatingChartId: chartId, weddingId },
         _max: { tableNumber: true },
       });
 
@@ -68,6 +65,7 @@ export async function POST(
         positionY: positionY || 0,
         shape: shape || "round",
         notes: notes || null,
+        weddingId,
       },
     });
 
@@ -98,18 +96,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id: chartId } = await params;
 
     await db.seatingTable.deleteMany({
-      where: { seatingChartId: chartId },
+      where: { seatingChartId: chartId, weddingId },
     });
 
     return NextResponse.json({ success: true });

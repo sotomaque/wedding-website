@@ -7,6 +7,22 @@ mock.module("@/env", () => ({
   },
 }));
 
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
+
 // Create Prisma-style db mocks
 const mockGiftFindMany = mock(() => Promise.resolve([]));
 const mockGiftGroupBy = mock(() => Promise.resolve([]));
@@ -113,7 +129,7 @@ describe("Admin Gifts - getGifts", () => {
   });
 
   it("should return all gifts with default params", async () => {
-    const { getGifts } = await import("@/app/admin/gifts/actions");
+    const { getGifts } = await import("@/app/[slug]/admin/gifts/actions");
 
     const gifts = await getGifts();
 
@@ -122,7 +138,7 @@ describe("Admin Gifts - getGifts", () => {
   });
 
   it("should include joined guest data", async () => {
-    const { getGifts } = await import("@/app/admin/gifts/actions");
+    const { getGifts } = await import("@/app/[slug]/admin/gifts/actions");
 
     const gifts = await getGifts();
     const giftWithGuest = gifts.find((g) => g.guestId !== null);
@@ -134,7 +150,7 @@ describe("Admin Gifts - getGifts", () => {
   });
 
   it("should return gifts with all required fields", async () => {
-    const { getGifts } = await import("@/app/admin/gifts/actions");
+    const { getGifts } = await import("@/app/[slug]/admin/gifts/actions");
 
     const gifts = await getGifts();
 
@@ -175,7 +191,7 @@ describe("Admin Gifts - getGiftStats", () => {
       },
     ]);
 
-    const { getGiftStats } = await import("@/app/admin/gifts/actions");
+    const { getGiftStats } = await import("@/app/[slug]/admin/gifts/actions");
 
     const stats = await getGiftStats();
 
@@ -203,7 +219,7 @@ describe("Admin Gifts - getGiftStats", () => {
       },
     ]);
 
-    const { getGiftStats } = await import("@/app/admin/gifts/actions");
+    const { getGiftStats } = await import("@/app/[slug]/admin/gifts/actions");
 
     const stats = await getGiftStats();
 
@@ -218,7 +234,7 @@ describe("Admin Gifts - getGiftStats", () => {
   it("should throw error on database failure", async () => {
     mockGiftGroupBy.mockRejectedValue(new Error("Database error"));
 
-    const { getGiftStats } = await import("@/app/admin/gifts/actions");
+    const { getGiftStats } = await import("@/app/[slug]/admin/gifts/actions");
 
     await expect(getGiftStats()).rejects.toThrow("Database error");
   });
@@ -233,7 +249,7 @@ describe("Admin Gifts - getGiftStats", () => {
       },
     ]);
 
-    const { getGiftStats } = await import("@/app/admin/gifts/actions");
+    const { getGiftStats } = await import("@/app/[slug]/admin/gifts/actions");
 
     const stats = await getGiftStats();
 

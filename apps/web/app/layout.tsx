@@ -18,37 +18,14 @@ const fontMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
-  title: "Helen & Enrique | Wedding",
+  title: {
+    default: "Wedding Platform",
+    template: "%s",
+  },
   description:
-    "Join us in celebrating our wedding in San Diego! Find all the details about our ceremony, reception, and things to do in beautiful San Diego.",
-  keywords: ["wedding", "San Diego wedding", "Helen and Enrique"],
-  authors: [{ name: "Helen & Enrique" }],
+    "Create a beautiful wedding website, manage your guest list, handle RSVPs, and coordinate every detail.",
   icons: {
     icon: "/favicon.ico",
-    // apple-touch-icon is auto-generated from app/apple-icon.tsx by Next.js
-  },
-  openGraph: {
-    title: "Helen & Enrique | Wedding",
-    description:
-      "Join us in celebrating our wedding in San Diego! Find all the details about our ceremony, reception, and things to do in beautiful San Diego.",
-    type: "website",
-    locale: "en_US",
-    siteName: "Helen & Enrique's Wedding",
-    images: [
-      {
-        url: "/favicon.ico",
-        width: 512,
-        height: 512,
-        alt: "Helen & Enrique Wedding",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Helen & Enrique | Wedding",
-    description:
-      "Join us in celebrating our wedding in San Diego! Find all the details about our ceremony, reception, and things to do in beautiful San Diego.",
-    images: ["/favicon.ico"],
   },
   robots: {
     index: true,

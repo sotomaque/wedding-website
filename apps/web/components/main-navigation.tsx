@@ -1,39 +1,42 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
 import { Navigation } from "@workspace/ui/components/navigation";
 import { useMemo } from "react";
-import { NAVIGATION_CONFIG } from "@/app/navigation-config";
-import { env } from "@/env";
+import { getNavigationConfig } from "@/app/navigation-config";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 
-export function MainNavigation() {
-  const { user } = useUser();
+interface NavConfig {
+  brandImage: { src: string; alt: string; width: number; height: number };
+  leftLinks: { href: string; label: string }[];
+  rightLinks: { href: string; label: string }[];
+}
 
-  // Check if user is admin
-  const isAdmin = useMemo(() => {
-    if (!user) return false;
+interface MainNavigationProps {
+  isAdmin?: boolean;
+  navConfig?: NavConfig;
+}
 
-    const adminEmailsStr = env.NEXT_PUBLIC_ADMIN_EMAILS || "";
-    const adminEmails = adminEmailsStr
-      .split(",")
-      .map((email) => email.trim().toLowerCase());
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-    return Boolean(userEmail && adminEmails.includes(userEmail));
-  }, [user]);
+export function MainNavigation({
+  isAdmin = false,
+  navConfig: navConfigProp,
+}: MainNavigationProps) {
+  const slug = useWeddingSlug();
+  const fallbackConfig = useMemo(() => getNavigationConfig(slug), [slug]);
+  const navConfig = navConfigProp ?? fallbackConfig;
 
   // Add admin link to right links if user is admin
   const rightLinks = useMemo(
     () =>
       isAdmin
-        ? [...NAVIGATION_CONFIG.rightLinks, { href: "/admin", label: "Admin" }]
-        : NAVIGATION_CONFIG.rightLinks,
-    [isAdmin],
+        ? [...navConfig.rightLinks, { href: `/${slug}/admin`, label: "Admin" }]
+        : navConfig.rightLinks,
+    [isAdmin, navConfig.rightLinks, slug],
   );
 
   return (
     <Navigation
-      brandImage={NAVIGATION_CONFIG.brandImage}
-      leftLinks={NAVIGATION_CONFIG.leftLinks}
+      brandImage={navConfig.brandImage}
+      leftLinks={navConfig.leftLinks}
       rightLinks={rightLinks}
     />
   );

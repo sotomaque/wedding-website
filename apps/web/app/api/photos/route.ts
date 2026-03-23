@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * List public photos
@@ -10,8 +11,10 @@ import { db } from "@/lib/db";
  */
 export async function GET() {
   try {
+    const weddingId = await getWeddingId();
+
     const photos = await db.photo.findMany({
-      where: { isActive: true },
+      where: { isActive: true, weddingId },
       orderBy: { displayOrder: "asc" },
     });
 

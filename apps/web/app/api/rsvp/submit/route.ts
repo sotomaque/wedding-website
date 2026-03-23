@@ -1,7 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
+import {
+  getEmailFromAddress,
+  getNotificationRecipients,
+} from "@/lib/email/helpers";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
 /**
@@ -25,10 +30,11 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedCode = inviteCode.toUpperCase();
+    const weddingId = await getWeddingId();
 
     // Update all guests with this invite code
     await db.guest.updateMany({
-      where: { inviteCode: normalizedCode },
+      where: { inviteCode: normalizedCode, weddingId },
       data: {
         rsvpStatus: attending ? "yes" : "no",
         dietaryRestrictions: dietaryRestrictions || null,
@@ -36,11 +42,13 @@ export async function POST(request: NextRequest) {
     });
 
     // Send notification email to admin
-    if (getResendClient() && env.RSVP_EMAIL) {
+    const settings = await getWeddingSettings();
+    const recipients = getNotificationRecipients(settings);
+    if (getResendClient() && recipients.length > 0) {
       try {
         // Fetch guests for the notification email
         const guests = await db.guest.findMany({
-          where: { inviteCode: normalizedCode },
+          where: { inviteCode: normalizedCode, weddingId },
           select: { firstName: true, lastName: true, email: true },
         });
 
@@ -53,9 +61,8 @@ export async function POST(request: NextRequest) {
           .map((g) => g.email)
           .join(", ");
 
-        const recipients = env.RSVP_EMAIL.split(",").map((e) => e.trim());
         await sendEmail({
-          from: "Wedding RSVP <rsvp@helen-and-enrique.com>",
+          from: getEmailFromAddress(settings, "Wedding RSVP"),
           to: recipients,
           subject: `${attending ? "\u2705" : "\u274C"} RSVP: ${guests.map((g) => g.firstName).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,
           template: {

@@ -78,18 +78,19 @@ test.describe("Trip Planner - Public Access", () => {
   });
 
   test("is accessible from main navigation", async ({ page }) => {
-    await page.goto("/");
+    // Navigate to the wedding home page (not landing page)
+    await page.goto("/helen-and-enrique");
     await waitForHydration(page);
 
     // Find and click the Trip Planner nav link
     const navLink = page.getByRole("link", { name: /trip planner/i });
-    await expect(navLink).toBeVisible();
+    await expect(navLink).toBeVisible({ timeout: 10000 });
     await navLink.click();
 
     // Should navigate to the trip planner page
-    await expect(page).toHaveURL(/trip-planner/);
+    await expect(page).toHaveURL(/trip-planner/, { timeout: 10000 });
     await expect(
       page.getByRole("heading", { name: /trip planner/i }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
   });
 });

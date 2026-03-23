@@ -1,12 +1,13 @@
 import Image from "next/image";
-
-import { type HeroPhoto, STORY_CONTENT } from "../app/constants";
+import type { StoryContent } from "@/lib/validations/wedding-content";
+import type { HeroPhoto } from "./hero-section";
 
 interface StorySectionProps {
   photos: HeroPhoto[];
+  content?: StoryContent;
 }
 
-export function StorySection({ photos }: StorySectionProps) {
+export function StorySection({ photos, content }: StorySectionProps) {
   const [mainPhoto, ...secondaryPhotos] = photos;
 
   if (!mainPhoto) return null;
@@ -15,7 +16,7 @@ export function StorySection({ photos }: StorySectionProps) {
     <section id="story" className="py-24 px-6 bg-card scroll-mt-24">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-serif text-center mb-16 text-foreground">
-          {STORY_CONTENT.title}
+          {content?.title ?? "Our Story"}
         </h2>
         <div className="w-24 h-1 bg-accent mx-auto mb-16 -mt-12" />
         <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
@@ -35,9 +36,17 @@ export function StorySection({ photos }: StorySectionProps) {
             </div>
           </div>
           <div className="space-y-6 text-muted-foreground leading-relaxed">
-            {STORY_CONTENT.paragraphs.map((paragraph) => (
-              <p key={paragraph.substring(0, 20)}>{paragraph}</p>
-            ))}
+            {content?.bodyHtml ? (
+              <div
+                className="prose prose-sm max-w-none [&_p]:my-2 [&_h2]:text-xl [&_h2]:font-serif [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-1 text-muted-foreground"
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side by admin via Tiptap editor
+                dangerouslySetInnerHTML={{ __html: content.bodyHtml }}
+              />
+            ) : (
+              (content?.paragraphs ?? []).map((paragraph) => (
+                <p key={paragraph.substring(0, 20)}>{paragraph}</p>
+              ))
+            )}
           </div>
         </div>
         <div className="grid md:grid-cols-2 gap-8">

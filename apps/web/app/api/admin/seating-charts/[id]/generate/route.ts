@@ -6,8 +6,9 @@ import {
   buildSeatingPrompt,
   formatGuestForSeating,
 } from "@/lib/ai/seating-prompt";
-import { isAdmin } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import type {
   AISeatingResponse,
   GuestListFilter,
@@ -29,13 +30,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     if (!env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -70,7 +67,7 @@ export async function POST(
 
     // Fetch tables for this chart
     const tables = await db.seatingTable.findMany({
-      where: { seatingChartId: chartId },
+      where: { seatingChartId: chartId, weddingId },
       orderBy: { tableNumber: "asc" },
     });
 
@@ -85,7 +82,7 @@ export async function POST(
     }
 
     // Build query for filtered guests
-    const whereClause: Record<string, unknown> = {};
+    const whereClause: Record<string, unknown> = { weddingId };
 
     // Apply RSVP filter
     if (rsvpFilter === "confirmed") {

@@ -1,11 +1,13 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
+import { requireAdmin } from "@/lib/auth/admin";
 import {
   buildCalendarEmailHtml,
   generateIcs,
 } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
+import { getWeddingId } from "@/lib/db/wedding-context";
+import { getEmailFromAddress } from "@/lib/email/helpers";
 import { sendEmail } from "@/lib/email/resend-client";
 
 /**
@@ -19,20 +21,9 @@ import { sendEmail } from "@/lib/email/resend-client";
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await currentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-      e.trim().toLowerCase(),
-    );
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-
-    if (!adminEmails?.includes(userEmail || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const body = await request.json();
     const { guestIds } = body;
@@ -45,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const guests = await db.guest.findMany({
-      where: { id: { in: guestIds } },
+      where: { id: { in: guestIds }, weddingId },
       select: {
         id: true,
         firstName: true,
@@ -73,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch default events once — shared across all guests
     const defaultEvents = await db.event.findMany({
-      where: { isDefault: true },
+      where: { isDefault: true, weddingId },
       select: {
         id: true,
         name: true,
@@ -116,23 +107,28 @@ export async function POST(request: NextRequest) {
       location_address: e.locationAddress,
     }));
 
+    const settings = await getWeddingSettings();
     let sentCount = 0;
     const errors: Array<{ guestId: string; error: string }> = [];
 
     for (const guest of eligible) {
       try {
         const guestName = `${guest.firstName}${guest.lastName ? ` ${guest.lastName}` : ""}`;
-        const icsContent = generateIcs(eventsForIcs, guestName);
+        const icsContent = generateIcs(
+          eventsForIcs,
+          guestName,
+          settings.coupleName,
+        );
         const html = buildCalendarEmailHtml(eventsForIcs, guest.firstName);
 
         const result = await sendEmail({
-          from: "Helen & Enrique <rsvp@helen-and-enrique.com>",
+          from: getEmailFromAddress(settings),
           to: guest.email as string,
-          subject: "Your Calendar Invite — Helen & Enrique's Wedding 💕",
+          subject: `Your Calendar Invite \u2014 ${settings.coupleName}'s Wedding \uD83D\uDC95`,
           html,
           attachments: [
             {
-              filename: "helen-and-enrique-wedding.ics",
+              filename: `${settings.slug}-wedding.ics`,
               content: Buffer.from(icsContent).toString("base64"),
             },
           ],

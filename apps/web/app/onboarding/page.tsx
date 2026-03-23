@@ -1,0 +1,481 @@
+"use client";
+
+import { Button } from "@workspace/ui/components/button";
+import { Input } from "@workspace/ui/components/input";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { createWedding, validateSlug } from "./actions";
+
+interface FormData {
+  person1Name: string;
+  person2Name: string;
+  slug: string;
+  weddingDate: string;
+  timezone: string;
+  ceremonyVenue: string;
+  ceremonyAddress: string;
+  receptionVenue: string;
+  receptionAddress: string;
+}
+
+const TIMEZONES = [
+  { value: "America/New_York", label: "Eastern Time (ET)" },
+  { value: "America/Chicago", label: "Central Time (CT)" },
+  { value: "America/Denver", label: "Mountain Time (MT)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+  { value: "America/Anchorage", label: "Alaska Time (AKT)" },
+  { value: "Pacific/Honolulu", label: "Hawaii Time (HT)" },
+  { value: "Europe/London", label: "London (GMT/BST)" },
+  { value: "Europe/Paris", label: "Paris (CET/CEST)" },
+  { value: "Europe/Berlin", label: "Berlin (CET/CEST)" },
+  { value: "Asia/Tokyo", label: "Tokyo (JST)" },
+  { value: "Asia/Shanghai", label: "Shanghai (CST)" },
+  { value: "Asia/Kolkata", label: "India (IST)" },
+  { value: "Australia/Sydney", label: "Sydney (AEST)" },
+  { value: "America/Mexico_City", label: "Mexico City (CST)" },
+  { value: "America/Sao_Paulo", label: "Sao Paulo (BRT)" },
+];
+
+function generateSlug(person1: string, person2: string): string {
+  if (!person1 && !person2) return "";
+  const parts = [person1, person2].filter(Boolean);
+  return parts
+    .join("-and-")
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export default function OnboardingPage() {
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState<FormData>({
+    person1Name: "",
+    person2Name: "",
+    slug: "",
+    weddingDate: "",
+    timezone: "America/New_York",
+    ceremonyVenue: "",
+    ceremonyAddress: "",
+    receptionVenue: "",
+    receptionAddress: "",
+  });
+  const [slugStatus, setSlugStatus] = useState<{
+    valid: boolean;
+    error?: string;
+    checking: boolean;
+  }>({ valid: false, checking: false });
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function updateField<K extends keyof FormData>(key: K, value: FormData[K]) {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  }
+
+  // Auto-suggest slug from names when slug hasn't been manually edited
+  useEffect(() => {
+    if (step === 2 && !slugTouched) {
+      const suggested = generateSlug(
+        formData.person1Name,
+        formData.person2Name,
+      );
+      if (suggested) {
+        setFormData((prev) => ({ ...prev, slug: suggested }));
+      }
+    }
+  }, [step, formData.person1Name, formData.person2Name, slugTouched]);
+
+  // Debounced slug validation
+  useEffect(() => {
+    if (!formData.slug) {
+      setSlugStatus({ valid: false, checking: false });
+      return;
+    }
+
+    setSlugStatus({ valid: false, checking: true });
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      const result = await validateSlug(formData.slug);
+      setSlugStatus({
+        valid: result.valid,
+        error: result.error,
+        checking: false,
+      });
+    }, 500);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [formData.slug]);
+
+  function canProceed(): boolean {
+    switch (step) {
+      case 1:
+        return (
+          formData.person1Name.trim() !== "" &&
+          formData.person2Name.trim() !== ""
+        );
+      case 2:
+        return slugStatus.valid && !slugStatus.checking;
+      case 3:
+        return formData.weddingDate !== "";
+      case 4:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  function handleNext() {
+    if (step < 4) setStep(step + 1);
+  }
+
+  function handleBack() {
+    if (step > 1) setStep(step - 1);
+  }
+
+  function handleSubmit() {
+    setSubmitError("");
+    startTransition(async () => {
+      const result = await createWedding({
+        person1Name: formData.person1Name.trim(),
+        person2Name: formData.person2Name.trim(),
+        slug: formData.slug,
+        weddingDate: formData.weddingDate,
+        timezone: formData.timezone,
+        ceremonyVenue: formData.ceremonyVenue.trim() || undefined,
+        ceremonyAddress: formData.ceremonyAddress.trim() || undefined,
+        receptionVenue: formData.receptionVenue.trim() || undefined,
+        receptionAddress: formData.receptionAddress.trim() || undefined,
+      });
+      if (result && !result.success) {
+        setSubmitError(result.error || "Something went wrong");
+      }
+    });
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="max-w-lg mx-auto px-4 py-16">
+        <h1 className="text-3xl font-serif text-center mb-2">
+          Create Your Wedding
+        </h1>
+        <p className="text-center text-muted-foreground mb-10">
+          Step {step} of 4
+        </p>
+
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-10">
+          {[1, 2, 3, 4].map((s) => (
+            <div
+              key={s}
+              className={`h-1.5 flex-1 rounded-full transition-colors ${
+                s <= step ? "bg-primary" : "bg-muted"
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Step 1: Couple Names */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-serif mb-1">
+                Who is getting married?
+              </h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Enter the names of the happy couple.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="person1Name"
+                  className="block text-sm font-medium mb-1.5"
+                >
+                  Partner 1
+                </label>
+                <Input
+                  id="person1Name"
+                  placeholder="First name"
+                  value={formData.person1Name}
+                  onChange={(e) => updateField("person1Name", e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="person2Name"
+                  className="block text-sm font-medium mb-1.5"
+                >
+                  Partner 2
+                </label>
+                <Input
+                  id="person2Name"
+                  placeholder="First name"
+                  value={formData.person2Name}
+                  onChange={(e) => updateField("person2Name", e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Choose Slug */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-serif mb-1">
+                Choose your wedding URL
+              </h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                This is the link you will share with your guests.
+              </p>
+            </div>
+            <div>
+              <label
+                htmlFor="slug"
+                className="block text-sm font-medium mb-1.5"
+              >
+                URL
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground shrink-0">
+                  yoursite.com/
+                </span>
+                <Input
+                  id="slug"
+                  placeholder="your-wedding-url"
+                  value={formData.slug}
+                  onChange={(e) => {
+                    setSlugTouched(true);
+                    updateField("slug", e.target.value.toLowerCase());
+                  }}
+                />
+              </div>
+              <div className="mt-2 h-5">
+                {formData.slug && slugStatus.checking && (
+                  <p className="text-sm text-muted-foreground">Checking...</p>
+                )}
+                {formData.slug && !slugStatus.checking && slugStatus.valid && (
+                  <p className="text-sm text-green-600">
+                    This URL is available
+                  </p>
+                )}
+                {formData.slug && !slugStatus.checking && slugStatus.error && (
+                  <p className="text-sm text-destructive">{slugStatus.error}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Date & Venue */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-serif mb-1">Date & Venue</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                When and where is the celebration? Venue details are optional.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="weddingDate"
+                  className="block text-sm font-medium mb-1.5"
+                >
+                  Wedding Date
+                </label>
+                <Input
+                  id="weddingDate"
+                  type="date"
+                  value={formData.weddingDate}
+                  onChange={(e) => updateField("weddingDate", e.target.value)}
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="timezone"
+                  className="block text-sm font-medium mb-1.5"
+                >
+                  Timezone
+                </label>
+                <select
+                  id="timezone"
+                  value={formData.timezone}
+                  onChange={(e) => updateField("timezone", e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <p className="text-sm font-medium mb-3">
+                  Ceremony{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </p>
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Venue name"
+                    value={formData.ceremonyVenue}
+                    onChange={(e) =>
+                      updateField("ceremonyVenue", e.target.value)
+                    }
+                  />
+                  <Input
+                    placeholder="Address"
+                    value={formData.ceremonyAddress}
+                    onChange={(e) =>
+                      updateField("ceremonyAddress", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <p className="text-sm font-medium mb-3">
+                  Reception{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </p>
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Venue name"
+                    value={formData.receptionVenue}
+                    onChange={(e) =>
+                      updateField("receptionVenue", e.target.value)
+                    }
+                  />
+                  <Input
+                    placeholder="Address"
+                    value={formData.receptionAddress}
+                    onChange={(e) =>
+                      updateField("receptionAddress", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Review & Create */}
+        {step === 4 && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-serif mb-1">Review & Create</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Make sure everything looks good before creating your wedding.
+              </p>
+            </div>
+            <div className="space-y-4 rounded-lg border border-border p-5">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Couple
+                </p>
+                <p className="font-medium">
+                  {formData.person1Name} & {formData.person2Name}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                  URL
+                </p>
+                <p className="font-medium">/{formData.slug}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Date
+                </p>
+                <p className="font-medium">
+                  {new Date(
+                    `${formData.weddingDate}T00:00:00`,
+                  ).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Timezone
+                </p>
+                <p className="font-medium">
+                  {TIMEZONES.find((tz) => tz.value === formData.timezone)
+                    ?.label || formData.timezone}
+                </p>
+              </div>
+              {formData.ceremonyVenue && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Ceremony
+                  </p>
+                  <p className="font-medium">{formData.ceremonyVenue}</p>
+                  {formData.ceremonyAddress && (
+                    <p className="text-sm text-muted-foreground">
+                      {formData.ceremonyAddress}
+                    </p>
+                  )}
+                </div>
+              )}
+              {formData.receptionVenue && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Reception
+                  </p>
+                  <p className="font-medium">{formData.receptionVenue}</p>
+                  {formData.receptionAddress && (
+                    <p className="text-sm text-muted-foreground">
+                      {formData.receptionAddress}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+            {submitError && (
+              <p className="text-sm text-destructive">{submitError}</p>
+            )}
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between mt-10">
+          {step > 1 ? (
+            <Button variant="ghost" onClick={handleBack} disabled={isPending}>
+              Back
+            </Button>
+          ) : (
+            <div />
+          )}
+          {step < 4 ? (
+            <Button onClick={handleNext} disabled={!canProceed()}>
+              Next
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit} disabled={isPending}>
+              {isPending ? "Creating..." : "Create Wedding"}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

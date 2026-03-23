@@ -17,6 +17,22 @@ mock.module("@/env", () => ({
   },
 }));
 
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
+
 // Mock the db module with Prisma-style mocks
 mock.module("@/lib/db", () => ({
   db: {
@@ -36,6 +52,9 @@ mock.module("@/lib/db", () => ({
       delete: mock(() => Promise.resolve({})),
     },
     event: {
+      findFirst: mock(() => Promise.resolve(null)),
+    },
+    weddingAdmin: {
       findFirst: mock(() => Promise.resolve(null)),
     },
   },

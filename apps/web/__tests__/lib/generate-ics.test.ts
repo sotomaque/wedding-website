@@ -82,8 +82,17 @@ describe("generateIcs", () => {
   });
 
   it("includes SUMMARY with event name and couple names", () => {
+    const ics = generateIcs(
+      [makeEvent({ name: "Ceremony" })],
+      "Helen",
+      "Alice & Bob",
+    );
+    expect(ics).toContain("SUMMARY:Ceremony — Alice & Bob");
+  });
+
+  it("uses 'the couple' as default when coupleName not provided", () => {
     const ics = generateIcs([makeEvent({ name: "Ceremony" })], "Helen");
-    expect(ics).toContain("SUMMARY:Ceremony — Helen & Enrique");
+    expect(ics).toContain("SUMMARY:Ceremony — the couple");
   });
 
   it("includes LOCATION when location_address is present", () => {
@@ -106,16 +115,17 @@ describe("generateIcs", () => {
 
   it("includes the UID with the event id", () => {
     const ics = generateIcs([makeEvent({ id: "abc-123" })], "Helen");
-    expect(ics).toContain("UID:abc-123@helen-and-enrique.com");
+    expect(ics).toContain("UID:abc-123@");
   });
 
   it("escapes commas and semicolons in text fields", () => {
     const ics = generateIcs(
       [makeEvent({ name: "Ceremony; Reception, Party" })],
       "Helen",
+      "Alice & Bob",
     );
     expect(ics).toContain(
-      "SUMMARY:Ceremony\\; Reception\\, Party — Helen & Enrique",
+      "SUMMARY:Ceremony\\; Reception\\, Party — Alice & Bob",
     );
   });
 

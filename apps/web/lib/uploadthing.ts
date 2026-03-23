@@ -2,7 +2,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 
-import { env } from "@/env";
+import { isAdmin } from "@/lib/auth/admin";
 
 const f = createUploadthing();
 
@@ -14,15 +14,12 @@ async function checkAdmin() {
     throw new UploadThingError("Unauthorized");
   }
 
-  const adminEmails = env.ADMIN_EMAILS?.split(",").map((e) =>
-    e.trim().toLowerCase(),
-  );
-  const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
-
-  if (!adminEmails?.includes(userEmail || "")) {
+  const { authorized } = await isAdmin();
+  if (!authorized) {
     throw new UploadThingError("Forbidden");
   }
 
+  const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
   return { userId: user.id, email: userEmail };
 }
 

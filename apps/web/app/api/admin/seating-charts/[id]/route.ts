@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { isAdmin } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 /**
  * Get seating chart details
@@ -16,13 +17,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id } = await params;
 
@@ -37,7 +34,7 @@ export async function GET(
 
     // Fetch tables for this chart
     const tables = await db.seatingTable.findMany({
-      where: { seatingChartId: id },
+      where: { seatingChartId: id, weddingId },
       orderBy: { tableNumber: "asc" },
     });
 
@@ -46,7 +43,7 @@ export async function GET(
     const assignments =
       tableIds.length > 0
         ? await db.guestTableAssignment.findMany({
-            where: { seatingTableId: { in: tableIds } },
+            where: { seatingTableId: { in: tableIds }, weddingId },
           })
         : [];
 
@@ -55,13 +52,13 @@ export async function GET(
     const assignedGuests =
       assignedGuestIds.length > 0
         ? await db.guest.findMany({
-            where: { id: { in: assignedGuestIds } },
+            where: { id: { in: assignedGuestIds }, weddingId },
           })
         : [];
 
     // Fetch all confirmed guests (for showing unassigned)
     const allConfirmedGuests = await db.guest.findMany({
-      where: { rsvpStatus: "yes" },
+      where: { rsvpStatus: "yes", weddingId },
     });
 
     // Build tables with guests
@@ -126,13 +123,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id } = await params;
     const body = await request.json();
@@ -181,13 +174,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await isAdmin();
-    if (!authorized) {
-      return NextResponse.json(
-        { error },
-        { status: error === "Unauthorized" ? 401 : 403 },
-      );
-    }
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
 
     const { id } = await params;
 

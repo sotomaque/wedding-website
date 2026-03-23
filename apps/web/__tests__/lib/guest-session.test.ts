@@ -30,6 +30,22 @@ const mockGuestFindFirst = mock(() => Promise.resolve(null));
 const mockGuestUpdate = mock(() => Promise.resolve({}));
 const mockCurrentUser = mock(() => Promise.resolve(null));
 
+// Mock wedding context (must be before @/lib/db mock)
+mock.module("@/lib/db/wedding-context", () => ({
+  getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({
+      weddingId: "test-wedding-id",
+      slug: "test-wedding",
+      coupleName: "Test Couple",
+      weddingDate: new Date("2026-07-30"),
+      rsvpDeadline: "March 30th, 2026",
+      timezone: "America/New_York",
+      status: "published",
+    }),
+  ),
+}));
+
 // Mock db
 mock.module("@/lib/db", () => ({
   db: {
@@ -37,6 +53,9 @@ mock.module("@/lib/db", () => ({
       findMany: mockGuestFindMany,
       findFirst: mockGuestFindFirst,
       update: mockGuestUpdate,
+    },
+    weddingAdmin: {
+      findFirst: mock(() => Promise.resolve(null)),
     },
   },
 }));

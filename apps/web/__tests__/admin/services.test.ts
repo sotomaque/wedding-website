@@ -15,7 +15,7 @@ import {
   SERVICE_CATEGORIES,
   SERVICES,
   type Service,
-} from "@/app/admin/services/constants";
+} from "@/app/[slug]/admin/services/constants";
 
 describe("Admin Services - Service URLs", () => {
   it("should have GitHub service with valid URL", () => {
@@ -74,7 +74,7 @@ describe("Admin Services - Supabase URL", () => {
 
     // Re-import with new mock
     const { getSupabaseConsole: getSupabase } = await import(
-      "@/app/admin/services/constants"
+      "@/app/[slug]/admin/services/constants"
     );
 
     // Note: Due to module caching, this may still use the old value
