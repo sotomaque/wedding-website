@@ -114,7 +114,11 @@ export async function POST(request: NextRequest) {
     for (const guest of eligible) {
       try {
         const guestName = `${guest.firstName}${guest.lastName ? ` ${guest.lastName}` : ""}`;
-        const icsContent = generateIcs(eventsForIcs, guestName);
+        const icsContent = generateIcs(
+          eventsForIcs,
+          guestName,
+          settings.coupleName,
+        );
         const html = buildCalendarEmailHtml(eventsForIcs, guest.firstName);
 
         const result = await sendEmail({

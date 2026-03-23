@@ -105,10 +105,13 @@ export async function POST(
       location_address: e.locationAddress,
     }));
 
-    const icsContent = generateIcs(eventsForIcs, guestName);
-    const html = buildCalendarEmailHtml(eventsForIcs, guest.firstName);
-
     const settings = await getWeddingSettings();
+    const icsContent = generateIcs(
+      eventsForIcs,
+      guestName,
+      settings.coupleName,
+    );
+    const html = buildCalendarEmailHtml(eventsForIcs, guest.firstName);
     const result = await sendEmail({
       from: getEmailFromAddress(settings),
       to: guest.email,

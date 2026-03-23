@@ -406,7 +406,11 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
               for (const guest of attendingWithEmail) {
                 try {
                   const guestName = `${guest.firstName}${guest.lastName ? ` ${guest.lastName}` : ""}`;
-                  const icsContent = generateIcs(eventsForIcs, guestName);
+                  const icsContent = generateIcs(
+                    eventsForIcs,
+                    guestName,
+                    settings.coupleName,
+                  );
                   const html = buildCalendarEmailHtml(
                     eventsForIcs,
                     guest.firstName,
@@ -794,7 +798,11 @@ export async function submitMultiGuestRSVP(
               for (const guest of attendingWithEmailMulti) {
                 try {
                   const guestName = `${guest.firstName}${guest.lastName ? ` ${guest.lastName}` : ""}`;
-                  const icsContent = generateIcs(eventsForIcs, guestName);
+                  const icsContent = generateIcs(
+                    eventsForIcs,
+                    guestName,
+                    settingsMulti.coupleName,
+                  );
                   const html = buildCalendarEmailHtml(
                     eventsForIcs,
                     guest.firstName,
