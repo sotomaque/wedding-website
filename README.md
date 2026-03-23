@@ -1,6 +1,8 @@
-# Wedding Website
+# WedPlan — Multi-Tenant Wedding Platform
 
-A wedding website built with Next.js 16 (App Router), React 19, and TypeScript in a Turborepo monorepo.
+A multi-tenant wedding platform where anyone can sign up, create a wedding website, and manage their entire wedding — guests, RSVPs, events, photos, registry, and more.
+
+Built with Next.js 16 (App Router), React 19, TypeScript, Prisma, and Supabase in a Turborepo monorepo.
 
 ## Tech Stack
 
@@ -14,222 +16,204 @@ A wedding website built with Next.js 16 (App Router), React 19, and TypeScript i
 | Email          | [Resend](https://resend.com) (templates)      |
 | Payments       | [Stripe](https://stripe.com)                  |
 | File Uploads   | [UploadThing](https://uploadthing.com)        |
+| Rich Text      | [Tiptap](https://tiptap.dev)                  |
 | Quality        | Biome · Knip · Lefthook · Playwright E2E      |
 | Hosting        | [Vercel](https://vercel.com)                  |
 
 ---
 
-## Project structure
+## How It Works
+
+### User flow
+
+1. **`/`** — Landing page with feature showcase and CTAs
+2. **`/sign-up`** — Clerk sign-up → redirects to `/dashboard`
+3. **`/dashboard`** — Lists user's weddings, or redirects to onboarding
+4. **`/onboarding`** — 4-step wizard: names → slug → date/venue → create
+5. **`/{slug}`** — Public wedding site (story, details, schedule, RSVP)
+6. **`/{slug}/admin`** — Admin dashboard (guests, events, seating, photos, etc.)
+7. **`/{slug}/admin/settings`** — Wedding config (general, notifications, branding, theme, features, admins)
+8. **`/{slug}/admin/content`** — Content editor (hero, story, details, schedule, RSVP) with WYSIWYG
+9. **`/platform-admin`** — Superadmin panel (all weddings, stats, moderation)
+
+### Multi-tenancy architecture
+
+- Every table has a `wedding_id` FK with NOT NULL constraint
+- All Prisma queries scoped by `weddingId` (~54 files)
+- Middleware extracts slug from URL, sets `x-wedding-slug` header
+- `getWeddingId()` resolves wedding context per-request (cached via `React.cache()`)
+- `requireAdmin(weddingId)` checks per-wedding admin access
+- RLS policies on all tables as defense-in-depth
+- Feature toggles per wedding (hotels, vendors, registry, etc.)
+- 5 theme presets with CSS variable injection
+
+---
+
+## Project Structure
 
 ```
-apps/web/          → Next.js frontend + API routes
-packages/db/       → Prisma schema & client
-packages/ui/       → Shared UI components (shadcn/ui)
-supabase/          → Migrations + seed SQL
+apps/web/
+├── app/
+│   ├── page.tsx                 # Landing page
+│   ├── [slug]/                  # Per-wedding pages (public + admin)
+│   │   ├── page.tsx             # Wedding home (hero, story, details, schedule, RSVP)
+│   │   ├── admin/               # Admin dashboard, guests, events, seating, settings, content
+│   │   ├── rsvp/                # RSVP flow
+│   │   ├── hotels/              # Hotel recommendations
+│   │   ├── things-to-do/        # Activities
+│   │   ├── registry/            # Gift registry
+│   │   ├── vendors/             # Service links
+│   │   ├── slideshow/           # Live photo slideshow
+│   │   └── trip-planner/        # Guest trip calendar
+│   ├── dashboard/               # My weddings list
+│   ├── onboarding/              # Wedding creation wizard
+│   ├── platform-admin/          # Superadmin panel
+│   ├── sign-in/                 # Clerk sign-in
+│   ├── sign-up/                 # Clerk sign-up
+│   └── api/                     # API routes
+├── components/                  # Shared React components
+├── lib/                         # Utilities, DB, auth, email, validations
+├── e2e/                         # Playwright E2E tests
+└── __tests__/                   # Bun unit tests
+packages/db/                     # Prisma schema & client
+packages/ui/                     # Shared UI components (shadcn/ui)
+supabase/                        # Migrations + seed SQL
 ```
 
 ---
 
-## Getting started
+## Getting Started
 
 ```bash
 bun install
 cp apps/web/.env.example apps/web/.env.local   # fill in your keys
+bun dev                                        # start dev server → http://localhost:3000
+```
+
+### Running with local Supabase
+
+```bash
+bunx supabase start                            # start local PostgreSQL in Docker
+cd apps/web && bun run env:local               # switch to local DB
+bunx supabase db reset                         # apply migrations + seed data
+cd packages/db && bun run db:generate          # generate Prisma client
 bun dev                                        # start dev server
 ```
 
-See [Environment file layout](#environment-file-layout) for detailed configuration.
-
----
-
-## Development workflows
-
-### Running local dev
-
-1. Copy the example env and fill in your keys:
-   ```bash
-   cp apps/web/.env.example apps/web/.env.local
-   ```
-2. Add your database URLs to `packages/db/.env` (Prisma reads connection strings from there).
-3. Generate the Prisma client and start the dev server:
-   ```bash
-   cd packages/db && bun run db:generate
-   bun dev
-   ```
-
-The app runs at `http://localhost:3000` with Turbopack HMR.
-
-### Running against local Supabase
-
-For fully offline development with seeded test data:
-
-1. Start the local Supabase stack (PostgreSQL, Auth, Storage in Docker):
-   ```bash
-   bunx supabase start
-   ```
-2. Switch your environment to local:
-   ```bash
-   cd apps/web && bun run env:local
-   ```
-3. Reset the local database to apply all migrations and seed data:
-   ```bash
-   bunx supabase db reset
-   ```
-4. Generate the Prisma client (if not already done):
-   ```bash
-   cd packages/db && bun run db:generate
-   ```
-5. Start the dev server:
-   ```bash
-   bun dev
-   ```
-
-The local Supabase database runs on `localhost:54322` with seed data from `supabase/seed.sql`. Auth still goes through Clerk cloud, so you need valid Clerk dev keys.
-
-### Running locally against production
-
-To switch to the production database:
-
-```bash
-cd apps/web && bun run env:prod
-```
-
-This copies `apps/web/.env.local.prod` → `.env.local` and `packages/db/.env.prod` → `packages/db/.env`.
-
-> **Tip:** The toggle scripts update both the web app env and the Prisma CLI env, so `prisma studio` and `prisma db push` will also point at the correct database.
-
-### Switching back to local
-
-```bash
-cd apps/web && bun run env:local
-```
-
-### Environment file layout
-
-```
-apps/web/
-  .env.local          ← active env for current session — gitignored, swapped by toggle scripts
-  .env.local.local    ← local Supabase config — gitignored
-  .env.local.prod     ← production config — gitignored
-  .env.example        ← template with all required keys — committed
-
-packages/db/
-  .env                ← DB URLs for Prisma CLI — gitignored, swapped by toggle scripts
-  .env.local-template ← local Supabase DB URLs — committed
-  .env.prod           ← production DB URLs — gitignored
-```
-
----
-
-## Database (Supabase + Prisma)
-
-The project uses **Supabase** for PostgreSQL with **Prisma** as the ORM. Schema changes go through Supabase migrations (not `prisma migrate`), and Prisma is used only for client generation and type-safe queries.
-
-### How it works
-
-- **Prisma schema** lives at `packages/db/prisma/schema.prisma` with PascalCase models (`Guest`, `Event`, `SeatingChart`) mapped to snake_case tables via `@@map()`
-- **Prisma client** is generated into `node_modules/@prisma/client` and exported from `packages/db/src/index.ts` as `db`
-- **Supabase migrations** in `supabase/migrations/` are the source of truth for schema changes
-- **Connection**: Prisma reads `POSTGRES_PRISMA_URL` (pooled, port 6543) and `POSTGRES_URL_NON_POOLING` (direct, port 5432) from `packages/db/.env`
-
-### Making schema changes
-
-1. Edit `packages/db/prisma/schema.prisma`
-2. Apply to local/dev DB: `cd packages/db && bunx prisma db push`
-3. Generate migration: `cd packages/db && bun run db:migrate:new <descriptive_name>`
-4. Verify: `bunx supabase db reset` (replays all migrations + seed)
-5. Generate Prisma client: `cd packages/db && bun run db:generate`
-6. Commit both `schema.prisma` and the new `supabase/migrations/<timestamp>_<name>.sql`
-
-### Key commands
-
-| Command | Description |
-|---------|-------------|
-| `cd packages/db && bun run db:generate` | Regenerate Prisma client |
-| `cd packages/db && bun run db:push` | Push schema to local DB |
-| `cd packages/db && bun run db:pull` | Pull schema from DB into schema.prisma |
-| `cd packages/db && bun run db:migrate:new <name>` | Generate a new migration from schema diff |
-| `cd packages/db && bun run db:reset` | Drop & recreate DB from migrations + seed |
-| `cd packages/db && bun run db:studio` | Open Prisma Studio |
-
-### Migrations
-
-Migrations live in `supabase/migrations/` and are numbered sequentially (`000_`, `001_`, ...).
-
-- Supabase tracks applied migrations in `supabase_migrations.schema_migrations`
-- Each migration runs exactly once, in order, and is never re-run
-- On preview branches, ALL migrations run from scratch on a fresh database
-- On production, only new (unapplied) migrations run
-- **Never modify** an existing migration that has already run on production
-
-### Preview environments & deployment pipeline
-
-The project uses **Supabase Branching** + **Vercel Previews** for a fully automated PR-to-production pipeline.
-
-**When a PR is opened:**
-
-1. **Supabase** creates an isolated preview database, runs all migrations, then applies `supabase/seed.sql`
-2. **Vercel** deploys a preview of the app with the Supabase-provided preview DB env vars injected automatically
-3. **CI** runs lint, typecheck, and unit tests; then E2E tests run against the Vercel preview URL
-
-**When a PR is merged to `main`:**
-
-1. **Supabase** deletes the preview branch database
-2. **Supabase** applies any **new** migration files to the production database automatically
-3. **Vercel** deploys to production (with production DB env vars)
-
-> **Important:** Production migrations come from the `.sql` files in `supabase/migrations/`, not from Prisma's `db push`. The `db push` command does a direct schema diff and is only safe for local development.
+The local DB runs on `localhost:54322` with seed data including a default wedding (`helen-and-enrique`) and a second test wedding (`e2e-test-wedding`).
 
 ---
 
 ## Features
 
-### Public Website
-- Photo galleries with randomized display
-- Event details, schedule, and interactive venue maps
-- RSVP system with dietary restrictions, plus-ones, and attendance tracking
-- Gift registry via Stripe payment links
-- Hotels page with interest tracking
-- Things to do recommendations
+### Platform
+- Landing page with feature showcase
+- Clerk auth (sign-up / sign-in)
+- Onboarding wizard (4-step wedding creation)
+- Dashboard (my weddings list)
+- Platform admin panel (superadmin — manage all weddings)
+- 5 theme presets (Warm Gold, Sage Garden, Dusty Rose, Navy Classic, Terracotta)
+
+### Per-Wedding Public Site
+- Dynamic content from DB (hero, story, details, schedule, RSVP)
+- Photo galleries from DB
+- RSVP with plus-ones, multi-event, dietary restrictions, .ics calendar invites
+- Gift registry with Stripe payment links
+- Hotels with interest tracking
+- Things to do / activities
+- Trip planner calendar
+- Vendors / service links
+- Guest photo sharing via QR code + live slideshow
+- Feature toggles (show/hide sections per wedding)
 - Dark/light mode, responsive design
 
-### Guest Photo Sharing
-- Guests scan a QR code at the reception and upload photos from their phones
-- Photos appear immediately on a live slideshow page with crossfade transitions
-- Admins can hide or permanently delete photos; download all as a ZIP archive
-
-### Calendar Invites
-- Attending guests automatically receive `.ics` calendar invites after RSVP
-- Admins can trigger sends manually (per-guest or bulk)
-
-### Admin Dashboard (`/admin`)
-- Guest management with tier lists (A/B/C priority)
-- Real-time RSVP tracking and bulk email actions
-- Seating chart editor with AI-powered generation
-- Gift registry statistics
+### Admin Dashboard (`/{slug}/admin`)
+- Guest management with A/B/C tier lists
+- Real-time RSVP tracking and bulk email
+- Seating chart editor with AI generation
 - Event management with per-event RSVPs
-- Hotel management
-- Wedding todo list
-- Guest photo moderation with bulk ZIP download
+- Gift/donation tracking
+- Email templates (Resend)
+- Wedding todos
+- Guest photo moderation + ZIP download
+- Settings: general, notifications, branding, theme, features, co-admin management
+- Content editor with Tiptap WYSIWYG for story
 
 ---
 
-## Scripts reference
+## Environment Variables
 
-```bash
-bun run dev                        # start all workspaces
-bun run build                      # production build
-```
+Validated at build time via `@t3-oss/env-nextjs` in `apps/web/env.ts`.
 
-| Command | Description |
-|---------|-------------|
-| `bun run lint` | Lint with Biome |
-| `bun run typecheck` | TypeScript type-check |
-| `bun run test` | Run unit tests |
-| `bun run test:e2e` | Run E2E tests |
-| `bun run knip` | Check for dead code and unused dependencies |
-| `cd apps/web && bun run env:local` | Switch local env to local Supabase |
-| `cd apps/web && bun run env:prod` | Switch local env to production DB |
+### Server-side
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CLERK_SECRET_KEY` | Yes | Clerk authentication |
+| `ADMIN_EMAILS` | Yes | Superadmin emails (comma-separated) — access to all weddings + platform admin |
+| `RESEND_API_KEY` | No | Email sending |
+| `STRIPE_SECRET_KEY` | No | Payment processing |
+| `STRIPE_WEBHOOK_SECRET` | No | Webhook verification |
+| `OPENAI_API_KEY` | No | AI seating chart generation |
+| `UPLOADTHING_TOKEN` | No | File uploads |
+| `DEFAULT_WEDDING_SLUG` | No | Fallback for legacy URL redirects (default: `helen-and-enrique`) |
+| `RSVP_EMAIL` | No | Fallback notification email (per-wedding config preferred) |
+
+### Client-side
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk auth |
+| `NEXT_PUBLIC_APP_URL` | Base URL for emails and metadata |
+
+### Prisma (`packages/db/.env`)
+
+| Variable | Description |
+|----------|-------------|
+| `POSTGRES_PRISMA_URL` | Pooled connection (port 6543) |
+| `POSTGRES_URL_NON_POOLING` | Direct connection (port 5432) |
+
+---
+
+## Database
+
+### Schema
+
+Prisma schema at `packages/db/prisma/schema.prisma`. Key models:
+
+- **Wedding** — top-level entity with slug, config, theme, feature toggles
+- **WeddingAdmin** — per-wedding admin access (owner/editor roles)
+- **WeddingContent** — section + JSONB content (hero, story, details, schedule, RSVP)
+- **RegistryItem** — per-wedding Stripe payment links
+- **Guest**, **Party**, **Event**, **GuestEventInvite** — guest management
+- **SeatingChart**, **SeatingTable**, **GuestTableAssignment** — seating
+- **Photo**, **GuestPhoto** — photo management
+- **Gift** — Stripe donations
+- **Hotel**, **Activity**, **ServiceLink**, **Document**, **WeddingTodo** — planning tools
+
+All models have `weddingId` FK (NOT NULL) with cascade delete.
+
+### Migrations
+
+Supabase migrations in `supabase/migrations/` (numbered `000_` through `044_`). Key multi-tenancy migrations:
+
+| Migration | What |
+|-----------|------|
+| 032 | Create `weddings` table |
+| 033 | Add `wedding_id` to all tables |
+| 039 | Create `wedding_admins` table |
+| 040 | Add email/branding/feature columns + `wedding_content` + `registry_items` |
+| 041 | Make `wedding_id` NOT NULL |
+| 042 | RLS on new tables |
+| 043 | Add `theme_id` column |
+| 044 | Fix triggers for `wedding_id` NOT NULL |
+
+### Making schema changes
+
+1. Edit `packages/db/prisma/schema.prisma`
+2. Write SQL migration in `supabase/migrations/`
+3. Reset local DB: `bunx supabase db reset`
+4. Regenerate Prisma client: `cd packages/db && bun run db:generate`
 
 ---
 
@@ -237,80 +221,54 @@ bun run build                      # production build
 
 ### Unit tests
 
-Unit tests use `bun:test` and live in `apps/web/__tests__/`.
-
 ```bash
-bun run test              # run all unit tests
+bun run test              # run all (~371 tests)
 ```
+
+Tests in `apps/web/__tests__/` using `bun:test`. Includes multi-tenancy data isolation tests.
 
 ### E2E tests
 
-E2E tests use [Playwright](https://playwright.dev) with [Clerk Testing Tokens](https://clerk.com/docs/testing/playwright).
-
 ```bash
-bun run test:e2e          # headless
+bun run test:e2e          # headless Playwright
 bun run test:e2e:ui       # Playwright UI mode
 bun run test:e2e:headed   # headed browser
 ```
 
----
+E2E tests in `apps/web/e2e/` cover:
+- Multi-tenancy data isolation (admin sees only own wedding's data)
+- RSVP isolation (cross-wedding invite codes rejected)
+- Platform admin panel (wedding list, stats, actions)
+- Onboarding flow (landing page, sign-up links)
+- Admin operations (guests, seating, photos, vendors)
+- RSVP flow (code entry, form submission)
 
-## Code quality
-
-### Git hooks (Lefthook)
-
-[Lefthook](https://lefthook.dev) manages git hooks. Installed automatically on `bun install`.
-
-| Hook | What runs |
-|------|-----------|
-| `pre-commit` | Biome check + auto-fix on staged files |
-| `pre-push` | TypeScript typecheck and unit tests in parallel |
+Requires `LOCAL_E2E_MODE=true` and `E2E_RESET_SECRET` in `.env.local` for local runs.
 
 ---
 
-## Environment Variables
+## Scripts
 
-Validated at build time via `@t3-oss/env-nextjs` in `apps/web/env.ts`. See `apps/web/.env.example` for a full template.
-
-### Server-side
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `CLERK_SECRET_KEY` | Yes | Clerk authentication secret |
-| `ADMIN_EMAILS` | Yes | Comma-separated admin email allowlist |
-| `DATABASE_URL` | No | Legacy fallback (Prisma uses `packages/db/.env` instead) |
-| `RESEND_API_KEY` | No | Resend email API key |
-| `RSVP_EMAIL` | No | Comma-separated RSVP notification recipients |
-| `UPLOADTHING_TOKEN` | No | UploadThing file upload token |
-| `OPENAI_API_KEY` | No | OpenAI key for AI seating chart generation |
-| `STRIPE_SECRET_KEY` | No | Stripe payments secret key |
-| `STRIPE_WEBHOOK_SECRET` | No | Stripe webhook verification secret |
-
-### Prisma (packages/db/.env)
-
-| Variable | Description |
-|----------|-------------|
-| `POSTGRES_PRISMA_URL` | Pooled connection via PgBouncer (port 6543) — used at runtime |
-| `POSTGRES_URL_NON_POOLING` | Direct connection (port 5432) — used by Prisma CLI |
-
-### Client-side (`NEXT_PUBLIC_`)
-
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
-| `NEXT_PUBLIC_APP_URL` | App URL for email links |
-| `NEXT_PUBLIC_RSVP_EMAIL` | Display email in footer |
-| `NEXT_PUBLIC_ADMIN_EMAILS` | Client-side admin check |
-| `NEXT_PUBLIC_STRIPE_LINK_*` | Stripe payment links for registry |
+| Command | Description |
+|---------|-------------|
+| `bun run dev` | Start dev server |
+| `bun run build` | Production build |
+| `bun run lint` | Lint with Biome |
+| `bun run typecheck` | TypeScript type-check |
+| `bun run test` | Unit tests |
+| `bun run test:e2e` | E2E tests |
+| `bun run knip` | Dead code detection |
+| `cd apps/web && bun run env:local` | Switch to local Supabase |
+| `cd apps/web && bun run env:prod` | Switch to production DB |
 
 ---
 
 ## Customization
 
-- **Wedding details:** `apps/web/app/constants.ts` (dates, names, content)
-- **Site config:** `apps/web/app/site-config.ts` (metadata, dates)
-- **Navigation:** `apps/web/app/navigation-config.ts`
-- **Theme/colors:** `packages/ui/src/styles/globals.css`
+- **Wedding content:** Admin → Content editor (DB-driven, WYSIWYG)
+- **Wedding settings:** Admin → Settings (general, notifications, branding, theme, features)
+- **Theme:** 5 presets selectable in admin settings; CSS variables in `packages/ui/src/styles/globals.css`
+- **Navigation:** Dynamic per-wedding, filtered by feature toggles
 
 ## Adding shadcn/ui Components
 
