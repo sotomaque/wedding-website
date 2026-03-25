@@ -146,9 +146,20 @@ export function getThemePreset(
 
 /**
  * Generate inline CSS string for a theme's custom property overrides.
+ * Light variables use :root:not(.dark) so they don't override .dark from globals.css.
+ * Dark variables use .dark if provided, otherwise globals.css dark theme is used.
  */
 export function generateThemeCss(theme: ThemePreset): string {
-  const entries = Object.entries(theme.cssVariables);
-  if (entries.length === 0) return "";
-  return entries.map(([key, value]) => `${key}: ${value};`).join("\n  ");
+  const lightEntries = Object.entries(theme.cssVariables);
+  const darkEntries = Object.entries(theme.darkCssVariables ?? {});
+  if (lightEntries.length === 0 && darkEntries.length === 0) return "";
+
+  let css = "";
+  if (lightEntries.length > 0) {
+    css += `:root:not(.dark) { ${lightEntries.map(([key, value]) => `${key}: ${value};`).join("\n  ")} }`;
+  }
+  if (darkEntries.length > 0) {
+    css += ` .dark { ${darkEntries.map(([key, value]) => `${key}: ${value};`).join("\n  ")} }`;
+  }
+  return css;
 }

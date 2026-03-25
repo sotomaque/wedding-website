@@ -58,7 +58,7 @@ export default async function SlugLayout({
         <style
           // biome-ignore lint/security/noDangerouslySetInnerHtml: theme CSS variables are controlled server-side from preset definitions
           dangerouslySetInnerHTML={{
-            __html: `:root { ${themeCss} }`,
+            __html: themeCss,
           }}
         />
       )}

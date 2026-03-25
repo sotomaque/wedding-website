@@ -1,6 +1,5 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +12,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
+import { AdminUserButton } from "@/components/admin-user-button";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 
 interface NavLink {
@@ -165,7 +165,7 @@ export function AdminNav() {
             >
               Main Site
             </Link>
-            <UserButton afterSignOutUrl="/" />
+            <AdminUserButton />
           </div>
 
           {/* Mobile Menu Button */}
@@ -230,9 +230,7 @@ export function AdminNav() {
               >
                 Main Site
               </Link>
-              <div className="pt-2">
-                <UserButton afterSignOutUrl="/" />
-              </div>
+              <AdminUserButton />
             </div>
           </div>
         )}
