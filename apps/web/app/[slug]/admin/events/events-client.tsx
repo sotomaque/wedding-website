@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface Event {
   id: string;
@@ -208,14 +209,6 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
   };
 
   const handleDelete = async (event: Event) => {
-    if (
-      !confirm(
-        `Are you sure you want to delete "${event.name}"? This will also remove all guest invitations for this event.`,
-      )
-    ) {
-      return;
-    }
-
     try {
       const response = await fetch(`/api/admin/events/${event.id}`, {
         method: "DELETE",
@@ -348,15 +341,23 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                     <Edit2 className="h-4 w-4 mr-1" />
                     Edit
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDelete(event)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
+                  <ConfirmDialog
+                    trigger={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    }
+                    title="Delete Event"
+                    description={`Are you sure you want to delete "${event.name}"? This will also remove all guest invitations for this event.`}
+                    confirmLabel="Delete"
+                    variant="destructive"
+                    onConfirm={() => handleDelete(event)}
+                  />
                 </div>
               </div>
 

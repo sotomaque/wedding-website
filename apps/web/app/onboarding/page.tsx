@@ -1,7 +1,23 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
+import { Calendar } from "@workspace/ui/components/calendar";
 import { Input } from "@workspace/ui/components/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select";
+import { cn } from "@workspace/ui/lib/utils";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { TIMEZONES } from "@/lib/constants/timezones";
 import { createWedding, validateSlug } from "./actions";
@@ -272,38 +288,77 @@ export default function OnboardingPage() {
             </div>
             <div className="space-y-4">
               <div>
-                <label
-                  htmlFor="weddingDate"
-                  className="block text-sm font-medium mb-1.5"
-                >
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: Calendar popover trigger acts as the control */}
+                <label className="block text-sm font-medium mb-1.5">
                   Wedding Date
                 </label>
-                <Input
-                  id="weddingDate"
-                  type="date"
-                  value={formData.weddingDate}
-                  onChange={(e) => updateField("weddingDate", e.target.value)}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.weddingDate && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.weddingDate
+                        ? format(
+                            new Date(`${formData.weddingDate}T00:00:00`),
+                            "MMMM d, yyyy",
+                          )
+                        : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={
+                        formData.weddingDate
+                          ? new Date(`${formData.weddingDate}T00:00:00`)
+                          : undefined
+                      }
+                      onSelect={(date) => {
+                        if (date) {
+                          const yyyy = date.getFullYear();
+                          const mm = String(date.getMonth() + 1).padStart(
+                            2,
+                            "0",
+                          );
+                          const dd = String(date.getDate()).padStart(2, "0");
+                          updateField("weddingDate", `${yyyy}-${mm}-${dd}`);
+                        }
+                      }}
+                      disabled={(date) => date < new Date()}
+                      defaultMonth={
+                        formData.weddingDate
+                          ? new Date(`${formData.weddingDate}T00:00:00`)
+                          : undefined
+                      }
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
-                <label
-                  htmlFor="timezone"
-                  className="block text-sm font-medium mb-1.5"
-                >
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: Radix Select handles focus internally */}
+                <label className="block text-sm font-medium mb-1.5">
                   Timezone
                 </label>
-                <select
-                  id="timezone"
+                <Select
                   value={formData.timezone}
-                  onChange={(e) => updateField("timezone", e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  onValueChange={(value) => updateField("timezone", value)}
                 >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="pt-4 border-t border-border">

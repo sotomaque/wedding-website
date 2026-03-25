@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog";
 import { Button } from "@workspace/ui/components/button";
 import {
   Dialog,
@@ -31,6 +41,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type {
   GuestFilter,
@@ -62,6 +73,9 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [newTableCapacity, setNewTableCapacity] = useState<number | null>(null);
+  const [pendingDeleteTableId, setPendingDeleteTableId] = useState<
+    string | null
+  >(null);
 
   const handleFilterChange = (list: GuestListFilter, rsvp: GuestRsvpFilter) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -107,19 +121,7 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
     }
   };
 
-  const handleDeleteTable = async (tableId: string) => {
-    const table = chart.tables.find((t) => t.id === tableId);
-    if (!table) return;
-
-    if (
-      table.guests.length > 0 &&
-      !confirm(
-        `This table has ${table.guests.length} guests assigned. Delete anyway?`,
-      )
-    ) {
-      return;
-    }
-
+  const executeDeleteTable = async (tableId: string) => {
     try {
       const response = await fetch(
         `/api/admin/seating-charts/${chart.id}/tables/${tableId}`,
@@ -138,6 +140,18 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
       console.error("Error deleting table:", error);
       toast.error("Failed to delete table");
     }
+  };
+
+  const handleDeleteTable = async (tableId: string) => {
+    const table = chart.tables.find((t) => t.id === tableId);
+    if (!table) return;
+
+    if (table.guests.length > 0) {
+      setPendingDeleteTableId(tableId);
+      return;
+    }
+
+    await executeDeleteTable(tableId);
   };
 
   // Helper to find all party members (same partyId or inviteCode) for a guest
@@ -370,14 +384,6 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
   };
 
   const handleClearAllAssignments = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to clear all seating assignments? This cannot be undone.",
-      )
-    ) {
-      return;
-    }
-
     try {
       const response = await fetch(
         `/api/admin/seating-charts/${chart.id}/assignments`,
@@ -492,15 +498,23 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
             Add Table
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClearAllAssignments}
-            disabled={chart.totalAssigned === 0}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Clear All
-          </Button>
+          <ConfirmDialog
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={chart.totalAssigned === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Clear All
+              </Button>
+            }
+            title="Clear All Assignments"
+            description="Are you sure you want to clear all seating assignments? This cannot be undone."
+            confirmLabel="Clear All"
+            variant="destructive"
+            onConfirm={handleClearAllAssignments}
+          />
 
           <Button
             size="sm"
@@ -598,6 +612,40 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Table Confirmation */}
+      <AlertDialog
+        open={pendingDeleteTableId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteTableId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Table</AlertDialogTitle>
+            <AlertDialogDescription>
+              This table has{" "}
+              {chart.tables.find((t) => t.id === pendingDeleteTableId)?.guests
+                .length ?? 0}{" "}
+              guests assigned. Are you sure you want to delete it?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (pendingDeleteTableId) {
+                  executeDeleteTable(pendingDeleteTableId);
+                }
+                setPendingDeleteTableId(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

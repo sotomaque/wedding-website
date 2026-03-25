@@ -2,6 +2,7 @@
 
 import { Button } from "@workspace/ui/components/button";
 import { useTransition } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { deleteWedding, updateWeddingStatus } from "./actions";
 
 export function StatusActions({
@@ -18,20 +19,6 @@ export function StatusActions({
   function handleStatusChange(status: string) {
     startTransition(async () => {
       await updateWeddingStatus(weddingId, status);
-    });
-  }
-
-  function handleDelete() {
-    if (
-      !confirm(
-        `Are you sure you want to permanently delete "${coupleName}"? This will remove all guests, events, and related data. This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
-
-    startTransition(async () => {
-      await deleteWedding(weddingId);
     });
   }
 
@@ -70,15 +57,27 @@ export function StatusActions({
           Draft
         </Button>
       )}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-xs h-7 px-2 text-destructive hover:text-destructive"
-        disabled={isPending}
-        onClick={handleDelete}
-      >
-        Delete
-      </Button>
+      <ConfirmDialog
+        trigger={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs h-7 px-2 text-destructive hover:text-destructive"
+            disabled={isPending}
+          >
+            Delete
+          </Button>
+        }
+        title="Delete Wedding"
+        description={`Are you sure you want to permanently delete "${coupleName}"? This will remove all guests, events, and related data. This cannot be undone.`}
+        confirmLabel="Delete Wedding"
+        variant="destructive"
+        onConfirm={() => {
+          startTransition(async () => {
+            await deleteWedding(weddingId);
+          });
+        }}
+      />
     </div>
   );
 }
