@@ -2,9 +2,18 @@
 
 import type { Wedding, WeddingAdmin } from "@prisma/client";
 import { Button } from "@workspace/ui/components/button";
+import { Calendar } from "@workspace/ui/components/calendar";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
 import { Switch } from "@workspace/ui/components/switch";
+import { cn } from "@workspace/ui/lib/utils";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { TIMEZONES } from "@/lib/constants/timezones";
@@ -159,14 +168,40 @@ function GeneralSection({ wedding }: { wedding: Wedding }) {
         </div>
       </div>
       <div>
-        <Label htmlFor="weddingDate">Wedding Date</Label>
-        <Input
-          id="weddingDate"
-          type="date"
-          value={weddingDate}
-          onChange={(e) => setWeddingDate(e.target.value)}
-          className="mt-1"
-        />
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Calendar popover trigger acts as the control */}
+        <label className="text-sm font-medium">Wedding Date</label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "mt-1 w-full justify-start text-left font-normal",
+                !weddingDate && "text-muted-foreground",
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {weddingDate
+                ? format(new Date(`${weddingDate}T00:00:00`), "MMMM d, yyyy")
+                : "Pick a date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={
+                weddingDate ? new Date(`${weddingDate}T00:00:00`) : undefined
+              }
+              onSelect={(date) => {
+                if (date) {
+                  const yyyy = date.getFullYear();
+                  const mm = String(date.getMonth() + 1).padStart(2, "0");
+                  const dd = String(date.getDate()).padStart(2, "0");
+                  setWeddingDate(`${yyyy}-${mm}-${dd}`);
+                }
+              }}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
       <div>
         <Label htmlFor="timezone">Timezone</Label>
@@ -184,14 +219,46 @@ function GeneralSection({ wedding }: { wedding: Wedding }) {
         </select>
       </div>
       <div>
-        <Label htmlFor="rsvpDeadline">RSVP Deadline</Label>
-        <Input
-          id="rsvpDeadline"
-          value={rsvpDeadline}
-          onChange={(e) => setRsvpDeadline(e.target.value)}
-          placeholder="e.g. March 15, 2026"
-          className="mt-1"
-        />
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Calendar popover trigger acts as the control */}
+        <label className="text-sm font-medium">RSVP Deadline</label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "mt-1 w-full justify-start text-left font-normal",
+                !rsvpDeadline && "text-muted-foreground",
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {rsvpDeadline || "Pick a deadline"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={
+                rsvpDeadline
+                  ? (() => {
+                      const parsed = new Date(rsvpDeadline);
+                      return Number.isNaN(parsed.getTime())
+                        ? undefined
+                        : parsed;
+                    })()
+                  : undefined
+              }
+              onSelect={(date) => {
+                if (date) {
+                  setRsvpDeadline(format(date, "MMMM d, yyyy"));
+                }
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+        <p className="text-xs text-muted-foreground mt-1">
+          Displayed as-is on the RSVP page (e.g. &quot;Please respond by March
+          30, 2026&quot;)
+        </p>
       </div>
       <div>
         <Label htmlFor="status">Status</Label>

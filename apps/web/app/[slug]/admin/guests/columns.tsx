@@ -574,7 +574,8 @@ export function createColumns({
             type="button"
             className="p-1 rounded cursor-pointer hover:bg-secondary/80 transition-colors text-muted-foreground hover:text-foreground"
             onClick={() => {
-              const url = `${window.location.origin}/rsvp?code=${row.original.inviteCode}`;
+              const slug = window.location.pathname.split("/")[1];
+              const url = `${window.location.origin}/${slug}/rsvp?code=${row.original.inviteCode}`;
               navigator.clipboard.writeText(url);
               toast.success("RSVP link copied!", {
                 description: "Full RSVP URL copied to clipboard",

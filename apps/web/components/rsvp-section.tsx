@@ -8,9 +8,14 @@ import type { RsvpContent } from "@/lib/validations/wedding-content";
 interface RSVPSectionProps {
   content?: RsvpContent;
   contactEmail?: string;
+  rsvpDeadline?: string;
 }
 
-export function RSVPSection({ content, contactEmail }: RSVPSectionProps) {
+export function RSVPSection({
+  content,
+  contactEmail,
+  rsvpDeadline,
+}: RSVPSectionProps) {
   const slug = useWeddingSlug();
   return (
     <section id="rsvp" className="py-24 px-6 bg-secondary scroll-mt-24">
@@ -19,9 +24,9 @@ export function RSVPSection({ content, contactEmail }: RSVPSectionProps) {
           {content?.title ?? "RSVP"}
         </h2>
         <div className="w-24 h-1 bg-accent mx-auto mb-6" />
-        {content?.deadline && (
+        {rsvpDeadline && (
           <p className="text-muted-foreground text-center mb-12">
-            {content.deadline}
+            {rsvpDeadline}
           </p>
         )}
         <div className="max-w-xl mx-auto">
