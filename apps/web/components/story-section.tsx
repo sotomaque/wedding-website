@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import type { StoryContent } from "@/lib/validations/wedding-content";
 import type { HeroPhoto } from "./hero-section";
 
@@ -8,6 +9,7 @@ interface StorySectionProps {
 }
 
 export function StorySection({ photos, content }: StorySectionProps) {
+  const t = useTranslations("story");
   const [mainPhoto, ...secondaryPhotos] = photos;
 
   if (!mainPhoto) return null;
@@ -16,7 +18,7 @@ export function StorySection({ photos, content }: StorySectionProps) {
     <section id="story" className="py-24 px-6 bg-card scroll-mt-24">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-serif text-center mb-16 text-foreground">
-          {content?.title ?? "Our Story"}
+          {content?.title ?? t("defaultTitle")}
         </h2>
         <div className="w-24 h-1 bg-accent mx-auto mb-16 -mt-12" />
         <div className="grid md:grid-cols-2 gap-12 items-center mb-16">

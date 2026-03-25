@@ -1,0 +1,146 @@
+{
+  "nav": {
+    "ourStory": "Our Story",
+    "details": "Details",
+    "schedule": "Schedule",
+    "planning": "Planning",
+    "thingsToDo": "Things To Do",
+    "hotels": "Hotels",
+    "tripPlanner": "Trip Planner",
+    "registry": "Registry",
+    "rsvp": "RSVP",
+    "admin": "Admin"
+  },
+  "hero": {
+    "defaultTitle": "We're Getting Married"
+  },
+  "story": {
+    "defaultTitle": "Our Story"
+  },
+  "details": {
+    "defaultTitle": "Details"
+  },
+  "schedule": {
+    "defaultTitle": "Schedule"
+  },
+  "rsvp": {
+    "defaultTitle": "RSVP",
+    "subtitle": "Please RSVP with your invite code",
+    "description": "Your unique invite code was included in your invitation email. This ensures we can properly track your RSVP and any dietary preferences.",
+    "codeLooksLike": "Your invite code looks like:",
+    "codeExample": "ABCD-1234",
+    "goToRsvpPage": "Go to RSVP Page",
+    "noInviteCode": "Don't have an invite code?",
+    "contactUs": "Contact us"
+  },
+  "rsvpPage": {
+    "viewWeddingDetails": "View Wedding Details",
+    "enterInviteCode": "Enter your invite code",
+    "codeInEmail": "Your invite code was included in your invitation email",
+    "placeholder": "XXXX-XXXX",
+    "continue": "Continue",
+    "verifying": "Verifying...",
+    "invalidCode": "Invalid Code",
+    "invalidCodeUrl": "The invite code in the URL is not valid.",
+    "invalidCodeEntered": "The invite code you entered is not valid.",
+    "enterValidCode": "Please enter a valid invite code",
+    "error": "Error",
+    "failedToVerify": "Failed to verify invite code",
+    "noInviteCode": "Don't have an invite code?",
+    "contactUs": "Contact us"
+  },
+  "rsvpForm": {
+    "alreadySubmitted": "You've already submitted your RSVP",
+    "canUpdate": "You can update your response anytime before the deadline",
+    "guestCount": "{attendingCount} of {totalGuests} guests attending",
+    "childrenNote": "Children 3 and under are welcome to attend and do not need to be listed.",
+    "contactInfo": "Contact Information",
+    "contactInfoDescription": "Help us stay in touch! This information is optional but helpful.",
+    "mailingAddress": "Mailing Address (Optional)",
+    "mailingAddressPlaceholder": "123 Main St, City, State, ZIP",
+    "phoneNumber": "Phone Number (Optional)",
+    "phonePlaceholder": "(555) 123-4567",
+    "whatsapp": "WhatsApp (Optional)",
+    "whatsappPlaceholder": "+1 (555) 123-4567",
+    "preferredContact": "Preferred Contact Method (Optional)",
+    "selectMethod": "Select a method",
+    "email": "Email",
+    "textMessage": "Text Message",
+    "whatsappMethod": "WhatsApp",
+    "phoneCall": "Phone Call",
+    "travelInfo": "Travel Information (Optional)",
+    "travelDescription": "Let us know when you're arriving so we can coordinate!",
+    "arrivalDate": "Arrival Date",
+    "arrivalTransport": "How are you getting here?",
+    "transportPlaceholder": "e.g. SAN, LAX, Driving",
+    "departureDate": "Departure Date",
+    "departureTransport": "Departure Transport",
+    "accommodationNotes": "Where are you staying? (Optional)",
+    "accommodationPlaceholder": "e.g. Airbnb in La Jolla, Hotel del Coronado",
+    "back": "Back",
+    "submitting": "Submitting...",
+    "updateRsvp": "Update RSVP",
+    "submitRsvp": "Submit RSVP",
+    "rsvpUpdated": "RSVP Updated!",
+    "rsvpSubmitted": "RSVP Submitted!",
+    "updateSuccess": "Your RSVP has been updated successfully.",
+    "submitSuccess": "Thank you for your response. We can't wait to celebrate with you!",
+    "attending": "Attending",
+    "notAttending": "Not Attending",
+    "dietaryRestrictions": "Dietary Restrictions",
+    "dietaryPlaceholder": "e.g. Vegetarian, Nut allergy",
+    "plusOneName": "Plus-One Name",
+    "plusOneNamePlaceholder": "Full name"
+  },
+  "hotels": {
+    "pageTitle": "Hotels",
+    "title": "Where to Stay",
+    "description": "We've curated a selection of hotels near our venue. From luxury waterfront resorts to charming boutique stays, find the perfect spot for your visit.",
+    "clickInterested": "Click \"Interested\" or \"Booked\" to let us know your plans!",
+    "groupBooking": "Interested in Group Booking?",
+    "groupBookingDescription": "Mark \"Interested\" on any hotel above and we'll work to secure group rates or room blocks.",
+    "bookedUpdate": "Once you've booked, update your status to \"Booked\" so others can see where everyone is staying!",
+    "luxury": "Luxury",
+    "midRange": "Mid-Range",
+    "budgetFriendly": "Budget-Friendly",
+    "visitWebsite": "Visit website",
+    "interested": "Interested",
+    "interestedActive": "Interested",
+    "booked": "Booked",
+    "bookedActive": "Booked",
+    "guestsInterested": "{count} guest(s) interested"
+  },
+  "registry": {
+    "title": "Gift Registry",
+    "subtitle": "Your presence is the greatest gift, but if you wish to celebrate with us...",
+    "description": "We're grateful to have everything we need to start our life together. If you'd like to give a gift, please consider contributing to one of these meaningful funds.",
+    "thankYou": "Thank you for celebrating this special moment with us. Your love and support mean more than any gift could express.",
+    "contribute": "Contribute",
+    "comingSoon": "Coming Soon"
+  },
+  "thingsToDo": {
+    "title": "Explore",
+    "description": "We're excited to share our favorite spots with you! From stunning beaches to world-class dining, discover the places we love.",
+    "markInterest": "Mark your interest to see who else is planning to visit!",
+    "weddingVenues": "Wedding Venues",
+    "weddingVenuesDescription": "Where we'll celebrate",
+    "thingsToDo": "Things to Do",
+    "thingsToDoDescription": "Our favorite spots to explore in the city"
+  },
+  "footer": {
+    "celebration": "We can't wait to celebrate with you!",
+    "contact": "For questions, please contact us at"
+  },
+  "login": {
+    "signInOptional": "Sign In (Optional)",
+    "signInDescription": "Sign in to save your preferences and easily access your RSVP later. You can also skip this step.",
+    "signInGoogle": "Sign In with Google",
+    "or": "or",
+    "skipForNow": "Skip for now",
+    "sessionNote": "Your invite code will be remembered for this session"
+  },
+  "languageSwitcher": {
+    "en": "English",
+    "es": "Español"
+  }
+}

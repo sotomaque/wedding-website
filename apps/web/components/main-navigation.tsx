@@ -1,6 +1,7 @@
 "use client";
 
 import { type NavItem, Navigation } from "@workspace/ui/components/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { getNavigationConfig } from "@/app/navigation-config";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
@@ -21,15 +22,19 @@ export function MainNavigation({
   navConfig: navConfigProp,
 }: MainNavigationProps) {
   const slug = useWeddingSlug();
+  const t = useTranslations("nav");
   const fallbackConfig = useMemo(() => getNavigationConfig(slug), [slug]);
   const navConfig = navConfigProp ?? fallbackConfig;
 
   const rightLinks = useMemo(
     () =>
       isAdmin
-        ? [...navConfig.rightLinks, { href: `/${slug}/admin`, label: "Admin" }]
+        ? [
+            ...navConfig.rightLinks,
+            { href: `/${slug}/admin`, label: t("admin") },
+          ]
         : navConfig.rightLinks,
-    [isAdmin, navConfig.rightLinks, slug],
+    [isAdmin, navConfig.rightLinks, slug, t],
   );
 
   return (

@@ -2,6 +2,7 @@
 
 import { Button } from "@workspace/ui/components/button";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 
 interface RegistryCardProps {
   gift: {
@@ -16,6 +17,7 @@ interface RegistryCardProps {
 }
 
 export function RegistryCard({ gift, index }: RegistryCardProps) {
+  const t = useTranslations("registry");
   return (
     <div
       className="bg-card rounded-lg shadow-sm border border-accent/30 overflow-hidden
@@ -55,12 +57,12 @@ export function RegistryCard({ gift, index }: RegistryCardProps) {
             className="block"
           >
             <Button className="w-full font-semibold" size="lg">
-              Contribute
+              {t("contribute")}
             </Button>
           </a>
         ) : (
           <Button className="w-full font-semibold" size="lg" disabled>
-            Coming Soon
+            {t("comingSoon")}
           </Button>
         )}
       </div>

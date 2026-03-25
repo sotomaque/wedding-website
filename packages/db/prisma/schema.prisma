@@ -439,6 +439,9 @@ model Wedding {
   // Theme
   themeId               String?                @map("theme_id")
 
+  // i18n
+  defaultLanguage       String                 @default("en") @map("default_language")
+
   // Feature toggles
   featureToggles        Json                   @default("{}") @map("feature_toggles") @db.JsonB
 

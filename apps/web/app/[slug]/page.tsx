@@ -1,11 +1,14 @@
 import { Footer } from "@workspace/ui/components/footer";
+import { getLocale, getTranslations } from "next-intl/server";
 import { pickRandomItems, shuffleArray } from "@/app/utils";
 import { DetailsSection } from "@/components/details-section";
 import { HeroSection } from "@/components/hero-section";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { RSVPSection } from "@/components/rsvp-section";
 import { ScheduleSection } from "@/components/schedule-section";
 import { StorySection } from "@/components/story-section";
 import { WeddingNavigation } from "@/components/wedding-navigation";
+import type { Locale } from "@/i18n/config";
 import {
   getWeddingContentSections,
   getWeddingSettings,
@@ -20,10 +23,12 @@ import type {
 } from "@/lib/validations/wedding-content";
 
 export default async function Page() {
-  const [photos, content, settings] = await Promise.all([
+  const [photos, content, settings, t, locale] = await Promise.all([
     getAllPhotos(),
     getWeddingContentSections(),
     getWeddingSettings(),
+    getTranslations("footer"),
+    getLocale(),
   ]);
 
   // Shuffle photos on the server to avoid hydration mismatch
@@ -57,6 +62,11 @@ export default async function Page() {
       <Footer
         email={settings.contactEmail ?? undefined}
         coupleName={settings.coupleName}
+        translations={{
+          celebration: t("celebration"),
+          contact: t("contact"),
+        }}
+        languageSwitcher={<LanguageSwitcher currentLocale={locale as Locale} />}
       />
     </div>
   );

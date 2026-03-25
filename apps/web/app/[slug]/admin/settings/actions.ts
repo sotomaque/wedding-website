@@ -145,6 +145,27 @@ export async function updateTheme(themeId: string) {
   }
 }
 
+export async function updateDefaultLanguage(language: string) {
+  const auth = await isAdmin();
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
+  try {
+    const weddingId = await getWeddingId();
+
+    await db.wedding.update({
+      where: { id: weddingId },
+      data: { defaultLanguage: language },
+    });
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating default language:", error);
+    return { success: false, error: "Failed to update default language" };
+  }
+}
+
 export async function inviteAdmin(data: { email: string; role: string }) {
   const weddingId = await getWeddingId();
   const auth = await isAdmin(weddingId);

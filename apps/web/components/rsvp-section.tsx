@@ -2,6 +2,7 @@
 
 import { Button } from "@workspace/ui/components/button";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { RsvpContent } from "@/lib/validations/wedding-content";
 
@@ -12,11 +13,12 @@ interface RSVPSectionProps {
 
 export function RSVPSection({ content, contactEmail }: RSVPSectionProps) {
   const slug = useWeddingSlug();
+  const t = useTranslations("rsvp");
   return (
     <section id="rsvp" className="py-24 px-6 bg-secondary scroll-mt-24">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-serif text-center mb-6 text-foreground">
-          {content?.title ?? "RSVP"}
+          {content?.title ?? t("defaultTitle")}
         </h2>
         <div className="w-24 h-1 bg-accent mx-auto mb-6" />
         {content?.deadline && (
@@ -29,38 +31,34 @@ export function RSVPSection({ content, contactEmail }: RSVPSectionProps) {
             <div className="space-y-6 text-center">
               <div className="space-y-4">
                 <h3 className="text-2xl font-serif text-foreground">
-                  Please RSVP with your invite code
+                  {t("subtitle")}
                 </h3>
-                <p className="text-muted-foreground">
-                  Your unique invite code was included in your invitation email.
-                  This ensures we can properly track your RSVP and any dietary
-                  preferences.
-                </p>
+                <p className="text-muted-foreground">{t("description")}</p>
               </div>
 
               <div className="bg-secondary/50 p-6 rounded-lg border border-border">
                 <p className="text-sm font-medium text-foreground mb-2">
-                  Your invite code looks like:
+                  {t("codeLooksLike")}
                 </p>
                 <p className="text-2xl font-mono font-bold text-accent tracking-wider">
-                  ABCD-1234
+                  {t("codeExample")}
                 </p>
               </div>
 
               <Link href={`/${slug}/rsvp`}>
                 <Button size="lg" className="w-full font-semibold">
-                  Go to RSVP Page
+                  {t("goToRsvpPage")}
                 </Button>
               </Link>
 
               {contactEmail && (
                 <p className="text-sm text-muted-foreground mt-4">
-                  Don't have an invite code?{" "}
+                  {t("noInviteCode")}{" "}
                   <a
                     href={`mailto:${contactEmail}`}
                     className="text-accent hover:underline font-medium"
                   >
-                    Contact us
+                    {t("contactUs")}
                   </a>
                 </p>
               )}

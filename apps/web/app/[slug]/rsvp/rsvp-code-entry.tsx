@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { MainNavigation } from "@/components/main-navigation";
@@ -14,6 +15,7 @@ interface RSVPCodeEntryProps {
   rsvpTitle: string;
   weddingDateFormatted: string;
   rsvpDeadlineText?: string;
+  contactEmail?: string;
 }
 
 export function RSVPCodeEntry({
@@ -21,18 +23,20 @@ export function RSVPCodeEntry({
   rsvpTitle,
   weddingDateFormatted,
   rsvpDeadlineText,
+  contactEmail,
 }: RSVPCodeEntryProps) {
   const router = useRouter();
   const slug = useWeddingSlug();
+  const t = useTranslations("rsvpPage");
 
   // Show error toast if an invalid code was provided
   useEffect(() => {
     if (invalidCode) {
-      toast.error("Invalid Code", {
-        description: "The invite code in the URL is not valid.",
+      toast.error(t("invalidCode"), {
+        description: t("invalidCodeUrl"),
       });
     }
-  }, [invalidCode]);
+  }, [invalidCode, t]);
 
   function handleCodeSuccess(code: string) {
     // Navigate to the same page with the code as a query param
@@ -76,7 +80,7 @@ export function RSVPCodeEntry({
               href={`/${slug}#details`}
               className="text-white hover:text-white/80 underline font-medium drop-shadow-md"
             >
-              View Wedding Details
+              {t("viewWeddingDetails")}
             </Link>
           </p>
 
@@ -91,15 +95,17 @@ export function RSVPCodeEntry({
             <div className="bg-card p-8 md:p-12 rounded-lg shadow-sm border border-border order-1 md:order-2">
               <CodeEntry onSuccess={handleCodeSuccess} />
 
-              <p className="text-sm text-muted-foreground mt-6 text-center">
-                Don't have an invite code?{" "}
-                <a
-                  href="mailto:sotomaque@gmail.com"
-                  className="text-accent hover:underline font-medium"
-                >
-                  Contact us
-                </a>
-              </p>
+              {contactEmail && (
+                <p className="text-sm text-muted-foreground mt-6 text-center">
+                  {t("noInviteCode")}{" "}
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    className="text-accent hover:underline font-medium"
+                  >
+                    {t("contactUs")}
+                  </a>
+                </p>
+              )}
             </div>
           </div>
         </div>
