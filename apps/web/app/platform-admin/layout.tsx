@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { env } from "@/env";
+import { PlatformAdminNav } from "./platform-admin-nav";
 
 export default async function PlatformAdminLayout({
   children,
@@ -20,17 +21,7 @@ export default async function PlatformAdminLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b border-border px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="font-serif text-lg">Platform Admin</h1>
-        </div>
-        <a
-          href="/dashboard"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          Back to Dashboard
-        </a>
-      </nav>
+      <PlatformAdminNav />
       {children}
     </div>
   );

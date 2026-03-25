@@ -146,9 +146,19 @@ export function getThemePreset(
 
 /**
  * Generate inline CSS string for a theme's custom property overrides.
+ * Includes both :root (light) and .dark overrides when available.
  */
 export function generateThemeCss(theme: ThemePreset): string {
-  const entries = Object.entries(theme.cssVariables);
-  if (entries.length === 0) return "";
-  return entries.map(([key, value]) => `${key}: ${value};`).join("\n  ");
+  const lightEntries = Object.entries(theme.cssVariables);
+  const darkEntries = Object.entries(theme.darkCssVariables ?? {});
+  if (lightEntries.length === 0 && darkEntries.length === 0) return "";
+
+  let css = "";
+  if (lightEntries.length > 0) {
+    css += `:root { ${lightEntries.map(([key, value]) => `${key}: ${value};`).join("\n  ")} }`;
+  }
+  if (darkEntries.length > 0) {
+    css += ` .dark { ${darkEntries.map(([key, value]) => `${key}: ${value};`).join("\n  ")} }`;
+  }
+  return css;
 }
