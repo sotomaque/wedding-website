@@ -8,6 +8,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import type { Photo } from "@/lib/photos";
 import { UploadDropzone } from "@/lib/uploadthing-components";
 
@@ -70,8 +71,6 @@ export function AdminPhotosClient({ initialPhotos }: AdminPhotosClientProps) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this photo?")) return;
-
     try {
       const response = await fetch(`/api/admin/photos/${id}`, {
         method: "DELETE",
@@ -294,14 +293,22 @@ export function AdminPhotosClient({ initialPhotos }: AdminPhotosClientProps) {
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(photo.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <ConfirmDialog
+                          trigger={
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          }
+                          title="Delete Photo"
+                          description="Are you sure you want to delete this photo? This cannot be undone."
+                          confirmLabel="Delete"
+                          variant="destructive"
+                          onConfirm={() => handleDelete(photo.id)}
+                        />
                       </div>
                     </div>
                   </>

@@ -24,6 +24,7 @@ export function AdminUserButton() {
           userButtonPopoverFooter: { display: "none" },
         },
       }}
+      afterSignOutUrl="/"
     >
       <UserButton.MenuItems>
         <UserButton.Action
