@@ -230,16 +230,19 @@ test("delete a photo: it disappears from the grid after deletion", async ({
 
   await expect(card).toBeAttached();
 
-  // Accept the confirm() dialog
-  page.once("dialog", (d) => d.accept());
-
+  // Hover to reveal delete button, then click to open confirmation dialog
   await card.hover();
   await card.getByRole("button", { name: "Delete" }).click();
+
+  // Confirm the deletion in the AlertDialog
+  await page.getByRole("button", { name: "Delete" }).last().click();
 
   await page.waitForLoadState("networkidle");
 
   // Photo should be gone from the grid
-  await expect(page.getByAltText("Photo by E2E-Delete-Me")).not.toBeAttached();
+  await expect(page.getByAltText("Photo by E2E-Delete-Me")).not.toBeAttached({
+    timeout: 10000,
+  });
 });
 
 // ----- Download All button -----
