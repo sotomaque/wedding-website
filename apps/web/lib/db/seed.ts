@@ -1,3 +1,4 @@
+import { getDefaultTemplates } from "@/lib/email/default-templates";
 import { db } from "./index";
 
 /**
@@ -275,6 +276,11 @@ async function seedData() {
     ],
   });
 
+  // --- Wedding 1 email templates ---
+  await db.emailTemplate.createMany({
+    data: getDefaultTemplates(weddingId),
+  });
+
   // --- Wedding 1 content + registry (truncated by E2E reset) ---
 
   await db.weddingContent.createMany({
@@ -432,6 +438,11 @@ async function seedData() {
       side: "bride",
       list: "a",
     },
+  });
+
+  // Create email templates for second wedding
+  await db.emailTemplate.createMany({
+    data: getDefaultTemplates(wedding2.id),
   });
 
   // Create default content for second wedding
