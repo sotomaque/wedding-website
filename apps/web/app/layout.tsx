@@ -1,4 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
@@ -51,6 +53,8 @@ export default function RootLayout({
           className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased `}
         >
           <Providers>{children}</Providers>
+          <Analytics />
+          <SpeedInsights />
         </body>
       </html>
     </ClerkProvider>

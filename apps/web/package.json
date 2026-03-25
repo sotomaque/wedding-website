@@ -38,6 +38,8 @@
     "@tiptap/react": "^3.20.4",
     "@tiptap/starter-kit": "^3.20.4",
     "@uploadthing/react": "^7.3.3",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "@workspace/db": "workspace:*",
     "@workspace/ui": "workspace:*",
     "ai": "^6.0.6",
