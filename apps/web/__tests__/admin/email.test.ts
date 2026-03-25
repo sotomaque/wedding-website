@@ -112,6 +112,20 @@ mock.module("@/lib/db", () => ({
     event: {
       findFirst: mockEventFindFirst,
     },
+    emailTemplate: {
+      findUnique: mock(() =>
+        Promise.resolve({
+          id: "template-1",
+          weddingId: "wedding-1",
+          type: "wedding_invitation",
+          name: "Wedding Invitation",
+          subject: "You're Invited!",
+          htmlBody: "<p>Hello {{{FIRST_NAME}}}</p>",
+          isActive: true,
+          variables: [],
+        }),
+      ),
+    },
   },
 }));
 

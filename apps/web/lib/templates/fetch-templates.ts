@@ -1,33 +1,62 @@
-import { getResendClient } from "@/lib/email/resend-client";
+import type { EmailTemplateType } from "@prisma/client";
+import { db } from "@/lib/db";
+
+export interface TemplateVariable {
+  key: string;
+  description?: string;
+  required?: boolean;
+}
 
 export interface Template {
   id: string;
+  weddingId: string;
+  type: EmailTemplateType;
   name: string;
-  subject?: string;
-  html?: string;
-  created_at: string;
-  updated_at?: string;
+  subject: string;
+  htmlBody: string;
+  isActive: boolean;
+  variables: TemplateVariable[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+function serialize(row: {
+  id: string;
+  weddingId: string;
+  type: EmailTemplateType;
+  name: string;
+  subject: string;
+  htmlBody: string;
+  isActive: boolean;
+  variables: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}): Template {
+  return {
+    id: row.id,
+    weddingId: row.weddingId,
+    type: row.type,
+    name: row.name,
+    subject: row.subject,
+    htmlBody: row.htmlBody,
+    isActive: row.isActive,
+    variables: (row.variables ?? []) as TemplateVariable[],
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }
 
 /**
- * Fetch all templates from Resend (server-side only)
+ * Fetch all email templates for a wedding (server-side only)
  */
-export async function fetchTemplates(): Promise<Template[]> {
+export async function fetchTemplates(weddingId: string): Promise<Template[]> {
   try {
-    const resend = getResendClient();
-    if (!resend) {
-      console.error("Resend client not configured");
-      return [];
-    }
+    const rows = await db.emailTemplate.findMany({
+      where: { weddingId },
+      orderBy: { type: "asc" },
+    });
 
-    const { data, error } = await resend.templates.list();
-
-    if (error) {
-      console.error("Error listing templates:", error);
-      return [];
-    }
-
-    return (data?.data || []) as Template[];
+    return rows.map(serialize);
   } catch (error) {
     console.error("Error fetching templates:", error);
     return [];
@@ -35,26 +64,16 @@ export async function fetchTemplates(): Promise<Template[]> {
 }
 
 /**
- * Fetch a single template by ID from Resend (server-side only)
+ * Fetch a single template by ID (server-side only)
  */
-export async function fetchTemplate(
-  templateId: string,
-): Promise<Template | null> {
+export async function fetchTemplate(id: string): Promise<Template | null> {
   try {
-    const resend = getResendClient();
-    if (!resend) {
-      console.error("Resend client not configured");
-      return null;
-    }
+    const row = await db.emailTemplate.findUnique({
+      where: { id },
+    });
 
-    const { data, error } = await resend.templates.get(templateId);
-
-    if (error) {
-      console.error("Error fetching template:", error);
-      return null;
-    }
-
-    return data as Template | null;
+    if (!row) return null;
+    return serialize(row);
   } catch (error) {
     console.error("Error fetching template:", error);
     return null;

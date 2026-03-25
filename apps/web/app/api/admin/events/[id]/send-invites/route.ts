@@ -4,8 +4,8 @@ import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { getEmailFromAddress } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
-import { getEventInvitationEmail } from "@/lib/email/templates/event-invitation";
 import { weddingUrl } from "@/lib/url";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if ("status" in auth) return auth;
 
     const body = await request.json();
-    const { guestIds, templateId, subject: customSubject } = body;
+    const { guestIds } = body;
 
     if (!guestIds || !Array.isArray(guestIds) || guestIds.length === 0) {
       return NextResponse.json(
@@ -145,54 +145,37 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const rsvpUrl = `${weddingUrl(settings.slug, "/events/rsvp")}?code=${invite.guest.inviteCode}&event=${eventId}`;
 
       try {
-        let result: { error: Error | null };
+        const rendered = await renderEmailTemplate(
+          weddingId,
+          "event_invitation",
+          {
+            FIRST_NAME: invite.guest.firstName,
+            LAST_NAME: invite.guest.lastName || "",
+            INVITE_CODE: invite.guest.inviteCode ?? "",
+            EVENT_NAME: event.name,
+            EVENT_DESCRIPTION: event.description || "",
+            EVENT_DATE: eventDateStr || "",
+            EVENT_TIME: eventTime || "",
+            LOCATION_NAME: event.locationName || "",
+            LOCATION_ADDRESS: event.locationAddress || "",
+            RSVP_URL: rsvpUrl,
+            APP_URL: appUrl,
+          },
+        );
 
-        if (templateId) {
-          // Use Resend template with variables
-          result = await sendEmail({
-            from: getEmailFromAddress(settings),
-            to: invite.guest.email as string,
-            subject: customSubject || `You're Invited to the ${event.name}!`,
-            template: {
-              id: templateId,
-              variables: {
-                FIRST_NAME: invite.guest.firstName,
-                LAST_NAME: invite.guest.lastName || "",
-                INVITE_CODE: invite.guest.inviteCode ?? "",
-                EVENT_NAME: event.name,
-                EVENT_DESCRIPTION: event.description || "",
-                EVENT_DATE: eventDateStr || "",
-                EVENT_TIME: eventTime || "",
-                LOCATION_NAME: event.locationName || "",
-                LOCATION_ADDRESS: event.locationAddress || "",
-                RSVP_URL: rsvpUrl,
-                APP_URL: appUrl,
-              },
-            },
-          });
-        } else {
-          // Use hardcoded template
-          const emailHtml = getEventInvitationEmail({
-            firstName: invite.guest.firstName,
-            lastName: invite.guest.lastName,
-            inviteCode: invite.guest.inviteCode ?? "",
-            eventName: event.name,
-            eventDescription: event.description,
-            eventDate: eventDateStr,
-            eventTime,
-            locationName: event.locationName,
-            locationAddress: event.locationAddress,
-            rsvpUrl,
-            appUrl,
-          });
-
-          result = await sendEmail({
-            from: getEmailFromAddress(settings),
-            to: invite.guest.email as string,
-            subject: `You're Invited to the ${event.name}!`,
-            html: emailHtml,
-          });
+        if (!rendered) {
+          console.warn(
+            "Event invitation email skipped - template inactive or not found",
+          );
+          continue;
         }
+
+        const result = await sendEmail({
+          from: getEmailFromAddress(settings),
+          to: invite.guest.email as string,
+          subject: rendered.subject,
+          html: rendered.html,
+        });
 
         if (result.error) {
           throw result.error;

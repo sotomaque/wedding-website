@@ -6,8 +6,8 @@ import {
   getEmailFromAddress,
   getNotificationRecipients,
 } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
-import { getEventRsvpNotificationEmail } from "@/lib/email/templates/event-rsvp-notification";
 
 /**
  * Submit event RSVP
@@ -96,24 +96,29 @@ export async function POST(request: NextRequest) {
           hour12: true,
         });
 
-        const emailHtml = getEventRsvpNotificationEmail({
-          guest: {
-            firstName: guest.firstName,
-            lastName: guest.lastName,
-            email: guest.email,
+        const rendered = await renderEmailTemplate(
+          weddingId,
+          "event_rsvp_notification",
+          {
+            FIRST_NAME: guest.firstName,
+            LAST_NAME: guest.lastName || "",
+            EMAIL: guest.email || "",
+            INVITE_CODE: guest.inviteCode ?? "",
+            EVENT_NAME: event.name,
+            ATTENDING: attending ? "Yes" : "No",
+            ATTENDING_LABEL: attending ? "is attending" : "declined",
+            SUBMITTED_AT: submittedAt,
           },
-          inviteCode: guest.inviteCode ?? "",
-          eventName: event.name,
-          attending,
-          submittedAt,
-        });
+        );
 
-        await sendEmail({
-          from: getEmailFromAddress(settings, "Wedding RSVP"),
-          to: adminEmails,
-          subject: `Event RSVP: ${guest.firstName} ${attending ? "is attending" : "declined"} ${event.name}`,
-          html: emailHtml,
-        });
+        if (rendered) {
+          await sendEmail({
+            from: getEmailFromAddress(settings, "Wedding RSVP"),
+            to: adminEmails,
+            subject: rendered.subject,
+            html: rendered.html,
+          });
+        }
       }
     } catch (emailError) {
       // Log but don't fail the RSVP submission if email fails
