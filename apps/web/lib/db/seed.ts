@@ -278,6 +278,7 @@ async function seedData() {
 
   // --- Wedding 1 email templates ---
   await db.emailTemplate.createMany({
+    skipDuplicates: true,
     data: getDefaultTemplates(weddingId),
   });
 
@@ -442,6 +443,7 @@ async function seedData() {
 
   // Create email templates for second wedding
   await db.emailTemplate.createMany({
+    skipDuplicates: true,
     data: getDefaultTemplates(wedding2.id),
   });
 
