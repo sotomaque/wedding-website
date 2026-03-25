@@ -7,8 +7,8 @@ import {
   getEmailFromAddress,
   getNotificationRecipients,
 } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
-import { getActivitiesInvitationEmail } from "@/lib/email/templates/activities-invitation";
 import { weddingUrl } from "@/lib/url";
 
 /**
@@ -27,12 +27,7 @@ export async function POST(request: NextRequest) {
     if ("status" in auth) return auth;
 
     const body = await request.json();
-    const {
-      guestId,
-      email: emailOverride,
-      templateId,
-      subject: customSubject,
-    } = body;
+    const { guestId, email: emailOverride } = body;
 
     if (!guestId) {
       return NextResponse.json(
@@ -86,44 +81,31 @@ export async function POST(request: NextRequest) {
     const thingsToDoUrl = `${weddingUrl(settings.slug, "/things-to-do")}?code=${guest.inviteCode}`;
 
     try {
-      let result: { error: Error | null };
+      const rendered = await renderEmailTemplate(
+        weddingId,
+        "activities_invitation",
+        {
+          FIRST_NAME: guest.firstName,
+          LAST_NAME: guest.lastName || "",
+          INVITE_CODE: guest.inviteCode ?? "",
+          THINGS_TO_DO_URL: thingsToDoUrl,
+          APP_URL: appUrl,
+        },
+      );
 
-      if (templateId) {
-        // Use Resend template with variables
-        result = await sendEmail({
-          from: getEmailFromAddress(settings),
-          to: recipientEmail,
-          subject:
-            customSubject ||
-            "Explore San Diego - Things to Do Before the Wedding!",
-          template: {
-            id: templateId,
-            variables: {
-              FIRST_NAME: guest.firstName,
-              LAST_NAME: guest.lastName || "",
-              INVITE_CODE: guest.inviteCode ?? "",
-              THINGS_TO_DO_URL: thingsToDoUrl,
-              APP_URL: appUrl,
-            },
-          },
-        });
-      } else {
-        // Use hardcoded template
-        const emailHtml = getActivitiesInvitationEmail({
-          firstName: guest.firstName,
-          lastName: guest.lastName,
-          inviteCode: guest.inviteCode ?? "",
-          thingsToDoUrl,
-          appUrl,
-        });
-
-        result = await sendEmail({
-          from: getEmailFromAddress(settings),
-          to: recipientEmail,
-          subject: "Explore San Diego - Things to Do Before the Wedding! 🌴",
-          html: emailHtml,
-        });
+      if (!rendered) {
+        return NextResponse.json(
+          { error: "Activities invitation template is inactive or not found" },
+          { status: 400 },
+        );
       }
+
+      const result = await sendEmail({
+        from: getEmailFromAddress(settings),
+        to: recipientEmail,
+        subject: rendered.subject,
+        html: rendered.html,
+      });
 
       if (result.error) {
         console.error("Error sending activities email:", result.error);

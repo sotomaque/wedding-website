@@ -3,11 +3,11 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
-import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import {
   getEmailFromAddress,
   getNotificationRecipients,
 } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { weddingUrl } from "@/lib/url";
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     if ("status" in auth) return auth;
 
     const body = await request.json();
-    const { guestIds, templateId, subject: customSubject } = body;
+    const { guestIds } = body;
 
     if (!guestIds || !Array.isArray(guestIds) || guestIds.length === 0) {
       return NextResponse.json(
@@ -109,6 +109,28 @@ export async function POST(request: NextRequest) {
       console.error("Error fetching wedding date:", dateError);
     }
 
+    // Render DB-based template once (same template for all guests, variables replaced per-guest)
+    // We do a test render to check if the template is active
+    const testRendered = await renderEmailTemplate(
+      weddingId,
+      "wedding_invitation",
+      {
+        FIRST_NAME: "",
+        LAST_NAME: "",
+        INVITE_CODE: "",
+        RSVP_URL: "",
+        APP_URL: appUrl,
+        WEDDING_DATE: weddingDate,
+      },
+    );
+
+    if (!testRendered) {
+      return NextResponse.json(
+        { error: "Wedding invitation template is inactive or not found" },
+        { status: 400 },
+      );
+    }
+
     // Send emails to all guests
     let sentCount = 0;
     const errors: { guest: string; error: string }[] = [];
@@ -117,24 +139,32 @@ export async function POST(request: NextRequest) {
       const rsvpUrl = `${weddingUrl(settings.slug, "/rsvp")}?code=${guest.inviteCode}`;
 
       try {
-        // Use Resend template (default: wedding-invitation template)
-        const templateToUse = templateId || WEDDING_INVITATION_TEMPLATE_ALIAS;
+        const rendered = await renderEmailTemplate(
+          weddingId,
+          "wedding_invitation",
+          {
+            FIRST_NAME: guest.firstName || "",
+            LAST_NAME: guest.lastName || "",
+            INVITE_CODE: guest.inviteCode ?? "",
+            RSVP_URL: rsvpUrl,
+            APP_URL: appUrl,
+            WEDDING_DATE: weddingDate,
+          },
+        );
+
+        if (!rendered) {
+          errors.push({
+            guest: `${guest.firstName} ${guest.lastName || ""}`.trim(),
+            error: "Template inactive",
+          });
+          continue;
+        }
 
         const result = await sendEmail({
           from: getEmailFromAddress(settings, "Wedding Invitation"),
           to: guest.email as string,
-          subject: customSubject || "You're Invited to Our Wedding!",
-          template: {
-            id: templateToUse,
-            variables: {
-              FIRST_NAME: guest.firstName || "",
-              LAST_NAME: guest.lastName || "",
-              INVITE_CODE: guest.inviteCode ?? "",
-              RSVP_URL: rsvpUrl,
-              APP_URL: appUrl,
-              WEDDING_DATE: weddingDate,
-            },
-          },
+          subject: rendered.subject,
+          html: rendered.html,
         });
 
         if (result.error) {

@@ -1,9 +1,10 @@
 "use client";
 
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { ArrowLeft, Copy, Loader2, Pencil, Send } from "lucide-react";
+import { Switch } from "@workspace/ui/components/switch";
+import { ArrowLeft, Copy, Loader2, Pencil } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
@@ -13,54 +14,40 @@ interface TemplateViewerProps {
   template: Template;
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  wedding_invitation: "Wedding Invitation",
+  rsvp_notification: "RSVP Notification",
+  gift_notification: "Gift Notification",
+  activities_invitation: "Activities Invitation",
+  event_invitation: "Event Invitation",
+  event_rsvp_notification: "Event RSVP Notification",
+  hotel_interest_notification: "Hotel Interest Notification",
+  calendar_invite: "Calendar Invite",
+};
+
 export function TemplateViewer({ template }: TemplateViewerProps) {
-  const router = useRouter();
   const slug = useWeddingSlug();
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [isActive, setIsActive] = useState(template.isActive);
+  const [isToggling, setIsToggling] = useState(false);
 
-  async function handlePublish() {
-    setIsPublishing(true);
+  async function handleToggleActive(checked: boolean) {
+    setIsToggling(true);
     try {
-      const response = await fetch(
-        `/api/admin/templates/${template.id}/publish`,
-        {
-          method: "POST",
-        },
-      );
+      const response = await fetch(`/api/admin/templates/${template.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: checked }),
+      });
 
-      if (!response.ok) throw new Error("Failed to publish template");
+      if (!response.ok) throw new Error("Failed to update template");
 
-      toast.success("Template published");
-      router.refresh();
-    } catch (err) {
-      console.error("Error publishing template:", err);
-      toast.error("Failed to publish template");
+      setIsActive(checked);
+      toast.success(checked ? "Template enabled" : "Template disabled");
+    } catch (error) {
+      console.error("Error toggling template:", error);
+      toast.error("Failed to update template");
     } finally {
-      setIsPublishing(false);
-    }
-  }
-
-  async function handleDuplicate() {
-    setIsDuplicating(true);
-    try {
-      const response = await fetch(
-        `/api/admin/templates/${template.id}/duplicate`,
-        {
-          method: "POST",
-        },
-      );
-
-      if (!response.ok) throw new Error("Failed to duplicate template");
-
-      const data = await response.json();
-      toast.success("Template duplicated");
-      router.push(`/${slug}/admin/templates/${data.template.id}`);
-    } catch (err) {
-      console.error("Error duplicating template:", err);
-      toast.error("Failed to duplicate template");
-    } finally {
-      setIsDuplicating(false);
+      setIsToggling(false);
     }
   }
 
@@ -87,46 +74,43 @@ export function TemplateViewer({ template }: TemplateViewerProps) {
 
       <div className="flex flex-wrap justify-between items-start gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold mb-2">{template.name}</h1>
-          {template.subject && (
-            <p className="text-muted-foreground mb-2">
-              Subject: {template.subject}
-            </p>
-          )}
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-2xl font-bold">{template.name}</h1>
+            <Badge variant="secondary">
+              {TYPE_LABELS[template.type] || template.type}
+            </Badge>
+            {!isActive && (
+              <Badge variant="outline" className="text-muted-foreground">
+                Disabled
+              </Badge>
+            )}
+          </div>
+          <p className="text-muted-foreground mb-2">
+            Subject: {template.subject}
+          </p>
           <p className="text-sm text-muted-foreground">
-            Created: {formatDate(template.created_at)}
-            {template.updated_at &&
-              template.updated_at !== template.created_at && (
-                <> | Updated: {formatDate(template.updated_at)}</>
-              )}
+            Created: {formatDate(template.createdAt)}
+            {template.updatedAt !== template.createdAt && (
+              <> | Updated: {formatDate(template.updatedAt)}</>
+            )}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleDuplicate}
-            disabled={isDuplicating}
-          >
-            {isDuplicating ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {isToggling ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Copy className="h-4 w-4 mr-2" />
+              <Switch
+                checked={isActive}
+                onCheckedChange={handleToggleActive}
+                aria-label="Toggle template active"
+              />
             )}
-            Duplicate
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handlePublish}
-            disabled={isPublishing}
-          >
-            {isPublishing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4 mr-2" />
-            )}
-            Publish
-          </Button>
+            <span className="text-sm text-muted-foreground">
+              {isActive ? "Active" : "Disabled"}
+            </span>
+          </div>
           <Link href={`/${slug}/admin/templates/${template.id}/edit`}>
             <Button>
               <Pencil className="h-4 w-4 mr-2" />
@@ -136,11 +120,22 @@ export function TemplateViewer({ template }: TemplateViewerProps) {
         </div>
       </div>
 
-      {/* Template ID */}
-      <div className="mb-6 p-4 bg-muted/50 rounded-lg">
-        <p className="text-sm text-muted-foreground mb-1">Template ID</p>
-        <code className="text-sm font-mono">{template.id}</code>
-      </div>
+      {/* Variables */}
+      {template.variables.length > 0 && (
+        <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+          <p className="text-sm font-medium mb-2">Available Variables</p>
+          <div className="flex flex-wrap gap-2">
+            {template.variables.map((variable) => (
+              <code
+                key={variable.key}
+                className="text-xs bg-background px-2 py-1 rounded border"
+              >
+                {`{{{${variable.key}}}}`}
+              </code>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Preview */}
       <div className="border rounded-lg overflow-hidden">
@@ -148,9 +143,9 @@ export function TemplateViewer({ template }: TemplateViewerProps) {
           <span className="text-sm font-medium">Preview</span>
         </div>
         <div className="p-4 bg-white">
-          {template.html ? (
+          {template.htmlBody ? (
             <iframe
-              srcDoc={template.html}
+              srcDoc={template.htmlBody}
               className="w-full min-h-[600px] border-0"
               title="Template Preview"
               sandbox="allow-same-origin"
@@ -164,7 +159,7 @@ export function TemplateViewer({ template }: TemplateViewerProps) {
       </div>
 
       {/* HTML Source */}
-      {template.html && (
+      {template.htmlBody && (
         <div className="mt-6 border rounded-lg overflow-hidden">
           <div className="bg-muted px-4 py-2 border-b flex justify-between items-center">
             <span className="text-sm font-medium">HTML Source</span>
@@ -172,7 +167,7 @@ export function TemplateViewer({ template }: TemplateViewerProps) {
               variant="ghost"
               size="sm"
               onClick={() => {
-                navigator.clipboard.writeText(template.html || "");
+                navigator.clipboard.writeText(template.htmlBody || "");
                 toast.success("HTML copied to clipboard");
               }}
             >
@@ -181,7 +176,7 @@ export function TemplateViewer({ template }: TemplateViewerProps) {
             </Button>
           </div>
           <pre className="p-4 bg-background overflow-x-auto text-xs">
-            <code>{template.html}</code>
+            <code>{template.htmlBody}</code>
           </pre>
         </div>
       )}

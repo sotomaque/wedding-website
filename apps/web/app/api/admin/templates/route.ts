@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
-import { getResendClient } from "@/lib/email/resend-client";
 
 /**
- * List email templates
- * @description Fetch all email templates from Resend
+ * List email templates for the current wedding
  * @response 200:SuccessResponse
  * @auth bearer
  * @tag Admin - Templates
@@ -17,25 +16,12 @@ export async function GET(): Promise<NextResponse> {
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
-    const resend = getResendClient();
-    if (!resend) {
-      return NextResponse.json(
-        { error: "Email not configured" },
-        { status: 500 },
-      );
-    }
+    const templates = await db.emailTemplate.findMany({
+      where: { weddingId },
+      orderBy: { type: "asc" },
+    });
 
-    const { data, error } = await resend.templates.list();
-
-    if (error) {
-      console.error("Error listing templates:", error);
-      return NextResponse.json(
-        { error: error.message || "Failed to list templates" },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json({ templates: data?.data || [] });
+    return NextResponse.json({ templates });
   } catch (error) {
     console.error("Error listing templates:", error);
     return NextResponse.json(
@@ -46,8 +32,7 @@ export async function GET(): Promise<NextResponse> {
 }
 
 /**
- * Create email template
- * @description Create a new email template in Resend with optional variables and auto-publish
+ * Create a new email template (for flexibility, though templates are seeded)
  * @body CreateTemplateBody
  * @response 201:SuccessResponse
  * @auth bearer
@@ -61,94 +46,28 @@ export async function POST(request: Request): Promise<NextResponse> {
     if ("status" in auth) return auth;
 
     const body = await request.json();
-    const { name, subject, html, variables, publish } = body;
+    const { type, name, subject, htmlBody, isActive, variables } = body;
 
-    if (!name || !html) {
+    if (!type || !name || !subject || !htmlBody) {
       return NextResponse.json(
-        { error: "Name and HTML are required" },
+        { error: "type, name, subject, and htmlBody are required" },
         { status: 400 },
       );
     }
 
-    const resend = getResendClient();
-    if (!resend) {
-      return NextResponse.json(
-        { error: "Email not configured" },
-        { status: 500 },
-      );
-    }
-
-    // Reserved variable names in Resend - these are auto-populated and cannot be defined
-    const RESERVED_VARIABLES = [
-      "FIRST_NAME",
-      "LAST_NAME",
-      "EMAIL",
-      "RESEND_UNSUBSCRIBE_URL",
-      "contact",
-      "this",
-    ];
-
-    // Filter out reserved variables and transform the rest
-    const customVariables =
-      variables && Array.isArray(variables)
-        ? variables
-            .filter((v: { key: string }) => !RESERVED_VARIABLES.includes(v.key))
-            .map(
-              (v: {
-                key: string;
-                type: "string" | "number";
-                fallbackValue: string | number;
-              }) => {
-                if (v.type === "number") {
-                  return {
-                    key: v.key,
-                    type: "number" as const,
-                    fallbackValue:
-                      typeof v.fallbackValue === "number"
-                        ? v.fallbackValue
-                        : Number(v.fallbackValue) || null,
-                  };
-                }
-                return {
-                  key: v.key,
-                  type: "string" as const,
-                  fallbackValue: String(v.fallbackValue || ""),
-                };
-              },
-            )
-        : undefined;
-
-    console.log("Creating template with:", {
-      name,
-      subject,
-      hasHtml: !!html,
-      variables: customVariables,
+    const template = await db.emailTemplate.create({
+      data: {
+        weddingId,
+        type,
+        name,
+        subject,
+        htmlBody,
+        isActive: isActive ?? true,
+        variables: variables ?? [],
+      },
     });
 
-    const { data, error } = await resend.templates.create({
-      name,
-      html,
-      ...(subject && { subject }),
-      ...(customVariables &&
-        customVariables.length > 0 && { variables: customVariables }),
-    });
-
-    console.log("Resend response:", { data, error });
-
-    if (error) {
-      console.error("Error creating template:", error);
-      return NextResponse.json(
-        { error: error.message || "Failed to create template" },
-        { status: 500 },
-      );
-    }
-
-    // Publish if requested
-    if (publish && data?.id) {
-      await resend.templates.publish(data.id);
-    }
-
-    return NextResponse.json({ template: data }, { status: 201 });
+    return NextResponse.json({ template }, { status: 201 });
   } catch (error) {
     console.error("Error creating template:", error);
     return NextResponse.json(

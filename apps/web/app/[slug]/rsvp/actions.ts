@@ -3,18 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
-import {
-  buildCalendarEmailHtml,
-  generateIcs,
-} from "@/lib/calendar/generate-ics";
+import { generateIcs } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
-import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import {
   getEmailFromAddress,
   getNotificationRecipients,
 } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { multiGuestRsvpSchema } from "@/lib/validations/rsvp";
 
@@ -334,31 +331,37 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
             .map((g) => g.email)
             .join(", ");
 
-          await sendEmail({
-            from: capturedFromAddress,
-            to: recipients,
-            template: {
-              id: RSVP_NOTIFICATION_TEMPLATE_ALIAS,
-              variables: {
-                GUEST_NAMES: guestNames,
-                GUEST_EMAILS: guestEmails || "No email provided",
-                INVITE_CODE: capturedInviteCode.toUpperCase(),
-                STATUS_TEXT: capturedAttending ? "Attending" : "Not Attending",
-                STATUS_EMOJI: capturedAttending ? "\u2705" : "\u274C",
-                DIETARY_RESTRICTIONS: capturedDietary || "None",
-                GUEST_COUNT_TEXT:
-                  updatedGuests.length > 1
-                    ? `${updatedGuests.length} guests`
-                    : "1 guest",
-                CONFIRMATION_TEXT: capturedAttending ? "confirmed" : "declined",
-                SUBMITTED_AT: new Date().toLocaleString("en-US", {
-                  dateStyle: "full",
-                  timeStyle: "short",
-                  timeZone: "America/Los_Angeles",
-                }),
-              },
+          const rsvpTemplate = await renderEmailTemplate(
+            weddingId,
+            "rsvp_notification",
+            {
+              GUEST_NAMES: guestNames,
+              GUEST_EMAILS: guestEmails || "No email provided",
+              INVITE_CODE: capturedInviteCode.toUpperCase(),
+              STATUS_TEXT: capturedAttending ? "Attending" : "Not Attending",
+              STATUS_EMOJI: capturedAttending ? "\u2705" : "\u274C",
+              DIETARY_RESTRICTIONS: capturedDietary || "None",
+              GUEST_COUNT_TEXT:
+                updatedGuests.length > 1
+                  ? `${updatedGuests.length} guests`
+                  : "1 guest",
+              CONFIRMATION_TEXT: capturedAttending ? "confirmed" : "declined",
+              SUBMITTED_AT: new Date().toLocaleString("en-US", {
+                dateStyle: "full",
+                timeStyle: "short",
+                timeZone: "America/Los_Angeles",
+              }),
             },
-          });
+          );
+
+          if (rsvpTemplate) {
+            await sendEmail({
+              from: capturedFromAddress,
+              to: recipients,
+              subject: rsvpTemplate.subject,
+              html: rsvpTemplate.html,
+            });
+          }
 
           // Send calendar invites to attending guests with an email address
           const attendingWithEmail = updatedGuests.filter(
@@ -411,31 +414,48 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                     guestName,
                     settings.coupleName,
                   );
-                  const html = buildCalendarEmailHtml(
-                    eventsForIcs,
-                    guest.firstName,
+
+                  const firstEvent = eventsForIcs[0];
+                  const calendarTemplate = await renderEmailTemplate(
+                    weddingId,
+                    "calendar_invite",
+                    {
+                      GUEST_NAME: guestName,
+                      COUPLE_NAMES: capturedCoupleName,
+                      EVENT_NAME: firstEvent?.name ?? "Wedding",
+                      EVENT_DATE: firstEvent?.event_date
+                        ? firstEvent.event_date.toLocaleDateString("en-US", {
+                            dateStyle: "full",
+                          })
+                        : "",
+                      EVENT_TIME: firstEvent?.start_time ?? "",
+                      VENUE_NAME: firstEvent?.location_name ?? "",
+                      VENUE_ADDRESS: firstEvent?.location_address ?? "",
+                    },
                   );
 
-                  await sendEmail({
-                    from: capturedCalendarFromAddress,
-                    to: guest.email as string,
-                    subject: `Your Calendar Invite \u2014 ${capturedCoupleName}'s Wedding \uD83D\uDC95`,
-                    html,
-                    attachments: [
-                      {
-                        filename: `${capturedSlug}-wedding.ics`,
-                        content: Buffer.from(icsContent).toString("base64"),
-                      },
-                    ],
-                  });
+                  if (calendarTemplate) {
+                    await sendEmail({
+                      from: capturedCalendarFromAddress,
+                      to: guest.email as string,
+                      subject: calendarTemplate.subject,
+                      html: calendarTemplate.html,
+                      attachments: [
+                        {
+                          filename: `${capturedSlug}-wedding.ics`,
+                          content: Buffer.from(icsContent).toString("base64"),
+                        },
+                      ],
+                    });
 
-                  await db.guest.update({
-                    where: { id: guest.id },
-                    data: {
-                      calendarInviteSent: true,
-                      calendarInviteSentAt: new Date().toISOString(),
-                    },
-                  });
+                    await db.guest.update({
+                      where: { id: guest.id },
+                      data: {
+                        calendarInviteSent: true,
+                        calendarInviteSentAt: new Date().toISOString(),
+                      },
+                    });
+                  }
                 } catch (calendarError) {
                   console.error(
                     `Error sending calendar invite to guest ${guest.id}:`,
@@ -726,32 +746,39 @@ export async function submitMultiGuestRSVP(
             .join(", ");
           const anyAttending = attendingGuests.length > 0;
 
-          await sendEmail({
-            from: capturedFromAddress,
-            to: recipientsMulti,
-            template: {
-              id: RSVP_NOTIFICATION_TEMPLATE_ALIAS,
-              variables: {
-                GUEST_NAMES: guestNames,
-                GUEST_EMAILS: guestEmails || "No email provided",
-                INVITE_CODE: capturedInviteCode.toUpperCase(),
-                STATUS_TEXT: `${attendingNames || "None"} attending${decliningNames ? `, ${decliningNames} declined` : ""}`,
-                STATUS_EMOJI: anyAttending ? "\u2705" : "\u274C",
-                DIETARY_RESTRICTIONS:
-                  capturedGuestRsvps
-                    .filter((g) => g.dietaryRestrictions)
-                    .map((g) => `${g.firstName}: ${g.dietaryRestrictions}`)
-                    .join("; ") || "None",
-                GUEST_COUNT_TEXT: `${attendingGuests.length} attending, ${decliningGuests.length} declined`,
-                CONFIRMATION_TEXT: anyAttending ? "confirmed" : "declined",
-                SUBMITTED_AT: new Date().toLocaleString("en-US", {
-                  dateStyle: "full",
-                  timeStyle: "short",
-                  timeZone: "America/Los_Angeles",
-                }),
-              },
+          const rsvpTemplateMulti = await renderEmailTemplate(
+            weddingId,
+            "rsvp_notification",
+            {
+              GUEST_NAMES: guestNames,
+              GUEST_EMAILS: guestEmails || "No email provided",
+              INVITE_CODE: capturedInviteCode.toUpperCase(),
+              STATUS_TEXT: `${attendingNames || "None"} attending${decliningNames ? `, ${decliningNames} declined` : ""}`,
+              STATUS_EMOJI: anyAttending ? "\u2705" : "\u274C",
+              DIETARY_RESTRICTIONS:
+                capturedGuestRsvps
+                  .filter((g) => g.dietaryRestrictions)
+                  .map((g) => `${g.firstName}: ${g.dietaryRestrictions}`)
+                  .join("; ") || "None",
+              GUEST_COUNT_TEXT: `${attendingGuests.length} attending, ${decliningGuests.length} declined`,
+              CONFIRMATION_TEXT: anyAttending ? "confirmed" : "declined",
+              SUBMITTED_AT: new Date().toLocaleString("en-US", {
+                dateStyle: "full",
+                timeStyle: "short",
+                timeZone: "America/Los_Angeles",
+              }),
             },
-          });
+          );
+
+          if (rsvpTemplateMulti) {
+            await sendEmail({
+              from: capturedFromAddress,
+              to: recipientsMulti,
+              subject: rsvpTemplateMulti.subject,
+              html: rsvpTemplateMulti.html,
+            });
+          }
+
           // Send calendar invites to attending guests with an email address
           const attendingWithEmailMulti = updatedGuests.filter(
             (g) => g.rsvpStatus === "yes" && g.email?.includes("@"),
@@ -803,31 +830,48 @@ export async function submitMultiGuestRSVP(
                     guestName,
                     settingsMulti.coupleName,
                   );
-                  const html = buildCalendarEmailHtml(
-                    eventsForIcs,
-                    guest.firstName,
+
+                  const firstEvent = eventsForIcs[0];
+                  const calendarTemplateMulti = await renderEmailTemplate(
+                    weddingId,
+                    "calendar_invite",
+                    {
+                      GUEST_NAME: guestName,
+                      COUPLE_NAMES: capturedCoupleName,
+                      EVENT_NAME: firstEvent?.name ?? "Wedding",
+                      EVENT_DATE: firstEvent?.event_date
+                        ? firstEvent.event_date.toLocaleDateString("en-US", {
+                            dateStyle: "full",
+                          })
+                        : "",
+                      EVENT_TIME: firstEvent?.start_time ?? "",
+                      VENUE_NAME: firstEvent?.location_name ?? "",
+                      VENUE_ADDRESS: firstEvent?.location_address ?? "",
+                    },
                   );
 
-                  await sendEmail({
-                    from: capturedCalendarFromAddress,
-                    to: guest.email as string,
-                    subject: `Your Calendar Invite \u2014 ${capturedCoupleName}'s Wedding \uD83D\uDC95`,
-                    html,
-                    attachments: [
-                      {
-                        filename: `${capturedSlug}-wedding.ics`,
-                        content: Buffer.from(icsContent).toString("base64"),
-                      },
-                    ],
-                  });
+                  if (calendarTemplateMulti) {
+                    await sendEmail({
+                      from: capturedCalendarFromAddress,
+                      to: guest.email as string,
+                      subject: calendarTemplateMulti.subject,
+                      html: calendarTemplateMulti.html,
+                      attachments: [
+                        {
+                          filename: `${capturedSlug}-wedding.ics`,
+                          content: Buffer.from(icsContent).toString("base64"),
+                        },
+                      ],
+                    });
 
-                  await db.guest.update({
-                    where: { id: guest.id },
-                    data: {
-                      calendarInviteSent: true,
-                      calendarInviteSentAt: new Date().toISOString(),
-                    },
-                  });
+                    await db.guest.update({
+                      where: { id: guest.id },
+                      data: {
+                        calendarInviteSent: true,
+                        calendarInviteSentAt: new Date().toISOString(),
+                      },
+                    });
+                  }
                 } catch (calendarError) {
                   console.error(
                     `Error sending calendar invite to guest ${guest.id}:`,
