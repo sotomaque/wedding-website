@@ -39,7 +39,7 @@ CREATE INDEX IF NOT EXISTS idx_email_templates_wedding_id ON email_templates (we
 
 -- 4. Seed default templates for all existing weddings that don't have them yet
 -- Uses a simple placeholder HTML; admins can customize via the template editor.
-INSERT INTO email_templates (wedding_id, type, name, subject, html_body, is_active, variables)
+INSERT INTO email_templates (wedding_id, type, name, subject, html_body, is_active, variables, created_at, updated_at)
 SELECT
   w.id,
   t.type,
@@ -47,7 +47,9 @@ SELECT
   t.subject,
   t.html_body,
   true,
-  t.variables
+  t.variables,
+  now(),
+  now()
 FROM weddings w
 CROSS JOIN (VALUES
   (
