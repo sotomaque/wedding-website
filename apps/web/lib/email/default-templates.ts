@@ -1,19 +1,6 @@
-import type { EmailTemplateType } from "@prisma/client";
+import type { EmailTemplateType, Prisma } from "@prisma/client";
 
-interface TemplateVariable {
-  key: string;
-  description: string;
-}
-
-interface DefaultTemplate {
-  weddingId: string;
-  type: EmailTemplateType;
-  name: string;
-  subject: string;
-  htmlBody: string;
-  isActive: boolean;
-  variables: TemplateVariable[];
-}
+type DefaultTemplate = Prisma.EmailTemplateCreateManyInput;
 
 /**
  * Returns the default email templates for a new wedding.
