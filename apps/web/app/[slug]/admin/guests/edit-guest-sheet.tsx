@@ -14,9 +14,15 @@ import {
 } from "@workspace/ui/components/alert-dialog";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import { Calendar } from "@workspace/ui/components/calendar";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { PhoneInput } from "@workspace/ui/components/phone-input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
 import {
   Select,
   SelectContent,
@@ -33,10 +39,14 @@ import {
 } from "@workspace/ui/components/sheet";
 import { Switch } from "@workspace/ui/components/switch";
 import { Textarea } from "@workspace/ui/components/textarea";
+import { cn } from "@workspace/ui/lib/utils";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import {
   type EditGuestFormData,
   editGuestSchema,
@@ -496,9 +506,10 @@ export function EditGuestSheet({
 
               <div className="space-y-2">
                 <Label htmlFor="mailingAddress">Mailing Address</Label>
-                <Input
+                <AddressAutocomplete
                   id="mailingAddress"
-                  {...register("mailingAddress")}
+                  value={watch("mailingAddress") || ""}
+                  onChange={(val) => setValue("mailingAddress", val)}
                   placeholder="123 Main St, City, State, ZIP"
                 />
               </div>
@@ -667,12 +678,51 @@ export function EditGuestSheet({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="arrivalDate">Arrival Date</Label>
-                    <Input
-                      id="arrivalDate"
-                      type="date"
-                      {...register("arrivalDate")}
-                    />
+                    {/* biome-ignore lint/a11y/noLabelWithoutControl: Calendar popover trigger acts as the control */}
+                    <label className="text-sm font-medium">Arrival Date</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !watch("arrivalDate") && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {watch("arrivalDate")
+                            ? format(
+                                new Date(`${watch("arrivalDate")}T00:00:00`),
+                                "MMM d, yyyy",
+                              )
+                            : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={
+                            watch("arrivalDate")
+                              ? new Date(`${watch("arrivalDate")}T00:00:00`)
+                              : undefined
+                          }
+                          onSelect={(date) => {
+                            if (date) {
+                              const yyyy = date.getFullYear();
+                              const mm = String(date.getMonth() + 1).padStart(
+                                2,
+                                "0",
+                              );
+                              const dd = String(date.getDate()).padStart(
+                                2,
+                                "0",
+                              );
+                              setValue("arrivalDate", `${yyyy}-${mm}-${dd}`);
+                            }
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="arrivalTransport">Arrival Transport</Label>
@@ -686,12 +736,53 @@ export function EditGuestSheet({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="departureDate">Departure Date</Label>
-                    <Input
-                      id="departureDate"
-                      type="date"
-                      {...register("departureDate")}
-                    />
+                    {/* biome-ignore lint/a11y/noLabelWithoutControl: Calendar popover trigger acts as the control */}
+                    <label className="text-sm font-medium">
+                      Departure Date
+                    </label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !watch("departureDate") && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {watch("departureDate")
+                            ? format(
+                                new Date(`${watch("departureDate")}T00:00:00`),
+                                "MMM d, yyyy",
+                              )
+                            : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={
+                            watch("departureDate")
+                              ? new Date(`${watch("departureDate")}T00:00:00`)
+                              : undefined
+                          }
+                          onSelect={(date) => {
+                            if (date) {
+                              const yyyy = date.getFullYear();
+                              const mm = String(date.getMonth() + 1).padStart(
+                                2,
+                                "0",
+                              );
+                              const dd = String(date.getDate()).padStart(
+                                2,
+                                "0",
+                              );
+                              setValue("departureDate", `${yyyy}-${mm}-${dd}`);
+                            }
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="departureTransport">

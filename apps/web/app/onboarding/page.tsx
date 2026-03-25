@@ -19,6 +19,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { TIMEZONES } from "@/lib/constants/timezones";
 import { createWedding, validateSlug } from "./actions";
 
@@ -376,12 +377,10 @@ export default function OnboardingPage() {
                       updateField("ceremonyVenue", e.target.value)
                     }
                   />
-                  <Input
+                  <AddressAutocomplete
                     placeholder="Address"
                     value={formData.ceremonyAddress}
-                    onChange={(e) =>
-                      updateField("ceremonyAddress", e.target.value)
-                    }
+                    onChange={(val) => updateField("ceremonyAddress", val)}
                   />
                 </div>
               </div>
@@ -401,12 +400,10 @@ export default function OnboardingPage() {
                       updateField("receptionVenue", e.target.value)
                     }
                   />
-                  <Input
+                  <AddressAutocomplete
                     placeholder="Address"
                     value={formData.receptionAddress}
-                    onChange={(e) =>
-                      updateField("receptionAddress", e.target.value)
-                    }
+                    onChange={(val) => updateField("receptionAddress", val)}
                   />
                 </div>
               </div>

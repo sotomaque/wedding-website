@@ -11,9 +11,15 @@ function toDateInput(val: unknown): string {
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@workspace/ui/components/button";
+import { Calendar } from "@workspace/ui/components/calendar";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { PhoneInput } from "@workspace/ui/components/phone-input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
 import {
   Select,
   SelectContent,
@@ -21,11 +27,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
+import { cn } from "@workspace/ui/lib/utils";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import {
   type MultiGuestRsvpFormData,
@@ -239,9 +249,10 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
               >
                 Mailing Address (Optional)
               </label>
-              <Input
+              <AddressAutocomplete
                 id="mailing-address"
-                {...register("mailingAddress")}
+                value={watch("mailingAddress") || ""}
+                onChange={(val) => setValue("mailingAddress", val)}
                 placeholder="123 Main St, City, State, ZIP"
               />
             </div>
@@ -321,17 +332,50 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label
-                    htmlFor="arrival-date"
-                    className="block text-sm font-medium mb-2"
-                  >
+                  {/* biome-ignore lint/a11y/noLabelWithoutControl: Calendar popover trigger acts as the control */}
+                  <label className="block text-sm font-medium mb-2">
                     Arrival Date
                   </label>
-                  <Input
-                    id="arrival-date"
-                    type="date"
-                    {...register("arrivalDate")}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !watch("arrivalDate") && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {watch("arrivalDate")
+                          ? format(
+                              new Date(`${watch("arrivalDate")}T00:00:00`),
+                              "MMM d, yyyy",
+                            )
+                          : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          watch("arrivalDate")
+                            ? new Date(`${watch("arrivalDate")}T00:00:00`)
+                            : undefined
+                        }
+                        onSelect={(date) => {
+                          if (date) {
+                            const yyyy = date.getFullYear();
+                            const mm = String(date.getMonth() + 1).padStart(
+                              2,
+                              "0",
+                            );
+                            const dd = String(date.getDate()).padStart(2, "0");
+                            setValue("arrivalDate", `${yyyy}-${mm}-${dd}`);
+                          }
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <label
@@ -350,17 +394,50 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label
-                    htmlFor="departure-date"
-                    className="block text-sm font-medium mb-2"
-                  >
+                  {/* biome-ignore lint/a11y/noLabelWithoutControl: Calendar popover trigger acts as the control */}
+                  <label className="block text-sm font-medium mb-2">
                     Departure Date
                   </label>
-                  <Input
-                    id="departure-date"
-                    type="date"
-                    {...register("departureDate")}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !watch("departureDate") && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {watch("departureDate")
+                          ? format(
+                              new Date(`${watch("departureDate")}T00:00:00`),
+                              "MMM d, yyyy",
+                            )
+                          : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          watch("departureDate")
+                            ? new Date(`${watch("departureDate")}T00:00:00`)
+                            : undefined
+                        }
+                        onSelect={(date) => {
+                          if (date) {
+                            const yyyy = date.getFullYear();
+                            const mm = String(date.getMonth() + 1).padStart(
+                              2,
+                              "0",
+                            );
+                            const dd = String(date.getDate()).padStart(2, "0");
+                            setValue("departureDate", `${yyyy}-${mm}-${dd}`);
+                          }
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <label
@@ -384,9 +461,10 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
                 >
                   Where are you staying? (Optional)
                 </label>
-                <Input
+                <AddressAutocomplete
                   id="accommodation-notes"
-                  {...register("accommodationNotes")}
+                  value={watch("accommodationNotes") || ""}
+                  onChange={(val) => setValue("accommodationNotes", val)}
                   placeholder="e.g. Airbnb in La Jolla, Hotel del Coronado"
                 />
               </div>

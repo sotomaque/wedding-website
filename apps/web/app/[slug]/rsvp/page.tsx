@@ -42,8 +42,7 @@ async function RSVPContent({
       day: "numeric",
       year: "numeric",
     });
-  const rsvpDeadlineText =
-    rsvpContent?.deadline ?? settings.rsvpDeadline ?? undefined;
+  const rsvpDeadlineText = settings.rsvpDeadline ?? undefined;
 
   const rsvpDisplayProps = {
     rsvpTitle,

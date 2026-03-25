@@ -118,9 +118,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description || null;
-    if (eventDate !== undefined) updateData.eventDate = eventDate;
-    if (startTime !== undefined) updateData.startTime = startTime;
-    if (endTime !== undefined) updateData.endTime = endTime || null;
+    if (eventDate !== undefined)
+      updateData.eventDate = eventDate
+        ? new Date(`${eventDate}T00:00:00Z`)
+        : null;
+    if (startTime !== undefined)
+      updateData.startTime = startTime
+        ? new Date(`1970-01-01T${startTime}:00Z`)
+        : null;
+    if (endTime !== undefined)
+      updateData.endTime = endTime
+        ? new Date(`1970-01-01T${endTime}:00Z`)
+        : null;
     if (locationName !== undefined) updateData.locationName = locationName;
     if (locationAddress !== undefined)
       updateData.locationAddress = locationAddress || null;

@@ -6,6 +6,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import type {
   DetailsContent,
@@ -277,13 +278,14 @@ function DetailsEditor({ initial }: { initial?: DetailsContent }) {
         </div>
         <div>
           <Label htmlFor="ceremony-address">Address</Label>
-          <Input
+          <AddressAutocomplete
             id="ceremony-address"
             value={ceremony.address}
-            onChange={(e) =>
-              setCeremony((prev) => ({ ...prev, address: e.target.value }))
+            onChange={(val) =>
+              setCeremony((prev) => ({ ...prev, address: val }))
             }
             className="mt-1"
+            placeholder="Start typing an address..."
           />
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -332,13 +334,14 @@ function DetailsEditor({ initial }: { initial?: DetailsContent }) {
         </div>
         <div>
           <Label htmlFor="reception-address">Address</Label>
-          <Input
+          <AddressAutocomplete
             id="reception-address"
             value={reception.address}
-            onChange={(e) =>
-              setReception((prev) => ({ ...prev, address: e.target.value }))
+            onChange={(val) =>
+              setReception((prev) => ({ ...prev, address: val }))
             }
             className="mt-1"
+            placeholder="Start typing an address..."
           />
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -557,13 +560,11 @@ function ScheduleEditor({ initial }: { initial?: ScheduleContent }) {
 function RsvpEditor({ initial }: { initial?: RsvpContent }) {
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(initial?.title ?? "");
-  const [deadline, setDeadline] = useState(initial?.deadline ?? "");
 
   function handleSave() {
     startTransition(async () => {
       const result = await updateWeddingContent("rsvp", {
         title,
-        deadline: deadline || undefined,
       });
       if (result.success) {
         toast.success("RSVP content saved");
@@ -585,16 +586,13 @@ function RsvpEditor({ initial }: { initial?: RsvpContent }) {
           className="mt-1"
         />
       </div>
-      <div>
-        <Label htmlFor="rsvp-deadline">Deadline Text</Label>
-        <Input
-          id="rsvp-deadline"
-          value={deadline}
-          onChange={(e) => setDeadline(e.target.value)}
-          placeholder="Please RSVP by March 15, 2026"
-          className="mt-1"
-        />
-      </div>
+      <p className="text-sm text-muted-foreground">
+        The RSVP deadline is managed in{" "}
+        <a href="settings" className="underline">
+          Settings
+        </a>
+        .
+      </p>
       <Button onClick={handleSave} disabled={isPending}>
         {isPending ? "Saving..." : "Save RSVP"}
       </Button>
