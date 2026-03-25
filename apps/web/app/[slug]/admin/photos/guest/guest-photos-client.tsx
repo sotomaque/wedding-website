@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import QRCode from "react-qr-code";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 
 interface GuestPhoto {
@@ -71,7 +72,6 @@ export function GuestPhotosClient({
   }
 
   async function deletePhoto(photo: GuestPhoto) {
-    if (!confirm("Permanently delete this photo?")) return;
     setLoadingId(photo.id);
     await fetch(`/api/admin/guest-photos/${photo.id}`, { method: "DELETE" });
     setLoadingId(null);
@@ -191,14 +191,22 @@ export function GuestPhotosClient({
                   >
                     {photo.isVisible ? "Hide" : "Show"}
                   </button>
-                  <button
-                    type="button"
-                    disabled={loadingId === photo.id}
-                    onClick={() => deletePhoto(photo)}
-                    className="text-xs bg-destructive/80 hover:bg-destructive text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
+                  <ConfirmDialog
+                    trigger={
+                      <button
+                        type="button"
+                        disabled={loadingId === photo.id}
+                        className="text-xs bg-destructive/80 hover:bg-destructive text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    }
+                    title="Delete Photo"
+                    description="Permanently delete this photo? This cannot be undone."
+                    confirmLabel="Delete"
+                    variant="destructive"
+                    onConfirm={() => deletePhoto(photo)}
+                  />
                 </div>
                 {photo.uploaderName && (
                   <p className="text-white text-xs truncate">

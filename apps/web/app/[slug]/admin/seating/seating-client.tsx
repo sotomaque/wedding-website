@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import type { SeatingChart } from "@/lib/types/seating";
 
 interface SeatingClientProps {
@@ -71,10 +72,6 @@ export function SeatingClient({
   };
 
   const handleDeleteChart = async (chartId: string) => {
-    if (!confirm("Are you sure you want to delete this seating chart?")) {
-      return;
-    }
-
     try {
       const response = await fetch(`/api/admin/seating-charts/${chartId}`, {
         method: "DELETE",
@@ -155,13 +152,18 @@ export function SeatingClient({
                     Edit
                   </Button>
                 </Link>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDeleteChart(chart.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <ConfirmDialog
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  }
+                  title="Delete Seating Chart"
+                  description="Are you sure you want to delete this seating chart? This cannot be undone."
+                  confirmLabel="Delete"
+                  variant="destructive"
+                  onConfirm={() => handleDeleteChart(chart.id)}
+                />
               </div>
             </div>
           ))}

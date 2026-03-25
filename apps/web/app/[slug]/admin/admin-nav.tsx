@@ -1,6 +1,6 @@
 "use client";
 
-import { SignOutButton } from "@clerk/nextjs";
+import { UserButton } from "@clerk/nextjs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -165,14 +165,7 @@ export function AdminNav() {
             >
               Main Site
             </Link>
-            <SignOutButton>
-              <button
-                type="button"
-                className="text-sm font-medium text-destructive hover:text-destructive/80 transition-colors"
-              >
-                Logout
-              </button>
-            </SignOutButton>
+            <UserButton afterSignOutUrl="/" />
           </div>
 
           {/* Mobile Menu Button */}
@@ -231,20 +224,15 @@ export function AdminNav() {
               )}
 
               <Link
-                href="/"
+                href={`/${slug}`}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="text-lg font-medium transition-colors hover:text-accent"
               >
                 Main Site
               </Link>
-              <SignOutButton>
-                <button
-                  type="button"
-                  className="text-lg font-medium text-destructive hover:text-destructive/80 transition-colors text-left"
-                >
-                  Logout
-                </button>
-              </SignOutButton>
+              <div className="pt-2">
+                <UserButton afterSignOutUrl="/" />
+              </div>
             </div>
           </div>
         )}

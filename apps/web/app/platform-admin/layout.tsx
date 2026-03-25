@@ -1,3 +1,4 @@
+import { UserButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { env } from "@/env";
@@ -24,12 +25,15 @@ export default async function PlatformAdminLayout({
         <div className="flex items-center gap-4">
           <h1 className="font-serif text-lg">Platform Admin</h1>
         </div>
-        <a
-          href="/dashboard"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          Back to Dashboard
-        </a>
+        <div className="flex items-center gap-4">
+          <a
+            href="/dashboard"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Back to Dashboard
+          </a>
+          <UserButton afterSignOutUrl="/" />
+        </div>
       </nav>
       {children}
     </div>
