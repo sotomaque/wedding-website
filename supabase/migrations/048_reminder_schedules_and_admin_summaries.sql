@@ -1,20 +1,10 @@
--- Migration 047: RSVP reminder schedules & admin summary config
--- Adds reminder_schedules and admin_summary_configs tables, new enum values,
--- and guest reminder tracking columns.
+-- Migration 048: RSVP reminder schedules & admin summary config
+-- Adds reminder_schedules and admin_summary_configs tables,
+-- guest reminder tracking columns, and seeds default email templates.
+-- Enum values were added in migration 047 (separate transaction required by PostgreSQL).
 -- Idempotent: safe to run multiple times.
 
--- 1. Add new enum values to email_template_type
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'rsvp_reminder' AND enumtypid = 'email_template_type'::regtype) THEN
-    ALTER TYPE email_template_type ADD VALUE 'rsvp_reminder';
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'admin_summary' AND enumtypid = 'email_template_type'::regtype) THEN
-    ALTER TYPE email_template_type ADD VALUE 'admin_summary';
-  END IF;
-END $$;
-
--- 2. Add reminder tracking columns to guests table
+-- 1. Add reminder tracking columns to guests table
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'guests' AND column_name = 'last_reminder_sent_at') THEN
