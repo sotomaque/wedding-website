@@ -9,6 +9,7 @@ import {
 import { Filter, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 
 interface InvitesFiltersProps {
   eventId: string;
@@ -39,6 +40,7 @@ const RSVP_LABELS: Record<RsvpValue, string> = {
 export function InvitesFilters({ eventId }: InvitesFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const slug = useWeddingSlug();
   const [open, setOpen] = useState(false);
 
   // Single-select filters
@@ -69,7 +71,7 @@ export function InvitesFilters({ eventId }: InvitesFiltersProps) {
     ? (currentEventRsvp.split(",") as RsvpValue[])
     : [];
 
-  const basePath = `/admin/events/${eventId}/invites`;
+  const basePath = `/${slug}/admin/events/${eventId}/invites`;
 
   function updateFilter(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());

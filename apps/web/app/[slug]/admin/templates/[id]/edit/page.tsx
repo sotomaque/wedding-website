@@ -23,7 +23,5 @@ export default async function EditTemplatePage({ params }: PageProps) {
     notFound();
   }
 
-  return (
-    <TemplateEditor mode="edit" templateId={id} initialTemplate={template} />
-  );
+  return <TemplateEditor template={template} />;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
+import { Calendar as CalendarPicker } from "@workspace/ui/components/calendar";
 import {
   Dialog,
   DialogContent,
@@ -11,10 +12,18 @@ import {
 } from "@workspace/ui/components/dialog";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
 import { Switch } from "@workspace/ui/components/switch";
 import { Textarea } from "@workspace/ui/components/textarea";
+import { cn } from "@workspace/ui/lib/utils";
+import { format } from "date-fns";
 import {
   Calendar,
+  CalendarIcon,
   Clock,
   Edit2,
   MapPin,
@@ -24,7 +33,9 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 
 interface Event {
   id: string;
@@ -77,6 +88,7 @@ const defaultFormData: EventFormData = {
 };
 
 export function EventsClient({ initialEvents }: EventsClientProps) {
+  const slug = useWeddingSlug();
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -84,7 +96,11 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(":");
+    // Handle ISO datetime strings (e.g. "1970-01-01T15:00:00.000Z")
+    const timeStr = time.includes("T")
+      ? new Date(time).toISOString().slice(11, 16)
+      : time;
+    const [hours, minutes] = timeStr.split(":");
     const hour = Number.parseInt(hours || "0", 10);
     const ampm = hour >= 12 ? "PM" : "AM";
     const hour12 = hour % 12 || 12;
@@ -113,8 +129,12 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
       name: event.name,
       description: event.description || "",
       eventDate: event.eventDate || "",
-      startTime: event.startTime?.slice(0, 5) || "",
-      endTime: event.endTime?.slice(0, 5) || "",
+      startTime: event.startTime
+        ? new Date(event.startTime).toISOString().slice(11, 16)
+        : "",
+      endTime: event.endTime
+        ? new Date(event.endTime).toISOString().slice(11, 16)
+        : "",
       locationName: event.locationName || "",
       locationAddress: event.locationAddress || "",
       latitude: event.latitude?.toString() || "",
@@ -327,7 +347,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                 <div className="flex items-center gap-2">
                   {!event.isDefault && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={`/admin/events/${event.id}/invites`}>
+                      <a href={`/${slug}/admin/events/${event.id}/invites`}>
                         <Users className="h-4 w-4 mr-1" />
                         Manage Invites
                       </a>
@@ -429,18 +449,51 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="eventDate">Date</Label>
-                <Input
-                  id="eventDate"
-                  type="date"
-                  value={formData.eventDate}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      eventDate: e.target.value,
-                    }))
-                  }
-                />
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: Calendar popover trigger acts as the control */}
+                <label className="text-sm font-medium">Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.eventDate && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.eventDate
+                        ? format(
+                            new Date(`${formData.eventDate}T00:00:00`),
+                            "MMM d, yyyy",
+                          )
+                        : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker
+                      mode="single"
+                      selected={
+                        formData.eventDate
+                          ? new Date(`${formData.eventDate}T00:00:00`)
+                          : undefined
+                      }
+                      onSelect={(date) => {
+                        if (date) {
+                          const yyyy = date.getFullYear();
+                          const mm = String(date.getMonth() + 1).padStart(
+                            2,
+                            "0",
+                          );
+                          const dd = String(date.getDate()).padStart(2, "0");
+                          setFormData((prev) => ({
+                            ...prev,
+                            eventDate: `${yyyy}-${mm}-${dd}`,
+                          }));
+                        }
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="startTime">Start Time</Label>
@@ -487,53 +540,33 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
 
             <div className="space-y-2">
               <Label htmlFor="locationAddress">Address</Label>
-              <Input
+              <AddressAutocomplete
                 id="locationAddress"
                 value={formData.locationAddress}
-                onChange={(e) =>
+                onChange={(val) =>
                   setFormData((prev) => ({
                     ...prev,
-                    locationAddress: e.target.value,
+                    locationAddress: val,
+                  }))
+                }
+                onSelect={(result) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    locationAddress: result.formattedAddress,
+                    latitude: result.latitude.toString(),
+                    longitude: result.longitude.toString(),
                   }))
                 }
                 placeholder="123 Main St, San Diego, CA"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="latitude">Latitude</Label>
-                <Input
-                  id="latitude"
-                  type="number"
-                  step="any"
-                  value={formData.latitude}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      latitude: e.target.value,
-                    }))
-                  }
-                  placeholder="32.7719"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="longitude">Longitude</Label>
-                <Input
-                  id="longitude"
-                  type="number"
-                  step="any"
-                  value={formData.longitude}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      longitude: e.target.value,
-                    }))
-                  }
-                  placeholder="-117.1902"
-                />
-              </div>
-            </div>
+            {formData.latitude && formData.longitude && (
+              <p className="text-xs text-muted-foreground">
+                Coordinates: {formData.latitude}, {formData.longitude}{" "}
+                (auto-filled from address)
+              </p>
+            )}
 
             <div className="flex items-center justify-between pt-2">
               <div className="space-y-0.5">

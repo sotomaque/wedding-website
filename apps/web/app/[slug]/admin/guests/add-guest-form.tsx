@@ -22,6 +22,7 @@ import {
 import { Switch } from "@workspace/ui/components/switch";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { type AddGuestFormData, addGuestSchema } from "@/lib/validations/guest";
 import type { PartyOption } from "./actions";
 
@@ -288,9 +289,10 @@ export function AddGuestForm({
                 >
                   Mailing Address
                 </label>
-                <Input
+                <AddressAutocomplete
                   id="mailingAddress"
-                  {...register("mailingAddress")}
+                  value={watch("mailingAddress") || ""}
+                  onChange={(val) => setValue("mailingAddress", val)}
                   placeholder="123 Main St, City, State, ZIP"
                 />
               </div>

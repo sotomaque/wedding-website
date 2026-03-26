@@ -1,35 +1,10 @@
 "use client";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@workspace/ui/components/alert-dialog";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu";
-import {
-  Copy,
-  Eye,
-  Loader2,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Send,
-  Trash2,
-} from "lucide-react";
+import { Switch } from "@workspace/ui/components/switch";
+import { Eye, Loader2, Pencil } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
@@ -39,79 +14,42 @@ interface TemplatesClientProps {
   initialTemplates: Template[];
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  wedding_invitation: "Wedding Invitation",
+  rsvp_notification: "RSVP Notification",
+  gift_notification: "Gift Notification",
+  activities_invitation: "Activities Invitation",
+  event_invitation: "Event Invitation",
+  event_rsvp_notification: "Event RSVP Notification",
+  hotel_interest_notification: "Hotel Interest Notification",
+  calendar_invite: "Calendar Invite",
+};
+
 export function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
-  const router = useRouter();
   const slug = useWeddingSlug();
   const [templates, setTemplates] = useState<Template[]>(initialTemplates);
-  const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
-  const [isPublishing, setIsPublishing] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  async function handleDelete() {
-    if (!deleteTemplateId) return;
-
-    setIsDeleting(true);
+  async function handleToggleActive(templateId: string, isActive: boolean) {
+    setTogglingId(templateId);
     try {
-      const response = await fetch(`/api/admin/templates/${deleteTemplateId}`, {
-        method: "DELETE",
+      const response = await fetch(`/api/admin/templates/${templateId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
       });
 
-      if (!response.ok) throw new Error("Failed to delete template");
+      if (!response.ok) throw new Error("Failed to update template");
 
-      toast.success("Template deleted");
-      setTemplates((prev) => prev.filter((t) => t.id !== deleteTemplateId));
-    } catch (error) {
-      console.error("Error deleting template:", error);
-      toast.error("Failed to delete template");
-    } finally {
-      setIsDeleting(false);
-      setDeleteTemplateId(null);
-    }
-  }
-
-  async function handleDuplicate(templateId: string) {
-    setIsDuplicating(templateId);
-    try {
-      const response = await fetch(
-        `/api/admin/templates/${templateId}/duplicate`,
-        {
-          method: "POST",
-        },
+      setTemplates((prev) =>
+        prev.map((t) => (t.id === templateId ? { ...t, isActive } : t)),
       );
-
-      if (!response.ok) throw new Error("Failed to duplicate template");
-
-      await response.json();
-      toast.success("Template duplicated");
-      router.refresh();
+      toast.success(isActive ? "Template enabled" : "Template disabled");
     } catch (error) {
-      console.error("Error duplicating template:", error);
-      toast.error("Failed to duplicate template");
+      console.error("Error toggling template:", error);
+      toast.error("Failed to update template");
     } finally {
-      setIsDuplicating(null);
-    }
-  }
-
-  async function handlePublish(templateId: string) {
-    setIsPublishing(templateId);
-    try {
-      const response = await fetch(
-        `/api/admin/templates/${templateId}/publish`,
-        {
-          method: "POST",
-        },
-      );
-
-      if (!response.ok) throw new Error("Failed to publish template");
-
-      toast.success("Template published");
-      router.refresh();
-    } catch (error) {
-      console.error("Error publishing template:", error);
-      toast.error("Failed to publish template");
-    } finally {
-      setIsPublishing(null);
+      setTogglingId(null);
     }
   }
 
@@ -127,68 +65,22 @@ export function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
 
   return (
     <div className="max-w-screen-xl mx-auto px-4 md:px-6 lg:px-8 py-8">
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={!!deleteTemplateId}
-        onOpenChange={(open) => !open && setDeleteTemplateId(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Template</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this template? This action cannot
-              be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Header */}
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-2xl font-bold mb-2">Email Templates</h1>
-          <p className="text-muted-foreground">
-            Manage your email templates stored in Resend
-          </p>
-        </div>
-        <Link href={`/${slug}/admin/templates/new`}>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Template
-          </Button>
-        </Link>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-2">Email Templates</h1>
+        <p className="text-muted-foreground">
+          Manage your wedding email templates. Toggle templates on or off, and
+          customize their content.
+        </p>
       </div>
 
       {/* Templates List */}
       {templates.length === 0 ? (
         <div className="text-center py-12 bg-muted/50 rounded-lg border border-dashed">
-          <h3 className="text-lg font-medium mb-2">No templates yet</h3>
-          <p className="text-muted-foreground mb-4">
-            Create your first email template to get started
+          <h3 className="text-lg font-medium mb-2">No templates found</h3>
+          <p className="text-muted-foreground">
+            Templates are automatically created when your wedding is set up.
           </p>
-          <Link href={`/${slug}/admin/templates/new`}>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Template
-            </Button>
-          </Link>
         </div>
       ) : (
         <div className="space-y-4">
@@ -200,22 +92,37 @@ export function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-medium truncate">{template.name}</h3>
+                  <Badge variant="secondary">
+                    {TYPE_LABELS[template.type] || template.type}
+                  </Badge>
+                  {!template.isActive && (
+                    <Badge variant="outline" className="text-muted-foreground">
+                      Disabled
+                    </Badge>
+                  )}
                 </div>
-                {template.subject && (
-                  <p className="text-sm text-muted-foreground truncate mb-1">
-                    Subject: {template.subject}
-                  </p>
-                )}
+                <p className="text-sm text-muted-foreground truncate mb-1">
+                  Subject: {template.subject}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Created: {formatDate(template.created_at)}
-                  {template.updated_at &&
-                    template.updated_at !== template.created_at && (
-                      <> | Updated: {formatDate(template.updated_at)}</>
-                    )}
+                  Updated: {formatDate(template.updatedAt)}
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 ml-4">
+              <div className="flex items-center gap-3 ml-4">
+                <div className="flex items-center gap-2">
+                  {togglingId === template.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Switch
+                      checked={template.isActive}
+                      onCheckedChange={(checked) =>
+                        handleToggleActive(template.id, checked)
+                      }
+                      aria-label={`Toggle ${template.name}`}
+                    />
+                  )}
+                </div>
                 <Link href={`/${slug}/admin/templates/${template.id}`}>
                   <Button variant="outline" size="sm">
                     <Eye className="h-4 w-4 mr-1" />
@@ -228,45 +135,6 @@ export function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
                     Edit
                   </Button>
                 </Link>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => handleDuplicate(template.id)}
-                      disabled={isDuplicating === template.id}
-                    >
-                      {isDuplicating === template.id ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Copy className="h-4 w-4 mr-2" />
-                      )}
-                      Duplicate
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handlePublish(template.id)}
-                      disabled={isPublishing === template.id}
-                    >
-                      {isPublishing === template.id ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4 mr-2" />
-                      )}
-                      Publish
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => setDeleteTemplateId(template.id)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </div>
           ))}
@@ -282,31 +150,10 @@ export function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
         <code className="text-xs bg-background px-2 py-1 rounded">
           {"Hello {{{FIRST_NAME}}}, your code is {{{INVITE_CODE}}}"}
         </code>
-        <div className="mt-4 text-sm text-muted-foreground">
-          <p className="font-medium mb-1">Common variables:</p>
-          <ul className="list-disc list-inside space-y-1">
-            <li>
-              <code className="text-xs">{"FIRST_NAME"}</code> - Guest's first
-              name
-            </li>
-            <li>
-              <code className="text-xs">{"LAST_NAME"}</code> - Guest's last name
-            </li>
-            <li>
-              <code className="text-xs">{"INVITE_CODE"}</code> - Unique
-              invitation code
-            </li>
-            <li>
-              <code className="text-xs">{"RSVP_URL"}</code> - RSVP page URL
-            </li>
-            <li>
-              <code className="text-xs">{"EVENT_NAME"}</code> - Event name
-            </li>
-            <li>
-              <code className="text-xs">{"EVENT_DATE"}</code> - Event date
-            </li>
-          </ul>
-        </div>
+        <p className="text-sm text-muted-foreground mt-3">
+          Each template has its own set of available variables listed on its
+          edit page.
+        </p>
       </div>
     </div>
   );

@@ -3,11 +3,11 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
-import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import {
   getEmailFromAddress,
   getNotificationRecipients,
 } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { sendEmail } from "@/lib/email/resend-client";
 import { weddingUrl } from "@/lib/url";
 import { generateInviteCode } from "@/lib/utils/invite-code";
@@ -252,28 +252,37 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        await sendEmail({
-          from: getEmailFromAddress(settings, "Wedding Invitation"),
-          to: email,
-          subject: "You're Invited to Our Wedding! 💕",
-          template: {
-            id: WEDDING_INVITATION_TEMPLATE_ALIAS,
-            variables: {
-              FIRST_NAME: firstName,
-              LAST_NAME: lastName || "",
-              INVITE_CODE: inviteCode,
-              RSVP_URL: rsvpUrl,
-              APP_URL: appUrl,
-              WEDDING_DATE: weddingDate,
-            },
+        const rendered = await renderEmailTemplate(
+          weddingId,
+          "wedding_invitation",
+          {
+            FIRST_NAME: firstName,
+            LAST_NAME: lastName || "",
+            INVITE_CODE: inviteCode,
+            RSVP_URL: rsvpUrl,
+            APP_URL: appUrl,
+            WEDDING_DATE: weddingDate,
           },
-        });
+        );
 
-        // Update numberOfResends to 1 after successful email send
-        await db.guest.update({
-          where: { id: guest.id },
-          data: { numberOfResends: 1 },
-        });
+        if (!rendered) {
+          console.log(
+            "Wedding invitation template inactive, skipping email send",
+          );
+        } else {
+          await sendEmail({
+            from: getEmailFromAddress(settings, "Wedding Invitation"),
+            to: email,
+            subject: rendered.subject,
+            html: rendered.html,
+          });
+
+          // Update numberOfResends to 1 after successful email send
+          await db.guest.update({
+            where: { id: guest.id },
+            data: { numberOfResends: 1 },
+          });
+        }
       } catch (emailError) {
         console.error("Error sending email:", emailError);
         // Don't fail the request if email fails
@@ -316,6 +325,12 @@ export async function DELETE(request: NextRequest) {
         { error: "Guest ID is required" },
         { status: 400 },
       );
+    }
+
+    // Verify guest belongs to this wedding before deleting
+    const guest = await db.guest.findUnique({ where: { id } });
+    if (!guest || guest.weddingId !== weddingId) {
+      return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
     await db.guest.delete({

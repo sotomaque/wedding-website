@@ -3,11 +3,11 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
-import { WEDDING_INVITATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import {
   getEmailFromAddress,
   getNotificationRecipients,
 } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { weddingUrl } from "@/lib/url";
 
@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch guest details
-    const guest = await db.guest.findUnique({
-      where: { id: guestId },
+    // Fetch guest details (scoped to wedding)
+    const guest = await db.guest.findFirst({
+      where: { id: guestId, weddingId },
     });
 
     if (!guest) {
@@ -102,23 +102,33 @@ export async function POST(request: NextRequest) {
       console.error("Error fetching wedding date:", dateError);
     }
 
-    // Send email using Resend template
+    // Render DB-based template and send email
     try {
+      const rendered = await renderEmailTemplate(
+        weddingId,
+        "wedding_invitation",
+        {
+          FIRST_NAME: guest.firstName || "",
+          LAST_NAME: guest.lastName || "",
+          INVITE_CODE: guest.inviteCode ?? "",
+          RSVP_URL: rsvpUrl,
+          APP_URL: appUrl,
+          WEDDING_DATE: weddingDate,
+        },
+      );
+
+      if (!rendered) {
+        return NextResponse.json(
+          { error: "Wedding invitation template is inactive or not found" },
+          { status: 400 },
+        );
+      }
+
       const result = await sendEmail({
         from: getEmailFromAddress(settings, "Wedding Invitation"),
         to: recipientEmail,
-        subject: "You're Invited to Our Wedding! 💕",
-        template: {
-          id: WEDDING_INVITATION_TEMPLATE_ALIAS,
-          variables: {
-            FIRST_NAME: guest.firstName || "",
-            LAST_NAME: guest.lastName || "",
-            INVITE_CODE: guest.inviteCode ?? "",
-            RSVP_URL: rsvpUrl,
-            APP_URL: appUrl,
-            WEDDING_DATE: weddingDate,
-          },
-        },
+        subject: rendered.subject,
+        html: rendered.html,
       });
 
       if (result.error) {

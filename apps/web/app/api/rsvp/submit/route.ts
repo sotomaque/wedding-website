@@ -2,11 +2,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
-import { RSVP_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import {
   getEmailFromAddress,
   getNotificationRecipients,
 } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
 /**
@@ -61,30 +61,35 @@ export async function POST(request: NextRequest) {
           .map((g) => g.email)
           .join(", ");
 
-        await sendEmail({
-          from: getEmailFromAddress(settings, "Wedding RSVP"),
-          to: recipients,
-          subject: `${attending ? "\u2705" : "\u274C"} RSVP: ${guests.map((g) => g.firstName).join(", ")} - ${attending ? "Attending" : "Not Attending"}`,
-          template: {
-            id: RSVP_NOTIFICATION_TEMPLATE_ALIAS,
-            variables: {
-              GUEST_NAMES: guestNames,
-              GUEST_EMAILS: guestEmails || "No email provided",
-              INVITE_CODE: normalizedCode,
-              STATUS_TEXT: attending ? "Attending" : "Not Attending",
-              STATUS_EMOJI: attending ? "\u2705" : "\u274C",
-              DIETARY_RESTRICTIONS: dietaryRestrictions || "None",
-              GUEST_COUNT_TEXT:
-                guests.length > 1 ? `${guests.length} guests` : "1 guest",
-              CONFIRMATION_TEXT: attending ? "confirmed" : "declined",
-              SUBMITTED_AT: new Date().toLocaleString("en-US", {
-                dateStyle: "full",
-                timeStyle: "short",
-                timeZone: "America/Los_Angeles",
-              }),
-            },
+        const rsvpTemplate = await renderEmailTemplate(
+          weddingId,
+          "rsvp_notification",
+          {
+            GUEST_NAMES: guestNames,
+            GUEST_EMAILS: guestEmails || "No email provided",
+            INVITE_CODE: normalizedCode,
+            STATUS_TEXT: attending ? "Attending" : "Not Attending",
+            STATUS_EMOJI: attending ? "\u2705" : "\u274C",
+            DIETARY_RESTRICTIONS: dietaryRestrictions || "None",
+            GUEST_COUNT_TEXT:
+              guests.length > 1 ? `${String(guests.length)} guests` : "1 guest",
+            CONFIRMATION_TEXT: attending ? "confirmed" : "declined",
+            SUBMITTED_AT: new Date().toLocaleString("en-US", {
+              dateStyle: "full",
+              timeStyle: "short",
+              timeZone: "America/Los_Angeles",
+            }),
           },
-        });
+        );
+
+        if (rsvpTemplate) {
+          await sendEmail({
+            from: getEmailFromAddress(settings, "Wedding RSVP"),
+            to: recipients,
+            subject: rsvpTemplate.subject,
+            html: rsvpTemplate.html,
+          });
+        }
       } catch (emailError) {
         // Log but don't fail the RSVP submission if email fails
         console.error("Error sending RSVP notification email:", emailError);

@@ -6,8 +6,8 @@ import {
   getEmailFromAddress,
   getNotificationRecipients,
 } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
-import { getHotelInterestNotificationEmail } from "@/lib/email/templates/hotel-interest-notification";
 import { weddingUrl } from "@/lib/url";
 
 /**
@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch hotel details
-    const hotel = await db.hotel.findUnique({
-      where: { id: hotelId },
+    // Fetch hotel details (scoped to wedding)
+    const hotel = await db.hotel.findFirst({
+      where: { id: hotelId, weddingId },
     });
 
     if (!hotel) {
@@ -81,32 +81,48 @@ export async function POST(request: NextRequest) {
 
     const adminUrl = `${weddingUrl(settings.slug, "/admin/guests")}`;
 
-    // Generate email HTML
-    const emailHtml = getHotelInterestNotificationEmail({
-      guestFirstName: primaryGuest.firstName,
-      guestLastName: primaryGuest.lastName,
-      guestEmail: primaryGuest.email,
-      guestPhone: primaryGuest.phoneNumber,
-      hotelName: hotel.name,
-      hotelAddress: hotel.address,
-      checkInDate: interest?.checkInDate
-        ? new Date(interest.checkInDate).toISOString()
-        : null,
-      checkOutDate: interest?.checkOutDate
-        ? new Date(interest.checkOutDate).toISOString()
-        : null,
-      numberOfRooms: interest?.numberOfRooms ?? null,
-      notes: interest?.notes ?? null,
-      adminUrl,
-    });
+    // Render email from DB template
+    const rendered = await renderEmailTemplate(
+      weddingId,
+      "hotel_interest_notification",
+      {
+        GUEST_FIRST_NAME: primaryGuest.firstName,
+        GUEST_LAST_NAME: primaryGuest.lastName || "",
+        GUEST_EMAIL: primaryGuest.email || "",
+        GUEST_PHONE: primaryGuest.phoneNumber || "",
+        HOTEL_NAME: hotel.name,
+        HOTEL_ADDRESS: hotel.address || "",
+        CHECK_IN_DATE: interest?.checkInDate
+          ? new Date(interest.checkInDate).toISOString()
+          : "",
+        CHECK_OUT_DATE: interest?.checkOutDate
+          ? new Date(interest.checkOutDate).toISOString()
+          : "",
+        NUMBER_OF_ROOMS: interest?.numberOfRooms
+          ? String(interest.numberOfRooms)
+          : "",
+        NOTES: interest?.notes ?? "",
+        ADMIN_URL: adminUrl,
+      },
+    );
+
+    if (!rendered) {
+      return NextResponse.json(
+        {
+          error:
+            "Hotel interest notification template is inactive or not found",
+        },
+        { status: 500 },
+      );
+    }
 
     try {
       // Send email to admin and travel agent
       const result = await sendEmail({
         from: getEmailFromAddress(settings, "Wedding Website"),
         to: recipients,
-        subject: `Hotel Interest: ${primaryGuest.firstName} ${primaryGuest.lastName || ""} - ${hotel.name}`,
-        html: emailHtml,
+        subject: rendered.subject,
+        html: rendered.html,
       });
 
       if (result.error) {
@@ -120,7 +136,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Hotel interest notification sent successfully",
-        recipients,
       });
     } catch (emailError) {
       console.error("Error sending hotel interest email:", emailError);

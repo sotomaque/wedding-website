@@ -114,9 +114,9 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         description: description || null,
-        eventDate: eventDate || null,
-        startTime: startTime || null,
-        endTime: endTime || null,
+        eventDate: eventDate ? new Date(`${eventDate}T00:00:00Z`) : null,
+        startTime: startTime ? new Date(`1970-01-01T${startTime}:00Z`) : null,
+        endTime: endTime ? new Date(`1970-01-01T${endTime}:00Z`) : null,
         locationName: locationName || null,
         locationAddress: locationAddress || null,
         latitude: latitude || null,

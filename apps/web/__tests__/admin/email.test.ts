@@ -102,7 +102,7 @@ mock.module("@/lib/db", () => ({
     guest: {
       findMany: mock(() => Promise.resolve([])),
       findUnique: mockGuestFindUnique,
-      findFirst: mock(() => Promise.resolve(null)),
+      findFirst: mockGuestFindUnique,
       create: mock(() => Promise.resolve({})),
       update: mockGuestUpdate,
       delete: mock(() => Promise.resolve({})),
@@ -111,6 +111,20 @@ mock.module("@/lib/db", () => ({
     },
     event: {
       findFirst: mockEventFindFirst,
+    },
+    emailTemplate: {
+      findUnique: mock(() =>
+        Promise.resolve({
+          id: "template-1",
+          weddingId: "wedding-1",
+          type: "wedding_invitation",
+          name: "Wedding Invitation",
+          subject: "You're Invited!",
+          htmlBody: "<p>Hello {{{FIRST_NAME}}}</p>",
+          isActive: true,
+          variables: [],
+        }),
+      ),
     },
   },
 }));

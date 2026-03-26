@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingContext } from "@/lib/db/wedding-context";
 
 export type DocumentCategory =
   | "contract"
@@ -30,7 +30,7 @@ export async function getDocuments(
   category?: DocumentCategory,
 ): Promise<WeddingDocument[]> {
   try {
-    const weddingId = await getWeddingId();
+    const { weddingId } = await getWeddingContext();
     const rows = await db.document.findMany({
       where: category ? { category, weddingId } : { weddingId },
       orderBy: { createdAt: "desc" },
@@ -60,7 +60,7 @@ export async function createDocument(data: {
     if (!title) return { success: false, error: "Title is required" };
     if (!data.fileUrl) return { success: false, error: "File URL is required" };
 
-    const weddingId = await getWeddingId();
+    const { weddingId, slug } = await getWeddingContext();
 
     await db.document.create({
       data: {
@@ -75,7 +75,7 @@ export async function createDocument(data: {
       },
     });
 
-    revalidatePath("/admin/documents");
+    revalidatePath(`/${slug}/admin/documents`);
     return { success: true };
   } catch (error) {
     console.error("Error creating document:", error);
@@ -96,6 +96,8 @@ export async function updateDocument(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
+    const { slug } = await getWeddingContext();
+
     await db.document.update({
       where: { id },
       data: {
@@ -107,7 +109,7 @@ export async function updateDocument(
       },
     });
 
-    revalidatePath("/admin/documents");
+    revalidatePath(`/${slug}/admin/documents`);
     return { success: true };
   } catch (error) {
     console.error("Error updating document:", error);
@@ -123,8 +125,10 @@ export async function deleteDocument(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
+    const { slug } = await getWeddingContext();
+
     await db.document.delete({ where: { id } });
-    revalidatePath("/admin/documents");
+    revalidatePath(`/${slug}/admin/documents`);
     return { success: true };
   } catch (error) {
     console.error("Error deleting document:", error);

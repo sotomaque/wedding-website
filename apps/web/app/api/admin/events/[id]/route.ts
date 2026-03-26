@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
 
     const event = await db.event.findUnique({
-      where: { id },
+      where: { id, weddingId },
     });
 
     if (!event) {
@@ -107,7 +107,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     // Get current event to check if isDefault changed
     const currentEvent = await db.event.findUnique({
-      where: { id },
+      where: { id, weddingId },
     });
 
     if (!currentEvent) {
@@ -118,9 +118,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description || null;
-    if (eventDate !== undefined) updateData.eventDate = eventDate;
-    if (startTime !== undefined) updateData.startTime = startTime;
-    if (endTime !== undefined) updateData.endTime = endTime || null;
+    if (eventDate !== undefined)
+      updateData.eventDate = eventDate
+        ? new Date(`${eventDate}T00:00:00Z`)
+        : null;
+    if (startTime !== undefined)
+      updateData.startTime = startTime
+        ? new Date(`1970-01-01T${startTime}:00Z`)
+        : null;
+    if (endTime !== undefined)
+      updateData.endTime = endTime
+        ? new Date(`1970-01-01T${endTime}:00Z`)
+        : null;
     if (locationName !== undefined) updateData.locationName = locationName;
     if (locationAddress !== undefined)
       updateData.locationAddress = locationAddress || null;
@@ -185,14 +194,19 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
-    // Deleting the event will cascade delete all guest_event_invites
-    try {
-      await db.event.delete({
-        where: { id },
-      });
-    } catch {
+    // Verify event belongs to this wedding before deleting
+    const event = await db.event.findUnique({
+      where: { id, weddingId },
+    });
+
+    if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
+
+    // Deleting the event will cascade delete all guest_event_invites
+    await db.event.delete({
+      where: { id },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

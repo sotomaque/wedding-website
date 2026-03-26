@@ -2,11 +2,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { env } from "@/env";
 import { db } from "@/lib/db";
-import { GIFT_NOTIFICATION_TEMPLATE_ALIAS } from "@/lib/email/constants";
 import {
   getEmailFromAddress,
   getNotificationRecipients,
 } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 
 // Initialize Stripe
@@ -275,33 +275,51 @@ async function sendGiftNotificationEmail(params: {
           ? "\uD83C\uDF93"
           : "\uD83C\uDF81";
 
+  // Resolve weddingId for template lookup
+  const resolvedWeddingId = weddingId ?? (await resolveGiftWeddingId());
+
   try {
+    const rendered = await renderEmailTemplate(
+      resolvedWeddingId,
+      "gift_notification",
+      {
+        DONOR_NAME: donorName || "Anonymous",
+        DONOR_EMAIL: donorEmail || "No email provided",
+        AMOUNT: formattedAmount,
+        GIFT_TYPE: giftTypeLabel,
+        GIFT_EMOJI: giftEmoji,
+        MATCHED_GUEST_NAME: matchedGuest
+          ? `${matchedGuest.firstName}${matchedGuest.lastName ? ` ${matchedGuest.lastName}` : ""}`
+          : "",
+        MATCHED_GUEST_STATUS: matchedGuest ? "matched" : "unmatched",
+        MATCHED_GUEST_DISPLAY: matchedGuest ? "block" : "none",
+        UNMATCHED_GUEST_DISPLAY: matchedGuest ? "none" : "block",
+        CHARGE_ID: chargeId,
+        SUBMITTED_AT: new Date().toLocaleString("en-US", {
+          dateStyle: "full",
+          timeStyle: "short",
+          timeZone: "America/Los_Angeles",
+        }),
+      },
+    );
+
+    if (!rendered) {
+      log(
+        "info",
+        "Gift notification email skipped - template inactive or not found",
+        {
+          chargeId,
+          weddingId: resolvedWeddingId,
+        },
+      );
+      return;
+    }
+
     await sendEmail({
       from: fromAddress,
       to: recipients,
-      subject: `${giftEmoji} New Gift: ${formattedAmount} for ${giftTypeLabel}${donorName ? ` from ${donorName}` : ""}`,
-      template: {
-        id: GIFT_NOTIFICATION_TEMPLATE_ALIAS,
-        variables: {
-          DONOR_NAME: donorName || "Anonymous",
-          DONOR_EMAIL: donorEmail || "No email provided",
-          AMOUNT: formattedAmount,
-          GIFT_TYPE: giftTypeLabel,
-          GIFT_EMOJI: giftEmoji,
-          MATCHED_GUEST_NAME: matchedGuest
-            ? `${matchedGuest.firstName}${matchedGuest.lastName ? ` ${matchedGuest.lastName}` : ""}`
-            : "",
-          MATCHED_GUEST_STATUS: matchedGuest ? "matched" : "unmatched",
-          MATCHED_GUEST_DISPLAY: matchedGuest ? "block" : "none",
-          UNMATCHED_GUEST_DISPLAY: matchedGuest ? "none" : "block",
-          CHARGE_ID: chargeId,
-          SUBMITTED_AT: new Date().toLocaleString("en-US", {
-            dateStyle: "full",
-            timeStyle: "short",
-            timeZone: "America/Los_Angeles",
-          }),
-        },
-      },
+      subject: rendered.subject,
+      html: rendered.html,
     });
 
     log("info", "Gift notification email sent", {

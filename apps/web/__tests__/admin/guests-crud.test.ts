@@ -278,7 +278,7 @@ describe("Guest CRUD - Edit User", () => {
     mockPartyCreate.mockClear();
     mockPartyDelete.mockClear();
 
-    mockGuestFindUnique.mockResolvedValue({
+    const guestData = {
       id: "guest-123",
       firstName: "John",
       lastName: "Doe",
@@ -287,7 +287,10 @@ describe("Guest CRUD - Edit User", () => {
       side: "bride",
       list: "a",
       partyId: "party-123",
-    });
+      weddingId: "test-wedding-id",
+    };
+    mockGuestFindUnique.mockResolvedValue(guestData);
+    mockGuestFindFirst.mockResolvedValue(guestData);
     mockGuestUpdate.mockResolvedValue({
       id: "guest-123",
       firstName: "John",
@@ -372,8 +375,7 @@ describe("Guest CRUD - Edit User", () => {
   });
 
   it("should add plus one when enabling plusOneAllowed", async () => {
-    // findUnique returns the current guest
-    mockGuestFindUnique.mockResolvedValue({
+    const guestData = {
       id: "guest-123",
       firstName: "John",
       lastName: "Doe",
@@ -382,9 +384,12 @@ describe("Guest CRUD - Edit User", () => {
       side: "bride",
       list: "a",
       partyId: "party-123",
-    });
+      weddingId: "test-wedding-id",
+    };
+    // findUnique returns the current guest
+    mockGuestFindUnique.mockResolvedValue(guestData);
 
-    // findFirst returns null (no existing plus one)
+    // findFirst: plus-one lookup returns null (no existing plus-one)
     mockGuestFindFirst.mockResolvedValue(null);
 
     // update returns updated guest
@@ -470,6 +475,12 @@ describe("Guest CRUD - Delete User", () => {
   });
 
   it("should delete a guest", async () => {
+    const guestData = {
+      id: "guest-123",
+      weddingId: "test-wedding-id",
+    };
+    mockGuestFindUnique.mockResolvedValue(guestData);
+    mockGuestFindFirst.mockResolvedValue(guestData);
     const { DELETE } = await import("@/app/api/admin/guests/route");
 
     const request = new Request(
@@ -518,14 +529,17 @@ describe("Guest CRUD - List Assignment (A/B/C)", () => {
     mockPartyCreate.mockClear();
     mockPartyDelete.mockClear();
 
-    mockGuestFindUnique.mockResolvedValue({
+    const guestData = {
       id: "guest-123",
       firstName: "John",
       inviteCode: "ABCD-1234",
       side: "bride",
       list: "a",
       partyId: "party-123",
-    });
+      weddingId: "test-wedding-id",
+    };
+    mockGuestFindUnique.mockResolvedValue(guestData);
+    mockGuestFindFirst.mockResolvedValue(guestData);
     mockGuestUpdate.mockResolvedValue({
       id: "guest-123",
       firstName: "John",

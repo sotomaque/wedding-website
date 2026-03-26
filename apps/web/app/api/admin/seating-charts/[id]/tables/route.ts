@@ -34,9 +34,9 @@ export async function POST(
       notes,
     } = body;
 
-    // Verify the chart exists
-    const chart = await db.seatingChart.findUnique({
-      where: { id: chartId },
+    // Verify the chart exists and belongs to this wedding
+    const chart = await db.seatingChart.findFirst({
+      where: { id: chartId, weddingId },
       select: { id: true },
     });
 

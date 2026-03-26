@@ -255,6 +255,8 @@ model Guest {
   calendarInviteSent                  Boolean                 @default(false) @map("calendar_invite_sent")
   calendarInviteSentAt                DateTime?               @map("calendar_invite_sent_at") @db.Timestamptz(6)
   calendarInviteResendCount           Int                     @default(0) @map("calendar_invite_resend_count")
+  lastReminderSentAt                  DateTime?               @map("last_reminder_sent_at") @db.Timestamptz(6)
+  reminderCount                       Int                     @default(0) @map("reminder_count")
   gifts                               Gift[]
   guestActivityInterests              GuestActivityInterest[]
   guestEventInvites                   GuestEventInvite[]
@@ -448,6 +450,7 @@ model Wedding {
   // Relations
   activities            Activity[]
   documents             Document[]
+  emailTemplates        EmailTemplate[]
   events                Event[]
   gifts                 Gift[]
   guestActivityInterests GuestActivityInterest[]
@@ -463,12 +466,32 @@ model Wedding {
   seatingCharts         SeatingChart[]
   seatingTables         SeatingTable[]
   serviceLinks          ServiceLink[]
+  reminderSchedules     ReminderSchedule[]
+  adminSummaryConfig    AdminSummaryConfig?
   weddingAdmins         WeddingAdmin[]
   weddingContent        WeddingContent[]
   weddingTodos          WeddingTodo[]
 
   @@index([slug], map: "idx_weddings_slug")
   @@map("weddings")
+}
+
+model EmailTemplate {
+  id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId String            @map("wedding_id") @db.Uuid
+  type      EmailTemplateType
+  name      String
+  subject   String
+  htmlBody  String            @map("html_body") @db.Text
+  isActive  Boolean           @default(true) @map("is_active")
+  variables Json              @default("[]") @map("variables") @db.JsonB
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  wedding   Wedding           @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([weddingId, type])
+  @@index([weddingId], map: "idx_email_templates_wedding_id")
+  @@map("email_templates")
 }
 
 model WeddingContent {
@@ -503,6 +526,35 @@ model RegistryItem {
 
   @@index([weddingId, displayOrder], map: "idx_registry_items_wedding_order")
   @@map("registry_items")
+}
+
+model ReminderSchedule {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId      String   @map("wedding_id") @db.Uuid
+  daysBeforeDeadline Int  @map("days_before_deadline")
+  isEnabled      Boolean  @default(true) @map("is_enabled")
+  lastRunAt      DateTime? @map("last_run_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  wedding        Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([weddingId, daysBeforeDeadline])
+  @@index([weddingId], map: "idx_reminder_schedules_wedding_id")
+  @@map("reminder_schedules")
+}
+
+model AdminSummaryConfig {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId       String   @unique @map("wedding_id") @db.Uuid
+  isEnabled       Boolean  @default(false) @map("is_enabled")
+  frequencyDays   Int      @default(7) @map("frequency_days")
+  lastRunAt       DateTime? @map("last_run_at") @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  wedding         Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([weddingId], map: "idx_admin_summary_configs_wedding_id")
+  @@map("admin_summary_configs")
 }
 
 model WeddingAdmin {
@@ -651,4 +703,19 @@ enum WeddingStatus {
   archived
 
   @@map("wedding_status")
+}
+
+enum EmailTemplateType {
+  wedding_invitation
+  rsvp_notification
+  gift_notification
+  activities_invitation
+  event_invitation
+  event_rsvp_notification
+  hotel_interest_notification
+  calendar_invite
+  rsvp_reminder
+  admin_summary
+
+  @@map("email_template_type")
 }

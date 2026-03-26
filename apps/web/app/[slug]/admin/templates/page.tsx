@@ -1,5 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { fetchTemplates } from "@/lib/templates/fetch-templates";
 import { TemplatesClient } from "./templates-client";
 
@@ -12,7 +13,8 @@ export default async function TemplatesPage() {
     redirect("/sign-in");
   }
 
-  const templates = await fetchTemplates();
+  const weddingId = await getWeddingId();
+  const templates = await fetchTemplates(weddingId);
 
   return <TemplatesClient initialTemplates={templates} />;
 }

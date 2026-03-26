@@ -39,9 +39,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Check if photo exists first
+    // Check if photo exists and belongs to this wedding
     const existing = await db.photo.findUnique({ where: { id } });
-    if (!existing) {
+    if (!existing || existing.weddingId !== weddingId) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
 
@@ -78,7 +78,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
 
     const existing = await db.photo.findUnique({ where: { id } });
-    if (!existing) {
+    if (!existing || existing.weddingId !== weddingId) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
 

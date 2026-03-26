@@ -1,13 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
-import {
-  buildCalendarEmailHtml,
-  generateIcs,
-} from "@/lib/calendar/generate-ics";
+import { generateIcs } from "@/lib/calendar/generate-ics";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { getEmailFromAddress } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
 import { sendEmail } from "@/lib/email/resend-client";
 
 /**
@@ -29,8 +27,8 @@ export async function POST(
 
     const { id: guestId } = await params;
 
-    const guest = await db.guest.findUnique({
-      where: { id: guestId },
+    const guest = await db.guest.findFirst({
+      where: { id: guestId, weddingId },
       select: {
         id: true,
         firstName: true,
@@ -111,12 +109,25 @@ export async function POST(
       guestName,
       settings.coupleName,
     );
-    const html = buildCalendarEmailHtml(eventsForIcs, guest.firstName);
+
+    const rendered = await renderEmailTemplate(weddingId, "calendar_invite", {
+      FIRST_NAME: guest.firstName,
+      LAST_NAME: guest.lastName || "",
+      COUPLE_NAME: settings.coupleName,
+    });
+
+    if (!rendered) {
+      return NextResponse.json(
+        { error: "Calendar invite template is inactive or not found" },
+        { status: 400 },
+      );
+    }
+
     const result = await sendEmail({
       from: getEmailFromAddress(settings),
       to: guest.email,
-      subject: `Your Calendar Invite \u2014 ${settings.coupleName}'s Wedding \uD83D\uDC95`,
-      html,
+      subject: rendered.subject,
+      html: rendered.html,
       attachments: [
         {
           filename: `${settings.slug}-wedding.ics`,

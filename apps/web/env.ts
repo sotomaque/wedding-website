@@ -24,6 +24,7 @@ export const env = createEnv({
     E2E_RESET_SECRET: z.string().optional(),
     LOCAL_E2E_MODE: z.enum(["true", "false"]).optional(),
     VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
+    CRON_SECRET: z.string().optional(),
   },
 
   /**
@@ -32,6 +33,7 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
     NEXT_PUBLIC_APP_URL: z.url().optional(),
+    NEXT_PUBLIC_GEOAPIFY_API_KEY: z.string().optional(),
   },
 
   /**
@@ -56,9 +58,11 @@ export const env = createEnv({
     E2E_RESET_SECRET: process.env.E2E_RESET_SECRET,
     LOCAL_E2E_MODE: process.env.LOCAL_E2E_MODE,
     VERCEL_ENV: process.env.VERCEL_ENV,
+    CRON_SECRET: process.env.CRON_SECRET,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_GEOAPIFY_API_KEY: process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

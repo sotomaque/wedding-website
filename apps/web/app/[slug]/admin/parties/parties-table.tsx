@@ -103,13 +103,17 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
   function openEditSheet(partyId: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("edit", partyId);
-    router.push(`/admin/parties?${params.toString()}`, { scroll: false });
+    router.push(`/${slug}/admin/parties?${params.toString()}`, {
+      scroll: false,
+    });
   }
 
   function closeEditSheet() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("edit");
-    router.push(`/admin/parties?${params.toString()}`, { scroll: false });
+    router.push(`/${slug}/admin/parties?${params.toString()}`, {
+      scroll: false,
+    });
   }
 
   function toggleExpanded(partyId: string) {

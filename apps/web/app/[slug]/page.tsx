@@ -56,6 +56,7 @@ export default async function Page() {
         <RSVPSection
           content={content.rsvp as RsvpContent}
           contactEmail={settings.contactEmail ?? undefined}
+          rsvpDeadline={settings.rsvpDeadline ?? undefined}
         />
       </main>
 

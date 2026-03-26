@@ -112,8 +112,8 @@ export async function getGuests(params: GetGuestsParams = {}) {
 export async function getGuestWithPlusOne(guestId: string) {
   try {
     const weddingId = await getWeddingId();
-    const guest = await db.guest.findUnique({
-      where: { id: guestId },
+    const guest = await db.guest.findFirst({
+      where: { id: guestId, weddingId },
     });
 
     if (!guest) {

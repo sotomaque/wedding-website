@@ -24,6 +24,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import { type EditGiftFormData, editGiftSchema } from "@/lib/validations/gift";
 
 interface Gift {
@@ -106,6 +107,7 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
   const [guestSearchQuery, setGuestSearchQuery] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
+  const slug = useWeddingSlug();
 
   const initialValues = useMemo(
     (): EditGiftFormData => ({
@@ -161,7 +163,7 @@ export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
   function closeSheet() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("edit");
-    router.push(`/admin/gifts?${params.toString()}`, { scroll: false });
+    router.push(`/${slug}/admin/gifts?${params.toString()}`, { scroll: false });
   }
 
   async function onSubmit(data: EditGiftFormData) {

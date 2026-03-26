@@ -65,7 +65,6 @@ export type ScheduleContent = z.infer<typeof scheduleContentSchema>;
 // --- RSVP Section ---
 export const rsvpContentSchema = z.object({
   title: z.string(),
-  deadline: z.string().optional(),
 });
 export type RsvpContent = z.infer<typeof rsvpContentSchema>;
 

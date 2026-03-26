@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { PartyWithGuests } from "../actions";
 import { createPartyFromGuests, moveGuestToParty } from "../actions";
 
@@ -30,6 +31,7 @@ interface PartyGuestsListProps {
 
 export function PartyGuestsList({ party, otherParties }: PartyGuestsListProps) {
   const router = useRouter();
+  const slug = useWeddingSlug();
   const [isPending, startTransition] = useTransition();
   const [moveDialog, setMoveDialog] = useState<{
     open: boolean;
@@ -102,7 +104,7 @@ export function PartyGuestsList({ party, otherParties }: PartyGuestsListProps) {
               <div className="flex items-center gap-3">
                 <div>
                   <Link
-                    href={`/admin/guests?edit=${guest.id}`}
+                    href={`/${slug}/admin/guests?edit=${guest.id}`}
                     className="font-medium text-foreground hover:underline"
                   >
                     {guest.firstName} {guest.lastName}

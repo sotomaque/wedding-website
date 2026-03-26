@@ -21,7 +21,7 @@ interface SearchParams {
 }
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string; id: string }>;
   searchParams: Promise<SearchParams>;
 }
 
@@ -214,9 +214,11 @@ function LoadingSkeleton() {
 
 async function InvitesContent({
   eventId,
+  slug,
   searchParams,
 }: {
   eventId: string;
+  slug: string;
   searchParams: SearchParams;
 }) {
   const data = await getEventWithInvites(eventId, searchParams);
@@ -230,7 +232,7 @@ async function InvitesContent({
             The event you're looking for doesn't exist.
           </p>
           <Link
-            href="/admin/events"
+            href={`/${slug}/admin/events`}
             className="text-primary hover:underline inline-flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -251,7 +253,7 @@ async function InvitesContent({
             You cannot manually manage invites for default events.
           </p>
           <Link
-            href="/admin/events"
+            href={`/${slug}/admin/events`}
             className="text-primary hover:underline inline-flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -276,7 +278,7 @@ export default async function EventInvitesPage({
   searchParams,
 }: PageProps) {
   const user = await currentUser();
-  const { id: eventId } = await params;
+  const { slug, id: eventId } = await params;
   const filters = await searchParams;
 
   if (!user) {
@@ -285,7 +287,7 @@ export default async function EventInvitesPage({
 
   return (
     <Suspense fallback={<LoadingSkeleton />}>
-      <InvitesContent eventId={eventId} searchParams={filters} />
+      <InvitesContent eventId={eventId} slug={slug} searchParams={filters} />
     </Suspense>
   );
 }

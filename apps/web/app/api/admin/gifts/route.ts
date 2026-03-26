@@ -128,9 +128,9 @@ export async function PATCH(request: NextRequest) {
       updates.notes = notes;
     }
 
-    // Check if gift exists first
+    // Check if gift exists and belongs to this wedding
     const existing = await db.gift.findUnique({ where: { id } });
-    if (!existing) {
+    if (!existing || existing.weddingId !== weddingId) {
       return NextResponse.json({ error: "Gift not found" }, { status: 404 });
     }
 

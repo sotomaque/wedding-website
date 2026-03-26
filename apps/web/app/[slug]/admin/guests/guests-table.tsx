@@ -42,6 +42,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { PartyOption } from "./actions";
 import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
@@ -76,6 +77,7 @@ export function GuestsTable({
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [isBulkSendingCalendar, setIsBulkSendingCalendar] = useState(false);
   const [isBulkSettingRsvp, setIsBulkSettingRsvp] = useState(false);
+  const slug = useWeddingSlug();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -103,14 +105,14 @@ export function GuestsTable({
         // Remove sorting
         params.delete("sortBy");
         params.delete("sortOrder");
-        router.push(`/admin/guests?${params.toString()}`);
+        router.push(`/${slug}/admin/guests?${params.toString()}`);
         return;
       }
     }
 
     params.set("sortBy", column);
     params.set("sortOrder", newSortOrder);
-    router.push(`/admin/guests?${params.toString()}`);
+    router.push(`/${slug}/admin/guests?${params.toString()}`);
   }
 
   function handlePageChange(newPageIndex: number) {
@@ -122,11 +124,11 @@ export function GuestsTable({
       params.set("page", newPageIndex.toString());
     }
 
-    router.push(`/admin/guests?${params.toString()}`);
+    router.push(`/${slug}/admin/guests?${params.toString()}`);
   }
 
   function clearFilters() {
-    router.push("/admin/guests");
+    router.push(`/${slug}/admin/guests`);
   }
 
   async function handleUpdateNotes(guestId: string, notes: string) {
@@ -215,7 +217,9 @@ export function GuestsTable({
   function handleEditGuest(guestId: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("edit", guestId);
-    router.push(`/admin/guests?${params.toString()}`, { scroll: false });
+    router.push(`/${slug}/admin/guests?${params.toString()}`, {
+      scroll: false,
+    });
   }
 
   const columns = createColumns({
@@ -498,12 +502,12 @@ export function GuestsTable({
             Refresh
           </Button>
           <Button variant="outline" size="icon" asChild className="md:hidden">
-            <Link href="/admin/parties">
+            <Link href={`/${slug}/admin/parties`}>
               <UsersRound className="h-4 w-4" />
             </Link>
           </Button>
           <Button variant="outline" asChild className="hidden md:flex">
-            <Link href="/admin/parties">
+            <Link href={`/${slug}/admin/parties`}>
               <UsersRound className="h-4 w-4 mr-2" />
               Parties
             </Link>

@@ -3,6 +3,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { getDefaultTemplates } from "@/lib/email/default-templates";
 
 const RESERVED_SLUGS = new Set([
   "admin",
@@ -130,6 +131,10 @@ export async function createWedding(data: {
         },
       });
     }
+
+    await db.emailTemplate.createMany({
+      data: getDefaultTemplates(wedding.id),
+    });
 
     await db.weddingContent.createMany({
       data: [

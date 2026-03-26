@@ -81,7 +81,9 @@ function StayOverview({
       {/* Weeks */}
       <div className="space-y-1">
         {weeks.map((week) => {
-          const weekKey = toDateKey(week[0] as Date);
+          const firstDay = week[0];
+          if (!firstDay) return null;
+          const weekKey = toDateKey(firstDay);
           const bars = getStayBars(week, guestsWithBothDates, colorMap);
 
           return (

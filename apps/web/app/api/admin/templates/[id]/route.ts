@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
-import { getResendClient } from "@/lib/email/resend-client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
 /**
- * Get email template
- * @description Fetch a specific email template by ID from Resend
+ * Get a single email template by ID
  * @pathParams IdParams
  * @response 200:SuccessResponse
  * @auth bearer
@@ -27,25 +26,18 @@ export async function GET(
 
     const { id } = await params;
 
-    const resend = getResendClient();
-    if (!resend) {
-      return NextResponse.json(
-        { error: "Email not configured" },
-        { status: 500 },
-      );
-    }
+    const template = await db.emailTemplate.findUnique({
+      where: { id },
+    });
 
-    const { data, error } = await resend.templates.get(id);
-
-    if (error) {
-      console.error("Error getting template:", error);
+    if (!template || template.weddingId !== weddingId) {
       return NextResponse.json(
-        { error: error.message || "Template not found" },
+        { error: "Template not found" },
         { status: 404 },
       );
     }
 
-    return NextResponse.json({ template: data });
+    return NextResponse.json({ template });
   } catch (error) {
     console.error("Error getting template:", error);
     return NextResponse.json(
@@ -56,8 +48,7 @@ export async function GET(
 }
 
 /**
- * Update email template
- * @description Update an existing email template's name, subject, or HTML content
+ * Update an email template (subject, htmlBody, isActive)
  * @pathParams IdParams
  * @body UpdateTemplateBody
  * @response 200:SuccessResponse
@@ -76,44 +67,40 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, subject, html } = body;
+    const { subject, htmlBody, isActive } = body;
 
-    const updateOptions: {
-      name?: string;
+    // Verify the template belongs to this wedding
+    const existing = await db.emailTemplate.findUnique({ where: { id } });
+    if (!existing || existing.weddingId !== weddingId) {
+      return NextResponse.json(
+        { error: "Template not found" },
+        { status: 404 },
+      );
+    }
+
+    const updateData: {
       subject?: string;
-      html?: string;
+      htmlBody?: string;
+      isActive?: boolean;
     } = {};
 
-    if (name) updateOptions.name = name;
-    if (subject) updateOptions.subject = subject;
-    if (html) updateOptions.html = html;
+    if (subject !== undefined) updateData.subject = subject;
+    if (htmlBody !== undefined) updateData.htmlBody = htmlBody;
+    if (isActive !== undefined) updateData.isActive = isActive;
 
-    if (Object.keys(updateOptions).length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { error: "No fields to update" },
         { status: 400 },
       );
     }
 
-    const resend = getResendClient();
-    if (!resend) {
-      return NextResponse.json(
-        { error: "Email not configured" },
-        { status: 500 },
-      );
-    }
+    const template = await db.emailTemplate.update({
+      where: { id },
+      data: updateData,
+    });
 
-    const { data, error } = await resend.templates.update(id, updateOptions);
-
-    if (error) {
-      console.error("Error updating template:", error);
-      return NextResponse.json(
-        { error: error.message || "Failed to update template" },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json({ template: data });
+    return NextResponse.json({ template });
   } catch (error) {
     console.error("Error updating template:", error);
     return NextResponse.json(
@@ -124,8 +111,7 @@ export async function PATCH(
 }
 
 /**
- * Delete email template
- * @description Permanently delete an email template from Resend
+ * Delete an email template
  * @pathParams IdParams
  * @response 200:SuccessResponse
  * @auth bearer
@@ -143,23 +129,16 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const resend = getResendClient();
-    if (!resend) {
+    // Verify the template belongs to this wedding
+    const existing = await db.emailTemplate.findUnique({ where: { id } });
+    if (!existing || existing.weddingId !== weddingId) {
       return NextResponse.json(
-        { error: "Email not configured" },
-        { status: 500 },
+        { error: "Template not found" },
+        { status: 404 },
       );
     }
 
-    const { error } = await resend.templates.remove(id);
-
-    if (error) {
-      console.error("Error deleting template:", error);
-      return NextResponse.json(
-        { error: error.message || "Failed to delete template" },
-        { status: 500 },
-      );
-    }
+    await db.emailTemplate.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

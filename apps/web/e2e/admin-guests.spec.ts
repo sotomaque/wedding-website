@@ -278,6 +278,50 @@ test.describe("Guest Management - CRUD Operations", () => {
   });
 });
 
+test.describe("Guest Management - RSVP Link", () => {
+  test.beforeEach(async ({ page }) => {
+    if (!isAuthAvailable()) {
+      test.skip();
+    }
+    await page.goto(TEST_DATA.routes.adminGuests);
+    await waitForHydration(page);
+  });
+
+  test("copy RSVP link includes wedding slug in URL", async ({
+    page,
+    context,
+  }) => {
+    // Grant clipboard permissions
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+    // Ensure there are rows in the table
+    const rowCount = await page.locator("table tbody tr").count();
+    if (rowCount === 0) {
+      test.skip();
+      return;
+    }
+
+    // Find the copy RSVP link button (link icon next to invite code)
+    const copyRsvpButton = page
+      .locator("button[title='Copy RSVP link']")
+      .first();
+    await expect(copyRsvpButton).toBeVisible({ timeout: 5000 });
+    await copyRsvpButton.click();
+
+    // Read clipboard and verify the URL format includes the slug
+    const clipboardText = await page.evaluate(() =>
+      navigator.clipboard.readText(),
+    );
+    const currentUrl = new URL(page.url());
+    const slug = currentUrl.pathname.split("/")[1];
+
+    expect(clipboardText).toContain(`/${slug}/rsvp?code=`);
+    expect(clipboardText).toMatch(
+      new RegExp(`^https?://[^/]+/${slug}/rsvp\\?code=.+$`),
+    );
+  });
+});
+
 test.describe("Guest Management - Email Actions", () => {
   test.use({ storageState: "e2e/.auth/admin.json" });
 
