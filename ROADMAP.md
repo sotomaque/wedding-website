@@ -1,261 +1,234 @@
-# Multi-Tenancy & Feature Roadmap
+# WedPlan — Product & Acquisition Roadmap
 
-> Last updated: 2026-03-22
-
-This document outlines the roadmap for the wedding platform — from single-tenant wedding site to a multi-tenant platform anyone can use.
+> Last updated: 2026-03-25
 
 ---
 
-## Phase 1: Foundation — Multi-Tenancy Core ✅
+## Current State
 
-### 1.1 Wedding Entity & Data Isolation ✅
+Multi-tenant wedding platform with: Clerk auth, Stripe payments, AI seating charts, per-wedding email templates (DB-stored), address autocomplete (Geoapify), Vercel cron jobs (RSVP reminders + admin summaries), full E2E test coverage, and a security-hardened API layer (weddingId-scoped queries on all 37 routes).
 
-- [x] `weddings` table with slug, couple_name, wedding_date, status, etc.
-- [x] `wedding_id` FK on all 18 tables with cascade delete + indexes
-- [x] Backfill existing data to default wedding (`helen-and-enrique`)
+| Asset | Status |
+|-------|--------|
+| Multi-tenancy | Full (weddingId-scoped queries, RLS, cross-tenant security audit complete) |
+| AI features | Seating chart generation (OpenAI) |
+| Payments | Stripe (registry + gifting) |
+| Email system | Per-wedding DB templates, toggleable, cron-based reminders + admin summaries |
+| Vendor management | ServiceLinks + vendors page |
+| E2E tests | 427 unit + Playwright E2E (parallel read-only, serial mutating) |
+| Platform admin | Superadmin panel |
+| Mobile | Web-only (Next.js) — gap vs Zola/Joy native apps |
+
+---
+
+## Phase 1: Foundation ✅ COMPLETE
+
+### 1.1 Multi-Tenancy Core ✅
+- [x] `weddings` table with slug, couple_name, wedding_date, status
+- [x] `wedding_id` FK on all tables with cascade delete + indexes
 - [x] All Prisma queries scoped by `weddingId` (~54 files)
-- [x] `wedding_id` NOT NULL on all tables (migration 041)
-- [x] RLS policies on all tables (migrations 029, 042)
-- [x] DB triggers updated for wedding_id (migration 044)
+- [x] RLS policies on all tables
+- [x] Cross-tenant security audit (20 API routes hardened)
 
 ### 1.2 Wedding Context & Routing ✅
-
-- [x] `getWeddingId()` / `getWeddingContext()` — cached per-request via React.cache()
-- [x] Middleware extracts slug from URL, sets `x-wedding-slug` header
+- [x] `getWeddingId()` / `getWeddingContext()` cached per-request
+- [x] Middleware extracts slug, sets headers
 - [x] All pages under `app/[slug]/`
-- [x] Legacy paths redirect to `/{DEFAULT_WEDDING_SLUG}/...`
 - [x] `useWeddingSlug()` client hook
-- [ ] Custom domains per wedding (Vercel domain API)
+- [x] All admin links use slug prefix (6 files fixed in audit)
 
 ### 1.3 Admin Roles & Permissions ✅
-
-- [x] `wedding_admins` table with `WeddingAdmin` Prisma model (owner/editor)
-- [x] `requireAdmin(weddingId)` replaces inline auth in ~30 API routes
-- [x] `ADMIN_EMAILS` env var as superadmin fallback
-- [x] Admin check via server-side prop (no client-side env var)
-- [x] Invite co-admin flow (Admins tab in settings — invite by email, role management)
+- [x] `wedding_admins` table (owner/editor roles)
+- [x] `requireAdmin(weddingId)` on all admin API routes
+- [x] Co-admin invite flow
 
 ### 1.4 Tenant-Scoped Configuration ✅
-
-- [x] Wedding model: contactEmail, notificationEmails, emailFromName/Address, person1/2Name, brandImage, featureToggles, themeId
-- [x] `wedding_content` table (section + JSONB) replaces `constants.ts`
-- [x] `registry_items` table replaces Stripe env vars
-- [x] `getWeddingSettings()` and `getWeddingContentSections()` cached data layer
-- [x] Zod schemas for all content section types
-- [x] All section components accept content as props
-- [x] Navigation driven by per-wedding brand image + feature toggles
-- [x] Feature toggle enforcement on 8 public pages
-- [x] Per-wedding email from address and notification recipients (~12 files)
-- [x] `weddingUrl(slug, path)` for slug-aware email links
-- [x] Deprecated files deleted (`constants.ts`, `site-config.ts`, `registry/constants.ts`)
-- [x] Migrated env vars removed from `env.ts`
+- [x] Per-wedding email templates (DB-stored, toggleable via `isActive`)
+- [x] Per-wedding themes (5 presets with CSS variable injection)
+- [x] Feature toggles, brand image, notification recipients
+- [x] Content editor (Hero, Story, Details, Schedule, RSVP)
 
 ---
 
-## Phase 2: Onboarding & Self-Service ✅
+## Phase 2: Onboarding & Self-Service ✅ COMPLETE
 
-### 2.1 Signup & Wedding Creation ✅
-
-- [x] Landing page at `/` with feature showcase, photos, CTAs
-- [x] Clerk auth pages (`/sign-up`, `/sign-in`) → `/dashboard`
-- [x] Dashboard — lists user's weddings, "Create New" button
-- [x] 4-step onboarding wizard: names → slug → date/venue → confirm
-- [x] `createWedding()` seeds wedding + admin + events + content
-
-### 2.2 Theme & Customization ✅
-
-- [x] `themeId` column on weddings (migration 043)
-- [x] 5 preset themes: Warm Gold, Sage Garden, Dusty Rose, Navy Classic, Terracotta
-- [x] CSS variable injection via `[slug]/layout.tsx`
-- [x] Theme picker in admin settings
-- [ ] Custom color overrides (beyond presets)
-- [ ] Per-wedding logo/monogram upload via UploadThing
-- [ ] Font pairing options
-
-### 2.3 Admin Settings & Content Editor ✅
-
-- [x] Settings page: General, Notifications, Branding, Theme, Features, Admins tabs
-- [x] Content editor: Hero, Story, Details, Schedule, RSVP tabs
-- [x] Feature toggle switches per wedding
-- [x] Rich text editor for story content (Tiptap WYSIWYG)
-- [x] Co-admin invite and management
+- [x] Landing page with feature showcase
+- [x] Clerk auth → Dashboard → 4-step onboarding wizard
+- [x] Wedding creation seeds: admin, events, content, email templates
+- [x] Theme picker, content editor, feature toggles
+- [x] Address autocomplete (Geoapify) on all address inputs
+- [x] Shadcn calendar date pickers on all date fields
 
 ---
 
-## Phase 3: Enhanced Guest Experience
+## Phase 3: AI Features (Months 1–2)
 
-### 3.1 Guest Portal
+> Build the technical moat. These directly compete with The Knot's AI push.
 
-- [ ] Authenticated guest dashboard: RSVP status, events, hotel info, activity interests
-- [ ] Allow guests to update contact info and dietary restrictions post-RSVP
-- [ ] Guestbook / well-wishes feature
+### Tier 1 — Quick Wins (Weeks 1–4)
 
-### 3.2 Multi-Language Support (i18n)
+| Feature | Effort | Value | Notes |
+|---------|--------|-------|-------|
+| **AI Todo Generator** | Low | High | On onboarding, GPT generates date-aware checklist → `WeddingTodo` table. First "wow" moment. |
+| **AI Story Writer** | Low | High | "Generate with AI" button in content editor. Couple gives a few sentences → GPT drafts full story → populates Tiptap editor. |
+| **AI Guest Email Drafts** | Low | High | "AI Draft" button in template editor. Describe intent → GPT generates email HTML. |
+| **AI Photo Captions** | Low | Medium | GPT-4 Vision on uploaded guest photos → auto-caption. Add `caption` column to `GuestPhoto`. |
 
-- [ ] i18n framework (next-intl or similar)
-- [ ] English and Spanish support
-- [ ] Per-wedding default language setting
-- [ ] Language switcher on public pages
+### Tier 2 — Mid-Term (Weeks 4–8)
 
-### 3.3 Improved RSVP Flow
+| Feature | Effort | Value | Notes |
+|---------|--------|-------|-------|
+| **AI RSVP Insights** | Medium | High | Natural language dashboard insights from existing RSVP/dietary/hotel data. No schema changes. |
+| **AI Seating Chart v2** | Medium | High | Natural language constraints ("keep divorced parents apart"). Improved prompt, not new infra. |
+| **AI Budget Optimizer** | Medium | High | Couple enters budget → AI allocates by category based on guest count, venue, location. New `Budget` model. |
+| **AI Vendor Recommendations** | Medium | Medium | Based on theme, budget, location → suggest vendor categories and styles. |
 
-> **Mostly shipped.** Plus-ones, multi-event RSVP, .ics calendar invites working.
+### Tier 3 — Strategic (Months 2–4)
 
-- [x] Plus-one name collection with dietary restrictions, age info
-- [x] Multi-event RSVP via `guest_event_invites` table
-- [x] RSVP confirmation with .ics calendar invite (single + bulk)
-- [ ] Meal selection during RSVP
-- [ ] Song request field
+| Feature | Effort | Value | Notes |
+|---------|--------|-------|-------|
+| **AI Planning Assistant (Chat)** | High | Very High | Persistent sidebar chat with live DB context via OpenAI function calling. This is The Knot's ChatGPT app — but better because it has real data. |
+| **AI Timeline Generator** | High | High | Minute-by-minute wedding day timeline → PDF export. Replaces $2K–$5K day-of coordinator. |
+| **AI Style Advisor** | High | High | Upload inspiration images → GPT-4 Vision recommends theme preset + custom color overrides. |
 
-### 3.4 Photo Sharing ✅
-
-> **Shipped.** QR code upload, live slideshow, admin moderation, ZIP download.
-
----
-
-## Phase 4: Admin Power Features
-
-### 4.0 Physical Mail
-
-- [ ] Lob API integration for letters/postcards
-- [ ] Address collection/verification flow
-- [ ] Delivery tracking via webhooks
-
-### 4.1 Analytics Dashboard
-
-- [ ] RSVP response rate over time (chart)
-- [ ] Guest breakdown by side, tier, dietary restrictions
-- [ ] Email open/click tracking (Resend)
-- [ ] Gift totals and trends
-
-### 4.2 Communication Hub
-
-> **Email portion shipped.** Bulk send, templates, event invites, calendar invites.
-
-- [x] Email blast to guest segments
-- [x] Email templates with Resend
-- [x] Event-specific invitation emails
-- [ ] Email scheduling (future send)
-- [ ] SMS/WhatsApp via Twilio
-- [ ] Automated reminder emails for non-responders
-
-### 4.3 Budget Tracker
-
-- [ ] Budget categories, vendor payment tracking
-- [ ] Gift income tracking (Stripe data exists)
-- [ ] Budget vs. actual comparison
-
-### 4.4 Day-of Coordination
-
-- [ ] Check-in mode (tablet-friendly UI)
-- [ ] Vendor timeline / run-of-show
-- [ ] Emergency contacts list
-
-### 4.5 Document Center ✅
-### 4.6 Services & Links Manager ✅
+### Architecture Note
+All AI features must pass `weddingId` and scope system prompts to wedding data. Share a single `lib/ai/client.ts` utility that wraps `getWeddingId() + requireAdmin()`. Don't let AI become a multi-tenancy leak vector.
 
 ---
 
-## Phase 5: Monetization & Scale
+## Phase 4: Traction & Revenue (Months 2–3)
 
-### 5.1 Pricing Tiers
+### 4.1 Real Weddings
+- [ ] Onboard 25–50 real weddings (bridal expos, SD wedding Facebook groups, Instagram ads)
+- [ ] 3–5 case studies with video testimonials
+- [ ] Live slideshow showcase at a real wedding
 
+### 4.2 Paid Tier
 - [ ] Free tier: basic site, limited guests
-- [ ] Premium: unlimited guests, custom domain, all features
+- [ ] Premium ($29–49/mo): unlimited guests, custom domain, AI features, all email templates
 - [ ] Stripe subscriptions (already integrated)
+- [ ] Feature flag overrides per wedding in platform admin
 
-### 5.2 Platform Admin Panel ✅
+### 4.3 Vendor Marketplace (Lightweight)
+- [ ] Vendor directory: vendors can claim/create profiles
+- [ ] Lead gen: couples express interest → vendor gets notified
+- [ ] "For Vendors" landing page
+- [ ] Target 20+ local SD vendors (photographers, florists, venues)
+- [ ] This is The Knot's core revenue model — even a lightweight version signals market understanding
 
-- [x] Route: `/platform-admin` — protected by superadmin check
-- [x] Wedding list with couple, slug, date, status, guests, admins, created
-- [x] Stats: total weddings, published/draft/archived, total guests, RSVPs
-- [x] Per-wedding actions: publish, archive, draft, delete
-- [x] "View Admin" link to jump into any wedding's admin
-- [ ] User management — list all Clerk users, see their weddings
-- [ ] Feature flag overrides per wedding (grant premium features)
-- [ ] Audit log — track admin actions
-
-### 5.3 Infrastructure
-
-- [ ] Rate limiting on public APIs
-- [ ] CDN for per-wedding static assets
-- [ ] Background job processing for bulk emails
-- [ ] Webhook retry queue
+### 4.4 Custom Registries
+- [ ] Amazon-style wish lists with gift claiming (planned, schema designed)
+- [ ] Guests claim gifts to prevent duplicates (optimistic locking)
+- [ ] External registry links (Amazon, Target, etc.)
+- [ ] URL metadata scraping for auto-fill (metascraper)
 
 ---
 
-## Phase 6: Nice-to-Haves
+## Phase 5: Positioning & Packaging (Months 3–4)
 
-- [ ] Save the Date digital cards
-- [ ] FAQ page builder
-- [ ] Wedding party page (bridesmaids/groomsmen bios)
-- [ ] Maps integration with directions
-- [ ] Export tools (guest CSV, seating PDF, gift report)
-- [ ] Archive mode (read-only post-wedding)
-- [ ] PWA support for offline schedule access
-- [ ] Accessibility audit (WCAG 2.1 AA)
+### 5.1 Brand
+- [ ] Register `wedplan.app` or `wedplan.co`
+- [ ] Keep `helen-and-enrique.com` as showcase/demo wedding
+- [ ] Standalone marketing site
 
----
+### 5.2 Growth
+- [ ] Waitlist (target 500+ signups)
+- [ ] Product Hunt launch
+- [ ] Press angle: "Former couple builds multi-tenant wedding platform with AI seating charts"
 
-## Multi-Tenancy Status: COMPLETE ✅
-
-The core multi-tenancy infrastructure is **done**. Any couple can sign up, create a wedding, and have a fully isolated site with their own content, theme, guests, events, and registry.
-
-### Remaining hardening (not blocking launch)
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Stripe webhook wedding resolution | Partial | `resolveGiftWeddingId()` uses guest match or default; needs Stripe metadata on Payment Links |
-| Custom domains | Not started | Vercel domain API — nice-to-have for premium tier |
-
-### Testing coverage
-
-- **Unit tests**: 371 tests covering query scoping, auth, RSVP, email, gifts, seating, photos, guest session, data isolation
-- **E2E tests** (Playwright):
-  - `multi-tenancy.spec.ts` — admin data isolation, public page isolation, invalid slug 404, theme injection
-  - `platform-admin.spec.ts` — wedding list, stats, view admin links, status badges
-  - `rsvp-isolation.noauth.spec.ts` — cross-wedding invite code rejection
-  - `onboarding.noauth.spec.ts` — landing page, CTAs, dashboard auth redirect
-  - Plus existing E2E suites for RSVP flow, admin guests, seating, vendors, photos, registry
-- **Seed**: Two weddings seeded for isolation testing (`helen-and-enrique` + `e2e-test-wedding`)
+### 5.3 Technical Due Diligence Package
+- [ ] Architecture overview doc (schema, multi-tenancy, auth, payments)
+- [ ] Test coverage report (427 unit + E2E)
+- [ ] Security audit summary (cross-tenant hardening, RLS, weddingId scoping)
+- [ ] CI/CD pipeline overview (Vercel, GitHub Actions, preview deployments)
 
 ---
 
-## Post-Deploy: Environment Variable Cleanup
+## Phase 6: Outreach & Exit (Months 4–6)
 
-### Safe to delete from Vercel / GitHub Actions
+### 6.1 Target Buyers
 
-| Env Var | Replaced By |
-|---------|-------------|
-| `NEXT_PUBLIC_ADMIN_EMAILS` | `wedding_admins` table + `requireAdmin()` |
-| `NEXT_PUBLIC_RSVP_EMAIL` | `weddings.contact_email` |
-| `NEXT_PUBLIC_STRIPE_LINK_BABY_FUND` | `registry_items.stripe_url` |
-| `NEXT_PUBLIC_STRIPE_LINK_HONEYMOON` | `registry_items.stripe_url` |
-| `NEXT_PUBLIC_STRIPE_LINK_STUDENT_LOANS` | `registry_items.stripe_url` |
+| Buyer | Why |
+|-------|-----|
+| **The Knot Worldwide** | New CEO + CFO doubling down on AI. Actively acquiring AI capabilities. Your stack is more modern than their likely legacy codebase. |
+| **Zola** | $140M+ raised, product-led, acqui-hire friendly |
+| **Joy** | Bootstrapped, strong UX, would value guest management + seating AI |
+| **PE firms** | Wedding SaaS market growing 12% CAGR ($2.5B → $6.8B by 2033) |
 
-### Keep for now (fallbacks)
+### 6.2 Outreach Strategy
+- [ ] Map 2nd-degree LinkedIn connections to The Knot corp dev team
+- [ ] Target The Knot's BD/Corp Dev (dedicated M&A function)
+- [ ] Present at Wedding MBA (November) or YC Demo Day
+- [ ] Engage boutique M&A advisor ($1M–$10M SaaS range)
 
-| Env Var | Why |
-|---------|-----|
-| `ADMIN_EMAILS` | Superadmin access to all weddings + platform admin |
-| `RSVP_EMAIL` | Fallback for Stripe webhook when no wedding resolved |
-| `STRIPE_PRODUCT_*` (3) | Fallback product-ID matching for legacy charges |
-| `DEFAULT_WEDDING_SLUG` | Legacy URL redirects + webhook fallback |
+### 6.3 Valuation Framework
 
-### Keep forever (platform secrets)
+| Stage | Range |
+|-------|-------|
+| Acqui-hire (team + IP) | $500K–$2M |
+| Product acquisition ($1K–5K MRR, 50 weddings, vendor marketplace) | $2M–$8M |
+| Strategic acquisition ($10K+ MRR, two-sided marketplace) | $10M+ at 5–10x ARR |
 
-| Env Var | Purpose |
-|---------|---------|
+---
+
+## Remaining Technical Gaps
+
+| Gap | Priority | Notes |
+|-----|----------|-------|
+| Mobile (PWA or React Native) | High | Web-only is a risk vs Zola/Joy native apps |
+| Custom domains per wedding | Medium | Vercel domain API — premium tier feature |
+| Rate limiting on public APIs | Medium | Prevent abuse at scale |
+| SMS/WhatsApp notifications | Low | Twilio integration |
+| i18n (English + Spanish) | Low | next-intl |
+| Meal selection during RSVP | Low | Schema extension |
+
+---
+
+## Completed Features Log
+
+| Feature | Date | Notes |
+|---------|------|-------|
+| Multi-tenancy core | 2026-03 | Full data isolation, RLS, scoped queries |
+| Onboarding wizard | 2026-03 | 4-step flow with slug validation |
+| Theme system | 2026-03 | 5 presets with CSS variable injection |
+| Per-wedding email templates | 2026-03 | DB-stored, toggleable, Mustache variables |
+| Address autocomplete | 2026-03 | Geoapify API on all address inputs |
+| Shadcn calendar pickers | 2026-03 | Replaced all native date inputs |
+| RSVP reminder cron | 2026-03 | Vercel cron, configurable schedules per wedding |
+| Admin summary cron | 2026-03 | Weekly A-list guest status email |
+| Security audit | 2026-03 | 20 API routes hardened, 6 nav bugs fixed |
+| Vercel Analytics + Speed Insights | 2026-03 | Added to root layout |
+| Env cleanup | 2026-03 | Removed 10 unused vars, deleted 3 stale files |
+
+---
+
+## Environment Variables
+
+### Production (Vercel)
+| Var | Purpose |
+|-----|---------|
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk auth |
 | `CLERK_SECRET_KEY` | Clerk auth |
 | `NEXT_PUBLIC_APP_URL` | Base URL for emails/metadata |
 | `RESEND_API_KEY` | Email sending |
 | `STRIPE_SECRET_KEY` | Payments |
 | `STRIPE_WEBHOOK_SECRET` | Webhook verification |
+| `STRIPE_PRODUCT_BABY_FUND` | Gift type matching (fallback) |
+| `STRIPE_PRODUCT_HONEYMOON` | Gift type matching (fallback) |
+| `STRIPE_PRODUCT_STUDENT_LOANS` | Gift type matching (fallback) |
 | `OPENAI_API_KEY` | AI features |
 | `UPLOADTHING_TOKEN` | File uploads |
+| `ADMIN_EMAILS` | Superadmin access |
+| `RSVP_EMAIL` | Fallback notification recipients |
+| `DEFAULT_WEDDING_SLUG` | Legacy URL redirects |
+| `NEXT_PUBLIC_GEOAPIFY_API_KEY` | Address autocomplete |
+| `CRON_SECRET` | Vercel cron job auth |
+| `DATABASE_URL` | Prisma DB connection |
 
-### Delete later (once legacy charges are gone)
-
-- `STRIPE_PRODUCT_BABY_FUND`, `STRIPE_PRODUCT_HONEYMOON`, `STRIPE_PRODUCT_STUDENT_LOANS`
-- `RSVP_EMAIL`
+### Preview Only
+| Var | Purpose |
+|-----|---------|
+| `E2E_TEST_MODE` | Skip email sending |
+| `E2E_RESET_SECRET` | DB reset endpoint |
+| `TEST_ADMIN_EMAIL` | E2E test auth |
+| `TEST_ADMIN_PASSWORD` | E2E test auth |

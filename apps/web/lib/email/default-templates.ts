@@ -218,6 +218,65 @@ export function getDefaultTemplates(weddingId: string): DefaultTemplate[] {
         { key: "VENUE_ADDRESS", description: "Address of the venue" },
       ],
     },
+    {
+      weddingId,
+      type: "rsvp_reminder" as EmailTemplateType,
+      name: "RSVP Reminder",
+      subject: "Reminder: Please RSVP for {{{COUPLE_NAMES}}}'s Wedding",
+      htmlBody: rsvpReminderHtml,
+      isActive: true,
+      variables: [
+        { key: "GUEST_NAME", description: "Full name of the guest" },
+        { key: "COUPLE_NAMES", description: "Names of the couple" },
+        { key: "WEDDING_DATE", description: "Formatted wedding date" },
+        { key: "RSVP_DEADLINE", description: "RSVP deadline date" },
+        {
+          key: "DAYS_REMAINING",
+          description: "Number of days until the RSVP deadline",
+        },
+        { key: "RSVP_URL", description: "URL for the guest to RSVP" },
+        { key: "INVITE_CODE", description: "Guest invitation code" },
+      ],
+    },
+    {
+      weddingId,
+      type: "admin_summary" as EmailTemplateType,
+      name: "Admin Summary",
+      subject: "Wedding Update: {{{COUPLE_NAMES}}} - Guest List Summary",
+      htmlBody: adminSummaryHtml,
+      isActive: true,
+      variables: [
+        { key: "COUPLE_NAMES", description: "Names of the couple" },
+        { key: "WEDDING_DATE", description: "Formatted wedding date" },
+        { key: "TOTAL_A_LIST", description: "Total number of A-list guests" },
+        {
+          key: "A_LIST_INVITED",
+          description: "Number of A-list guests who have been sent invites",
+        },
+        {
+          key: "A_LIST_NOT_INVITED",
+          description: "Number of A-list guests who have NOT been sent invites",
+        },
+        {
+          key: "A_LIST_PENDING",
+          description: "Number of A-list guests with pending RSVP",
+        },
+        {
+          key: "A_LIST_YES",
+          description: "Number of A-list guests who RSVP'd yes",
+        },
+        {
+          key: "A_LIST_NO",
+          description: "Number of A-list guests who RSVP'd no",
+        },
+        {
+          key: "UNINVITED_GUESTS",
+          description: "HTML list of A-list guests not yet sent invites",
+        },
+        { key: "ADMIN_URL", description: "URL to the admin dashboard" },
+        { key: "REPORT_DATE", description: "Date this report was generated" },
+      ],
+    },
   ];
 }
 
@@ -1003,6 +1062,218 @@ const calendarInviteHtml = `<!DOCTYPE html>
         </p>
         <p style="margin: 0; color: #718096; font-size: 14px; line-height: 1.6;">
           {{{COUPLE_NAMES}}}
+        </p>
+      </div>
+    </div>
+  </body>
+</html>`;
+
+const rsvpReminderHtml = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSVP Reminder - {{{COUPLE_NAMES}}}'s Wedding</title>
+  </head>
+  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+
+      <!-- Hero Section -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px;">
+        <tr>
+          <td style="background: linear-gradient(135deg, rgba(237, 137, 54, 0.92) 0%, rgba(221, 107, 32, 0.92) 100%); padding: 60px 40px; text-align: center;">
+            <h1 style="margin: 0 0 15px; color: #ffffff; font-size: 36px; font-weight: 300; letter-spacing: 2px; font-family: Georgia, 'Times New Roman', serif; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+              Friendly Reminder
+            </h1>
+            <table role="presentation" width="80" cellpadding="0" cellspacing="0" border="0" align="center">
+              <tr>
+                <td style="border-top: 1px solid rgba(255,255,255,0.6); padding: 15px 0 0;"></td>
+              </tr>
+            </table>
+            <p style="margin: 0; color: #ffffff; font-size: 18px; font-weight: 300; letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+              {{{DAYS_REMAINING}}} days left to RSVP
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Main Content -->
+      <div style="padding: 50px 40px; background-color: #ffffff;">
+        <p style="margin: 0 0 25px; color: #2d3748; font-size: 18px; line-height: 1.6;">
+          Dear {{{GUEST_NAME}}},
+        </p>
+
+        <p style="margin: 0 0 20px; color: #4a5568; font-size: 16px; line-height: 1.8;">
+          We haven't heard back from you yet! We'd love to know if you can join us for {{{COUPLE_NAMES}}}'s wedding.
+        </p>
+
+        <!-- Deadline Card -->
+        <div style="background: linear-gradient(135deg, #fffaf0 0%, #feebc8 100%); border-left: 4px solid #ed8936; padding: 25px; margin: 30px 0; border-radius: 8px;">
+          <p style="margin: 0 0 15px; color: #744210; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+            Important Dates
+          </p>
+          <div style="margin: 0 0 12px;">
+            <span style="color: #ed8936; font-size: 16px;">&#x1F4C5;</span>
+            <span style="color: #2d3748; font-size: 16px; margin-left: 10px;">Wedding: <strong>{{{WEDDING_DATE}}}</strong></span>
+          </div>
+          <div>
+            <span style="color: #ed8936; font-size: 16px;">&#x23F0;</span>
+            <span style="color: #2d3748; font-size: 16px; margin-left: 10px;">RSVP Deadline: <strong>{{{RSVP_DEADLINE}}}</strong></span>
+          </div>
+        </div>
+
+        <!-- CTA Button -->
+        <div style="text-align: center; margin: 40px 0;">
+          <a href="{{{RSVP_URL}}}" style="display: inline-block; background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); color: #ffffff; padding: 16px 48px; font-size: 18px; font-weight: 600; text-decoration: none; border-radius: 50px; box-shadow: 0 4px 15px rgba(237,137,54,0.4); letter-spacing: 1px;">
+            RSVP Now
+          </a>
+        </div>
+
+        <!-- Invitation Code -->
+        <div style="background: #f7fafc; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: center;">
+          <p style="margin: 0 0 10px; color: #4a5568; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+            Your Invitation Code
+          </p>
+          <span style="display: inline-block; background: #ffffff; padding: 10px 20px; border-radius: 8px; font-size: 24px; font-weight: 700; color: #ed8936; letter-spacing: 3px; font-family: 'Courier New', monospace; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            {{{INVITE_CODE}}}
+          </span>
+        </div>
+
+        <p style="margin: 30px 0 0; color: #718096; font-size: 14px; line-height: 1.6; text-align: center;">
+          We truly hope you can make it!
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding: 30px 40px; background-color: #f7fafc; text-align: center; border-top: 1px solid #e2e8f0;">
+        <p style="margin: 0 0 8px; color: #4a5568; font-size: 14px; line-height: 1.6;">
+          With love,
+        </p>
+        <p style="margin: 0; color: #718096; font-size: 14px; line-height: 1.6;">
+          {{{COUPLE_NAMES}}}
+        </p>
+      </div>
+    </div>
+  </body>
+</html>`;
+
+const adminSummaryHtml = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest List Summary - {{{COUPLE_NAMES}}}'s Wedding</title>
+  </head>
+  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+
+      <!-- Header -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px;">
+        <tr>
+          <td style="background: linear-gradient(135deg, rgba(56, 178, 172, 0.92) 0%, rgba(49, 151, 149, 0.92) 100%); padding: 50px 40px; text-align: center;">
+            <h1 style="margin: 0 0 10px; color: #ffffff; font-size: 30px; font-weight: 300; letter-spacing: 2px; font-family: Georgia, 'Times New Roman', serif;">
+              Guest List Summary
+            </h1>
+            <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 14px;">
+              {{{REPORT_DATE}}}
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Stats Grid -->
+      <div style="padding: 40px;">
+        <p style="margin: 0 0 20px; color: #2d3748; font-size: 18px; font-weight: 600;">
+          A-List Overview
+        </p>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding: 12px 16px; background: #f7fafc; border-radius: 8px;">
+              <span style="color: #4a5568; font-size: 14px;">Total A-List Guests</span>
+            </td>
+            <td style="padding: 12px 16px; background: #f7fafc; border-radius: 8px; text-align: right;">
+              <strong style="color: #2d3748; font-size: 18px;">{{{TOTAL_A_LIST}}}</strong>
+            </td>
+          </tr>
+          <tr><td colspan="2" style="height: 8px;"></td></tr>
+          <tr>
+            <td style="padding: 12px 16px; background: #f0fff4; border-radius: 8px;">
+              <span style="color: #276749; font-size: 14px;">&#x2705; Invited</span>
+            </td>
+            <td style="padding: 12px 16px; background: #f0fff4; border-radius: 8px; text-align: right;">
+              <strong style="color: #276749; font-size: 18px;">{{{A_LIST_INVITED}}}</strong>
+            </td>
+          </tr>
+          <tr><td colspan="2" style="height: 8px;"></td></tr>
+          <tr>
+            <td style="padding: 12px 16px; background: #fff5f5; border-radius: 8px;">
+              <span style="color: #9b2c2c; font-size: 14px;">&#x274C; Not Yet Invited</span>
+            </td>
+            <td style="padding: 12px 16px; background: #fff5f5; border-radius: 8px; text-align: right;">
+              <strong style="color: #9b2c2c; font-size: 18px;">{{{A_LIST_NOT_INVITED}}}</strong>
+            </td>
+          </tr>
+        </table>
+
+        <!-- RSVP Breakdown -->
+        <p style="margin: 30px 0 15px; color: #2d3748; font-size: 18px; font-weight: 600;">
+          RSVP Status (Invited Guests)
+        </p>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding: 12px 16px; background: #fffff0; border-radius: 8px;">
+              <span style="color: #744210; font-size: 14px;">&#x23F3; Pending</span>
+            </td>
+            <td style="padding: 12px 16px; background: #fffff0; border-radius: 8px; text-align: right;">
+              <strong style="color: #744210; font-size: 18px;">{{{A_LIST_PENDING}}}</strong>
+            </td>
+          </tr>
+          <tr><td colspan="2" style="height: 8px;"></td></tr>
+          <tr>
+            <td style="padding: 12px 16px; background: #f0fff4; border-radius: 8px;">
+              <span style="color: #276749; font-size: 14px;">&#x1F389; Attending</span>
+            </td>
+            <td style="padding: 12px 16px; background: #f0fff4; border-radius: 8px; text-align: right;">
+              <strong style="color: #276749; font-size: 18px;">{{{A_LIST_YES}}}</strong>
+            </td>
+          </tr>
+          <tr><td colspan="2" style="height: 8px;"></td></tr>
+          <tr>
+            <td style="padding: 12px 16px; background: #fff5f5; border-radius: 8px;">
+              <span style="color: #9b2c2c; font-size: 14px;">&#x1F614; Declined</span>
+            </td>
+            <td style="padding: 12px 16px; background: #fff5f5; border-radius: 8px; text-align: right;">
+              <strong style="color: #9b2c2c; font-size: 18px;">{{{A_LIST_NO}}}</strong>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Uninvited Guests -->
+        <div style="margin-top: 30px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+          <div style="padding: 15px 20px; background: #fff5f5; border-bottom: 1px solid #e2e8f0;">
+            <p style="margin: 0; color: #9b2c2c; font-size: 14px; font-weight: 600;">
+              A-List Guests Not Yet Invited
+            </p>
+          </div>
+          <div style="padding: 20px;">
+            {{{UNINVITED_GUESTS}}}
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div style="text-align: center; margin: 35px 0 10px;">
+          <a href="{{{ADMIN_URL}}}" style="display: inline-block; background: linear-gradient(135deg, #38b2ac 0%, #319795 100%); color: #ffffff; padding: 14px 40px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 50px; box-shadow: 0 4px 15px rgba(56,178,172,0.4);">
+            Go to Admin Dashboard
+          </a>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding: 25px 40px; background-color: #f7fafc; text-align: center; border-top: 1px solid #e2e8f0;">
+        <p style="margin: 0; color: #718096; font-size: 13px;">
+          This is an automated summary for {{{COUPLE_NAMES}}}'s wedding.
         </p>
       </div>
     </div>

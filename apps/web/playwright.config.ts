@@ -12,10 +12,29 @@ config({ path: path.resolve(__dirname, ".env") });
 config({ path: path.resolve(__dirname, ".env.local"), override: true });
 
 /**
+ * Read-only spec files that don't mutate the DB.
+ * These can safely run in parallel with each other.
+ */
+const readOnlySpecs = [
+  "admin-auth.noauth.spec.ts",
+  "things-to-do.noauth.spec.ts",
+  "registry.noauth.spec.ts",
+  "trip-planner.noauth.spec.ts",
+  "platform-admin.spec.ts",
+];
+
+const readOnlyPattern = readOnlySpecs.map((f) => `**/${f}`);
+
+/**
  * Playwright configuration for E2E testing
  *
  * CI: Tests run against a Vercel preview deployment with a freshly seeded database.
  * Local: Tests run against the local dev server (starts automatically if not running).
+ *
+ * Test execution order on CI:
+ * 1. global-setup → setup (auth)
+ * 2. Read-only tests (parallel, multiple workers) — fast
+ * 3. Mutating tests (sequential, 1 worker) — safe DB access
  *
  * @see https://playwright.dev/docs/test-configuration
  */
@@ -27,8 +46,6 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI for DB consistency */
-  workers: process.env.CI ? 1 : undefined,
   /* Reporter to use */
   reporter: [["html", { open: "never" }], ["list"]],
   /* Shared settings for all the projects below */
@@ -54,24 +71,57 @@ export default defineConfig({
       testMatch: /auth\.setup\.ts/,
       dependencies: ["global-setup"],
     },
-    // Authenticated tests (require admin login)
+
+    // --- Read-only tests: safe to parallelize ---
+
+    // Authenticated read-only tests (parallel)
+    {
+      name: "readonly-auth",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/admin.json",
+      },
+      dependencies: ["setup"],
+      testMatch: readOnlyPattern.filter((p) => !p.includes(".noauth.")),
+      ...(process.env.CI && { workers: 3 }),
+    },
+    // Unauthenticated read-only tests (parallel)
+    {
+      name: "readonly-noauth",
+      use: {
+        ...devices["Desktop Chrome"],
+      },
+      dependencies: ["setup"],
+      testMatch: readOnlyPattern.filter((p) => p.includes(".noauth.")),
+      ...(process.env.CI && { workers: 3 }),
+    },
+
+    // --- Mutating tests: must run sequentially ---
+
+    // Authenticated mutating tests (1 worker on CI)
     {
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "e2e/.auth/admin.json",
       },
-      dependencies: ["setup"],
-      testIgnore: [/.*\.noauth\.spec\.ts/],
+      dependencies: ["setup", "readonly-auth", "readonly-noauth"],
+      testIgnore: [
+        /.*\.noauth\.spec\.ts/,
+        ...readOnlyPattern.map((p) => new RegExp(p.replace("**/", ""))),
+      ],
+      ...(process.env.CI && { workers: 1 }),
     },
-    // Unauthenticated tests (depend on setup for test invite code)
+    // Unauthenticated mutating tests (1 worker on CI)
     {
       name: "chromium-no-auth",
       use: {
         ...devices["Desktop Chrome"],
       },
-      dependencies: ["setup"],
+      dependencies: ["setup", "readonly-auth", "readonly-noauth"],
       testMatch: /.*\.noauth\.spec\.ts/,
+      testIgnore: readOnlyPattern.map((p) => new RegExp(p.replace("**/", ""))),
+      ...(process.env.CI && { workers: 1 }),
     },
   ],
 
