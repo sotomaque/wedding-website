@@ -31,23 +31,23 @@ mock.module("@/lib/url", () => ({
   ),
 }));
 
-// Mock email template rendering
-const mockRenderEmailTemplate = mock(() =>
-  Promise.resolve({
-    subject: "Reminder: Please RSVP",
-    html: "<p>Reminder email</p>",
-  }),
-);
-
-mock.module("@/lib/email/render-template", () => ({
-  renderEmailTemplate: mockRenderEmailTemplate,
-}));
-
 // DB mocks
 const mockReminderScheduleFindMany = mock(() => Promise.resolve([]));
 const mockReminderScheduleUpdate = mock(() => Promise.resolve({}));
 const mockGuestFindMany = mock(() => Promise.resolve([]));
 const mockGuestUpdate = mock(() => Promise.resolve({}));
+const mockEmailTemplateFindUnique = mock(() =>
+  Promise.resolve({
+    id: "tpl-reminder",
+    weddingId: "wedding-1",
+    type: "rsvp_reminder",
+    name: "RSVP Reminder",
+    subject: "Reminder: Please RSVP",
+    htmlBody: "<p>Reminder email</p>",
+    isActive: true,
+    variables: [],
+  }),
+);
 
 mock.module("@/lib/db", () => ({
   db: {
@@ -58,6 +58,9 @@ mock.module("@/lib/db", () => ({
     guest: {
       findMany: mockGuestFindMany,
       update: mockGuestUpdate,
+    },
+    emailTemplate: {
+      findUnique: mockEmailTemplateFindUnique,
     },
   },
 }));
@@ -79,7 +82,7 @@ describe("RSVP Reminders Cron", () => {
 
   beforeEach(() => {
     mockSendEmail.mockClear();
-    mockRenderEmailTemplate.mockClear();
+    mockEmailTemplateFindUnique.mockClear();
     mockReminderScheduleFindMany.mockClear();
     mockReminderScheduleUpdate.mockClear();
     mockGuestFindMany.mockClear();
@@ -414,7 +417,16 @@ describe("RSVP Reminders Cron", () => {
     ]);
 
     // Template is inactive
-    mockRenderEmailTemplate.mockResolvedValueOnce(null);
+    mockEmailTemplateFindUnique.mockResolvedValueOnce({
+      id: "tpl-reminder",
+      weddingId: "wedding-1",
+      type: "rsvp_reminder",
+      name: "RSVP Reminder",
+      subject: "Reminder",
+      htmlBody: "<p>Test</p>",
+      isActive: false,
+      variables: [],
+    });
 
     const { GET } = await import("@/app/api/cron/rsvp-reminders/route");
     const response = await GET(cronRequest("test-cron-secret") as never);

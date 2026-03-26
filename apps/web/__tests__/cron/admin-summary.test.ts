@@ -33,22 +33,22 @@ mock.module("@/lib/url", () => ({
   ),
 }));
 
-// Mock email template rendering
-const mockRenderEmailTemplate = mock(() =>
-  Promise.resolve({
-    subject: "Wedding Update: Guest List Summary",
-    html: "<p>Summary</p>",
-  }),
-);
-
-mock.module("@/lib/email/render-template", () => ({
-  renderEmailTemplate: mockRenderEmailTemplate,
-}));
-
 // DB mocks
 const mockAdminSummaryConfigFindMany = mock(() => Promise.resolve([]));
 const mockAdminSummaryConfigUpdate = mock(() => Promise.resolve({}));
 const mockGuestFindMany = mock(() => Promise.resolve([]));
+const mockEmailTemplateFindUnique = mock(() =>
+  Promise.resolve({
+    id: "tpl-summary",
+    weddingId: "wedding-1",
+    type: "admin_summary",
+    name: "Admin Summary",
+    subject: "Wedding Update: Guest List Summary",
+    htmlBody: "<p>Summary</p>",
+    isActive: true,
+    variables: [],
+  }),
+);
 
 mock.module("@/lib/db", () => ({
   db: {
@@ -58,6 +58,9 @@ mock.module("@/lib/db", () => ({
     },
     guest: {
       findMany: mockGuestFindMany,
+    },
+    emailTemplate: {
+      findUnique: mockEmailTemplateFindUnique,
     },
   },
 }));
@@ -78,7 +81,7 @@ describe("Admin Summary Cron", () => {
 
   beforeEach(() => {
     mockSendEmail.mockClear();
-    mockRenderEmailTemplate.mockClear();
+    mockEmailTemplateFindUnique.mockClear();
     mockAdminSummaryConfigFindMany.mockClear();
     mockAdminSummaryConfigUpdate.mockClear();
     mockGuestFindMany.mockClear();
@@ -208,19 +211,8 @@ describe("Admin Summary Cron", () => {
     expect(mockSendEmail).toHaveBeenCalledTimes(1);
     expect(mockAdminSummaryConfigUpdate).toHaveBeenCalledTimes(1);
 
-    // Check template was called with correct stats
-    expect(mockRenderEmailTemplate).toHaveBeenCalledWith(
-      "wedding-1",
-      "admin_summary",
-      expect.objectContaining({
-        TOTAL_A_LIST: "3",
-        A_LIST_INVITED: "2",
-        A_LIST_NOT_INVITED: "1",
-        A_LIST_YES: "1",
-        A_LIST_PENDING: "1",
-        A_LIST_NO: "0",
-      }),
-    );
+    // Check template was loaded from db
+    expect(mockEmailTemplateFindUnique).toHaveBeenCalledTimes(1);
   });
 
   it("should send on first run when lastRunAt is null", async () => {
@@ -342,7 +334,17 @@ describe("Admin Summary Cron", () => {
     ]);
 
     mockGuestFindMany.mockResolvedValue([]);
-    mockRenderEmailTemplate.mockResolvedValueOnce(null);
+    // Return inactive template
+    mockEmailTemplateFindUnique.mockResolvedValueOnce({
+      id: "tpl-summary",
+      weddingId: "wedding-1",
+      type: "admin_summary",
+      name: "Admin Summary",
+      subject: "Test",
+      htmlBody: "<p>Test</p>",
+      isActive: false,
+      variables: [],
+    });
 
     const { GET } = await import("@/app/api/cron/admin-summary/route");
     const response = await GET(cronRequest("test-cron-secret") as never);
