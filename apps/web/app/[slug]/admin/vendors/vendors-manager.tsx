@@ -145,7 +145,10 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
 
     if (result.success) {
       toast.success("Link added");
-      if (result.link) setLinks((prev) => [...prev, result.link!]);
+      if (result.link) {
+        const newLink = result.link;
+        setLinks((prev) => [...prev, newLink]);
+      }
       setAddForm(EMPTY_FORM);
       setShowAddForm(false);
     } else {
@@ -173,8 +176,9 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
     if (result.success) {
       toast.success("Link updated");
       if (result.link) {
+        const updatedLink = result.link;
         setLinks((prev) =>
-          prev.map((l) => (l.id === editId ? result.link! : l)),
+          prev.map((l) => (l.id === editId ? updatedLink : l)),
         );
       }
       setEditId(null);
@@ -205,7 +209,11 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
     if (swapIdx < 0 || swapIdx >= currentLinks.length) return;
 
     const updated = [...currentLinks];
-    [updated[idx], updated[swapIdx]] = [updated[swapIdx]!, updated[idx]!];
+    const itemA = updated[idx];
+    const itemB = updated[swapIdx];
+    if (!itemA || !itemB) return;
+    updated[idx] = itemB;
+    updated[swapIdx] = itemA;
     setLinks(updated);
 
     startReorder(async () => {

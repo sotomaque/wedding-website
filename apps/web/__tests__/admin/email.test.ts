@@ -102,7 +102,7 @@ mock.module("@/lib/db", () => ({
     guest: {
       findMany: mock(() => Promise.resolve([])),
       findUnique: mockGuestFindUnique,
-      findFirst: mock(() => Promise.resolve(null)),
+      findFirst: mockGuestFindUnique,
       create: mock(() => Promise.resolve({})),
       update: mockGuestUpdate,
       delete: mock(() => Promise.resolve({})),

@@ -124,4 +124,70 @@ describe("renderEmailTemplate", () => {
       },
     });
   });
+
+  it("should replace placeholder with empty string when variable value is empty", async () => {
+    mockFindUnique.mockResolvedValueOnce({
+      id: "tpl-1",
+      weddingId: "w-1",
+      type: "wedding_invitation",
+      name: "Test",
+      subject: "Hi {{{NAME}}}",
+      htmlBody: "<p>{{{CONTENT}}}</p>",
+      isActive: true,
+      variables: [],
+    });
+
+    const result = await renderEmailTemplate("w-1", "wedding_invitation", {
+      NAME: "",
+      CONTENT: "",
+    });
+
+    expect(result?.subject).toBe("Hi ");
+    expect(result?.html).toBe("<p></p>");
+  });
+
+  it("should pass through special characters in variable values", async () => {
+    mockFindUnique.mockResolvedValueOnce({
+      id: "tpl-1",
+      weddingId: "w-1",
+      type: "wedding_invitation",
+      name: "Test",
+      subject: "{{{TEXT}}}",
+      htmlBody: "<p>{{{HTML}}}</p>",
+      isActive: true,
+      variables: [],
+    });
+
+    const result = await renderEmailTemplate("w-1", "wedding_invitation", {
+      TEXT: "Tom & Jerry's $100 gift",
+      HTML: '<a href="test">link</a>',
+    });
+
+    expect(result?.subject).toBe("Tom & Jerry's $100 gift");
+    expect(result?.html).toBe('<p><a href="test">link</a></p>');
+  });
+
+  it("should handle adjacent placeholders", async () => {
+    mockFindUnique.mockResolvedValueOnce({
+      id: "tpl-1",
+      weddingId: "w-1",
+      type: "wedding_invitation",
+      name: "Test",
+      subject: "{{{FIRST}}}{{{LAST}}}",
+      htmlBody: "{{{A}}}{{{B}}}{{{C}}}",
+      isActive: true,
+      variables: [],
+    });
+
+    const result = await renderEmailTemplate("w-1", "wedding_invitation", {
+      FIRST: "John",
+      LAST: "Doe",
+      A: "1",
+      B: "2",
+      C: "3",
+    });
+
+    expect(result?.subject).toBe("JohnDoe");
+    expect(result?.html).toBe("123");
+  });
 });

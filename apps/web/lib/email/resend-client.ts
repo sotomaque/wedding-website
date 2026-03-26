@@ -42,20 +42,7 @@ type HtmlEmailParams = {
   attachments?: EmailAttachment[];
 };
 
-// Email parameters type for template emails
-type TemplateEmailParams = {
-  from: string;
-  to: string | string[];
-  subject?: string;
-  template: {
-    id: string;
-    variables: Record<string, string>;
-  };
-  replyTo?: string;
-  attachments?: EmailAttachment[];
-};
-
-type EmailParams = HtmlEmailParams | TemplateEmailParams;
+type EmailParams = HtmlEmailParams;
 
 /**
  * Send an email using Resend, with E2E test mode support

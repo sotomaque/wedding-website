@@ -85,8 +85,9 @@ export function getStayBars(
   colorMap: Map<string, string>,
 ): StayBar[] {
   const bars: StayBar[] = [];
-  const weekStart = week[0] as Date;
-  const weekEnd = week[6] as Date;
+  const weekStart = week[0];
+  const weekEnd = week[6];
+  if (!weekStart || !weekEnd) return bars;
 
   for (const guest of guests) {
     if (!guest.arrivalDate || !guest.departureDate) continue;

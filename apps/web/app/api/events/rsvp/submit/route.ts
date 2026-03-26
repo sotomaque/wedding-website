@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify event exists
+    // Verify event exists and belongs to this wedding
     const event = await db.event.findUnique({
-      where: { id: eventId },
+      where: { id: eventId, weddingId },
     });
 
     if (!event) {
@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       where: {
         guestId: guest.id,
         eventId: eventId,
+        weddingId,
       },
     });
 

@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
 
     const event = await db.event.findUnique({
-      where: { id },
+      where: { id, weddingId },
     });
 
     if (!event) {
@@ -107,7 +107,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     // Get current event to check if isDefault changed
     const currentEvent = await db.event.findUnique({
-      where: { id },
+      where: { id, weddingId },
     });
 
     if (!currentEvent) {
@@ -194,14 +194,19 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
-    // Deleting the event will cascade delete all guest_event_invites
-    try {
-      await db.event.delete({
-        where: { id },
-      });
-    } catch {
+    // Verify event belongs to this wedding before deleting
+    const event = await db.event.findUnique({
+      where: { id, weddingId },
+    });
+
+    if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
+
+    // Deleting the event will cascade delete all guest_event_invites
+    await db.event.delete({
+      where: { id },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

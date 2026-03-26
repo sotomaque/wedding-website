@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { SeatingChart } from "@/lib/types/seating";
 
 interface SeatingClientProps {
@@ -29,6 +30,7 @@ export function SeatingClient({
   confirmedGuestsCount,
 }: SeatingClientProps) {
   const router = useRouter();
+  const slug = useWeddingSlug();
   const [charts, setCharts] = useState<SeatingChart[]>(initialCharts);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -62,7 +64,7 @@ export function SeatingClient({
       setNewChartName("");
       setSeatsPerTable(8);
       toast.success("Seating chart created");
-      router.push(`/admin/seating/${chart.id}`);
+      router.push(`/${slug}/admin/seating/${chart.id}`);
     } catch (error) {
       console.error("Error creating chart:", error);
       toast.error("Failed to create seating chart");
@@ -146,7 +148,10 @@ export function SeatingClient({
               )}
 
               <div className="flex items-center gap-2 pt-3 border-t">
-                <Link href={`/admin/seating/${chart.id}`} className="flex-1">
+                <Link
+                  href={`/${slug}/admin/seating/${chart.id}`}
+                  className="flex-1"
+                >
                   <Button variant="outline" size="sm" className="w-full">
                     <Settings className="h-4 w-4 mr-2" />
                     Edit

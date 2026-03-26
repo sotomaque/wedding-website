@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { env } from "@/env";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingContext } from "@/lib/db/wedding-context";
 import { GuestPhotosClient } from "./guest-photos-client";
 
 export const metadata = {
@@ -17,7 +17,7 @@ export default async function GuestPhotosAdminPage() {
   const { authorized } = await isAdmin();
   if (!authorized) redirect("/unauthorized");
 
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
 
   const photos = await db.guestPhoto.findMany({
     where: { weddingId },
@@ -25,7 +25,7 @@ export default async function GuestPhotosAdminPage() {
   });
 
   const appUrl = env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const uploadUrl = `${appUrl}/photos/upload`;
+  const uploadUrl = `${appUrl}/${slug}/photos/upload`;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col gap-6">

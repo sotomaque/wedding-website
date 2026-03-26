@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { RichTextEditor } from "@/components/rich-text-editor";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type {
   DetailsContent,
   HeroContent,
@@ -559,6 +560,7 @@ function ScheduleEditor({ initial }: { initial?: ScheduleContent }) {
 
 function RsvpEditor({ initial }: { initial?: RsvpContent }) {
   const [isPending, startTransition] = useTransition();
+  const slug = useWeddingSlug();
   const [title, setTitle] = useState(initial?.title ?? "");
 
   function handleSave() {
@@ -588,7 +590,7 @@ function RsvpEditor({ initial }: { initial?: RsvpContent }) {
       </div>
       <p className="text-sm text-muted-foreground">
         The RSVP deadline is managed in{" "}
-        <a href="settings" className="underline">
+        <a href={`/${slug}/admin/settings`} className="underline">
           Settings
         </a>
         .

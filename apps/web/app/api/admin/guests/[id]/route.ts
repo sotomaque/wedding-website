@@ -46,12 +46,12 @@ export async function GET(
 
     const { id } = await params;
 
-    // Fetch the guest
+    // Fetch the guest (scoped to wedding)
     const guest = await db.guest.findUnique({
       where: { id },
     });
 
-    if (!guest) {
+    if (!guest || guest.weddingId !== weddingId) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
@@ -123,12 +123,12 @@ export async function PATCH(
       accommodationNotes,
     } = body;
 
-    // Fetch the current guest to check if they have a plus one
+    // Fetch the current guest to check if they have a plus one (scoped to wedding)
     const currentGuest = await db.guest.findUnique({
       where: { id },
     });
 
-    if (!currentGuest) {
+    if (!currentGuest || currentGuest.weddingId !== weddingId) {
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
@@ -297,6 +297,7 @@ export async function PATCH(
         where: {
           primaryGuestId: id,
           isPlusOne: true,
+          weddingId,
         },
       });
     }

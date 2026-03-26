@@ -26,9 +26,9 @@ export async function PATCH(
     const body = await request.json();
     const { isVisible } = body as { isVisible: boolean };
 
-    // Check if photo exists first
+    // Check if photo exists and belongs to this wedding
     const existing = await db.guestPhoto.findUnique({ where: { id } });
-    if (!existing) {
+    if (!existing || existing.weddingId !== weddingId) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
 
@@ -76,7 +76,7 @@ export async function DELETE(
     const { id } = await params;
 
     const existing = await db.guestPhoto.findUnique({ where: { id } });
-    if (!existing) {
+    if (!existing || existing.weddingId !== weddingId) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
 

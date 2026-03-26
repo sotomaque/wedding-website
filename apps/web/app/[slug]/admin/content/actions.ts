@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingContext } from "@/lib/db/wedding-context";
 
 export async function updateWeddingContent(
   section: string,
@@ -16,7 +16,7 @@ export async function updateWeddingContent(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const weddingId = await getWeddingId();
+    const { weddingId, slug } = await getWeddingContext();
 
     await db.weddingContent.upsert({
       where: { weddingId_section: { weddingId, section } },
@@ -24,7 +24,8 @@ export async function updateWeddingContent(
       create: { weddingId, section, content: jsonContent },
     });
 
-    revalidatePath("/");
+    revalidatePath(`/${slug}`);
+    revalidatePath(`/${slug}/admin/content`);
     return { success: true };
   } catch (error) {
     console.error(`Error updating wedding content (${section}):`, error);

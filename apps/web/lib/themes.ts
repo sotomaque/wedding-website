@@ -137,11 +137,13 @@ export const THEME_PRESETS: ThemePreset[] = [
 /**
  * Get a theme preset by ID. Returns the default (warm-gold) if not found.
  */
+const DEFAULT_THEME = THEME_PRESETS[0] as ThemePreset;
+
 export function getThemePreset(
   themeId: string | null | undefined,
 ): ThemePreset {
-  if (!themeId) return THEME_PRESETS[0]!;
-  return THEME_PRESETS.find((t) => t.id === themeId) ?? THEME_PRESETS[0]!;
+  if (!themeId) return DEFAULT_THEME;
+  return THEME_PRESETS.find((t) => t.id === themeId) ?? DEFAULT_THEME;
 }
 
 /**

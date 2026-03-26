@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch hotel details
-    const hotel = await db.hotel.findUnique({
-      where: { id: hotelId },
+    // Fetch hotel details (scoped to wedding)
+    const hotel = await db.hotel.findFirst({
+      where: { id: hotelId, weddingId },
     });
 
     if (!hotel) {
@@ -136,7 +136,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Hotel interest notification sent successfully",
-        recipients,
       });
     } catch (emailError) {
       console.error("Error sending hotel interest email:", emailError);

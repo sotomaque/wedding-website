@@ -114,7 +114,7 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
   function handleEdit(giftId: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("edit", giftId);
-    router.push(`/admin/gifts?${params.toString()}`, { scroll: false });
+    router.push(`/${slug}/admin/gifts?${params.toString()}`, { scroll: false });
   }
 
   async function handleUpdateNotes(giftId: string, notes: string) {
