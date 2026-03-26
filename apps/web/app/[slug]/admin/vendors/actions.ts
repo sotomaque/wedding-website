@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
 
 export type ServiceLinkCategory =
   | "venue"
@@ -62,7 +62,7 @@ export async function createServiceLink(data: {
       return { success: false, error: "Please enter a valid URL" };
     }
 
-    const weddingId = await getWeddingId();
+    const { weddingId, slug } = await getWeddingContext();
 
     // Get max sortOrder to append at end
     const last = await db.serviceLink.aggregate({
@@ -83,8 +83,8 @@ export async function createServiceLink(data: {
       },
     });
 
-    revalidatePath("/admin/vendors");
-    revalidatePath("/vendors");
+    revalidatePath(`/${slug}/admin/vendors`);
+    revalidatePath(`/${slug}/vendors`);
     return { success: true, link: link as ServiceLink };
   } catch (error) {
     console.error("Error creating service link:", error);
@@ -114,6 +114,7 @@ export async function updateServiceLink(
       }
     }
 
+    const { slug } = await getWeddingContext();
     const link = await db.serviceLink.update({
       where: { id },
       data: {
@@ -126,8 +127,8 @@ export async function updateServiceLink(
       },
     });
 
-    revalidatePath("/admin/vendors");
-    revalidatePath("/vendors");
+    revalidatePath(`/${slug}/admin/vendors`);
+    revalidatePath(`/${slug}/vendors`);
     return { success: true, link: link as ServiceLink };
   } catch (error) {
     console.error("Error updating service link:", error);
@@ -143,9 +144,10 @@ export async function deleteServiceLink(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
+    const { slug } = await getWeddingContext();
     await db.serviceLink.delete({ where: { id } });
-    revalidatePath("/admin/vendors");
-    revalidatePath("/vendors");
+    revalidatePath(`/${slug}/admin/vendors`);
+    revalidatePath(`/${slug}/vendors`);
     return { success: true };
   } catch (error) {
     console.error("Error deleting service link:", error);
@@ -161,6 +163,7 @@ export async function reorderServiceLinks(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
+    const { slug } = await getWeddingContext();
     await Promise.all(
       orderedIds.map((id, index) =>
         db.serviceLink.update({
@@ -170,8 +173,8 @@ export async function reorderServiceLinks(
       ),
     );
 
-    revalidatePath("/admin/vendors");
-    revalidatePath("/vendors");
+    revalidatePath(`/${slug}/admin/vendors`);
+    revalidatePath(`/${slug}/vendors`);
     return { success: true };
   } catch (error) {
     console.error("Error reordering service links:", error);

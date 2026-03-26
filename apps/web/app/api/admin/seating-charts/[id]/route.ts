@@ -23,9 +23,9 @@ export async function GET(
 
     const { id } = await params;
 
-    // Fetch the chart with tables, assignments, and guest details
-    const chart = await db.seatingChart.findUnique({
-      where: { id },
+    // Fetch the chart with tables, assignments, and guest details (scoped to wedding)
+    const chart = await db.seatingChart.findFirst({
+      where: { id, weddingId },
     });
 
     if (!chart) {
@@ -141,16 +141,20 @@ export async function PATCH(
     if (isActive !== undefined) updateData.isActive = isActive;
     if (notes !== undefined) updateData.notes = notes;
 
-    try {
-      const chart = await db.seatingChart.update({
-        where: { id },
-        data: updateData,
-      });
-
-      return NextResponse.json({ chart });
-    } catch {
+    // Verify chart belongs to this wedding
+    const existing = await db.seatingChart.findFirst({
+      where: { id, weddingId },
+    });
+    if (!existing) {
       return NextResponse.json({ error: "Chart not found" }, { status: 404 });
     }
+
+    const chart = await db.seatingChart.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return NextResponse.json({ chart });
   } catch (error) {
     console.error("Error in PATCH /api/admin/seating-charts/[id]:", error);
     return NextResponse.json(
@@ -179,6 +183,14 @@ export async function DELETE(
     if ("status" in auth) return auth;
 
     const { id } = await params;
+
+    // Verify chart belongs to this wedding before deleting
+    const existing = await db.seatingChart.findFirst({
+      where: { id, weddingId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Chart not found" }, { status: 404 });
+    }
 
     await db.seatingChart.delete({
       where: { id },

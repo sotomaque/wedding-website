@@ -47,6 +47,7 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import {
   type EditGuestFormData,
   editGuestSchema,
@@ -84,6 +85,7 @@ export function EditGuestSheet({
   const [localRsvpStatus, setLocalRsvpStatus] = useState(guest.rsvpStatus);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const slug = useWeddingSlug();
 
   // Memoize initial values from DB to compare against current form values
   const initialValues = useMemo(
@@ -187,7 +189,9 @@ export function EditGuestSheet({
   function closeSheet() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("edit");
-    router.push(`/admin/guests?${params.toString()}`, { scroll: false });
+    router.push(`/${slug}/admin/guests?${params.toString()}`, {
+      scroll: false,
+    });
   }
 
   async function handleSetRsvp(status: "yes" | "no" | "pending") {

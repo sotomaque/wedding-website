@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { MainNavigation } from "@/components/main-navigation";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import { linkClerkUserToGuestAction } from "./actions";
 
 interface OptionalLoginStepProps {
@@ -14,6 +15,7 @@ interface OptionalLoginStepProps {
 
 export function OptionalLoginStep({ inviteCode }: OptionalLoginStepProps) {
   const router = useRouter();
+  const slug = useWeddingSlug();
   const { user, isLoaded } = useUser();
   const [isPending, startTransition] = useTransition();
   const [isLinking, setIsLinking] = useState(false);
@@ -25,14 +27,18 @@ export function OptionalLoginStep({ inviteCode }: OptionalLoginStepProps) {
       startTransition(async () => {
         await linkClerkUserToGuestAction(inviteCode);
         // Proceed to form with linked flag
-        router.push(`/rsvp?code=${encodeURIComponent(inviteCode)}&step=form`);
+        router.push(
+          `/${slug}/rsvp?code=${encodeURIComponent(inviteCode)}&step=form`,
+        );
       });
     }
-  }, [isLoaded, user, inviteCode, router, isLinking]);
+  }, [isLoaded, user, inviteCode, router, isLinking, slug]);
 
   function handleSkip() {
     // Proceed without linking
-    router.push(`/rsvp?code=${encodeURIComponent(inviteCode)}&step=form`);
+    router.push(
+      `/${slug}/rsvp?code=${encodeURIComponent(inviteCode)}&step=form`,
+    );
   }
 
   // Show loading while checking auth or linking
@@ -94,8 +100,8 @@ export function OptionalLoginStep({ inviteCode }: OptionalLoginStepProps) {
             <div className="space-y-4">
               <SignInButton
                 mode="modal"
-                fallbackRedirectUrl={`/rsvp?code=${encodeURIComponent(inviteCode)}&step=form`}
-                signUpFallbackRedirectUrl={`/rsvp?code=${encodeURIComponent(inviteCode)}&step=form`}
+                fallbackRedirectUrl={`/${slug}/rsvp?code=${encodeURIComponent(inviteCode)}&step=form`}
+                signUpFallbackRedirectUrl={`/${slug}/rsvp?code=${encodeURIComponent(inviteCode)}&step=form`}
               >
                 <Button className="w-full" size="lg">
                   Sign In with Google

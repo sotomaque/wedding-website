@@ -45,3 +45,4 @@ npm-debug.log*
 
 # Playwrite report
 /playwright-report/
+.agents/

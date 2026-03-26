@@ -45,9 +45,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Verify event exists and is not a default event
+    // Verify event exists and belongs to this wedding
     const event = await db.event.findUnique({
-      where: { id: eventId },
+      where: { id: eventId, weddingId },
     });
 
     if (!event) {

@@ -35,6 +35,7 @@ mock.module("@/lib/db", () => ({
   db: {
     guestPhoto: {
       findUnique: mockGuestPhotoFindUnique,
+      findFirst: mockGuestPhotoFindUnique,
       update: mockGuestPhotoUpdate,
       delete: mockGuestPhotoDelete,
     },
@@ -111,6 +112,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
         url: "https://utfs.io/f/a.jpg",
         uploaderName: "Alice",
         isVisible: true,
+        weddingId: "test-wedding-id",
       });
       mockGuestPhotoUpdate.mockResolvedValueOnce({
         id: "photo-123",
@@ -120,6 +122,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
         hiddenAt: new Date("2026-03-15T00:00:00Z"),
         hiddenBy: "admin@example.com",
         uploadedAt: new Date(),
+        weddingId: "test-wedding-id",
       });
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
@@ -143,6 +146,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
         url: "https://utfs.io/f/a.jpg",
         uploaderName: "Alice",
         isVisible: false,
+        weddingId: "test-wedding-id",
       });
       mockGuestPhotoUpdate.mockResolvedValueOnce({
         id: "photo-123",
@@ -152,6 +156,7 @@ describe("PATCH /api/admin/guest-photos/[id]", () => {
         hiddenAt: null,
         hiddenBy: null,
         uploadedAt: new Date(),
+        weddingId: "test-wedding-id",
       });
 
       const { PATCH } = await import("@/app/api/admin/guest-photos/[id]/route");
@@ -231,6 +236,7 @@ describe("DELETE /api/admin/guest-photos/[id]", () => {
         url: "https://utfs.io/f/a.jpg",
         uploaderName: "Alice",
         isVisible: true,
+        weddingId: "test-wedding-id",
       });
       mockGuestPhotoDelete.mockResolvedValueOnce({
         id: "photo-123",

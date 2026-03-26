@@ -45,16 +45,20 @@ export async function PATCH(
     if (shape !== undefined) updateData.shape = shape;
     if (notes !== undefined) updateData.notes = notes;
 
-    try {
-      const table = await db.seatingTable.update({
-        where: { id: tableId },
-        data: updateData,
-      });
-
-      return NextResponse.json({ table });
-    } catch {
+    // Verify table belongs to this wedding
+    const existing = await db.seatingTable.findFirst({
+      where: { id: tableId, weddingId },
+    });
+    if (!existing) {
       return NextResponse.json({ error: "Table not found" }, { status: 404 });
     }
+
+    const table = await db.seatingTable.update({
+      where: { id: tableId },
+      data: updateData,
+    });
+
+    return NextResponse.json({ table });
   } catch (error) {
     console.error(
       "Error in PATCH /api/admin/seating-charts/[id]/tables/[tableId]:",
@@ -86,6 +90,14 @@ export async function DELETE(
     if ("status" in auth) return auth;
 
     const { tableId } = await params;
+
+    // Verify table belongs to this wedding before deleting
+    const existing = await db.seatingTable.findFirst({
+      where: { id: tableId, weddingId },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Table not found" }, { status: 404 });
+    }
 
     await db.seatingTable.delete({
       where: { id: tableId },

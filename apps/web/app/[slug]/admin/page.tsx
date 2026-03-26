@@ -191,7 +191,7 @@ export default async function AdminPage() {
                 Quick Actions
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href="/admin/guests">
+                <Link href={`/${settings.slug}/admin/guests`}>
                   <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
                     <Users className="w-8 h-8 text-primary mb-3" />
                     <h3 className="font-semibold text-foreground mb-1">
@@ -203,7 +203,7 @@ export default async function AdminPage() {
                   </div>
                 </Link>
 
-                <Link href="/admin/events">
+                <Link href={`/${settings.slug}/admin/events`}>
                   <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
                     <Calendar className="w-8 h-8 text-primary mb-3" />
                     <h3 className="font-semibold text-foreground mb-1">
@@ -215,7 +215,7 @@ export default async function AdminPage() {
                   </div>
                 </Link>
 
-                <Link href="/admin/templates">
+                <Link href={`/${settings.slug}/admin/templates`}>
                   <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
                     <Mail className="w-8 h-8 text-primary mb-3" />
                     <h3 className="font-semibold text-foreground mb-1">
@@ -227,7 +227,7 @@ export default async function AdminPage() {
                   </div>
                 </Link>
 
-                <Link href="/admin/api-docs">
+                <Link href={`/${settings.slug}/admin/api-docs`}>
                   <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
                     <Code className="w-8 h-8 text-primary mb-3" />
                     <h3 className="font-semibold text-foreground mb-1">

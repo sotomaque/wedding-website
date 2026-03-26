@@ -33,8 +33,8 @@ export async function POST(
       );
     }
 
-    const guest = await db.guest.findUnique({
-      where: { id: guestId },
+    const guest = await db.guest.findFirst({
+      where: { id: guestId, weddingId },
       select: { id: true, firstName: true },
     });
 

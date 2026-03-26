@@ -11,7 +11,12 @@ export const metadata = {
   title: "Live Slideshow",
 };
 
-export default async function SlideshowPage() {
+export default async function SlideshowPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
   const [weddingId, settings] = await Promise.all([
     getWeddingId(),
     getWeddingSettings(),
@@ -34,7 +39,7 @@ export default async function SlideshowPage() {
         uploader_name: p.uploaderName,
         uploaded_at: p.uploadedAt.toISOString(),
       }))}
-      uploadUrl={`${appUrl}/photos/upload`}
+      uploadUrl={`${appUrl}/${slug}/photos/upload`}
     />
   );
 }

@@ -37,6 +37,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { PartyWithGuests } from "./actions";
 import {
   createPartyFromGuests,
@@ -56,6 +57,7 @@ export function EditPartySheet({
   onClose,
 }: EditPartySheetProps) {
   const router = useRouter();
+  const slug = useWeddingSlug();
   const [isPending, startTransition] = useTransition();
   const [formData, setFormData] = useState({
     name: party.name || "",
@@ -254,7 +256,7 @@ export function EditPartySheet({
                       <div className="flex items-center gap-3">
                         <div>
                           <Link
-                            href={`/admin/guests?edit=${guest.id}`}
+                            href={`/${slug}/admin/guests?edit=${guest.id}`}
                             className="font-medium text-foreground hover:underline"
                           >
                             {guest.firstName} {guest.lastName}

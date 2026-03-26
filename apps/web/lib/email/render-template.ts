@@ -1,7 +1,7 @@
 import type { EmailTemplateType } from "@prisma/client";
 import { db } from "@/lib/db";
 
-interface RenderedEmail {
+export interface RenderedEmail {
   subject: string;
   html: string;
 }

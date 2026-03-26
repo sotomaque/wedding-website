@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch guest details
-    const guest = await db.guest.findUnique({
-      where: { id: guestId },
+    // Fetch guest details (scoped to wedding)
+    const guest = await db.guest.findFirst({
+      where: { id: guestId, weddingId },
     });
 
     if (!guest) {

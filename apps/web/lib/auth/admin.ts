@@ -79,5 +79,8 @@ export async function requireAdmin(
       { status: result.error === "Unauthorized" ? 401 : 403 },
     );
   }
-  return { authorized: true, role: result.role! };
+  return {
+    authorized: true,
+    role: result.role as "owner" | "editor" | "superadmin",
+  };
 }

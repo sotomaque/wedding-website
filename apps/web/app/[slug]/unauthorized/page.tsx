@@ -2,7 +2,12 @@ import { SignOutButton } from "@clerk/nextjs";
 import { Button } from "@workspace/ui/components/button";
 import Link from "next/link";
 
-export default function UnauthorizedPage() {
+export default async function UnauthorizedPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-8">
       <div className="max-w-md w-full">
@@ -33,7 +38,7 @@ export default function UnauthorizedPage() {
           </p>
 
           <div className="flex flex-col gap-3">
-            <Link href="/">
+            <Link href={`/${slug}`}>
               <Button className="w-full">Return to Home</Button>
             </Link>
             <SignOutButton>

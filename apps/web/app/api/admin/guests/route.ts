@@ -327,6 +327,12 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // Verify guest belongs to this wedding before deleting
+    const guest = await db.guest.findUnique({ where: { id } });
+    if (!guest || guest.weddingId !== weddingId) {
+      return NextResponse.json({ error: "Guest not found" }, { status: 404 });
+    }
+
     await db.guest.delete({
       where: { id },
     });

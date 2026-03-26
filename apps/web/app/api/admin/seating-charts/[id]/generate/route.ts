@@ -56,9 +56,9 @@ export async function POST(
       // No body or invalid JSON - use defaults
     }
 
-    // Fetch the chart
-    const chart = await db.seatingChart.findUnique({
-      where: { id: chartId },
+    // Fetch the chart (scoped to wedding)
+    const chart = await db.seatingChart.findFirst({
+      where: { id: chartId, weddingId },
     });
 
     if (!chart) {

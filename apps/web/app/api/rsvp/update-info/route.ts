@@ -28,11 +28,12 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    const normalizedCode = inviteCode.toUpperCase().trim();
     const weddingId = await getWeddingId();
 
     // Fetch all guests with this invite code
     const guests = await db.guest.findMany({
-      where: { inviteCode, weddingId },
+      where: { inviteCode: normalizedCode, weddingId },
     });
 
     if (guests.length === 0) {
@@ -44,7 +45,7 @@ export async function PATCH(request: NextRequest) {
 
     // Update all guests with this invite code (primary + plus one)
     await db.guest.updateMany({
-      where: { inviteCode, weddingId },
+      where: { inviteCode: normalizedCode, weddingId },
       data: {
         mailingAddress: mailingAddress || null,
         phoneNumber: phoneNumber || null,
@@ -55,7 +56,7 @@ export async function PATCH(request: NextRequest) {
 
     // Fetch updated guests
     const updatedGuests = await db.guest.findMany({
-      where: { inviteCode, weddingId },
+      where: { inviteCode: normalizedCode, weddingId },
     });
 
     return NextResponse.json({ guests: updatedGuests });

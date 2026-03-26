@@ -35,6 +35,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 
 interface Event {
   id: string;
@@ -87,6 +88,7 @@ const defaultFormData: EventFormData = {
 };
 
 export function EventsClient({ initialEvents }: EventsClientProps) {
+  const slug = useWeddingSlug();
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -345,7 +347,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                 <div className="flex items-center gap-2">
                   {!event.isDefault && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={`/admin/events/${event.id}/invites`}>
+                      <a href={`/${slug}/admin/events/${event.id}/invites`}>
                         <Users className="h-4 w-4 mr-1" />
                         Manage Invites
                       </a>
