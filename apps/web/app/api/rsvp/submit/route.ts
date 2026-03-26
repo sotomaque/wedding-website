@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
               timeZone: "America/Los_Angeles",
             }),
           },
+          settings.defaultLanguage,
         );
 
         if (rsvpTemplate) {

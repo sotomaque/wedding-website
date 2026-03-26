@@ -36,6 +36,7 @@ export async function POST(
         email: true,
         rsvpStatus: true,
         calendarInviteResendCount: true,
+        preferredLanguage: true,
       },
     });
 
@@ -110,11 +111,16 @@ export async function POST(
       settings.coupleName,
     );
 
-    const rendered = await renderEmailTemplate(weddingId, "calendar_invite", {
-      FIRST_NAME: guest.firstName,
-      LAST_NAME: guest.lastName || "",
-      COUPLE_NAME: settings.coupleName,
-    });
+    const rendered = await renderEmailTemplate(
+      weddingId,
+      "calendar_invite",
+      {
+        FIRST_NAME: guest.firstName,
+        LAST_NAME: guest.lastName || "",
+        COUPLE_NAME: settings.coupleName,
+      },
+      guest.preferredLanguage ?? settings.defaultLanguage,
+    );
 
     if (!rendered) {
       return NextResponse.json(

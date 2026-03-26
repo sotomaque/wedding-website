@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
           APP_URL: appUrl,
           WEDDING_DATE: weddingDate,
         },
+        guest.preferredLanguage ?? settings.defaultLanguage,
       );
 
       if (!rendered) {

@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
           THINGS_TO_DO_URL: thingsToDoUrl,
           APP_URL: appUrl,
         },
+        guest.preferredLanguage ?? settings.defaultLanguage,
       );
 
       if (!rendered) {

@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
         NOTES: interest?.notes ?? "",
         ADMIN_URL: adminUrl,
       },
+      settings.defaultLanguage,
     );
 
     if (!rendered) {

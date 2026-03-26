@@ -76,6 +76,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             lastName: true,
             email: true,
             inviteCode: true,
+            preferredLanguage: true,
           },
         },
       },
@@ -161,6 +162,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             RSVP_URL: rsvpUrl,
             APP_URL: appUrl,
           },
+          invite.guest.preferredLanguage ?? settings.defaultLanguage,
         );
 
         if (!rendered) {
