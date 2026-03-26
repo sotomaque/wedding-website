@@ -15,15 +15,33 @@ export default async function SettingsPage() {
     where: { id: weddingId },
   });
 
-  const admins = await db.weddingAdmin.findMany({
-    where: { weddingId },
-    orderBy: { createdAt: "asc" },
-  });
+  const [admins, reminderSchedules, adminSummaryConfig] = await Promise.all([
+    db.weddingAdmin.findMany({
+      where: { weddingId },
+      orderBy: { createdAt: "asc" },
+    }),
+    db.reminderSchedule.findMany({
+      where: { weddingId },
+      orderBy: { daysBeforeDeadline: "desc" },
+    }),
+    db.adminSummaryConfig.findUnique({
+      where: { weddingId },
+    }),
+  ]);
 
   return (
     <div className="min-h-screen bg-background px-2 py-4 sm:px-4 md:px-8 md:py-8">
       <div className="max-w-4xl mx-auto">
-        <SettingsClient wedding={wedding} admins={admins} />
+        <SettingsClient
+          wedding={wedding}
+          admins={admins}
+          reminderSchedules={JSON.parse(JSON.stringify(reminderSchedules))}
+          adminSummaryConfig={
+            adminSummaryConfig
+              ? JSON.parse(JSON.stringify(adminSummaryConfig))
+              : null
+          }
+        />
       </div>
     </div>
   );
