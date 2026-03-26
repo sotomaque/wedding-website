@@ -141,6 +141,109 @@ The local DB runs on `localhost:54322` with seed data including a default weddin
 
 ---
 
+## Automated Emails (Cron Jobs)
+
+Two Vercel Cron Jobs handle automated email sending. Both require a **Vercel Pro** plan and the `CRON_SECRET` environment variable.
+
+### Setup
+
+1. Generate a secret: `openssl rand -hex 32`
+2. Add it as `CRON_SECRET` in **Vercel Dashboard → Project → Settings → Environment Variables**
+3. Apply migration `047` (or `prisma db push`) to create the `reminder_schedules` and `admin_summary_configs` tables
+4. Vercel automatically passes the secret as `Authorization: Bearer <CRON_SECRET>` when invoking cron endpoints
+
+### RSVP Reminder Emails
+
+Sends reminder emails to guests who were invited but haven't RSVP'd, at configurable intervals before the RSVP deadline.
+
+| | |
+|---|---|
+| **Cron endpoint** | `GET /api/cron/rsvp-reminders` |
+| **Schedule** | Daily at 9:00 AM UTC |
+| **Template** | `rsvp_reminder` (customizable in admin template editor) |
+
+**How it works:**
+
+1. Admins create reminder schedules via the API (e.g. "10 days before deadline", "3 days before deadline")
+2. The cron runs daily, checks each schedule: `rsvpDeadline - daysBeforeDeadline = targetDate`
+3. If `targetDate === today` and the schedule hasn't already run today, it finds guests where `numberOfResends > 0` (invited) and `rsvpStatus = pending`
+4. Sends the `rsvp_reminder` email template to each guest and updates `guest.reminderCount`
+
+**Admin API:**
+
+```bash
+# Create a reminder 10 days before the RSVP deadline
+POST /api/admin/reminders
+{ "daysBeforeDeadline": 10 }
+
+# Create a final reminder 3 days before
+POST /api/admin/reminders
+{ "daysBeforeDeadline": 3 }
+
+# List all schedules
+GET /api/admin/reminders
+
+# Disable a schedule
+PUT /api/admin/reminders
+{ "schedules": [{ "id": "...", "isEnabled": false }] }
+
+# Delete a schedule
+DELETE /api/admin/reminders
+{ "id": "..." }
+```
+
+### Admin Summary Emails
+
+Periodic digest emails sent to wedding admins with A-list guest statistics: invited/uninvited counts, RSVP breakdown, and a table of guests who haven't been sent invites yet.
+
+| | |
+|---|---|
+| **Cron endpoint** | `GET /api/cron/admin-summary` |
+| **Schedule** | Mondays at 8:00 AM UTC |
+| **Template** | `admin_summary` (customizable in admin template editor) |
+
+**How it works:**
+
+1. Admins enable summaries and set the frequency (e.g. every 7 days)
+2. The cron runs weekly, checks each wedding's `AdminSummaryConfig`: has `frequencyDays` elapsed since `lastRunAt`?
+3. If yes, queries A-list guests, computes stats, and sends the `admin_summary` email to the wedding's `notificationEmails`
+
+**Admin API:**
+
+```bash
+# Enable weekly summaries
+PUT /api/admin/admin-summary-config
+{ "isEnabled": true, "frequencyDays": 7 }
+
+# Switch to biweekly
+PUT /api/admin/admin-summary-config
+{ "isEnabled": true, "frequencyDays": 14 }
+
+# Check current config
+GET /api/admin/admin-summary-config
+
+# Disable
+PUT /api/admin/admin-summary-config
+{ "isEnabled": false }
+```
+
+### Cron Configuration
+
+Schedules are defined in `apps/web/vercel.json`:
+
+```json
+{
+  "crons": [
+    { "path": "/api/cron/rsvp-reminders", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/admin-summary",  "schedule": "0 8 * * 1" }
+  ]
+}
+```
+
+The cron endpoints can also be triggered manually or from any external scheduler by sending a GET request with the `Authorization: Bearer <CRON_SECRET>` header.
+
+---
+
 ## Environment Variables
 
 Validated at build time via `@t3-oss/env-nextjs` in `apps/web/env.ts`.
@@ -158,6 +261,7 @@ Validated at build time via `@t3-oss/env-nextjs` in `apps/web/env.ts`.
 | `UPLOADTHING_TOKEN` | No | File uploads |
 | `DEFAULT_WEDDING_SLUG` | No | Fallback for legacy URL redirects (default: `helen-and-enrique`) |
 | `RSVP_EMAIL` | No | Fallback notification email (per-wedding config preferred) |
+| `CRON_SECRET` | No | Authenticates Vercel Cron Job requests (required for automated emails) |
 
 ### Client-side
 
@@ -190,6 +294,8 @@ Prisma schema at `packages/db/prisma/schema.prisma`. Key models:
 - **Photo**, **GuestPhoto** — photo management
 - **Gift** — Stripe donations
 - **Hotel**, **Activity**, **ServiceLink**, **Document**, **WeddingTodo** — planning tools
+- **ReminderSchedule** — configurable RSVP reminder schedules per wedding
+- **AdminSummaryConfig** — admin digest email settings per wedding
 
 All models have `weddingId` FK (NOT NULL) with cascade delete.
 
@@ -207,6 +313,8 @@ Supabase migrations in `supabase/migrations/` (numbered `000_` through `044_`). 
 | 042 | RLS on new tables |
 | 043 | Add `theme_id` column |
 | 044 | Fix triggers for `wedding_id` NOT NULL |
+| 046 | Per-wedding email templates |
+| 047 | Reminder schedules + admin summary configs |
 
 ### Making schema changes
 
@@ -222,7 +330,7 @@ Supabase migrations in `supabase/migrations/` (numbered `000_` through `044_`). 
 ### Unit tests
 
 ```bash
-bun run test              # run all (~371 tests)
+bun run test              # run all (~428 tests)
 ```
 
 Tests in `apps/web/__tests__/` using `bun:test`. Includes multi-tenancy data isolation tests.
