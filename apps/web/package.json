@@ -18,7 +18,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "generate:openapi": "next-openapi-gen generate",
-    "env:local": "printf 'POSTGRES_PRISMA_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres\nPOSTGRES_URL_NON_POOLING=postgresql://postgres:postgres@127.0.0.1:54322/postgres\n' > ../../packages/db/.env && echo 'Switched to LOCAL database (supabase start)'",
+    "env:local": "echo 'POSTGRES_PRISMA_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres' > ../../packages/db/.env && echo 'POSTGRES_URL_NON_POOLING=postgresql://postgres:postgres@127.0.0.1:54322/postgres' >> ../../packages/db/.env && echo 'Switched to LOCAL database (supabase start)'",
     "env:prod": "cp ../../packages/db/.env.prod ../../packages/db/.env && echo 'Switched to PRODUCTION database'",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
