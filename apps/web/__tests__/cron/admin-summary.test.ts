@@ -15,6 +15,7 @@ mock.module("@/env", () => ({
   env: {
     RESEND_API_KEY: "test-resend-key",
     NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+    CRON_SECRET: "test-cron-secret",
   },
 }));
 
@@ -77,8 +78,6 @@ function cronRequest(secret?: string): Request {
 }
 
 describe("Admin Summary Cron", () => {
-  const originalCronSecret = process.env.CRON_SECRET;
-
   beforeEach(() => {
     mockSendEmail.mockClear();
     mockEmailTemplateFindUnique.mockClear();
@@ -87,11 +86,6 @@ describe("Admin Summary Cron", () => {
     mockGuestFindMany.mockClear();
     mockGetNotificationRecipients.mockClear();
     mockGetNotificationRecipients.mockReturnValue(["admin@example.com"]);
-    process.env.CRON_SECRET = "test-cron-secret";
-  });
-
-  afterEach(() => {
-    process.env.CRON_SECRET = originalCronSecret;
   });
 
   it("should return 401 without authorization header", async () => {

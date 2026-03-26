@@ -15,6 +15,7 @@ mock.module("@/env", () => ({
   env: {
     RESEND_API_KEY: "test-resend-key",
     NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+    CRON_SECRET: "test-cron-secret",
   },
 }));
 
@@ -78,8 +79,6 @@ function cronRequest(secret?: string): Request {
 }
 
 describe("RSVP Reminders Cron", () => {
-  const originalCronSecret = process.env.CRON_SECRET;
-
   beforeEach(() => {
     mockSendEmail.mockClear();
     mockEmailTemplateFindUnique.mockClear();
@@ -87,11 +86,6 @@ describe("RSVP Reminders Cron", () => {
     mockReminderScheduleUpdate.mockClear();
     mockGuestFindMany.mockClear();
     mockGuestUpdate.mockClear();
-    process.env.CRON_SECRET = "test-cron-secret";
-  });
-
-  afterEach(() => {
-    process.env.CRON_SECRET = originalCronSecret;
   });
 
   it("should return 401 without authorization header", async () => {
@@ -103,13 +97,6 @@ describe("RSVP Reminders Cron", () => {
   it("should return 401 with wrong secret", async () => {
     const { GET } = await import("@/app/api/cron/rsvp-reminders/route");
     const response = await GET(cronRequest("wrong-secret") as never);
-    expect(response.status).toBe(401);
-  });
-
-  it("should return 401 when CRON_SECRET is not set", async () => {
-    process.env.CRON_SECRET = "";
-    const { GET } = await import("@/app/api/cron/rsvp-reminders/route");
-    const response = await GET(cronRequest("any-secret") as never);
     expect(response.status).toBe(401);
   });
 

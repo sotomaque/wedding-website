@@ -1,4 +1,8 @@
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 import { type NextRequest, NextResponse } from "next/server";
+import { env } from "@/env";
 import { db } from "@/lib/db";
 import { getEmailFromAddress } from "@/lib/email/helpers";
 import { renderEmailTemplate } from "@/lib/email/render-template";
@@ -20,8 +24,7 @@ export async function GET(request: NextRequest) {
   try {
     // Verify cron secret
     const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!env.CRON_SECRET || authHeader !== `Bearer ${env.CRON_SECRET}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
