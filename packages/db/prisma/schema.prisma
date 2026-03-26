@@ -225,6 +225,7 @@ model Guest {
   phoneNumber                         String?                 @map("phone_number")
   whatsapp                            String?
   preferredContactMethod              PreferredContactMethod? @map("preferred_contact_method")
+  preferredLanguage                   String?                 @map("preferred_language")
   createdAt                           DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   side                                GuestSide?
   list                                GuestList               @default(a)
@@ -441,6 +442,9 @@ model Wedding {
   // Theme
   themeId               String?                @map("theme_id")
 
+  // i18n
+  defaultLanguage       String                 @default("en") @map("default_language")
+
   // Feature toggles
   featureToggles        Json                   @default("{}") @map("feature_toggles") @db.JsonB
 
@@ -477,6 +481,7 @@ model EmailTemplate {
   id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   weddingId String            @map("wedding_id") @db.Uuid
   type      EmailTemplateType
+  language  String            @default("en")
   name      String
   subject   String
   htmlBody  String            @map("html_body") @db.Text
@@ -486,7 +491,7 @@ model EmailTemplate {
   updatedAt DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   wedding   Wedding           @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([weddingId, type])
+  @@unique([weddingId, type, language])
   @@index([weddingId], map: "idx_email_templates_wedding_id")
   @@map("email_templates")
 }

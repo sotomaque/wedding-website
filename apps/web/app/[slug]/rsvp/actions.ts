@@ -308,6 +308,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       const capturedCalendarFromAddress = getEmailFromAddress(settings);
       const capturedCoupleName = settings.coupleName;
       const capturedSlug = settings.slug;
+      const capturedDefaultLanguage = settings.defaultLanguage;
       after(async () => {
         try {
           const updatedGuests = await db.guest.findMany({
@@ -320,6 +321,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
               lastName: true,
               email: true,
               rsvpStatus: true,
+              preferredLanguage: true,
             },
           });
 
@@ -352,6 +354,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                 timeZone: "America/Los_Angeles",
               }),
             },
+            capturedDefaultLanguage,
           );
 
           if (rsvpTemplate) {
@@ -432,6 +435,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                       VENUE_NAME: firstEvent?.location_name ?? "",
                       VENUE_ADDRESS: firstEvent?.location_address ?? "",
                     },
+                    guest.preferredLanguage ?? capturedDefaultLanguage,
                   );
 
                   if (calendarTemplate) {
@@ -710,6 +714,7 @@ export async function submitMultiGuestRSVP(
       const capturedCalendarFromAddress = getEmailFromAddress(settingsMulti);
       const capturedCoupleName = settingsMulti.coupleName;
       const capturedSlug = settingsMulti.slug;
+      const capturedDefaultLanguage = settingsMulti.defaultLanguage;
       after(async () => {
         try {
           const updatedGuests = await db.guest.findMany({
@@ -722,6 +727,7 @@ export async function submitMultiGuestRSVP(
               lastName: true,
               email: true,
               rsvpStatus: true,
+              preferredLanguage: true,
             },
           });
 
@@ -768,6 +774,7 @@ export async function submitMultiGuestRSVP(
                 timeZone: "America/Los_Angeles",
               }),
             },
+            capturedDefaultLanguage,
           );
 
           if (rsvpTemplateMulti) {
@@ -848,6 +855,7 @@ export async function submitMultiGuestRSVP(
                       VENUE_NAME: firstEvent?.location_name ?? "",
                       VENUE_ADDRESS: firstEvent?.location_address ?? "",
                     },
+                    guest.preferredLanguage ?? capturedDefaultLanguage,
                   );
 
                   if (calendarTemplateMulti) {

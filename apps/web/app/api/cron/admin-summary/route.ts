@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
             emailFromName: true,
             emailFromAddress: true,
             notificationEmails: true,
+            defaultLanguage: true,
           },
         },
       },
@@ -161,6 +162,7 @@ export async function GET(request: NextRequest) {
             ADMIN_URL: adminUrl,
             REPORT_DATE: reportDate,
           },
+          wedding.defaultLanguage,
         );
 
         if (!rendered) {

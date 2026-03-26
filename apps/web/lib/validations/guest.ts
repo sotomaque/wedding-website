@@ -27,6 +27,7 @@ export const editGuestSchema = z
       .enum(["groomsman", "best_man", "bridesmaid", "maid_of_honor"])
       .optional()
       .or(z.literal("")),
+    preferredLanguage: z.enum(["en", "es"]).optional().or(z.literal("")),
     partyId: z.string().optional().or(z.literal("")),
     arrivalDate: z.string().optional(),
     arrivalTransport: z.string().optional(),
@@ -96,6 +97,7 @@ export const addGuestSchema = z
       .enum(["groomsman", "best_man", "bridesmaid", "maid_of_honor"])
       .optional()
       .or(z.literal("")),
+    preferredLanguage: z.enum(["en", "es"]).optional().or(z.literal("")),
     partyId: z.string().optional().or(z.literal("")),
   })
   .refine(

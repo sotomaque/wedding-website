@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
             ATTENDING_LABEL: attending ? "is attending" : "declined",
             SUBMITTED_AT: submittedAt,
           },
+          settings.defaultLanguage,
         );
 
         if (rendered) {

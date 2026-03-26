@@ -62,6 +62,7 @@ export function AddGuestForm({
       phoneNumber: "",
       whatsapp: "",
       preferredContactMethod: "",
+      preferredLanguage: "",
       family: false,
       under21: false,
       threeAndUnder: false,
@@ -347,6 +348,24 @@ export function AddGuestForm({
                   <option value="text">Text Message</option>
                   <option value="whatsapp">WhatsApp</option>
                   <option value="phone_call">Phone Call</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="preferredLanguage"
+                  className="block text-sm font-medium mb-1"
+                >
+                  Preferred Language (Optional)
+                </label>
+                <select
+                  id="preferredLanguage"
+                  {...register("preferredLanguage")}
+                  className="w-full border rounded px-3 py-2 bg-background"
+                >
+                  <option value="">Use wedding default</option>
+                  <option value="en">English</option>
+                  <option value="es">Spanish</option>
                 </select>
               </div>
             </div>

@@ -23,12 +23,14 @@ import { format } from "date-fns";
 import { CalendarIcon, Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { locales } from "@/i18n/config";
 import { TIMEZONES } from "@/lib/constants/timezones";
 import { THEME_PRESETS } from "@/lib/themes";
 import {
   inviteAdmin,
   removeAdmin,
   updateBrandingSettings,
+  updateDefaultLanguage,
   updateFeatureToggles,
   updateGeneralSettings,
   updateNotificationSettings,
@@ -40,6 +42,7 @@ type Tab =
   | "notifications"
   | "branding"
   | "theme"
+  | "language"
   | "features"
   | "emails"
   | "admins";
@@ -50,6 +53,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "emails", label: "Automated Emails" },
   { key: "branding", label: "Branding" },
   { key: "theme", label: "Theme" },
+  { key: "language", label: "Language" },
   { key: "features", label: "Features" },
   { key: "admins", label: "Admins" },
 ];
@@ -125,6 +129,7 @@ export function SettingsClient({
       )}
       {activeTab === "branding" && <BrandingSection wedding={wedding} />}
       {activeTab === "theme" && <ThemeSection wedding={wedding} />}
+      {activeTab === "language" && <LanguageSection wedding={wedding} />}
       {activeTab === "features" && <FeaturesSection wedding={wedding} />}
       {activeTab === "emails" && (
         <AutomatedEmailsSection
@@ -519,6 +524,56 @@ function ThemeSection({ wedding }: { wedding: Wedding }) {
             </p>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+const LANGUAGE_LABELS: Record<string, string> = {
+  en: "English",
+  es: "Español (Spanish)",
+};
+
+function LanguageSection({ wedding }: { wedding: Wedding }) {
+  const [isPending, startTransition] = useTransition();
+  const currentLanguage = wedding.defaultLanguage ?? "en";
+
+  function handleSelect(language: string) {
+    startTransition(async () => {
+      const result = await updateDefaultLanguage(language);
+      if (result.success) {
+        toast.success("Default language updated");
+      } else {
+        toast.error(result.error ?? "Failed to update language");
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-6 max-w-lg">
+      <p className="text-sm text-muted-foreground">
+        Choose the default language for your wedding site. Guests can switch
+        languages using the language switcher in the footer.
+      </p>
+      <div>
+        <Label htmlFor="defaultLanguage">Default Language</Label>
+        <select
+          id="defaultLanguage"
+          value={currentLanguage}
+          onChange={(e) => handleSelect(e.target.value)}
+          disabled={isPending}
+          className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          {locales.map((locale) => (
+            <option key={locale} value={locale}>
+              {LANGUAGE_LABELS[locale] ?? locale}
+            </option>
+          ))}
+        </select>
+        <p className="mt-2 text-xs text-muted-foreground">
+          This sets the language shown when guests first visit your site. They
+          can switch to another language at any time.
+        </p>
       </div>
     </div>
   );

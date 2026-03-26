@@ -11,6 +11,7 @@ export interface Template {
   id: string;
   weddingId: string;
   type: EmailTemplateType;
+  language: string;
   name: string;
   subject: string;
   htmlBody: string;
@@ -24,6 +25,7 @@ function serialize(row: {
   id: string;
   weddingId: string;
   type: EmailTemplateType;
+  language: string;
   name: string;
   subject: string;
   htmlBody: string;
@@ -36,6 +38,7 @@ function serialize(row: {
     id: row.id,
     weddingId: row.weddingId,
     type: row.type,
+    language: row.language,
     name: row.name,
     subject: row.subject,
     htmlBody: row.htmlBody,

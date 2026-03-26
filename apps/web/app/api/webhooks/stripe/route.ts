@@ -223,6 +223,7 @@ async function sendGiftNotificationEmail(params: {
         emailFromAddress: true,
         notificationEmails: true,
         contactEmail: true,
+        defaultLanguage: true,
       },
     });
 
@@ -279,6 +280,12 @@ async function sendGiftNotificationEmail(params: {
   const resolvedWeddingId = weddingId ?? (await resolveGiftWeddingId());
 
   try {
+    // Fetch wedding's default language for template rendering
+    const weddingForLang = await db.wedding.findUnique({
+      where: { id: resolvedWeddingId },
+      select: { defaultLanguage: true },
+    });
+
     const rendered = await renderEmailTemplate(
       resolvedWeddingId,
       "gift_notification",
@@ -301,6 +308,7 @@ async function sendGiftNotificationEmail(params: {
           timeZone: "America/Los_Angeles",
         }),
       },
+      weddingForLang?.defaultLanguage ?? "en",
     );
 
     if (!rendered) {

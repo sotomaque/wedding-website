@@ -1,0 +1,146 @@
+{
+  "nav": {
+    "ourStory": "Nuestra Historia",
+    "details": "Detalles",
+    "schedule": "Programa",
+    "planning": "Planificación",
+    "thingsToDo": "Qué Hacer",
+    "hotels": "Hoteles",
+    "tripPlanner": "Planificador de Viaje",
+    "registry": "Regalos",
+    "rsvp": "Confirmar Asistencia",
+    "admin": "Admin"
+  },
+  "hero": {
+    "defaultTitle": "Nos Casamos"
+  },
+  "story": {
+    "defaultTitle": "Nuestra Historia"
+  },
+  "details": {
+    "defaultTitle": "Detalles"
+  },
+  "schedule": {
+    "defaultTitle": "Programa"
+  },
+  "rsvp": {
+    "defaultTitle": "Confirmar Asistencia",
+    "subtitle": "Confirma tu asistencia con tu código de invitación",
+    "description": "Tu código de invitación único fue incluido en tu correo de invitación. Esto nos permite rastrear correctamente tu confirmación y cualquier restricción alimentaria.",
+    "codeLooksLike": "Tu código de invitación se ve así:",
+    "codeExample": "ABCD-1234",
+    "goToRsvpPage": "Ir a la Página de Confirmación",
+    "noInviteCode": "¿No tienes un código de invitación?",
+    "contactUs": "Contáctanos"
+  },
+  "rsvpPage": {
+    "viewWeddingDetails": "Ver Detalles de la Boda",
+    "enterInviteCode": "Ingresa tu código de invitación",
+    "codeInEmail": "Tu código de invitación fue incluido en tu correo de invitación",
+    "placeholder": "XXXX-XXXX",
+    "continue": "Continuar",
+    "verifying": "Verificando...",
+    "invalidCode": "Código Inválido",
+    "invalidCodeUrl": "El código de invitación en la URL no es válido.",
+    "invalidCodeEntered": "El código de invitación que ingresaste no es válido.",
+    "enterValidCode": "Por favor ingresa un código de invitación válido",
+    "error": "Error",
+    "failedToVerify": "No se pudo verificar el código de invitación",
+    "noInviteCode": "¿No tienes un código de invitación?",
+    "contactUs": "Contáctanos"
+  },
+  "rsvpForm": {
+    "alreadySubmitted": "Ya has enviado tu confirmación de asistencia",
+    "canUpdate": "Puedes actualizar tu respuesta en cualquier momento antes de la fecha límite",
+    "guestCount": "{attendingCount} de {totalGuests} invitados asistiendo",
+    "childrenNote": "Los niños de 3 años o menos son bienvenidos y no necesitan ser incluidos en la lista.",
+    "contactInfo": "Información de Contacto",
+    "contactInfoDescription": "¡Ayúdanos a mantenernos en contacto! Esta información es opcional pero útil.",
+    "mailingAddress": "Dirección Postal (Opcional)",
+    "mailingAddressPlaceholder": "Calle Principal 123, Ciudad, Estado, CP",
+    "phoneNumber": "Número de Teléfono (Opcional)",
+    "phonePlaceholder": "(555) 123-4567",
+    "whatsapp": "WhatsApp (Opcional)",
+    "whatsappPlaceholder": "+1 (555) 123-4567",
+    "preferredContact": "Método de Contacto Preferido (Opcional)",
+    "selectMethod": "Selecciona un método",
+    "email": "Correo Electrónico",
+    "textMessage": "Mensaje de Texto",
+    "whatsappMethod": "WhatsApp",
+    "phoneCall": "Llamada Telefónica",
+    "travelInfo": "Información de Viaje (Opcional)",
+    "travelDescription": "¡Cuéntanos cuándo llegas para que podamos coordinarnos!",
+    "arrivalDate": "Fecha de Llegada",
+    "arrivalTransport": "¿Cómo llegas?",
+    "transportPlaceholder": "ej. SAN, LAX, Conduciendo",
+    "departureDate": "Fecha de Salida",
+    "departureTransport": "Transporte de Salida",
+    "accommodationNotes": "¿Dónde te hospedarás? (Opcional)",
+    "accommodationPlaceholder": "ej. Airbnb en La Jolla, Hotel del Coronado",
+    "back": "Volver",
+    "submitting": "Enviando...",
+    "updateRsvp": "Actualizar Confirmación",
+    "submitRsvp": "Enviar Confirmación",
+    "rsvpUpdated": "¡Confirmación Actualizada!",
+    "rsvpSubmitted": "¡Confirmación Enviada!",
+    "updateSuccess": "Tu confirmación ha sido actualizada exitosamente.",
+    "submitSuccess": "Gracias por tu respuesta. ¡No podemos esperar para celebrar contigo!",
+    "attending": "Asistiendo",
+    "notAttending": "No Asistiendo",
+    "dietaryRestrictions": "Restricciones Alimentarias",
+    "dietaryPlaceholder": "ej. Vegetariano, Alergia a nueces",
+    "plusOneName": "Nombre del Acompañante",
+    "plusOneNamePlaceholder": "Nombre completo"
+  },
+  "hotels": {
+    "pageTitle": "Hoteles",
+    "title": "Dónde Hospedarse",
+    "description": "Hemos seleccionado una variedad de hoteles cerca de nuestro lugar de celebración. Desde resorts de lujo frente al mar hasta encantadoras estadías boutique, encuentra el lugar perfecto para tu visita.",
+    "clickInterested": "¡Haz clic en \"Interesado\" o \"Reservado\" para avisarnos tus planes!",
+    "groupBooking": "¿Interesado en Reserva Grupal?",
+    "groupBookingDescription": "Marca \"Interesado\" en cualquier hotel de arriba y trabajaremos para obtener tarifas grupales o bloques de habitaciones.",
+    "bookedUpdate": "¡Una vez que hayas reservado, actualiza tu estado a \"Reservado\" para que otros puedan ver dónde se hospedan todos!",
+    "luxury": "Lujo",
+    "midRange": "Gama Media",
+    "budgetFriendly": "Económico",
+    "visitWebsite": "Visitar sitio web",
+    "interested": "Interesado",
+    "interestedActive": "Interesado",
+    "booked": "Reservado",
+    "bookedActive": "Reservado",
+    "guestsInterested": "{count} invitado(s) interesado(s)"
+  },
+  "registry": {
+    "title": "Lista de Regalos",
+    "subtitle": "Tu presencia es el mejor regalo, pero si deseas celebrar con nosotros...",
+    "description": "Estamos agradecidos de tener todo lo que necesitamos para comenzar nuestra vida juntos. Si deseas dar un regalo, considera contribuir a uno de estos fondos significativos.",
+    "thankYou": "Gracias por celebrar este momento especial con nosotros. Tu amor y apoyo significan más de lo que cualquier regalo podría expresar.",
+    "contribute": "Contribuir",
+    "comingSoon": "Próximamente"
+  },
+  "thingsToDo": {
+    "title": "Explorar",
+    "description": "¡Estamos emocionados de compartir nuestros lugares favoritos contigo! Desde playas impresionantes hasta gastronomía de clase mundial, descubre los lugares que amamos.",
+    "markInterest": "¡Marca tu interés para ver quién más planea visitar!",
+    "weddingVenues": "Lugares de la Boda",
+    "weddingVenuesDescription": "Donde celebraremos",
+    "thingsToDo": "Qué Hacer",
+    "thingsToDoDescription": "Nuestros lugares favoritos para explorar en la ciudad"
+  },
+  "footer": {
+    "celebration": "¡No podemos esperar para celebrar contigo!",
+    "contact": "Para preguntas, contáctanos en"
+  },
+  "login": {
+    "signInOptional": "Iniciar Sesión (Opcional)",
+    "signInDescription": "Inicia sesión para guardar tus preferencias y acceder fácilmente a tu confirmación más tarde. También puedes omitir este paso.",
+    "signInGoogle": "Iniciar Sesión con Google",
+    "or": "o",
+    "skipForNow": "Omitir por ahora",
+    "sessionNote": "Tu código de invitación será recordado para esta sesión"
+  },
+  "languageSwitcher": {
+    "en": "English",
+    "es": "Español"
+  }
+}

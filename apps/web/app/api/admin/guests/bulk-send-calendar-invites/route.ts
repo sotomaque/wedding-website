@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
         email: true,
         rsvpStatus: true,
         calendarInviteResendCount: true,
+        preferredLanguage: true,
       },
     });
 
@@ -126,6 +127,7 @@ export async function POST(request: NextRequest) {
             LAST_NAME: guest.lastName || "",
             COUPLE_NAME: settings.coupleName,
           },
+          guest.preferredLanguage ?? settings.defaultLanguage,
         );
 
         if (!rendered) {

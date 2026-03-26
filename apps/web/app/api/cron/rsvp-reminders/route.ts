@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
             rsvpDeadline: true,
             emailFromName: true,
             emailFromAddress: true,
+            defaultLanguage: true,
           },
         },
       },
@@ -152,6 +153,7 @@ export async function GET(request: NextRequest) {
               RSVP_URL: rsvpUrl,
               INVITE_CODE: inviteCode,
             },
+            guest.preferredLanguage ?? wedding.defaultLanguage,
           );
 
           if (!rendered) {

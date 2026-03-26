@@ -29,6 +29,11 @@ export function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
   const slug = useWeddingSlug();
   const [templates, setTemplates] = useState<Template[]>(initialTemplates);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [languageFilter, setLanguageFilter] = useState<"en" | "es">("en");
+
+  const filteredTemplates = templates.filter(
+    (t) => t.language === languageFilter,
+  );
 
   async function handleToggleActive(templateId: string, isActive: boolean) {
     setTogglingId(templateId);
@@ -74,17 +79,33 @@ export function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
         </p>
       </div>
 
+      {/* Language Filter */}
+      <div className="flex gap-2 mb-6">
+        {(["en", "es"] as const).map((lang) => (
+          <Button
+            key={lang}
+            variant={languageFilter === lang ? "default" : "outline"}
+            size="sm"
+            onClick={() => setLanguageFilter(lang)}
+          >
+            {lang === "en" ? "EN" : "ES"}
+          </Button>
+        ))}
+      </div>
+
       {/* Templates List */}
-      {templates.length === 0 ? (
+      {filteredTemplates.length === 0 ? (
         <div className="text-center py-12 bg-muted/50 rounded-lg border border-dashed">
-          <h3 className="text-lg font-medium mb-2">No templates found</h3>
+          <h3 className="text-lg font-medium mb-2">
+            No {languageFilter === "en" ? "English" : "Spanish"} templates found
+          </h3>
           <p className="text-muted-foreground">
             Templates are automatically created when your wedding is set up.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {templates.map((template) => (
+          {filteredTemplates.map((template) => (
             <div
               key={template.id}
               className="flex items-center justify-between p-4 bg-card border rounded-lg hover:border-primary/50 transition-colors"
@@ -94,6 +115,9 @@ export function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
                   <h3 className="font-medium truncate">{template.name}</h3>
                   <Badge variant="secondary">
                     {TYPE_LABELS[template.type] || template.type}
+                  </Badge>
+                  <Badge variant="outline">
+                    {template.language === "es" ? "ES" : "EN"}
                   </Badge>
                   {!template.isActive && (
                     <Badge variant="outline" className="text-muted-foreground">

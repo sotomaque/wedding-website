@@ -3,6 +3,8 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 
 import "@workspace/ui/globals.css";
 import { Providers } from "@/components/providers";
@@ -41,18 +43,23 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
     <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
+      <html lang={locale} suppressHydrationWarning>
         <body
           className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased `}
         >
-          <Providers>{children}</Providers>
+          <NextIntlClientProvider messages={messages}>
+            <Providers>{children}</Providers>
+          </NextIntlClientProvider>
           <Analytics />
           <SpeedInsights />
         </body>

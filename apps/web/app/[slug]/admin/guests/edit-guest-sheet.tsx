@@ -119,6 +119,7 @@ export function EditGuestSheet({
         | "bridesmaid"
         | "maid_of_honor"
         | "",
+      preferredLanguage: (guest.preferredLanguage || "") as "en" | "es" | "",
       partyId: guest.partyId || "",
       arrivalDate: toDateInput(guest.arrivalDate),
       arrivalTransport: guest.arrivalTransport || "",
@@ -165,6 +166,7 @@ export function EditGuestSheet({
       "phoneNumber",
       "whatsapp",
       "preferredContactMethod",
+      "preferredLanguage",
       "family",
       "under21",
       "threeAndUnder",
@@ -568,6 +570,25 @@ export function EditGuestSheet({
                     <SelectItem value="text">Text Message</SelectItem>
                     <SelectItem value="whatsapp">WhatsApp</SelectItem>
                     <SelectItem value="phone_call">Phone Call</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Preferred Language (Optional)</Label>
+                <Select
+                  value={watch("preferredLanguage") || "none"}
+                  onValueChange={(value: "none" | "en" | "es") =>
+                    setValue("preferredLanguage", value === "none" ? "" : value)
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Use wedding default" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Use wedding default</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Spanish</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -38,6 +38,7 @@ export interface WeddingSettings {
   brandImageUrl: string | null;
   brandImageAlt: string | null;
   themeId: string | null;
+  defaultLanguage: string;
   featureToggles: FeatureToggles;
 }
 
@@ -62,6 +63,7 @@ export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
       brandImageUrl: true,
       brandImageAlt: true,
       themeId: true,
+      defaultLanguage: true,
       featureToggles: true,
     },
   });

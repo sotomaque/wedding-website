@@ -110,16 +110,17 @@ describe("renderEmailTemplate", () => {
     expect(result?.html).toBe("<p>Plain email with no placeholders</p>");
   });
 
-  it("should query with correct weddingId and type", async () => {
+  it("should query with correct weddingId, type, and language", async () => {
     mockFindUnique.mockResolvedValueOnce(null);
 
-    await renderEmailTemplate("wedding-123", "gift_notification", {});
+    await renderEmailTemplate("wedding-123", "gift_notification", {}, "es");
 
     expect(mockFindUnique).toHaveBeenCalledWith({
       where: {
-        weddingId_type: {
+        weddingId_type_language: {
           weddingId: "wedding-123",
           type: "gift_notification",
+          language: "es",
         },
       },
     });
