@@ -19,8 +19,10 @@ mock.module("@ai-sdk/openai", () => ({
   createOpenAI: mock(() => mockModelFn),
 }));
 
-// Mock AI SDK - capture args passed to generateText
+// Get real ai module exports to preserve them, then override what we need
+const realAi = await import("ai");
 mock.module("ai", () => ({
+  ...realAi,
   generateText: mock(async (args: Record<string, unknown>) => {
     capturedGenerateTextArgs = args;
     return { output: { title: "Test Todo", done: false }, text: "" };
@@ -129,6 +131,10 @@ describe("AI Client - generateStructured", () => {
     const mockGenerate = generateText as unknown as ReturnType<typeof mock>;
     mockGenerate.mockRejectedValueOnce(new Error("API rate limited"));
 
+    // Suppress expected console.error from generateStructured's catch block
+    const originalError = console.error;
+    console.error = mock(() => {});
+
     const schema = z.object({ name: z.string() });
 
     const result = await generateStructured(schema, {
@@ -136,6 +142,8 @@ describe("AI Client - generateStructured", () => {
       system: "sys",
       prompt: "prompt",
     });
+
+    console.error = originalError;
 
     expect(result.success).toBe(false);
     if (!result.success) {

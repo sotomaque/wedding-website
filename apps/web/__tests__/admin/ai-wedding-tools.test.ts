@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
+// Re-export real `tool` and `z` from "ai" — only mock what's needed
+const realAi = await import("ai");
+mock.module("ai", () => realAi);
+
 // Mock env
 mock.module("@/env", () => ({
   env: {
