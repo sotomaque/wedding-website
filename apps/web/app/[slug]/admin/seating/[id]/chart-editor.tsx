@@ -22,17 +22,24 @@ import {
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
+import { Textarea } from "@workspace/ui/components/textarea";
 import {
   ArrowLeft,
   Filter,
   LayoutGrid,
   List,
+  MessageSquarePlus,
   Plus,
   Sparkles,
   Trash2,
@@ -76,6 +83,8 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
   const [pendingDeleteTableId, setPendingDeleteTableId] = useState<
     string | null
   >(null);
+  const [customPrompt, setCustomPrompt] = useState("");
+  const [isCustomPromptOpen, setIsCustomPromptOpen] = useState(false);
 
   const handleFilterChange = (list: GuestListFilter, rsvp: GuestRsvpFilter) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -318,7 +327,7 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
     }
   };
 
-  const handleGenerateSeating = async () => {
+  const handleGenerateSeating = async (promptOverride?: string) => {
     if (chart.tables.length === 0) {
       toast.error("Please add tables first");
       return;
@@ -332,12 +341,17 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
     setIsGenerating(true);
 
     try {
+      const body: Record<string, unknown> = { filter };
+      if (promptOverride) {
+        body.customPrompt = promptOverride;
+      }
+
       const response = await fetch(
         `/api/admin/seating-charts/${chart.id}/generate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filter }),
+          body: JSON.stringify(body),
         },
       );
 
@@ -518,12 +532,57 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
 
           <Button
             size="sm"
-            onClick={handleGenerateSeating}
+            onClick={() => handleGenerateSeating()}
             disabled={isGenerating || chart.tables.length === 0}
           >
             <Sparkles className="h-4 w-4 mr-1" />
             {isGenerating ? "Generating..." : "AI Generate"}
           </Button>
+
+          <Popover
+            open={isCustomPromptOpen}
+            onOpenChange={setIsCustomPromptOpen}
+          >
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isGenerating || chart.tables.length === 0}
+              >
+                <MessageSquarePlus className="h-4 w-4 mr-1" />
+                Custom Prompt
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Custom Constraints</p>
+                  <p className="text-xs text-muted-foreground">
+                    Add specific instructions for the AI seating generator.
+                  </p>
+                </div>
+                <Textarea
+                  placeholder='e.g., "Keep the Smith and Jones families at the same table" or "Table 1 should be the kids table"'
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  rows={4}
+                  className="text-sm"
+                />
+                <Button
+                  size="sm"
+                  className="w-full"
+                  disabled={isGenerating || !customPrompt.trim()}
+                  onClick={() => {
+                    setIsCustomPromptOpen(false);
+                    handleGenerateSeating(customPrompt.trim());
+                  }}
+                >
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  {isGenerating ? "Generating..." : "Generate with Constraints"}
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

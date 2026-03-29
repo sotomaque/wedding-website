@@ -1,4 +1,6 @@
+import type { WeddingContext } from "@/lib/db/wedding-context";
 import type { GuestForSeating } from "@/lib/types/seating";
+import { buildSystemPrompt } from "./base";
 
 /**
  * Group guests by party (using party_id, falling back to invite_code)
@@ -44,17 +46,11 @@ function formatGuestData(
 }
 
 /**
- * Build the AI prompt for seating chart generation
+ * Build the system prompt for seating chart generation.
+ * Uses the shared base prompt with wedding context.
  */
-export function buildSeatingPrompt(
-  guests: GuestForSeating[],
-  tablesCount: number,
-  seatsPerTable: number,
-): string {
-  const guestGroups = groupByParty(guests);
-  const totalSeats = tablesCount * seatsPerTable;
-
-  return `You are a wedding seating planner assistant. Create optimal seating assignments for ${guests.length} guests across ${tablesCount} tables with ${seatsPerTable} seats each (${totalSeats} total seats).
+export function systemPrompt(ctx: WeddingContext): string {
+  const featureInstructions = `You are a wedding seating planner assistant. Your job is to create optimal seating assignments based on guest relationships, sides, family groups, and special constraints.
 
 RULES (in order of priority):
 1. PARTIES MUST SIT TOGETHER: Guests in the same party (same party ID) are couples/families/groups and MUST be at the same table. Never separate them.
@@ -63,9 +59,6 @@ RULES (in order of priority):
 4. GROUP BY SIDE: Try to group bride's side and groom's side at the same tables, but mixing is acceptable to fill tables.
 5. BRIDAL PARTY PLACEMENT: Consider seating bridal party members (best_man, maid_of_honor, groomsmen, bridesmaids) at tables 1-2 (near the couple).
 6. BALANCE TABLES: Distribute guests as evenly as possible across tables. Avoid overfilling or leaving tables nearly empty.
-
-GUEST DATA:
-${formatGuestData(guests, guestGroups)}
 
 OUTPUT FORMAT:
 Respond with ONLY valid JSON in this exact format, no additional text:
@@ -81,8 +74,35 @@ CRITICAL INSTRUCTIONS:
 - Use the EXACT guest ID UUIDs (the long alphanumeric strings like "30355773-01ab-48f3-877a-6376c6be0026") in guestIds arrays
 - DO NOT use party IDs or invite codes - those are only for grouping reference
 - Include ALL guest IDs in your assignments
-- Do not exceed ${seatsPerTable} guests per table
 - Ensure party members (same party) are always at the same table`;
+
+  return buildSystemPrompt(ctx, featureInstructions);
+}
+
+/**
+ * Build the user prompt with guest data, table info, and optional custom constraints.
+ */
+export function buildUserPrompt(input: {
+  guests: GuestForSeating[];
+  tables: { count: number; seatsPerTable: number };
+  customPrompt?: string;
+}): string {
+  const { guests, tables, customPrompt } = input;
+  const guestGroups = groupByParty(guests);
+  const totalSeats = tables.count * tables.seatsPerTable;
+
+  let prompt = `Create seating assignments for ${guests.length} guests across ${tables.count} tables with ${tables.seatsPerTable} seats each (${totalSeats} total seats).
+
+Do not exceed ${tables.seatsPerTable} guests per table.
+
+GUEST DATA:
+${formatGuestData(guests, guestGroups)}`;
+
+  if (customPrompt) {
+    prompt += `\n\nAdditional constraints from the couple: ${customPrompt}`;
+  }
+
+  return prompt;
 }
 
 /**

@@ -1,21 +1,22 @@
 # WedPlan — Product & Acquisition Roadmap
 
-> Last updated: 2026-03-25
+> Last updated: 2026-03-28
 
 ---
 
 ## Current State
 
-Multi-tenant wedding platform with: Clerk auth, Stripe payments, AI seating charts, per-wedding email templates (DB-stored), address autocomplete (Geoapify), Vercel cron jobs (RSVP reminders + admin summaries), full E2E test coverage, and a security-hardened API layer (weddingId-scoped queries on all 37 routes).
+Multi-tenant wedding platform with: Clerk auth, Stripe payments, shared AI infrastructure powering 4 features (seating, todos, story writer, email drafts), per-wedding email templates in 2 languages (DB-stored), i18n with next-intl (English + Spanish), address autocomplete (Geoapify), Vercel cron jobs (RSVP reminders + admin summaries), full E2E test coverage, and a security-hardened API layer (weddingId-scoped queries on all routes).
 
 | Asset | Status |
 |-------|--------|
 | Multi-tenancy | Full (weddingId-scoped queries, RLS, cross-tenant security audit complete) |
-| AI features | Seating chart generation (OpenAI) |
+| AI features | Shared infrastructure + 4 features: seating charts, todo generator, story writer, email drafts |
 | Payments | Stripe (registry + gifting) |
-| Email system | Per-wedding DB templates, toggleable, cron-based reminders + admin summaries |
+| Email system | Per-wedding DB templates, multi-language (EN/ES), toggleable, cron-based reminders + admin summaries |
+| i18n | English + Spanish via next-intl, per-wedding default language, per-guest language preference |
 | Vendor management | ServiceLinks + vendors page |
-| E2E tests | 427 unit + Playwright E2E (parallel read-only, serial mutating) |
+| Tests | 430 unit + Playwright E2E (parallel read-only, serial mutating) |
 | Platform admin | Superadmin panel |
 | Mobile | Web-only (Next.js) — gap vs Zola/Joy native apps |
 
@@ -43,10 +44,11 @@ Multi-tenant wedding platform with: Clerk auth, Stripe payments, AI seating char
 - [x] Co-admin invite flow
 
 ### 1.4 Tenant-Scoped Configuration ✅
-- [x] Per-wedding email templates (DB-stored, toggleable via `isActive`)
+- [x] Per-wedding email templates (DB-stored, toggleable via `isActive`, multi-language)
 - [x] Per-wedding themes (5 presets with CSS variable injection)
 - [x] Feature toggles, brand image, notification recipients
 - [x] Content editor (Hero, Story, Details, Schedule, RSVP)
+- [x] Per-wedding default language + per-guest language preference
 
 ---
 
@@ -54,45 +56,84 @@ Multi-tenant wedding platform with: Clerk auth, Stripe payments, AI seating char
 
 - [x] Landing page with feature showcase
 - [x] Clerk auth → Dashboard → 4-step onboarding wizard
-- [x] Wedding creation seeds: admin, events, content, email templates
+- [x] Wedding creation seeds: admin, events, content, email templates (EN + ES)
 - [x] Theme picker, content editor, feature toggles
 - [x] Address autocomplete (Geoapify) on all address inputs
 - [x] Shadcn calendar date pickers on all date fields
+- [x] i18n with next-intl (English + Spanish), cookie-based language switcher
 
 ---
 
-## Phase 3: AI Features (Months 1–2)
+## Phase 3: AI Features
 
-> Build the technical moat. These directly compete with The Knot's AI push.
+> Shared AI infrastructure in `lib/ai/` powers all features. Every AI route follows the same pattern: `getWeddingContext() → requireAdmin() → build prompt → call shared client → post-process → return`.
 
-### Tier 1 — Quick Wins (Weeks 1–4)
+### AI Infrastructure ✅ COMPLETE
+
+```
+lib/ai/
+  client.ts              — getModel(), generateStructured(), createTextStream()
+  types.ts               — AIRequestContext, AIFeature, AIResult<T>
+  prompts/
+    base.ts              — buildSystemPrompt(ctx, featureInstructions)
+    seating.ts           — seating chart prompts + custom constraint support
+    todo.ts              — todo generator prompts + custom instructions
+    story.ts             — story writer prompts (streaming)
+    email-draft.ts       — email draft prompts (structured output)
+```
+
+**Key patterns:**
+- `generateStructured<T>(schema, options)` — for JSON output validated by Zod (todos, email drafts, seating, budget)
+- `createTextStream(options)` — for streaming text (story writer, planning assistant)
+- Every prompt file exports: `systemPrompt(ctx)`, `buildUserPrompt(input)`, and optionally `outputSchema`
+- All AI routes live under `/api/admin/ai/{feature}/{action}`
+- Every call includes `weddingId` in the context for logging and tenant scoping
+
+### Tier 1 — Shipped ✅
+
+| Feature | Status | Route | Notes |
+|---------|--------|-------|-------|
+| **AI Seating Chart** | ✅ | `POST /api/admin/seating-charts/[id]/generate` | Refactored to shared infra. Supports custom prompt for natural language constraints ("keep divorced parents apart", "group college friends"). |
+| **AI Todo Generator** | ✅ | `POST /api/admin/ai/todos/generate` | "AI Generate" button + "Custom Prompt" popover on todos page. Date-aware checklist generation, filters past-due items, avoids duplicating existing todos. |
+| **AI Story Writer** | ✅ | `POST /api/admin/ai/story/generate` | "AI Write" button in Story tab. Streaming HTML output into Tiptap editor. Tone selection (romantic/humorous/formal/casual). |
+| **AI Email Drafts** | ✅ | `POST /api/admin/ai/email-draft/generate` | "AI Draft" button in template editor. Generates subject + HTML body respecting `{{{VARIABLE}}}` placeholders. |
+
+### Tier 2 — Next Up
 
 | Feature | Effort | Value | Notes |
 |---------|--------|-------|-------|
-| **AI Todo Generator** | Low | High | On onboarding, GPT generates date-aware checklist → `WeddingTodo` table. First "wow" moment. |
-| **AI Story Writer** | Low | High | "Generate with AI" button in content editor. Couple gives a few sentences → GPT drafts full story → populates Tiptap editor. |
-| **AI Guest Email Drafts** | Low | High | "AI Draft" button in template editor. Describe intent → GPT generates email HTML. |
-| **AI Photo Captions** | Low | Medium | GPT-4 Vision on uploaded guest photos → auto-caption. Add `caption` column to `GuestPhoto`. |
-
-### Tier 2 — Mid-Term (Weeks 4–8)
-
-| Feature | Effort | Value | Notes |
-|---------|--------|-------|-------|
-| **AI RSVP Insights** | Medium | High | Natural language dashboard insights from existing RSVP/dietary/hotel data. No schema changes. |
-| **AI Seating Chart v2** | Medium | High | Natural language constraints ("keep divorced parents apart"). Improved prompt, not new infra. |
-| **AI Budget Optimizer** | Medium | High | Couple enters budget → AI allocates by category based on guest count, venue, location. New `Budget` model. |
+| **AI Photo Captions** | Low | Medium | GPT-4 Vision on uploaded guest photos → auto-caption. Add `caption` column to `GuestPhoto`. Use `generateTextResult()` from shared client. |
+| **AI RSVP Insights** | Medium | High | Natural language dashboard insights from existing RSVP/dietary/hotel data. Use `generateStructured()` with an insights Zod schema. No schema changes needed. |
+| **AI Budget Optimizer** | Medium | High | Couple enters budget → AI allocates by category. New `Budget` model. Use `generateStructured()` with budget schema. |
 | **AI Vendor Recommendations** | Medium | Medium | Based on theme, budget, location → suggest vendor categories and styles. |
 
-### Tier 3 — Strategic (Months 2–4)
+### Tier 3 — Strategic
 
 | Feature | Effort | Value | Notes |
 |---------|--------|-------|-------|
-| **AI Planning Assistant (Chat)** | High | Very High | Persistent sidebar chat with live DB context via OpenAI function calling. This is The Knot's ChatGPT app — but better because it has real data. |
-| **AI Timeline Generator** | High | High | Minute-by-minute wedding day timeline → PDF export. Replaces $2K–$5K day-of coordinator. |
+| **AI Planning Assistant (Chat)** | High | Very High | Persistent sidebar chat with live DB context via OpenAI function calling. Use `createTextStream()` with `tools` parameter. The Knot's ChatGPT app — but with real wedding data. |
+| **AI Timeline Generator** | High | High | Minute-by-minute wedding day timeline → PDF export. Use `generateStructured()` with timeline schema + react-pdf for output. |
 | **AI Style Advisor** | High | High | Upload inspiration images → GPT-4 Vision recommends theme preset + custom color overrides. |
 
-### Architecture Note
-All AI features must pass `weddingId` and scope system prompts to wedding data. Share a single `lib/ai/client.ts` utility that wraps `getWeddingId() + requireAdmin()`. Don't let AI become a multi-tenancy leak vector.
+### Adding a New AI Feature — Guide
+
+1. **Create prompt file** at `lib/ai/prompts/{feature}.ts`:
+   - Export `systemPrompt(ctx: WeddingContext): string` — use `buildSystemPrompt()` from `base.ts`
+   - Export `buildUserPrompt(input: FeatureInput): string` — format user input + DB data
+   - Export `outputSchema` (Zod) if using structured output
+   - Support optional `customPrompt?: string` in `buildUserPrompt` for user-provided constraints
+
+2. **Create API route** at `app/api/admin/ai/{feature}/{action}/route.ts`:
+   - `getWeddingContext()` → `requireAdmin(weddingId)` → parse body → build prompts → call shared client → post-process → return
+   - Use `generateStructured()` for JSON output, `createTextStream()` for streaming text
+
+3. **Add UI trigger** (button + dialog/popover) in the relevant admin page:
+   - Sparkles icon for "AI Generate" button
+   - MessageSquare icon for "Custom Prompt" button with textarea popover
+   - Loading state with Loader2 spinner
+   - Toast for success/error feedback
+
+4. **Multi-tenancy**: `weddingId` is already injected via `AIRequestContext` in the shared client. The system prompt includes couple names + wedding date via `buildSystemPrompt()`. No additional scoping needed.
 
 ---
 
@@ -114,7 +155,6 @@ All AI features must pass `weddingId` and scope system prompts to wedding data. 
 - [ ] Lead gen: couples express interest → vendor gets notified
 - [ ] "For Vendors" landing page
 - [ ] Target 20+ local SD vendors (photographers, florists, venues)
-- [ ] This is The Knot's core revenue model — even a lightweight version signals market understanding
 
 ### 4.4 Custom Registries
 - [ ] Amazon-style wish lists with gift claiming (planned, schema designed)
@@ -134,11 +174,11 @@ All AI features must pass `weddingId` and scope system prompts to wedding data. 
 ### 5.2 Growth
 - [ ] Waitlist (target 500+ signups)
 - [ ] Product Hunt launch
-- [ ] Press angle: "Former couple builds multi-tenant wedding platform with AI seating charts"
+- [ ] Press angle: "Former couple builds multi-tenant AI wedding platform"
 
 ### 5.3 Technical Due Diligence Package
-- [ ] Architecture overview doc (schema, multi-tenancy, auth, payments)
-- [ ] Test coverage report (427 unit + E2E)
+- [ ] Architecture overview doc (schema, multi-tenancy, auth, payments, AI infra)
+- [ ] Test coverage report (430 unit + E2E)
 - [ ] Security audit summary (cross-tenant hardening, RLS, weddingId scoping)
 - [ ] CI/CD pipeline overview (Vercel, GitHub Actions, preview deployments)
 
@@ -179,7 +219,6 @@ All AI features must pass `weddingId` and scope system prompts to wedding data. 
 | Custom domains per wedding | Medium | Vercel domain API — premium tier feature |
 | Rate limiting on public APIs | Medium | Prevent abuse at scale |
 | SMS/WhatsApp notifications | Low | Twilio integration |
-| i18n (English + Spanish) | Low | next-intl |
 | Meal selection during RSVP | Low | Schema extension |
 
 ---
@@ -191,7 +230,7 @@ All AI features must pass `weddingId` and scope system prompts to wedding data. 
 | Multi-tenancy core | 2026-03 | Full data isolation, RLS, scoped queries |
 | Onboarding wizard | 2026-03 | 4-step flow with slug validation |
 | Theme system | 2026-03 | 5 presets with CSS variable injection |
-| Per-wedding email templates | 2026-03 | DB-stored, toggleable, Mustache variables |
+| Per-wedding email templates | 2026-03 | DB-stored, toggleable, Mustache variables, multi-language |
 | Address autocomplete | 2026-03 | Geoapify API on all address inputs |
 | Shadcn calendar pickers | 2026-03 | Replaced all native date inputs |
 | RSVP reminder cron | 2026-03 | Vercel cron, configurable schedules per wedding |
@@ -199,6 +238,12 @@ All AI features must pass `weddingId` and scope system prompts to wedding data. 
 | Security audit | 2026-03 | 20 API routes hardened, 6 nav bugs fixed |
 | Vercel Analytics + Speed Insights | 2026-03 | Added to root layout |
 | Env cleanup | 2026-03 | Removed 10 unused vars, deleted 3 stale files |
+| i18n (English + Spanish) | 2026-03 | next-intl, per-wedding default language, per-guest language, multi-language email templates |
+| Shared AI infrastructure | 2026-03 | `lib/ai/` — client, types, prompt pattern, 3 execution modes |
+| AI Seating Chart v2 | 2026-03 | Refactored to shared infra, added custom prompt support |
+| AI Todo Generator | 2026-03 | Date-aware checklist, custom prompt, auto-filters past-due |
+| AI Story Writer | 2026-03 | Streaming HTML into Tiptap, tone selection |
+| AI Email Drafts | 2026-03 | Structured output, respects template variables |
 
 ---
 

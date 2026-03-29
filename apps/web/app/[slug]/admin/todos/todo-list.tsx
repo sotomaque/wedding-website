@@ -9,9 +9,27 @@ import {
 } from "@workspace/ui/components/card";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Input } from "@workspace/ui/components/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
+import { Textarea } from "@workspace/ui/components/textarea";
 import { cn } from "@workspace/ui/lib/utils";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  Check,
+  Loader2,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   addTodo,
   deleteTodo,
@@ -25,9 +43,38 @@ export function TodoList({ initialTodos }: { initialTodos: WeddingTodo[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState("");
+  const [customPromptOpen, setCustomPromptOpen] = useState(false);
+  const router = useRouter();
 
   const pendingTodos = initialTodos.filter((t) => !t.isCompleted);
   const completedTodos = initialTodos.filter((t) => t.isCompleted);
+
+  async function handleGenerate(promptOverride?: string) {
+    setIsGenerating(true);
+    setCustomPromptOpen(false);
+    try {
+      const res = await fetch("/api/admin/ai/todos/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          promptOverride ? { customPrompt: promptOverride } : {},
+        ),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to generate todos");
+        return;
+      }
+      toast.success(`Generated ${data.count} new tasks`);
+      router.refresh();
+    } catch {
+      toast.error("Failed to generate todos");
+    } finally {
+      setIsGenerating(false);
+    }
+  }
 
   function handleAdd() {
     if (!newTitle.trim()) return;
@@ -94,6 +141,71 @@ export function TodoList({ initialTodos }: { initialTodos: WeddingTodo[] }) {
             <Plus className="h-4 w-4 mr-1" />
             Add
           </Button>
+          {initialTodos.length > 0 ? (
+            <ConfirmDialog
+              trigger={
+                <Button variant="outline" disabled={isGenerating}>
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-1" />
+                  )}
+                  {isGenerating ? "Generating..." : "AI Generate"}
+                </Button>
+              }
+              title="Generate AI Checklist"
+              description="This will add AI-generated tasks to your existing list. Duplicate tasks will be avoided. Continue?"
+              confirmLabel="Generate"
+              variant="default"
+              onConfirm={() => handleGenerate()}
+            />
+          ) : (
+            <Button
+              variant="outline"
+              disabled={isGenerating}
+              onClick={() => handleGenerate()}
+            >
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1" />
+              )}
+              {isGenerating ? "Generating..." : "AI Generate"}
+            </Button>
+          )}
+          <Popover open={customPromptOpen} onOpenChange={setCustomPromptOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" disabled={isGenerating}>
+                <MessageSquare className="h-4 w-4 mr-1" />
+                Custom Prompt
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Custom Instructions</p>
+                <Textarea
+                  placeholder="e.g. Focus on DIY decorations, include tasks for a destination wedding in Mexico, add rehearsal dinner planning..."
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  rows={4}
+                  className="text-sm"
+                />
+                <Button
+                  size="sm"
+                  className="w-full"
+                  disabled={isGenerating || !customPrompt.trim()}
+                  onClick={() => handleGenerate(customPrompt)}
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-1" />
+                  )}
+                  Generate with Instructions
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </form>
 
         {/* Pending todos */}
