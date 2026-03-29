@@ -2,8 +2,11 @@
 
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { env } from "@/env";
 import { db } from "@/lib/db";
 import { getDefaultTemplates } from "@/lib/email/default-templates";
+import { renderEmailTemplate } from "@/lib/email/render-template";
+import { sendEmail } from "@/lib/email/resend-client";
 
 const RESERVED_SLUGS = new Set([
   "admin",
@@ -184,6 +187,53 @@ export async function createWedding(data: {
         },
       ],
     });
+
+    // Notify platform admins
+    const adminEmails =
+      env.ADMIN_EMAILS?.split(",")
+        .map((e) => e.trim())
+        .filter(Boolean) ?? [];
+    const appUrl = env.NEXT_PUBLIC_APP_URL || "https://theceremony.app";
+
+    if (adminEmails.length > 0) {
+      await sendEmail({
+        from: `The Ceremony <noreply@theceremony.app>`,
+        to: adminEmails,
+        subject: `New Wedding Created: ${coupleName}`,
+        html: `<div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2>New Wedding Created</h2>
+      <p><strong>${coupleName}</strong> just created their wedding!</p>
+      <ul>
+        <li>Slug: <code>${wedding.slug}</code></li>
+        <li>Date: ${data.weddingDate}</li>
+        <li>Creator: ${user.emailAddresses[0]?.emailAddress}</li>
+      </ul>
+      <a href="${appUrl}/platform-admin" style="display:inline-block;padding:12px 24px;background:#667eea;color:#fff;text-decoration:none;border-radius:6px;">View in Platform Admin</a>
+    </div>`,
+      }).catch((err) =>
+        console.error("Failed to send admin notification:", err),
+      );
+    }
+
+    // Send welcome email to the creator
+    const welcomeRendered = await renderEmailTemplate(
+      wedding.id,
+      "welcome",
+      {
+        COUPLE_NAMES: coupleName,
+        ADMIN_URL: `${appUrl}/${wedding.slug}/admin`,
+        APP_URL: appUrl,
+      },
+      "en",
+    );
+    if (welcomeRendered) {
+      await sendEmail({
+        from: `The Ceremony <noreply@theceremony.app>`,
+        to: user.emailAddresses[0]?.emailAddress ?? "",
+        subject: welcomeRendered.subject,
+        html: welcomeRendered.html,
+      }).catch((err) => console.error("Failed to send welcome email:", err));
+    }
 
     redirect(`/${wedding.slug}/admin`);
   } catch (error) {

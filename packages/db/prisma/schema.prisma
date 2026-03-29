@@ -718,6 +718,7 @@ enum EmailTemplateType {
   calendar_invite
   rsvp_reminder
   admin_summary
+  welcome
 
   @@map("email_template_type")
 }

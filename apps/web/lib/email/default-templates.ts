@@ -295,6 +295,26 @@ export function getDefaultTemplates(
       ],
     },
     {
+      type: "welcome" as EmailTemplateType,
+      name: "Welcome",
+      subjects: {
+        en: "Welcome to The Ceremony, {{{COUPLE_NAMES}}}!",
+        es: "Bienvenidos a The Ceremony, {{{COUPLE_NAMES}}}!",
+      },
+      htmlBodies: {
+        en: welcomeHtml,
+        es: welcomeHtmlEs,
+      },
+      variables: [
+        {
+          key: "COUPLE_NAMES",
+          description: "Names of the couple (e.g. Helen & Enrique)",
+        },
+        { key: "ADMIN_URL", description: "URL to the admin dashboard" },
+        { key: "APP_URL", description: "Base application URL" },
+      ],
+    },
+    {
       type: "admin_summary" as EmailTemplateType,
       name: "Admin Summary",
       subjects: {
@@ -2361,6 +2381,174 @@ const adminSummaryHtmlEs = `<!DOCTYPE html>
       <div style="padding: 25px 40px; background-color: #f7fafc; text-align: center; border-top: 1px solid #e2e8f0;">
         <p style="margin: 0; color: #718096; font-size: 13px;">
           Este es un resumen automatico de la boda de {{{COUPLE_NAMES}}}.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>`;
+
+// ---------------------------------------------------------------------------
+// Welcome — English
+// ---------------------------------------------------------------------------
+
+const welcomeHtml = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to The Ceremony</title>
+  </head>
+  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+
+      <!-- Hero Section -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px;">
+        <tr>
+          <td style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.92) 0%, rgba(118, 75, 162, 0.92) 100%); padding: 60px 40px; text-align: center;">
+            <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 36px; font-weight: 300; letter-spacing: 2px; font-family: Georgia, 'Times New Roman', serif; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+              Welcome!
+            </h1>
+            <table role="presentation" width="80" cellpadding="0" cellspacing="0" border="0" align="center">
+              <tr>
+                <td style="border-top: 1px solid rgba(255,255,255,0.6); padding: 16px 0 0;"></td>
+              </tr>
+            </table>
+            <p style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 300; letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+              {{{COUPLE_NAMES}}}
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Content -->
+      <div style="padding: 40px;">
+        <p style="margin: 0 0 20px; color: #2d3748; font-size: 16px; line-height: 1.6;">
+          Congratulations on your upcoming wedding! We are thrilled to have you on <strong>The Ceremony</strong> and cannot wait to help you create an unforgettable experience for your guests.
+        </p>
+
+        <h2 style="margin: 30px 0 16px; color: #4a5568; font-size: 20px; font-weight: 600;">
+          Quick Start Guide
+        </h2>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding: 12px 16px; background-color: #f7fafc; border-left: 4px solid #667eea; margin-bottom: 12px; border-radius: 0 6px 6px 0;">
+              <p style="margin: 0; color: #2d3748; font-size: 15px; font-weight: 600;">1. Add your guests</p>
+              <p style="margin: 4px 0 0; color: #718096; font-size: 14px;">Import or manually add your guest list to start managing RSVPs.</p>
+            </td>
+          </tr>
+          <tr><td style="height: 8px;"></td></tr>
+          <tr>
+            <td style="padding: 12px 16px; background-color: #f7fafc; border-left: 4px solid #667eea; margin-bottom: 12px; border-radius: 0 6px 6px 0;">
+              <p style="margin: 0; color: #2d3748; font-size: 15px; font-weight: 600;">2. Customize your site</p>
+              <p style="margin: 4px 0 0; color: #718096; font-size: 14px;">Add your story, photos, and wedding details to make your site uniquely yours.</p>
+            </td>
+          </tr>
+          <tr><td style="height: 8px;"></td></tr>
+          <tr>
+            <td style="padding: 12px 16px; background-color: #f7fafc; border-left: 4px solid #667eea; margin-bottom: 12px; border-radius: 0 6px 6px 0;">
+              <p style="margin: 0; color: #2d3748; font-size: 15px; font-weight: 600;">3. Set up your registry</p>
+              <p style="margin: 4px 0 0; color: #718096; font-size: 14px;">Configure gift funds so guests can contribute to what matters most to you.</p>
+            </td>
+          </tr>
+        </table>
+
+        <!-- CTA -->
+        <div style="text-align: center; margin: 35px 0 10px;">
+          <a href="{{{ADMIN_URL}}}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 40px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 50px; box-shadow: 0 4px 15px rgba(102,126,234,0.4);">
+            Go to Your Dashboard
+          </a>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding: 25px 40px; background-color: #f7fafc; text-align: center; border-top: 1px solid #e2e8f0;">
+        <p style="margin: 0; color: #718096; font-size: 13px;">
+          You received this email because you created a wedding on The Ceremony.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>`;
+
+// ---------------------------------------------------------------------------
+// Welcome — Spanish
+// ---------------------------------------------------------------------------
+
+const welcomeHtmlEs = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenidos a The Ceremony</title>
+  </head>
+  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+
+      <!-- Hero Section -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px;">
+        <tr>
+          <td style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.92) 0%, rgba(118, 75, 162, 0.92) 100%); padding: 60px 40px; text-align: center;">
+            <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 36px; font-weight: 300; letter-spacing: 2px; font-family: Georgia, 'Times New Roman', serif; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+              Bienvenidos!
+            </h1>
+            <table role="presentation" width="80" cellpadding="0" cellspacing="0" border="0" align="center">
+              <tr>
+                <td style="border-top: 1px solid rgba(255,255,255,0.6); padding: 16px 0 0;"></td>
+              </tr>
+            </table>
+            <p style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 300; letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+              {{{COUPLE_NAMES}}}
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Content -->
+      <div style="padding: 40px;">
+        <p style="margin: 0 0 20px; color: #2d3748; font-size: 16px; line-height: 1.6;">
+          Felicidades por su proxima boda! Estamos encantados de tenerlos en <strong>The Ceremony</strong> y no podemos esperar para ayudarles a crear una experiencia inolvidable para sus invitados.
+        </p>
+
+        <h2 style="margin: 30px 0 16px; color: #4a5568; font-size: 20px; font-weight: 600;">
+          Guia de Inicio Rapido
+        </h2>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding: 12px 16px; background-color: #f7fafc; border-left: 4px solid #667eea; margin-bottom: 12px; border-radius: 0 6px 6px 0;">
+              <p style="margin: 0; color: #2d3748; font-size: 15px; font-weight: 600;">1. Agrega a tus invitados</p>
+              <p style="margin: 4px 0 0; color: #718096; font-size: 14px;">Importa o agrega manualmente tu lista de invitados para comenzar a gestionar las confirmaciones.</p>
+            </td>
+          </tr>
+          <tr><td style="height: 8px;"></td></tr>
+          <tr>
+            <td style="padding: 12px 16px; background-color: #f7fafc; border-left: 4px solid #667eea; margin-bottom: 12px; border-radius: 0 6px 6px 0;">
+              <p style="margin: 0; color: #2d3748; font-size: 15px; font-weight: 600;">2. Personaliza tu sitio</p>
+              <p style="margin: 4px 0 0; color: #718096; font-size: 14px;">Agrega tu historia, fotos y detalles de la boda para hacer tu sitio unico.</p>
+            </td>
+          </tr>
+          <tr><td style="height: 8px;"></td></tr>
+          <tr>
+            <td style="padding: 12px 16px; background-color: #f7fafc; border-left: 4px solid #667eea; margin-bottom: 12px; border-radius: 0 6px 6px 0;">
+              <p style="margin: 0; color: #2d3748; font-size: 15px; font-weight: 600;">3. Configura tu registro</p>
+              <p style="margin: 4px 0 0; color: #718096; font-size: 14px;">Configura fondos de regalo para que los invitados contribuyan a lo que mas les importa.</p>
+            </td>
+          </tr>
+        </table>
+
+        <!-- CTA -->
+        <div style="text-align: center; margin: 35px 0 10px;">
+          <a href="{{{ADMIN_URL}}}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 40px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 50px; box-shadow: 0 4px 15px rgba(102,126,234,0.4);">
+            Ir al Panel de Administracion
+          </a>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding: 25px 40px; background-color: #f7fafc; text-align: center; border-top: 1px solid #e2e8f0;">
+        <p style="margin: 0; color: #718096; font-size: 13px;">
+          Recibiste este correo porque creaste una boda en The Ceremony.
         </p>
       </div>
     </div>
