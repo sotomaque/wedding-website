@@ -11,7 +11,7 @@ mock.module("@/lib/email/helpers", () => ({
     label?: string,
   ) => {
     const name = label ?? settings.emailFromName ?? settings.coupleName;
-    const address = settings.emailFromAddress ?? "noreply@wedding-platform.com";
+    const address = settings.emailFromAddress ?? "noreply@theceremony.app";
     return `${name} <${address}>`;
   },
   getNotificationRecipients: (settings: {
@@ -75,7 +75,7 @@ describe("getEmailFromAddress", () => {
       coupleName: "Couple",
     });
 
-    expect(result).toBe("Test <noreply@wedding-platform.com>");
+    expect(result).toBe("Test <noreply@theceremony.app>");
   });
 });
 

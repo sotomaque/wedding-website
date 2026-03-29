@@ -23,7 +23,7 @@ const fontMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   title: {
-    default: "Wedding Platform",
+    default: "The Ceremony",
     template: "%s",
   },
   description:

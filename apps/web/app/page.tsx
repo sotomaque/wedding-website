@@ -58,7 +58,7 @@ export default function LandingPage() {
       <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 md:px-12 py-5">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-white/80" />
-          <span className="font-serif text-lg text-white">WedPlan</span>
+          <span className="font-serif text-lg text-white">The Ceremony</span>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -355,10 +355,10 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-accent" />
-            <span className="font-serif text-sm">WedPlan</span>
+            <span className="font-serif text-sm">The Ceremony</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} WedPlan. Made with love.
+            &copy; {new Date().getFullYear()} The Ceremony. Made with love.
           </p>
         </div>
       </footer>
