@@ -340,14 +340,12 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
               GUEST_NAMES: guestNames,
               GUEST_EMAILS: guestEmails || "No email provided",
               INVITE_CODE: capturedInviteCode.toUpperCase(),
-              STATUS_TEXT: capturedAttending ? "Attending" : "Not Attending",
+              STATUS: capturedAttending ? "Attending" : "Not Attending",
               STATUS_EMOJI: capturedAttending ? "\u2705" : "\u274C",
+              STATUS_COLOR: capturedAttending ? "#48bb78" : "#f56565",
               DIETARY_RESTRICTIONS: capturedDietary || "None",
-              GUEST_COUNT_TEXT:
-                updatedGuests.length > 1
-                  ? `${updatedGuests.length} guests`
-                  : "1 guest",
-              CONFIRMATION_TEXT: capturedAttending ? "confirmed" : "declined",
+              GUEST_COUNT:
+                updatedGuests.length > 1 ? `${updatedGuests.length}` : "1",
               SUBMITTED_AT: new Date().toLocaleString("en-US", {
                 dateStyle: "full",
                 timeStyle: "short",
@@ -759,15 +757,15 @@ export async function submitMultiGuestRSVP(
               GUEST_NAMES: guestNames,
               GUEST_EMAILS: guestEmails || "No email provided",
               INVITE_CODE: capturedInviteCode.toUpperCase(),
-              STATUS_TEXT: `${attendingNames || "None"} attending${decliningNames ? `, ${decliningNames} declined` : ""}`,
+              STATUS: `${attendingNames || "None"} attending${decliningNames ? `, ${decliningNames} declined` : ""}`,
               STATUS_EMOJI: anyAttending ? "\u2705" : "\u274C",
+              STATUS_COLOR: anyAttending ? "#48bb78" : "#f56565",
               DIETARY_RESTRICTIONS:
                 capturedGuestRsvps
                   .filter((g) => g.dietaryRestrictions)
                   .map((g) => `${g.firstName}: ${g.dietaryRestrictions}`)
                   .join("; ") || "None",
-              GUEST_COUNT_TEXT: `${attendingGuests.length} attending, ${decliningGuests.length} declined`,
-              CONFIRMATION_TEXT: anyAttending ? "confirmed" : "declined",
+              GUEST_COUNT: `${attendingGuests.length} attending, ${decliningGuests.length} declined`,
               SUBMITTED_AT: new Date().toLocaleString("en-US", {
                 dateStyle: "full",
                 timeStyle: "short",

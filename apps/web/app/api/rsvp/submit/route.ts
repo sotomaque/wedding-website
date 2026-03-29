@@ -68,12 +68,11 @@ export async function POST(request: NextRequest) {
             GUEST_NAMES: guestNames,
             GUEST_EMAILS: guestEmails || "No email provided",
             INVITE_CODE: normalizedCode,
-            STATUS_TEXT: attending ? "Attending" : "Not Attending",
+            STATUS: attending ? "Attending" : "Not Attending",
             STATUS_EMOJI: attending ? "\u2705" : "\u274C",
+            STATUS_COLOR: attending ? "#48bb78" : "#f56565",
             DIETARY_RESTRICTIONS: dietaryRestrictions || "None",
-            GUEST_COUNT_TEXT:
-              guests.length > 1 ? `${String(guests.length)} guests` : "1 guest",
-            CONFIRMATION_TEXT: attending ? "confirmed" : "declined",
+            GUEST_COUNT: guests.length > 1 ? String(guests.length) : "1",
             SUBMITTED_AT: new Date().toLocaleString("en-US", {
               dateStyle: "full",
               timeStyle: "short",

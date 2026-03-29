@@ -86,8 +86,8 @@ export async function POST(request: NextRequest) {
       weddingId,
       "hotel_interest_notification",
       {
-        GUEST_FIRST_NAME: primaryGuest.firstName,
-        GUEST_LAST_NAME: primaryGuest.lastName || "",
+        GUEST_NAME:
+          `${primaryGuest.firstName} ${primaryGuest.lastName || ""}`.trim(),
         GUEST_EMAIL: primaryGuest.email || "",
         GUEST_PHONE: primaryGuest.phoneNumber || "",
         HOTEL_NAME: hotel.name,
