@@ -12,7 +12,7 @@ export function getEmailFromAddress(
   label?: string,
 ): string {
   const name = label ?? settings.emailFromName ?? settings.coupleName;
-  const address = settings.emailFromAddress ?? "noreply@wedding-platform.com";
+  const address = settings.emailFromAddress ?? "noreply@theceremony.app";
   return `${name} <${address}>`;
 }
 

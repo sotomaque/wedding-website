@@ -67,6 +67,24 @@ function getSlugFromPath(pathname: string): string | null {
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
   const { pathname } = req.nextUrl;
+  const host = req.headers.get("host") ?? "";
+
+  // --- Custom domain redirect ---
+  // If accessed via a legacy custom domain (e.g. helen-and-enrique.com),
+  // redirect to the main app domain with the wedding slug prepended.
+  const CUSTOM_DOMAIN_REDIRECTS: Record<string, string> = {
+    "helen-and-enrique.com": "helen-and-enrique",
+    "www.helen-and-enrique.com": "helen-and-enrique",
+  };
+
+  const slugForDomain = CUSTOM_DOMAIN_REDIRECTS[host];
+  if (slugForDomain) {
+    const mainDomain =
+      process.env.NEXT_PUBLIC_APP_URL || "https://theceremony.app";
+    const newUrl = new URL(`/${slugForDomain}${pathname}`, mainDomain);
+    newUrl.search = req.nextUrl.search;
+    return NextResponse.redirect(newUrl, 308);
+  }
 
   // --- Legacy path redirect ---
   // If the first path segment is a known legacy path (e.g., /admin/guests),

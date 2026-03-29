@@ -232,14 +232,14 @@ async function sendGiftNotificationEmail(params: {
       recipients = getNotificationRecipients(wedding);
     } else {
       // Fallback to env vars
-      fromAddress = `Wedding Registry <${env.RSVP_EMAIL || "noreply@wedding-platform.com"}>`;
+      fromAddress = `Wedding Registry <${env.RSVP_EMAIL || "noreply@theceremony.app"}>`;
       recipients = env.RSVP_EMAIL
         ? env.RSVP_EMAIL.split(",").map((e) => e.trim())
         : [];
     }
   } else {
     // Legacy: no weddingId, fall back to env vars
-    fromAddress = `Wedding Registry <${env.RSVP_EMAIL || "noreply@wedding-platform.com"}>`;
+    fromAddress = `Wedding Registry <${env.RSVP_EMAIL || "noreply@theceremony.app"}>`;
     recipients = env.RSVP_EMAIL
       ? env.RSVP_EMAIL.split(",").map((e) => e.trim())
       : [];
