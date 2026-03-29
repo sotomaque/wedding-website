@@ -104,8 +104,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const settings = await getWeddingSettings();
-    const appUrl = weddingUrl(settings.slug);
-
     // Format event time if available
     let eventTime: string | null = null;
     if (event.startTime) {
@@ -150,17 +148,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
           weddingId,
           "event_invitation",
           {
-            FIRST_NAME: invite.guest.firstName,
-            LAST_NAME: invite.guest.lastName || "",
-            INVITE_CODE: invite.guest.inviteCode ?? "",
+            GUEST_NAME:
+              `${invite.guest.firstName} ${invite.guest.lastName || ""}`.trim(),
+            COUPLE_NAMES: settings.coupleName,
             EVENT_NAME: event.name,
             EVENT_DESCRIPTION: event.description || "",
             EVENT_DATE: eventDateStr || "",
             EVENT_TIME: eventTime || "",
             LOCATION_NAME: event.locationName || "",
             LOCATION_ADDRESS: event.locationAddress || "",
+            INVITE_CODE: invite.guest.inviteCode ?? "",
             RSVP_URL: rsvpUrl,
-            APP_URL: appUrl,
+            BACKGROUND_IMAGE_URL: "",
           },
           invite.guest.preferredLanguage ?? settings.defaultLanguage,
         );

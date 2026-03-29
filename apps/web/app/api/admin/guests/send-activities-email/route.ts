@@ -77,7 +77,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const appUrl = weddingUrl(settings.slug);
     const thingsToDoUrl = `${weddingUrl(settings.slug, "/things-to-do")}?code=${guest.inviteCode}`;
 
     try {
@@ -85,11 +84,11 @@ export async function POST(request: NextRequest) {
         weddingId,
         "activities_invitation",
         {
-          FIRST_NAME: guest.firstName,
-          LAST_NAME: guest.lastName || "",
+          GUEST_NAME: `${guest.firstName} ${guest.lastName || ""}`.trim(),
+          COUPLE_NAMES: settings.coupleName,
           INVITE_CODE: guest.inviteCode ?? "",
           THINGS_TO_DO_URL: thingsToDoUrl,
-          APP_URL: appUrl,
+          BACKGROUND_IMAGE_URL: "",
         },
         guest.preferredLanguage ?? settings.defaultLanguage,
       );

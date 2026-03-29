@@ -108,12 +108,14 @@ export async function POST(request: NextRequest) {
         weddingId,
         "wedding_invitation",
         {
-          FIRST_NAME: guest.firstName || "",
-          LAST_NAME: guest.lastName || "",
+          COUPLE_NAMES: settings.coupleName,
+          GUEST_NAME: `${guest.firstName} ${guest.lastName || ""}`.trim(),
           INVITE_CODE: guest.inviteCode ?? "",
           RSVP_URL: rsvpUrl,
-          APP_URL: appUrl,
           WEDDING_DATE: weddingDate,
+          VENUE_NAME: "",
+          VENUE_ADDRESS: "",
+          PERSONAL_MESSAGE: "",
         },
         guest.preferredLanguage ?? settings.defaultLanguage,
       );
