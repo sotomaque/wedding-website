@@ -256,12 +256,14 @@ export async function POST(request: NextRequest) {
           weddingId,
           "wedding_invitation",
           {
-            FIRST_NAME: firstName,
-            LAST_NAME: lastName || "",
+            COUPLE_NAMES: settings.coupleName,
+            GUEST_NAME: `${firstName} ${lastName || ""}`.trim(),
             INVITE_CODE: inviteCode,
             RSVP_URL: rsvpUrl,
-            APP_URL: appUrl,
             WEDDING_DATE: weddingDate,
+            VENUE_NAME: "",
+            VENUE_ADDRESS: "",
+            PERSONAL_MESSAGE: "",
           },
           guest.preferredLanguage ?? settings.defaultLanguage,
         );

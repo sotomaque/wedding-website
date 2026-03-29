@@ -295,12 +295,9 @@ async function sendGiftNotificationEmail(params: {
         AMOUNT: formattedAmount,
         GIFT_TYPE: giftTypeLabel,
         GIFT_EMOJI: giftEmoji,
-        MATCHED_GUEST_NAME: matchedGuest
+        MATCHED_GUEST: matchedGuest
           ? `${matchedGuest.firstName}${matchedGuest.lastName ? ` ${matchedGuest.lastName}` : ""}`
           : "",
-        MATCHED_GUEST_STATUS: matchedGuest ? "matched" : "unmatched",
-        MATCHED_GUEST_DISPLAY: matchedGuest ? "block" : "none",
-        UNMATCHED_GUEST_DISPLAY: matchedGuest ? "none" : "block",
         CHARGE_ID: chargeId,
         SUBMITTED_AT: new Date().toLocaleString("en-US", {
           dateStyle: "full",

@@ -119,13 +119,29 @@ export async function POST(request: NextRequest) {
           settings.coupleName,
         );
 
+        const primaryEvent = defaultEvents[0];
+        const primaryEventDate = primaryEvent?.eventDate
+          ? primaryEvent.eventDate instanceof Date
+            ? primaryEvent.eventDate.toISOString().split("T")[0]
+            : String(primaryEvent.eventDate)
+          : "";
+        const primaryEventTime = primaryEvent?.startTime
+          ? primaryEvent.startTime instanceof Date
+            ? primaryEvent.startTime.toISOString()
+            : String(primaryEvent.startTime)
+          : "";
+
         const rendered = await renderEmailTemplate(
           weddingId,
           "calendar_invite",
           {
-            FIRST_NAME: guest.firstName,
-            LAST_NAME: guest.lastName || "",
-            COUPLE_NAME: settings.coupleName,
+            GUEST_NAME: `${guest.firstName} ${guest.lastName || ""}`.trim(),
+            COUPLE_NAMES: settings.coupleName,
+            EVENT_NAME: primaryEvent?.name || "",
+            EVENT_DATE: primaryEventDate ?? "",
+            EVENT_TIME: primaryEventTime ?? "",
+            VENUE_NAME: primaryEvent?.locationName || "",
+            VENUE_ADDRESS: primaryEvent?.locationAddress || "",
           },
           guest.preferredLanguage ?? settings.defaultLanguage,
         );
