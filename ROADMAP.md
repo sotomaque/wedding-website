@@ -1,23 +1,24 @@
-# WedPlan — Product & Acquisition Roadmap
+# The Ceremony — Product & Acquisition Roadmap
 
-> Last updated: 2026-03-28
+> Last updated: 2026-03-29
 
 ---
 
 ## Current State
 
-Multi-tenant wedding platform with: Clerk auth, Stripe payments, shared AI infrastructure powering 4 features (seating, todos, story writer, email drafts), per-wedding email templates in 2 languages (DB-stored), i18n with next-intl (English + Spanish), address autocomplete (Geoapify), Vercel cron jobs (RSVP reminders + admin summaries), full E2E test coverage, and a security-hardened API layer (weddingId-scoped queries on all routes).
+Multi-tenant wedding platform at **theceremony.app** with: Clerk auth, Stripe payments, shared AI infrastructure powering 4 features (seating, todos, story writer, email drafts), per-wedding email templates in 2 languages (DB-stored), i18n with next-intl (English + Spanish), address autocomplete (Geoapify), Vercel cron jobs (RSVP reminders, admin summaries, platform summary), welcome emails on signup, platform admin notifications, full E2E test coverage, and a security-hardened API layer (weddingId-scoped queries on all routes).
 
 | Asset | Status |
 |-------|--------|
+| Domain | `theceremony.app` (production), `helen-and-enrique.com` redirects via middleware |
 | Multi-tenancy | Full (weddingId-scoped queries, RLS, cross-tenant security audit complete) |
 | AI features | Shared infrastructure + 4 features: seating charts, todo generator, story writer, email drafts |
 | Payments | Stripe (registry + gifting) |
-| Email system | Per-wedding DB templates, multi-language (EN/ES), toggleable, cron-based reminders + admin summaries |
+| Email system | Per-wedding DB templates, multi-language (EN/ES), toggleable, welcome emails, 3 cron jobs |
 | i18n | English + Spanish via next-intl, per-wedding default language, per-guest language preference |
 | Vendor management | ServiceLinks + vendors page |
-| Tests | 430 unit + Playwright E2E (parallel read-only, serial mutating) |
-| Platform admin | Superadmin panel |
+| Tests | 533 unit + Playwright E2E (parallel read-only, serial mutating) |
+| Platform admin | Enhanced stats, growth table, revenue tracking, admin notifications, weekly summary cron |
 | Mobile | Web-only (Next.js) — gap vs Zola/Joy native apps |
 
 ---
@@ -166,10 +167,12 @@ lib/ai/
 
 ## Phase 5: Positioning & Packaging (Months 3–4)
 
-### 5.1 Brand
-- [ ] Register `wedplan.app` or `wedplan.co`
-- [ ] Keep `helen-and-enrique.com` as showcase/demo wedding
-- [ ] Standalone marketing site
+### 5.1 Brand ✅
+- [x] Registered `theceremony.app` — production domain
+- [x] `helen-and-enrique.com` redirects to `theceremony.app/helen-and-enrique` via middleware
+- [x] Resend verified for `@theceremony.app` emails (DKIM, SPF, DMARC)
+- [x] Stripe webhook updated to `theceremony.app`
+- [ ] Standalone marketing site (landing page exists but needs polish)
 
 ### 5.2 Growth
 - [ ] Waitlist (target 500+ signups)
@@ -178,7 +181,7 @@ lib/ai/
 
 ### 5.3 Technical Due Diligence Package
 - [ ] Architecture overview doc (schema, multi-tenancy, auth, payments, AI infra)
-- [ ] Test coverage report (430 unit + E2E)
+- [ ] Test coverage report (533 unit + E2E)
 - [ ] Security audit summary (cross-tenant hardening, RLS, weddingId scoping)
 - [ ] CI/CD pipeline overview (Vercel, GitHub Actions, preview deployments)
 
@@ -244,6 +247,12 @@ lib/ai/
 | AI Todo Generator | 2026-03 | Date-aware checklist, custom prompt, auto-filters past-due |
 | AI Story Writer | 2026-03 | Streaming HTML into Tiptap, tone selection |
 | AI Email Drafts | 2026-03 | Structured output, respects template variables |
+| Template variable audit tests | 2026-03 | Static analysis tests catch variable mismatches between code and templates |
+| Domain migration | 2026-03 | `theceremony.app` as primary domain, old domain redirects, Resend/Stripe/Clerk updated |
+| Platform admin stats | 2026-03 | Revenue, active weddings, new this week, 8-week growth table |
+| Admin notification on signup | 2026-03 | ADMIN_EMAILS notified when new wedding created |
+| Welcome email | 2026-03 | New `welcome` template type (EN/ES), sent on wedding creation |
+| Platform summary cron | 2026-03 | Weekly platform-wide stats email to ADMIN_EMAILS (Monday 7am UTC) |
 
 ---
 

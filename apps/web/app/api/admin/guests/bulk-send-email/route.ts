@@ -80,16 +80,20 @@ export async function POST(request: NextRequest) {
 
     const appUrl = weddingUrl(settings.slug);
 
-    // Fetch wedding date from the Wedding Ceremony event
+    // Fetch wedding date and venue from the Wedding Ceremony event
     let weddingDate = "";
+    let venueName = "";
+    let venueAddress = "";
     try {
       const ceremonyEvent = await db.event.findFirst({
         where: { name: "Wedding Ceremony", weddingId },
-        select: { eventDate: true },
+        select: { eventDate: true, locationName: true, locationAddress: true },
       });
 
+      venueName = ceremonyEvent?.locationName ?? "";
+      venueAddress = ceremonyEvent?.locationAddress ?? "";
+
       if (ceremonyEvent?.eventDate) {
-        // eventDate can be a Date object or string depending on the driver
         const dateValue = ceremonyEvent.eventDate;
         const dateObj =
           dateValue instanceof Date
@@ -120,8 +124,8 @@ export async function POST(request: NextRequest) {
         INVITE_CODE: "",
         RSVP_URL: "",
         WEDDING_DATE: weddingDate,
-        VENUE_NAME: "",
-        VENUE_ADDRESS: "",
+        VENUE_NAME: venueName,
+        VENUE_ADDRESS: venueAddress,
         PERSONAL_MESSAGE: "",
       },
       settings.defaultLanguage,
@@ -151,8 +155,8 @@ export async function POST(request: NextRequest) {
             INVITE_CODE: guest.inviteCode ?? "",
             RSVP_URL: rsvpUrl,
             WEDDING_DATE: weddingDate,
-            VENUE_NAME: "",
-            VENUE_ADDRESS: "",
+            VENUE_NAME: venueName,
+            VENUE_ADDRESS: venueAddress,
             PERSONAL_MESSAGE: "",
           },
           guest.preferredLanguage ?? settings.defaultLanguage,
