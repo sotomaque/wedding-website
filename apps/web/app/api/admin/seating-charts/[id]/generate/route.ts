@@ -1,14 +1,14 @@
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
-import { env } from "@/env";
+import { getModel } from "@/lib/ai/client";
 import {
-  buildSeatingPrompt,
+  buildUserPrompt,
   formatGuestForSeating,
-} from "@/lib/ai/seating-prompt";
+  systemPrompt,
+} from "@/lib/ai/prompts/seating";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
 import type {
   AISeatingResponse,
   GuestListFilter,
@@ -34,23 +34,20 @@ export async function POST(
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
-    if (!env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured" },
-        { status: 500 },
-      );
-    }
-
     const { id: chartId } = await params;
 
-    // Parse filter from request body
+    // Parse filter and customPrompt from request body
     let listFilter: GuestListFilter = "abc";
     let rsvpFilter: GuestRsvpFilter = "confirmed";
+    let customPrompt: string | undefined;
     try {
       const body = await request.json();
       if (body.filter) {
         listFilter = body.filter.list || "abc";
         rsvpFilter = body.filter.rsvp || "confirmed";
+      }
+      if (body.customPrompt && typeof body.customPrompt === "string") {
+        customPrompt = body.customPrompt.trim() || undefined;
       }
     } catch {
       // No body or invalid JSON - use defaults
@@ -131,21 +128,22 @@ export async function POST(
     // Format guests for AI
     const formattedGuests = guests.map(formatGuestForSeating);
 
-    // Build prompt
-    const prompt = buildSeatingPrompt(
-      formattedGuests,
-      tables.length,
-      chart.defaultSeatsPerTable,
-    );
-
-    // Create OpenAI client
-    const openai = createOpenAI({
-      apiKey: env.OPENAI_API_KEY,
+    // Build prompts using shared infrastructure
+    const weddingCtx = await getWeddingContext();
+    const system = systemPrompt(weddingCtx);
+    const prompt = buildUserPrompt({
+      guests: formattedGuests,
+      tables: {
+        count: tables.length,
+        seatsPerTable: chart.defaultSeatsPerTable,
+      },
+      customPrompt,
     });
 
     // Generate seating suggestions
     const result = await generateText({
-      model: openai("gpt-4o"),
+      model: getModel(),
+      system,
       prompt,
       temperature: 0.7,
       maxOutputTokens: 4000,

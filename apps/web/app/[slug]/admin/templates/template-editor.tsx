@@ -2,14 +2,23 @@
 
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@workspace/ui/components/dialog";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Switch } from "@workspace/ui/components/switch";
 import { Textarea } from "@workspace/ui/components/textarea";
-import { ArrowLeft, Eye, Info, Loader2, Save, X } from "lucide-react";
+import { ArrowLeft, Eye, Info, Loader2, Save, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { Template } from "@/lib/templates/fetch-templates";
@@ -38,6 +47,56 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
   const [subject, setSubject] = useState(template.subject);
   const [htmlBody, setHtmlBody] = useState(template.htmlBody);
   const [isActive, setIsActive] = useState(template.isActive);
+
+  // AI Email Draft state
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiIntent, setAiIntent] = useState("");
+  const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
+
+  const handleGenerateDraft = useCallback(async () => {
+    if (!aiIntent.trim()) {
+      toast.error("Please describe what this email should say");
+      return;
+    }
+
+    setIsGeneratingDraft(true);
+    try {
+      const response = await fetch("/api/admin/ai/email-draft/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateType: template.type,
+          intent: aiIntent,
+          variables: template.variables.map((v) => ({
+            key: v.key,
+            description: v.description,
+          })),
+          currentSubject: subject || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to generate email draft");
+      }
+
+      setSubject(data.data.subject);
+      setHtmlBody(data.data.htmlBody);
+      setAiDialogOpen(false);
+      setAiIntent("");
+      toast.success("Email draft generated! Review and edit as needed.");
+    } catch (error) {
+      console.error("Error generating email draft:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to generate email draft",
+      );
+    } finally {
+      setIsGeneratingDraft(false);
+    }
+  }, [aiIntent, template.type, template.variables, subject]);
 
   async function handleSave() {
     if (!subject.trim()) {
@@ -97,6 +156,71 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
           </Badge>
         </div>
         <div className="flex items-center gap-2">
+          <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Draft
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>AI Email Draft</DialogTitle>
+                <DialogDescription>
+                  Describe what this email should communicate and we will
+                  generate a professional HTML email template.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ai-intent">
+                    Describe what this email should say...
+                  </Label>
+                  <Textarea
+                    id="ai-intent"
+                    value={aiIntent}
+                    onChange={(e) => setAiIntent(e.target.value)}
+                    placeholder="A warm invitation to our wedding celebration with details about the ceremony and reception..."
+                    className="min-h-37.5"
+                    disabled={isGeneratingDraft}
+                  />
+                </div>
+                {template.variables.length > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    <p className="font-medium mb-1">
+                      Available variables that will be included:
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      {template.variables.map((v) => (
+                        <li key={v.key}>
+                          <code>{`{{{${v.key}}}}`}</code>
+                          {v.description ? ` - ${v.description}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={handleGenerateDraft}
+                  disabled={isGeneratingDraft || !aiIntent.trim()}
+                >
+                  {isGeneratingDraft ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Button
             variant="outline"
             onClick={() => setShowPreview(!showPreview)}

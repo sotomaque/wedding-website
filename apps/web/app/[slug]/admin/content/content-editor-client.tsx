@@ -1,10 +1,27 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@workspace/ui/components/dialog";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-import { Plus, Trash2 } from "lucide-react";
-import { useState, useTransition } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select";
+import { Textarea } from "@workspace/ui/components/textarea";
+import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { RichTextEditor } from "@/components/rich-text-editor";
@@ -123,6 +140,59 @@ function StoryEditor({ initial }: { initial?: StoryContent }) {
     (initial?.paragraphs ?? []).map((p) => `<p>${p}</p>`).join("");
   const [bodyHtml, setBodyHtml] = useState(initialHtml);
 
+  // AI Story Writer state
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [bulletPoints, setBulletPoints] = useState("");
+  const [tone, setTone] = useState<
+    "romantic" | "humorous" | "formal" | "casual"
+  >("romantic");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerate = useCallback(async () => {
+    if (!bulletPoints.trim()) {
+      toast.error("Please add some notes about your story");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch("/api/admin/ai/story/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bulletPoints, tone }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to generate story");
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setBodyHtml(accumulated);
+      }
+
+      setAiDialogOpen(false);
+      setBulletPoints("");
+      toast.success("Story generated! Review and edit as needed.");
+    } catch (error) {
+      console.error("Error generating story:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to generate story",
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [bulletPoints, tone]);
+
   function handleSave() {
     // Extract plain text paragraphs from HTML for backward compat
     const tempDiv = document.createElement("div");
@@ -148,7 +218,81 @@ function StoryEditor({ initial }: { initial?: StoryContent }) {
   return (
     <div className="space-y-4 max-w-2xl">
       <div>
-        <Label htmlFor="story-title">Title</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="story-title">Title</Label>
+          <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                AI Write
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>AI Story Writer</DialogTitle>
+                <DialogDescription>
+                  Share some notes about your relationship and we will craft a
+                  beautiful story for your wedding website.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ai-bullet-points">
+                    Tell us about how you met, key moments, etc.
+                  </Label>
+                  <Textarea
+                    id="ai-bullet-points"
+                    value={bulletPoints}
+                    onChange={(e) => setBulletPoints(e.target.value)}
+                    placeholder="We met at a coffee shop in 2019... Our first date was... He proposed at..."
+                    className="min-h-37.5"
+                    disabled={isGenerating}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ai-tone">Tone</Label>
+                  <Select
+                    value={tone}
+                    onValueChange={(v) =>
+                      setTone(
+                        v as "romantic" | "humorous" | "formal" | "casual",
+                      )
+                    }
+                    disabled={isGenerating}
+                  >
+                    <SelectTrigger id="ai-tone">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="romantic">Romantic</SelectItem>
+                      <SelectItem value="humorous">Humorous</SelectItem>
+                      <SelectItem value="formal">Formal</SelectItem>
+                      <SelectItem value="casual">Casual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isGenerating || !bulletPoints.trim()}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
         <Input
           id="story-title"
           value={title}

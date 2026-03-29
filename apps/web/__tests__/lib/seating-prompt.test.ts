@@ -1,9 +1,21 @@
 import { describe, expect, it } from "bun:test";
 import {
-  buildSeatingPrompt,
+  buildUserPrompt,
   formatGuestForSeating,
-} from "@/lib/ai/seating-prompt";
+  systemPrompt,
+} from "@/lib/ai/prompts/seating";
+import type { WeddingContext } from "@/lib/db/wedding-context";
 import type { GuestForSeating } from "@/lib/types/seating";
+
+const mockWeddingCtx: WeddingContext = {
+  weddingId: "wedding-123",
+  slug: "test-wedding",
+  coupleName: "Alice & Bob",
+  weddingDate: new Date("2026-06-15"),
+  rsvpDeadline: "2026-05-01",
+  timezone: "America/New_York",
+  status: "active",
+};
 
 describe("formatGuestForSeating", () => {
   it("should format a basic guest correctly", () => {
@@ -101,7 +113,43 @@ describe("formatGuestForSeating", () => {
   });
 });
 
-describe("buildSeatingPrompt", () => {
+describe("systemPrompt", () => {
+  it("should include wedding context", () => {
+    const prompt = systemPrompt(mockWeddingCtx);
+
+    expect(prompt).toContain("Alice & Bob");
+    expect(prompt).toContain("America/New_York");
+  });
+
+  it("should include seating rules", () => {
+    const prompt = systemPrompt(mockWeddingCtx);
+
+    expect(prompt).toContain("PARTIES MUST SIT TOGETHER");
+    expect(prompt).toContain("SEPARATE POTENTIAL CONFLICTS");
+    expect(prompt).toContain("GROUP BY FAMILY");
+    expect(prompt).toContain("GROUP BY SIDE");
+    expect(prompt).toContain("BRIDAL PARTY PLACEMENT");
+    expect(prompt).toContain("BALANCE TABLES");
+  });
+
+  it("should include critical instructions about UUIDs", () => {
+    const prompt = systemPrompt(mockWeddingCtx);
+
+    expect(prompt).toContain("EXACT guest ID UUIDs");
+    expect(prompt).toContain("DO NOT use party IDs or invite codes");
+  });
+
+  it("should include JSON output format instructions", () => {
+    const prompt = systemPrompt(mockWeddingCtx);
+
+    expect(prompt).toContain("assignments");
+    expect(prompt).toContain("tableNumber");
+    expect(prompt).toContain("guestIds");
+    expect(prompt).toContain("summary");
+  });
+});
+
+describe("buildUserPrompt", () => {
   const mockGuests: GuestForSeating[] = [
     {
       id: "uuid-1",
@@ -142,13 +190,19 @@ describe("buildSeatingPrompt", () => {
   ];
 
   it("should include guest count in prompt", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+    });
 
     expect(prompt).toContain("3 guests");
   });
 
   it("should include table count in prompt", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+    });
 
     expect(prompt).toContain("5 tables");
     expect(prompt).toContain("8 seats each");
@@ -156,7 +210,10 @@ describe("buildSeatingPrompt", () => {
   });
 
   it("should include guest IDs in prompt", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+    });
 
     expect(prompt).toContain("uuid-1");
     expect(prompt).toContain("uuid-2");
@@ -164,7 +221,10 @@ describe("buildSeatingPrompt", () => {
   });
 
   it("should include guest names in prompt", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+    });
 
     expect(prompt).toContain("John Doe");
     expect(prompt).toContain("Jane Doe");
@@ -172,7 +232,10 @@ describe("buildSeatingPrompt", () => {
   });
 
   it("should include party identifiers for grouping", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+    });
 
     // When partyId is available, it uses party IDs for grouping
     expect(prompt).toContain("party-1");
@@ -180,7 +243,10 @@ describe("buildSeatingPrompt", () => {
   });
 
   it("should include party size for couples", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+    });
 
     // John and Jane share party_id, should show party size 2
     expect(prompt).toContain("Party Size: 2");
@@ -189,21 +255,30 @@ describe("buildSeatingPrompt", () => {
   });
 
   it("should include side information", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+    });
 
     expect(prompt).toContain("Side: bride");
     expect(prompt).toContain("Side: groom");
   });
 
   it("should include family designation", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+    });
 
     expect(prompt).toContain("Family: yes");
     expect(prompt).toContain("Family: no");
   });
 
   it("should include bridal party role when present", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+    });
 
     expect(prompt).toContain("Bridal Party: best_man");
     expect(prompt).toContain("Bridal Party: none");
@@ -225,41 +300,41 @@ describe("buildSeatingPrompt", () => {
       },
     ];
 
-    const prompt = buildSeatingPrompt(guestsWithNotes, 1, 8);
+    const prompt = buildUserPrompt({
+      guests: guestsWithNotes,
+      tables: { count: 1, seatsPerTable: 8 },
+    });
 
     expect(prompt).toContain("Notes: Allergic to peanuts");
   });
 
-  it("should include critical instructions about UUIDs", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
-
-    expect(prompt).toContain("EXACT guest ID UUIDs");
-    expect(prompt).toContain("DO NOT use party IDs or invite codes");
-  });
-
-  it("should include JSON output format instructions", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
-
-    expect(prompt).toContain("assignments");
-    expect(prompt).toContain("tableNumber");
-    expect(prompt).toContain("guestIds");
-    expect(prompt).toContain("summary");
-  });
-
-  it("should include seating rules", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 8);
-
-    expect(prompt).toContain("PARTIES MUST SIT TOGETHER");
-    expect(prompt).toContain("SEPARATE POTENTIAL CONFLICTS");
-    expect(prompt).toContain("GROUP BY FAMILY");
-    expect(prompt).toContain("GROUP BY SIDE");
-    expect(prompt).toContain("BRIDAL PARTY PLACEMENT");
-    expect(prompt).toContain("BALANCE TABLES");
-  });
-
   it("should enforce seats per table limit", () => {
-    const prompt = buildSeatingPrompt(mockGuests, 5, 10);
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 10 },
+    });
 
     expect(prompt).toContain("Do not exceed 10 guests per table");
+  });
+
+  it("should append custom prompt when provided", () => {
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+      customPrompt: "Keep the Doe family near the head table",
+    });
+
+    expect(prompt).toContain(
+      "Additional constraints from the couple: Keep the Doe family near the head table",
+    );
+  });
+
+  it("should not append custom prompt section when not provided", () => {
+    const prompt = buildUserPrompt({
+      guests: mockGuests,
+      tables: { count: 5, seatsPerTable: 8 },
+    });
+
+    expect(prompt).not.toContain("Additional constraints from the couple");
   });
 });
