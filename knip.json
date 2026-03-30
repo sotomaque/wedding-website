@@ -8,6 +8,7 @@
         "@tailwindcss/postcss",
         "postcss"
       ],
+      "ignore": ["components/ai-elements/**"],
       "entry": [
         "app/**/*.{ts,tsx}",
         "lib/**/*.{ts,tsx}",
@@ -27,7 +28,25 @@
       }
     },
     "packages/ui": {
-      "ignoreDependencies": ["postcss-load-config", "postcss"]
+      "ignoreDependencies": [
+        "postcss-load-config",
+        "postcss",
+        "@radix-ui/react-collapsible",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-select",
+        "@radix-ui/react-separator",
+        "@radix-ui/react-tooltip",
+        "@streamdown/cjk",
+        "@streamdown/code",
+        "@streamdown/math",
+        "@streamdown/mermaid",
+        "ai",
+        "motion",
+        "nanoid",
+        "shiki",
+        "streamdown",
+        "use-stick-to-bottom"
+      ]
     },
     "packages/typescript-config": {
       "entry": ["*.json"],

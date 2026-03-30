@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AIChatPanel } from "@/components/ai-chat-panel";
 import { isAdmin } from "@/lib/auth/admin";
 import { getWeddingBySlug } from "@/lib/db/wedding-context";
 import { AdminNav } from "./admin-nav";
@@ -29,6 +30,7 @@ export default async function AdminLayout({
       <main className="max-w-screen-2xl mx-auto px-0 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
         {children}
       </main>
+      <AIChatPanel />
     </div>
   );
 }
