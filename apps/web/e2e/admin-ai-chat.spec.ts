@@ -122,11 +122,8 @@ test.describe("AI Chat Panel", () => {
 
     await page.getByLabel("Submit").click();
 
-    // Shimmer should appear briefly while loading
-    // Use a short timeout since it may disappear quickly
-    const shimmer = page.getByText("Thinking...");
-    // The shimmer may or may not be caught depending on timing,
-    // so we just verify the response eventually arrives
+    // The shimmer ("Thinking...") may appear briefly but disappears too fast
+    // to reliably assert on, so we just verify the response eventually arrives
     await expect(
       page
         .locator(".is-assistant")
@@ -197,8 +194,8 @@ test.describe("AI Chat Panel", () => {
     // Hover over the assistant message area to reveal actions
     await page.locator(".is-assistant").first().hover();
 
-    // Copy button should be available
-    const copyButton = page.getByLabel("Copy");
+    // Copy button should be available (accessible name comes from sr-only span, not aria-label)
+    const copyButton = page.getByRole("button", { name: "Copy" });
     await expect(copyButton).toBeVisible({ timeout: 5000 });
   });
 
