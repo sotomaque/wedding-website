@@ -61,24 +61,22 @@ mock.module("@/lib/db", () => ({
   },
 }));
 
-// Mock email-related modules
-mock.module("@/lib/db/wedding-content-data", () => ({
-  getWeddingSettings: mock(() => Promise.resolve({})),
-}));
-mock.module("@/lib/email/helpers", () => ({
-  getEmailFromAddress: mock(() => "test@example.com"),
-  getNotificationRecipients: mock(() => []),
-}));
-mock.module("@/lib/email/render-template", () => ({
-  renderEmailTemplate: mock(() => Promise.resolve(null)),
-}));
-mock.module("@/lib/email/resend-client", () => ({
-  getResendClient: mock(() => null),
-  sendEmail: mock(() => Promise.resolve({ error: null })),
-}));
-mock.module("@/lib/url", () => ({
-  weddingUrl: mock(() => "https://test.com"),
-}));
+// For modules used only by tools we don't test (resendInvite, etc.),
+// re-export real implementations to avoid polluting other tests' mocks.
+const realWeddingContentData = await import("@/lib/db/wedding-content-data");
+mock.module("@/lib/db/wedding-content-data", () => realWeddingContentData);
+
+const realEmailHelpers = await import("@/lib/email/helpers");
+mock.module("@/lib/email/helpers", () => realEmailHelpers);
+
+const realRenderTemplate = await import("@/lib/email/render-template");
+mock.module("@/lib/email/render-template", () => realRenderTemplate);
+
+const realResendClient = await import("@/lib/email/resend-client");
+mock.module("@/lib/email/resend-client", () => realResendClient);
+
+const realUrl = await import("@/lib/url");
+mock.module("@/lib/url", () => realUrl);
 
 // Import after mocks
 const { createWeddingTools } = await import("@/lib/ai/tools/wedding-tools");
