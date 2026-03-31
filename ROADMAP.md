@@ -12,7 +12,7 @@ Multi-tenant wedding platform at **theceremony.app** with: Clerk auth, Stripe pa
 |-------|--------|
 | Domain | `theceremony.app` (production), `helen-and-enrique.com` redirects via middleware |
 | Multi-tenancy | Full (weddingId-scoped queries, RLS, cross-tenant security audit complete) |
-| AI features | Shared infrastructure + 5 features: **chat assistant (10 tools)**, seating charts, todo generator, story writer, email drafts |
+| AI features | Shared infrastructure + 5 features: **chat assistant (15 tools, write actions, conversation memory, rich context)**, seating charts, todo generator, story writer, email drafts |
 | Onboarding | 6-step wizard with split-screen live preview (names → URL → date/venue → theme → photos → create) |
 | Payments | Stripe (registry + gifting) |
 | Email system | Per-wedding DB templates, multi-language (EN/ES), toggleable, welcome emails, 3 cron jobs |
@@ -121,25 +121,25 @@ lib/ai/
 
 > The AI chat is shipped with read-only tools + resend/update actions. These improvements unlock full wedding management via natural language (e.g., "invite my friend Cody from highschool as an A-lister and send him the RSVP email").
 
-#### Phase A: Write Tools (Immediate Impact, No Infra Changes)
-- [ ] `createGuest` tool — Create a guest with name, email, side, list, gender. Model asks follow-ups for missing required fields.
-- [ ] `updateGuest` tool — Update any guest field (email, dietary restrictions, list tier, side, etc.)
-- [ ] `deleteGuest` tool — Remove a guest (with confirmation)
+#### Phase A: Write Tools ✅ COMPLETE
+- [x] `createGuest` tool — Create a guest with name, email, side, list, gender. Auto-generates invite code + party.
+- [x] `updateGuest` tool — Update any guest field (email, dietary restrictions, list tier, side, etc.)
+- [x] `deleteGuest` tool — Remove a guest (with confirmation)
 - [ ] `createEvent` tool — Create a wedding event with name, date, time, location
-- [ ] `bulkInvite` tool — Send invites to multiple guests by list/status filter
-- [ ] `addTodo` tool — Create a wedding todo item with optional due date and category
+- [x] `bulkInvite` tool — Send invites to multiple guests by list/status filter
+- [x] `addTodo` tool — Create a wedding todo item with auto-incrementing display order
 
-#### Phase B: Richer System Prompt (Zero Infra, High Impact)
-- [ ] Inject `person1Name`/`person2Name` with their roles (bride/groom) into system prompt so model knows "my friend" = groom's side
-- [ ] Include wedding feature toggles so model doesn't suggest disabled features
-- [ ] Include RSVP deadline and key dates for time-aware suggestions
-- [ ] Include summary stats snapshot (guest count, RSVP breakdown) so model doesn't need a tool call for basic questions
+#### Phase B: Richer System Prompt ✅ COMPLETE
+- [x] Inject `person1Name`/`person2Name` with their roles (bride/groom) into system prompt so model knows "my friend" = groom's side
+- [x] Include wedding feature toggles so model doesn't suggest disabled features
+- [x] Include RSVP deadline and days until wedding for time-aware suggestions
+- [x] Include summary stats snapshot (guest count, RSVP breakdown, gift totals) so model doesn't need a tool call for basic questions
 
-#### Phase C: Conversation Memory (Small Schema Change)
-- [ ] New `ChatMessage` model — store conversation history per wedding admin
-- [ ] Load recent messages into context on chat open (last N messages or last 24h)
-- [ ] Model can reference prior decisions ("earlier you said to put Cody at table 3")
-- [ ] Clear/archive conversations from admin UI
+#### Phase C: Conversation Memory ✅ COMPLETE
+- [x] New `ChatMessage` model — store conversation history per wedding admin (migration 053)
+- [x] Load recent messages into context on chat open (last 100 messages via GET endpoint)
+- [x] Model can reference prior decisions ("earlier you said to put Cody at table 3")
+- [x] Clear/archive conversations from admin UI ("New chat" button + DELETE endpoint)
 
 #### Phase D: RAG & Vector Search (Future, When Scale Demands It)
 > Not recommended until guest lists exceed ~500 or documents need semantic search. Current keyword/Prisma queries are sufficient at wedding scale.
@@ -343,8 +343,11 @@ lib/ai/
 | Admin notification on signup | 2026-03 | ADMIN_EMAILS notified when new wedding created |
 | Welcome email | 2026-03 | New `welcome` template type (EN/ES), sent on wedding creation |
 | Platform summary cron | 2026-03 | Weekly platform-wide stats email to ADMIN_EMAILS (Monday 7am UTC) |
-| AI Planning Assistant (Chat) | 2026-03 | Sidebar chat with 10 tools (guest lookup, RSVP stats, dietary, events, gifts, resend invite, update RSVP). AI Elements UI, streaming, tool call rendering. |
+| AI Planning Assistant (Chat) | 2026-03 | Sidebar chat with 10 read tools (guest lookup, RSVP stats, dietary, events, gifts, resend invite, update RSVP). AI Elements UI, streaming, tool call rendering. |
 | Onboarding v2 | 2026-03 | 6-step split-screen wizard with live hero preview (theme picker + photo upload steps). UploadThing server-side upload via UTApi. |
+| AI Chat Write Tools | 2026-03 | 5 write tools: createGuest, updateGuest, deleteGuest, addTodo, bulkInvite. Confirmation rules per tool. Multi-step flows (create + invite). |
+| AI Chat Rich Context | 2026-03 | System prompt injects couple identity (person1/person2 + side inference), RSVP deadline, days until wedding, feature toggles, stats snapshot. |
+| AI Chat Memory | 2026-03 | ChatMessage model (migration 053), per-admin conversation persistence, history restore on panel open, "New chat" clear button. |
 
 ---
 

@@ -225,4 +225,53 @@ test.describe("AI Chat Panel", () => {
       await expect(page.getByLabel("Submit")).toBeVisible({ timeout: 5000 });
     }
   });
+
+  test("persists chat history across panel close/reopen", async ({ page }) => {
+    await page.goto("/admin");
+    await waitForHydration(page);
+
+    // Open chat panel and send a message
+    await page.getByLabel("Open AI Wedding Assistant").click();
+    const textarea = page.getByPlaceholder("Ask about your wedding...");
+    await textarea.fill("Hello from memory test!");
+    await page.getByLabel("Submit").click();
+
+    // Wait for assistant response
+    await expect(page.locator(".is-assistant")).toBeVisible({ timeout: 30000 });
+
+    // Close the panel
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect(page.getByText("AI Wedding Assistant")).not.toBeVisible();
+
+    // Reopen the panel — history should be restored
+    await page.getByLabel("Open AI Wedding Assistant").click();
+
+    // The user message from before should still be visible
+    await expect(page.getByText("Hello from memory test!")).toBeVisible({
+      timeout: 10000,
+    });
+  });
+
+  test("New chat button clears conversation", async ({ page }) => {
+    await page.goto("/admin");
+    await waitForHydration(page);
+
+    // Open chat panel and send a message
+    await page.getByLabel("Open AI Wedding Assistant").click();
+    const textarea = page.getByPlaceholder("Ask about your wedding...");
+    await textarea.fill("Test message for clearing");
+    await page.getByLabel("Submit").click();
+
+    // Wait for assistant response
+    await expect(page.locator(".is-assistant")).toBeVisible({ timeout: 30000 });
+
+    // Click "New chat" button
+    await page.getByRole("button", { name: "New chat" }).click();
+
+    // Messages should be cleared, empty state should show
+    await expect(page.getByText("Welcome! How can I help?")).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByText("Test message for clearing")).not.toBeVisible();
+  });
 });
