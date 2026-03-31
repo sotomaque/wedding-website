@@ -1,7 +1,7 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+import { UTApi } from "uploadthing/server";
 import { env } from "@/env";
 import { db } from "@/lib/db";
 import { getDefaultTemplates } from "@/lib/email/default-templates";
@@ -57,11 +57,17 @@ export async function createWedding(data: {
   slug: string;
   weddingDate: string;
   timezone: string;
+  themeId?: string;
   ceremonyVenue?: string;
   ceremonyAddress?: string;
   receptionVenue?: string;
   receptionAddress?: string;
-}): Promise<{ success: boolean; error?: string; slug?: string }> {
+}): Promise<{
+  success: boolean;
+  error?: string;
+  slug?: string;
+  weddingId?: string;
+}> {
   try {
     const user = await currentUser();
     if (!user) return { success: false, error: "Not authenticated" };
@@ -82,6 +88,7 @@ export async function createWedding(data: {
         person2Name: data.person2Name,
         weddingDate: new Date(data.weddingDate),
         timezone: data.timezone,
+        themeId: data.themeId ?? "warm-gold",
         contactEmail: userEmail,
         notificationEmails: userEmail,
         emailFromName: coupleName,
@@ -235,19 +242,51 @@ export async function createWedding(data: {
       }).catch((err) => console.error("Failed to send welcome email:", err));
     }
 
-    redirect(`/${wedding.slug}/admin`);
+    return {
+      success: true,
+      slug: wedding.slug,
+      weddingId: wedding.id,
+    };
   } catch (error) {
-    if (
-      error instanceof Error &&
-      "digest" in error &&
-      typeof (error as Record<string, unknown>).digest === "string" &&
-      ((error as Record<string, unknown>).digest as string).startsWith(
-        "NEXT_REDIRECT",
-      )
-    ) {
-      throw error;
-    }
     console.error("Error creating wedding:", error);
     return { success: false, error: "Failed to create wedding" };
+  }
+}
+
+export async function uploadOnboardingPhotos(
+  weddingId: string,
+  formData: FormData,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await currentUser();
+    if (!user) return { success: false, error: "Not authenticated" };
+
+    const files = formData.getAll("photos") as File[];
+    if (files.length === 0) return { success: true };
+
+    const utapi = new UTApi();
+    const uploaded = await utapi.uploadFiles(files);
+
+    const photoRecords = uploaded
+      .filter((r): r is typeof r & { data: NonNullable<typeof r.data> } =>
+        Boolean(r.data),
+      )
+      .map((r, index) => ({
+        weddingId,
+        url: r.data.ufsUrl,
+        alt: r.data.name ?? "Wedding photo",
+        description: "",
+        displayOrder: index + 1,
+        isActive: true,
+      }));
+
+    if (photoRecords.length > 0) {
+      await db.photo.createMany({ data: photoRecords });
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error uploading onboarding photos:", error);
+    return { success: false, error: "Failed to upload photos" };
   }
 }
