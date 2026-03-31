@@ -9,6 +9,7 @@ import {
 import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { weddingUrl } from "@/lib/url";
+import { generateInviteCode } from "@/lib/utils/invite-code";
 
 export function createWeddingTools(weddingId: string) {
   return {
@@ -399,6 +400,362 @@ export function createWeddingTools(weddingId: string) {
         } catch (error) {
           console.error("Error in updateGuestRsvp tool:", error);
           return { success: false, error: "Guest not found or update failed" };
+        }
+      },
+    }),
+
+    createGuest: tool({
+      description:
+        "Create a new guest. Always confirm the details with the user before calling. Returns the created guest with their invite code.",
+      inputSchema: z.object({
+        firstName: z.string().describe("Guest's first name"),
+        lastName: z.string().optional().describe("Guest's last name"),
+        email: z.string().optional().describe("Guest's email address"),
+        side: z
+          .enum(["bride", "groom", "both"])
+          .optional()
+          .describe("Which side of the wedding (bride, groom, or both)"),
+        list: z
+          .enum(["a", "b", "c"])
+          .optional()
+          .describe("Guest list tier: a (A-list), b (B-list), c (C-list)"),
+        gender: z
+          .enum(["male", "female"])
+          .optional()
+          .describe("Guest's gender"),
+        family: z
+          .boolean()
+          .optional()
+          .describe("Whether this guest is a family member"),
+        plusOneAllowed: z
+          .boolean()
+          .optional()
+          .describe("Whether this guest can bring a plus-one"),
+        notes: z
+          .string()
+          .optional()
+          .describe("Any notes about the guest (e.g. 'college friend')"),
+      }),
+      execute: async ({
+        firstName,
+        lastName,
+        email,
+        side,
+        list,
+        gender,
+        family,
+        plusOneAllowed,
+        notes,
+      }) => {
+        try {
+          const inviteCode = generateInviteCode();
+
+          // Create party for this guest
+          const party = await db.party.create({
+            data: {
+              weddingId,
+              inviteCode,
+            },
+          });
+
+          const guest = await db.guest.create({
+            data: {
+              weddingId,
+              firstName,
+              lastName: lastName ?? null,
+              email: email ?? null,
+              side: side ?? null,
+              list: list ?? "a",
+              gender: gender ?? null,
+              family: family ?? false,
+              plusOneAllowed: plusOneAllowed ?? false,
+              notes: notes ?? null,
+              inviteCode,
+              partyId: party.id,
+            },
+          });
+
+          return {
+            success: true,
+            guest: {
+              id: guest.id,
+              name: `${guest.firstName} ${guest.lastName || ""}`.trim(),
+              email: guest.email,
+              inviteCode: guest.inviteCode,
+              side: guest.side,
+              list: guest.list,
+            },
+          };
+        } catch (error) {
+          console.error("Error in createGuest tool:", error);
+          return { success: false, error: "Failed to create guest" };
+        }
+      },
+    }),
+
+    updateGuest: tool({
+      description:
+        "Update a guest's information. Use lookupGuest first to find the guest ID. Always confirm changes with the user before calling.",
+      inputSchema: z.object({
+        guestId: z.string().describe("The guest ID to update"),
+        firstName: z.string().optional().describe("New first name"),
+        lastName: z.string().optional().describe("New last name"),
+        email: z.string().optional().describe("New email address"),
+        side: z
+          .enum(["bride", "groom", "both"])
+          .optional()
+          .describe("New side assignment"),
+        list: z.enum(["a", "b", "c"]).optional().describe("New list tier"),
+        gender: z.enum(["male", "female"]).optional().describe("New gender"),
+        family: z.boolean().optional().describe("Is a family member"),
+        plusOneAllowed: z.boolean().optional().describe("Allow plus-one"),
+        dietaryRestrictions: z
+          .string()
+          .optional()
+          .describe("Dietary restrictions"),
+        notes: z.string().optional().describe("Guest notes"),
+      }),
+      execute: async ({ guestId, ...updates }) => {
+        try {
+          // Filter out undefined values
+          const data: Record<string, unknown> = {};
+          if (updates.firstName !== undefined)
+            data.firstName = updates.firstName;
+          if (updates.lastName !== undefined) data.lastName = updates.lastName;
+          if (updates.email !== undefined) data.email = updates.email;
+          if (updates.side !== undefined) data.side = updates.side;
+          if (updates.list !== undefined) data.list = updates.list;
+          if (updates.gender !== undefined) data.gender = updates.gender;
+          if (updates.family !== undefined) data.family = updates.family;
+          if (updates.plusOneAllowed !== undefined)
+            data.plusOneAllowed = updates.plusOneAllowed;
+          if (updates.dietaryRestrictions !== undefined)
+            data.dietaryRestrictions = updates.dietaryRestrictions;
+          if (updates.notes !== undefined) data.notes = updates.notes;
+
+          if (Object.keys(data).length === 0) {
+            return { success: false, error: "No fields to update" };
+          }
+
+          const guest = await db.guest.update({
+            where: { id: guestId, weddingId },
+            data,
+          });
+
+          return {
+            success: true,
+            guest: {
+              id: guest.id,
+              name: `${guest.firstName} ${guest.lastName || ""}`.trim(),
+              email: guest.email,
+              side: guest.side,
+              list: guest.list,
+            },
+          };
+        } catch (error) {
+          console.error("Error in updateGuest tool:", error);
+          return { success: false, error: "Guest not found or update failed" };
+        }
+      },
+    }),
+
+    deleteGuest: tool({
+      description:
+        "Delete a guest permanently. ALWAYS confirm with the user before calling — this cannot be undone.",
+      inputSchema: z.object({
+        guestId: z.string().describe("The guest ID to delete"),
+      }),
+      execute: async ({ guestId }) => {
+        try {
+          const guest = await db.guest.findFirst({
+            where: { id: guestId, weddingId },
+          });
+
+          if (!guest) {
+            return { success: false, error: "Guest not found" };
+          }
+
+          await db.guest.delete({ where: { id: guestId } });
+
+          return {
+            success: true,
+            deleted: `${guest.firstName} ${guest.lastName || ""}`.trim(),
+          };
+        } catch (error) {
+          console.error("Error in deleteGuest tool:", error);
+          return { success: false, error: "Failed to delete guest" };
+        }
+      },
+    }),
+
+    addTodo: tool({
+      description: "Add a wedding todo item to the couple's task list.",
+      inputSchema: z.object({
+        title: z.string().describe("The todo item title"),
+      }),
+      execute: async ({ title }) => {
+        try {
+          const maxOrder = await db.weddingTodo.aggregate({
+            where: { weddingId },
+            _max: { displayOrder: true },
+          });
+
+          const todo = await db.weddingTodo.create({
+            data: {
+              weddingId,
+              title,
+              displayOrder: (maxOrder._max.displayOrder ?? 0) + 1,
+            },
+          });
+
+          return { success: true, todo: { id: todo.id, title: todo.title } };
+        } catch (error) {
+          console.error("Error in addTodo tool:", error);
+          return { success: false, error: "Failed to create todo" };
+        }
+      },
+    }),
+
+    bulkInvite: tool({
+      description:
+        "Send invitation emails to multiple guests at once, filtered by list tier and/or RSVP status. Always confirm the count with the user before calling.",
+      inputSchema: z.object({
+        list: z
+          .enum(["a", "b", "c"])
+          .optional()
+          .describe("Filter by list tier"),
+        status: z
+          .enum(["pending"])
+          .optional()
+          .describe(
+            "Filter by RSVP status (only pending makes sense for invites)",
+          ),
+        uninvitedOnly: z
+          .boolean()
+          .optional()
+          .describe(
+            "If true, only send to guests who haven't been invited yet (numberOfResends = 0)",
+          ),
+      }),
+      execute: async ({ list, status, uninvitedOnly }) => {
+        try {
+          const where: Record<string, unknown> = {
+            weddingId,
+            isPlusOne: false,
+            email: { not: null },
+          };
+          if (list) where.list = list;
+          if (status) where.rsvpStatus = status;
+          if (uninvitedOnly) where.numberOfResends = 0;
+
+          const guests = await db.guest.findMany({ where });
+
+          if (guests.length === 0) {
+            return {
+              success: true,
+              sent: 0,
+              message: "No guests match the criteria",
+            };
+          }
+
+          const settings = await getWeddingSettings();
+          const notificationRecipients = getNotificationRecipients(settings);
+          if (!getResendClient() || notificationRecipients.length === 0) {
+            return { success: false, error: "Email is not configured" };
+          }
+
+          // Fetch ceremony event for date/venue
+          let weddingDate = "";
+          let venueName = "";
+          let venueAddress = "";
+          try {
+            const ceremonyEvent = await db.event.findFirst({
+              where: { name: "Wedding Ceremony", weddingId },
+              select: {
+                eventDate: true,
+                locationName: true,
+                locationAddress: true,
+              },
+            });
+            venueName = ceremonyEvent?.locationName ?? "";
+            venueAddress = ceremonyEvent?.locationAddress ?? "";
+            if (ceremonyEvent?.eventDate) {
+              const dateObj =
+                ceremonyEvent.eventDate instanceof Date
+                  ? ceremonyEvent.eventDate
+                  : new Date(`${ceremonyEvent.eventDate}T00:00:00`);
+              if (!Number.isNaN(dateObj.getTime())) {
+                weddingDate = dateObj.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                });
+              }
+            }
+          } catch (dateError) {
+            console.error("Error fetching wedding date:", dateError);
+          }
+
+          let sentCount = 0;
+          const errors: string[] = [];
+
+          for (const guest of guests) {
+            if (!guest.email || !guest.email.includes("@")) continue;
+
+            try {
+              const rsvpUrl = `${weddingUrl(settings.slug, "/rsvp")}?code=${guest.inviteCode}`;
+              const rendered = await renderEmailTemplate(
+                weddingId,
+                "wedding_invitation",
+                {
+                  COUPLE_NAMES: settings.coupleName,
+                  GUEST_NAME:
+                    `${guest.firstName} ${guest.lastName || ""}`.trim(),
+                  INVITE_CODE: guest.inviteCode ?? "",
+                  RSVP_URL: rsvpUrl,
+                  WEDDING_DATE: weddingDate,
+                  VENUE_NAME: venueName,
+                  VENUE_ADDRESS: venueAddress,
+                  PERSONAL_MESSAGE: "",
+                },
+                guest.preferredLanguage ?? settings.defaultLanguage,
+              );
+
+              if (!rendered) continue;
+
+              const result = await sendEmail({
+                from: getEmailFromAddress(settings, "Wedding Invitation"),
+                to: guest.email,
+                subject: rendered.subject,
+                html: rendered.html,
+              });
+
+              if (!result.error) {
+                sentCount++;
+                await db.guest.update({
+                  where: { id: guest.id },
+                  data: {
+                    numberOfResends: (guest.numberOfResends || 0) + 1,
+                  },
+                });
+              }
+            } catch (err) {
+              errors.push(
+                `${guest.firstName}: ${err instanceof Error ? err.message : "unknown error"}`,
+              );
+            }
+          }
+
+          return {
+            success: true,
+            sent: sentCount,
+            total: guests.length,
+            errors: errors.length > 0 ? errors : undefined,
+          };
+        } catch (error) {
+          console.error("Error in bulkInvite tool:", error);
+          return { success: false, error: "Failed to send bulk invites" };
         }
       },
     }),

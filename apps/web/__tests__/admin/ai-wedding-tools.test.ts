@@ -36,6 +36,19 @@ const mockAggregate = mock(() =>
   Promise.resolve({ _sum: { amountCents: 0 }, _count: 0 }),
 );
 const mockUpdate = mock(() => Promise.resolve({}));
+const mockCreate = mock(() => Promise.resolve({ id: "new-id" }));
+const mockDelete = mock(() => Promise.resolve({}));
+const mockGuestCreate = mock(() =>
+  Promise.resolve({
+    id: "new-guest-id",
+    firstName: "Test",
+    lastName: "Guest",
+    email: "test@example.com",
+    inviteCode: "ABCD-1234",
+    side: "groom",
+    list: "a",
+  }),
+);
 
 mock.module("@/lib/db", () => ({
   db: {
@@ -46,6 +59,8 @@ mock.module("@/lib/db", () => ({
       count: mockCount,
       groupBy: mockGroupBy,
       update: mockUpdate,
+      create: mockGuestCreate,
+      delete: mockDelete,
     },
     event: {
       findMany: mockFindMany,
@@ -57,6 +72,13 @@ mock.module("@/lib/db", () => ({
     },
     wedding: {
       findUniqueOrThrow: mockFindUniqueOrThrow,
+    },
+    party: {
+      create: mockCreate,
+    },
+    weddingTodo: {
+      aggregate: mock(() => Promise.resolve({ _max: { displayOrder: 3 } })),
+      create: mock(() => Promise.resolve({ id: "todo-1", title: "Test todo" })),
     },
   },
 }));
@@ -87,8 +109,21 @@ describe("Wedding Tools", () => {
   beforeEach(() => {
     mockGroupBy.mockReset();
     mockFindMany.mockReset();
+    mockFindFirst.mockReset();
     mockCount.mockReset();
     mockAggregate.mockReset();
+    mockUpdate.mockReset();
+    mockCreate.mockReset().mockResolvedValue({ id: "new-party-id" });
+    mockDelete.mockReset();
+    mockGuestCreate.mockReset().mockResolvedValue({
+      id: "new-guest-id",
+      firstName: "Test",
+      lastName: "Guest",
+      email: "test@example.com",
+      inviteCode: "ABCD-1234",
+      side: "groom",
+      list: "a",
+    });
   });
 
   describe("getRsvpStats", () => {
@@ -288,6 +323,187 @@ describe("Wedding Tools", () => {
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe("Bob Smith");
       expect(result[1].name).toBe("Alice");
+    });
+  });
+
+  describe("createGuest", () => {
+    const toolCtx = {
+      toolCallId: "test",
+      messages: [],
+      abortSignal: new AbortController().signal,
+    };
+
+    it("creates a party and guest with invite code", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      const result = await tools.createGuest.execute(
+        {
+          firstName: "Cody",
+          lastName: "Johnson",
+          email: "cody@example.com",
+          side: "groom",
+          list: "a",
+        },
+        toolCtx,
+      );
+
+      expect(result.success).toBe(true);
+      // Party should be created first
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(mockCreate.mock.calls[0][0].data.weddingId).toBe(WEDDING_ID);
+      // Guest should be created with party ID
+      expect(mockGuestCreate).toHaveBeenCalledTimes(1);
+      const guestData = mockGuestCreate.mock.calls[0][0].data;
+      expect(guestData.weddingId).toBe(WEDDING_ID);
+      expect(guestData.firstName).toBe("Cody");
+      expect(guestData.lastName).toBe("Johnson");
+      expect(guestData.email).toBe("cody@example.com");
+      expect(guestData.side).toBe("groom");
+      expect(guestData.partyId).toBe("new-party-id");
+      expect(guestData.inviteCode).toBeTruthy();
+    });
+
+    it("defaults optional fields correctly", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      await tools.createGuest.execute({ firstName: "Solo" }, toolCtx);
+
+      const guestData = mockGuestCreate.mock.calls[0][0].data;
+      expect(guestData.list).toBe("a");
+      expect(guestData.family).toBe(false);
+      expect(guestData.plusOneAllowed).toBe(false);
+      expect(guestData.lastName).toBeNull();
+      expect(guestData.email).toBeNull();
+      expect(guestData.side).toBeNull();
+      expect(guestData.gender).toBeNull();
+    });
+
+    it("returns guest info with invite code on success", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      const result = await tools.createGuest.execute(
+        { firstName: "Test" },
+        toolCtx,
+      );
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.guest.id).toBe("new-guest-id");
+        expect(result.guest.inviteCode).toBe("ABCD-1234");
+      }
+    });
+  });
+
+  describe("deleteGuest", () => {
+    const toolCtx = {
+      toolCallId: "test",
+      messages: [],
+      abortSignal: new AbortController().signal,
+    };
+
+    it("deletes a guest that belongs to the wedding", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      mockFindFirst.mockResolvedValueOnce({
+        id: "g-1",
+        firstName: "Jane",
+        lastName: "Doe",
+        weddingId: WEDDING_ID,
+      });
+
+      const result = await tools.deleteGuest.execute(
+        { guestId: "g-1" },
+        toolCtx,
+      );
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.deleted).toBe("Jane Doe");
+      }
+      expect(mockDelete).toHaveBeenCalledWith({ where: { id: "g-1" } });
+    });
+
+    it("rejects deletion of non-existent guest", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      mockFindFirst.mockResolvedValueOnce(null);
+
+      const result = await tools.deleteGuest.execute(
+        { guestId: "nonexistent" },
+        toolCtx,
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Guest not found");
+      expect(mockDelete).not.toHaveBeenCalled();
+    });
+
+    it("scopes findFirst by weddingId", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      mockFindFirst.mockResolvedValueOnce(null);
+
+      await tools.deleteGuest.execute({ guestId: "g-1" }, toolCtx);
+
+      expect(mockFindFirst.mock.calls[0][0]).toEqual({
+        where: { id: "g-1", weddingId: WEDDING_ID },
+      });
+    });
+  });
+
+  describe("bulkInvite", () => {
+    const toolCtx = {
+      toolCallId: "test",
+      messages: [],
+      abortSignal: new AbortController().signal,
+    };
+
+    it("returns zero sent when no guests match", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      mockFindMany.mockResolvedValueOnce([]);
+
+      const result = await tools.bulkInvite.execute(
+        { list: "a", uninvitedOnly: true },
+        toolCtx,
+      );
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.sent).toBe(0);
+      }
+    });
+
+    it("builds correct where clause with all filters", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      mockFindMany.mockResolvedValueOnce([]);
+
+      await tools.bulkInvite.execute(
+        { list: "b", status: "pending", uninvitedOnly: true },
+        toolCtx,
+      );
+
+      const whereArg = mockFindMany.mock.calls[0][0].where;
+      expect(whereArg.weddingId).toBe(WEDDING_ID);
+      expect(whereArg.list).toBe("b");
+      expect(whereArg.rsvpStatus).toBe("pending");
+      expect(whereArg.numberOfResends).toBe(0);
+      expect(whereArg.isPlusOne).toBe(false);
+    });
+
+    it("omits optional filters when not provided", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      mockFindMany.mockResolvedValueOnce([]);
+
+      await tools.bulkInvite.execute({}, toolCtx);
+
+      const whereArg = mockFindMany.mock.calls[0][0].where;
+      expect(whereArg.weddingId).toBe(WEDDING_ID);
+      expect(whereArg.list).toBeUndefined();
+      expect(whereArg.rsvpStatus).toBeUndefined();
+      expect(whereArg.numberOfResends).toBeUndefined();
     });
   });
 });

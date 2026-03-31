@@ -10,6 +10,7 @@ import { isAuthAvailable, waitForHydration } from "./fixtures";
  * - Tool invocation rendering
  * - Error state display
  * - Stop generation button
+ * - Chat memory persistence and clearing
  *
  * NOTE: These tests require admin authentication.
  */
@@ -24,10 +25,16 @@ test.beforeEach(async () => {
   }
 });
 
+/** Clear chat history via API so tests start with a clean slate */
+async function clearChatHistory(page: import("@playwright/test").Page) {
+  await page.request.delete("/api/admin/ai/chat");
+}
+
 test.describe("AI Chat Panel", () => {
   test("opens and closes the chat panel", async ({ page }) => {
     await page.goto("/admin");
     await waitForHydration(page);
+    await clearChatHistory(page);
 
     // FAB button should be visible
     const fabButton = page.getByLabel("Open AI Wedding Assistant");
@@ -64,6 +71,7 @@ test.describe("AI Chat Panel", () => {
   test("sends a message and receives a response", async ({ page }) => {
     await page.goto("/admin");
     await waitForHydration(page);
+    await clearChatHistory(page);
 
     // Open chat panel
     await page.getByLabel("Open AI Wedding Assistant").click();
@@ -83,20 +91,23 @@ test.describe("AI Chat Panel", () => {
     ).toBeVisible({ timeout: 5000 });
 
     // Wait for assistant response (may take time due to AI processing)
-    // Look for either a text response or a tool invocation
-    await expect(
-      page
-        .locator(".is-assistant")
-        .or(page.locator('[data-slot="collapsible"]')),
-    ).toBeVisible({ timeout: 30000 });
+    await expect(page.locator(".is-assistant").first()).toBeVisible({
+      timeout: 30000,
+    });
   });
 
   test("sends a message via example question button", async ({ page }) => {
     await page.goto("/admin");
     await waitForHydration(page);
+    await clearChatHistory(page);
 
     // Open chat panel
     await page.getByLabel("Open AI Wedding Assistant").click();
+
+    // Wait for empty state to settle (history load completes)
+    await expect(page.getByText("Welcome! How can I help?")).toBeVisible({
+      timeout: 5000,
+    });
 
     // Click an example question
     await page
@@ -112,6 +123,7 @@ test.describe("AI Chat Panel", () => {
   test("shows shimmer loading indicator while streaming", async ({ page }) => {
     await page.goto("/admin");
     await waitForHydration(page);
+    await clearChatHistory(page);
 
     // Open chat panel
     await page.getByLabel("Open AI Wedding Assistant").click();
@@ -124,16 +136,15 @@ test.describe("AI Chat Panel", () => {
 
     // The shimmer ("Thinking...") may appear briefly but disappears too fast
     // to reliably assert on, so we just verify the response eventually arrives
-    await expect(
-      page
-        .locator(".is-assistant")
-        .or(page.locator('[data-slot="collapsible"]')),
-    ).toBeVisible({ timeout: 30000 });
+    await expect(page.locator(".is-assistant").first()).toBeVisible({
+      timeout: 30000,
+    });
   });
 
   test("renders tool invocations when AI uses tools", async ({ page }) => {
     await page.goto("/admin");
     await waitForHydration(page);
+    await clearChatHistory(page);
 
     // Open chat panel
     await page.getByLabel("Open AI Wedding Assistant").click();
@@ -144,11 +155,9 @@ test.describe("AI Chat Panel", () => {
     await page.getByLabel("Submit").click();
 
     // Wait for the response to complete
-    await expect(
-      page
-        .locator(".is-assistant")
-        .or(page.locator('[data-slot="collapsible"]')),
-    ).toBeVisible({ timeout: 30000 });
+    await expect(page.locator(".is-assistant").first()).toBeVisible({
+      timeout: 30000,
+    });
 
     // Check if a tool invocation was rendered (collapsible with tool name)
     // The tool component renders inside a Collapsible with a wrench icon
@@ -179,6 +188,7 @@ test.describe("AI Chat Panel", () => {
   test("shows copy button on assistant messages", async ({ page }) => {
     await page.goto("/admin");
     await waitForHydration(page);
+    await clearChatHistory(page);
 
     // Open chat panel
     await page.getByLabel("Open AI Wedding Assistant").click();
@@ -189,19 +199,22 @@ test.describe("AI Chat Panel", () => {
     await page.getByLabel("Submit").click();
 
     // Wait for assistant response
-    await expect(page.locator(".is-assistant")).toBeVisible({ timeout: 30000 });
+    await expect(page.locator(".is-assistant").first()).toBeVisible({
+      timeout: 30000,
+    });
 
     // Hover over the assistant message area to reveal actions
     await page.locator(".is-assistant").first().hover();
 
     // Copy button should be available (accessible name comes from sr-only span, not aria-label)
-    const copyButton = page.getByRole("button", { name: "Copy" });
+    const copyButton = page.getByRole("button", { name: "Copy" }).first();
     await expect(copyButton).toBeVisible({ timeout: 5000 });
   });
 
   test("shows stop button during streaming", async ({ page }) => {
     await page.goto("/admin");
     await waitForHydration(page);
+    await clearChatHistory(page);
 
     // Open chat panel
     await page.getByLabel("Open AI Wedding Assistant").click();
@@ -224,5 +237,60 @@ test.describe("AI Chat Panel", () => {
       // After stopping, the submit button should return
       await expect(page.getByLabel("Submit")).toBeVisible({ timeout: 5000 });
     }
+  });
+
+  test("persists chat history across panel close/reopen", async ({ page }) => {
+    await page.goto("/admin");
+    await waitForHydration(page);
+    await clearChatHistory(page);
+
+    // Open chat panel and send a message
+    await page.getByLabel("Open AI Wedding Assistant").click();
+    const textarea = page.getByPlaceholder("Ask about your wedding...");
+    await textarea.fill("Hello from memory test!");
+    await page.getByLabel("Submit").click();
+
+    // Wait for assistant response
+    await expect(page.locator(".is-assistant").first()).toBeVisible({
+      timeout: 30000,
+    });
+
+    // Close the panel
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect(page.getByText("AI Wedding Assistant")).not.toBeVisible();
+
+    // Reopen the panel — history should be restored
+    await page.getByLabel("Open AI Wedding Assistant").click();
+
+    // The user message from before should still be visible
+    await expect(page.getByText("Hello from memory test!")).toBeVisible({
+      timeout: 10000,
+    });
+  });
+
+  test("New chat button clears conversation", async ({ page }) => {
+    await page.goto("/admin");
+    await waitForHydration(page);
+    await clearChatHistory(page);
+
+    // Open chat panel and send a message
+    await page.getByLabel("Open AI Wedding Assistant").click();
+    const textarea = page.getByPlaceholder("Ask about your wedding...");
+    await textarea.fill("Test message for clearing");
+    await page.getByLabel("Submit").click();
+
+    // Wait for assistant response
+    await expect(page.locator(".is-assistant").first()).toBeVisible({
+      timeout: 30000,
+    });
+
+    // Click "New chat" button
+    await page.getByRole("button", { name: "New chat" }).click();
+
+    // Messages should be cleared, empty state should show
+    await expect(page.getByText("Welcome! How can I help?")).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByText("Test message for clearing")).not.toBeVisible();
   });
 });
