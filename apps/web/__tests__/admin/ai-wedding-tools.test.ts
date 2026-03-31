@@ -65,6 +65,25 @@ mock.module("@/lib/db", () => ({
     event: {
       findMany: mockFindMany,
       findFirst: mockFindFirst,
+      aggregate: mockAggregate,
+      create: mock(() =>
+        Promise.resolve({
+          id: "new-event-id",
+          name: "Test Event",
+          description: null,
+          eventDate: null,
+          startTime: null,
+          endTime: null,
+          locationName: null,
+          locationAddress: null,
+          isDefault: false,
+          displayOrder: 1,
+          weddingId: "test-wedding-id",
+        }),
+      ),
+    },
+    guestEventInvite: {
+      createMany: mock(() => Promise.resolve({ count: 0 })),
     },
     gift: {
       aggregate: mockAggregate,
@@ -504,6 +523,112 @@ describe("Wedding Tools", () => {
       expect(whereArg.list).toBeUndefined();
       expect(whereArg.rsvpStatus).toBeUndefined();
       expect(whereArg.numberOfResends).toBeUndefined();
+    });
+  });
+
+  describe("createEvent", () => {
+    const toolCtx = {
+      toolCallId: "test",
+      messages: [],
+      abortSignal: new AbortController().signal,
+    };
+
+    it("creates an event with auto-incremented displayOrder", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      mockAggregate.mockResolvedValueOnce({
+        _max: { displayOrder: 5 },
+      });
+
+      const result = await tools.createEvent.execute(
+        { name: "Rehearsal Dinner" },
+        toolCtx,
+      );
+
+      expect(result.success).toBe(true);
+      // Verify aggregate was called to get max displayOrder
+      expect(mockAggregate).toHaveBeenCalledWith({
+        where: { weddingId: WEDDING_ID },
+        _max: { displayOrder: true },
+      });
+    });
+
+    it("parses date and time strings correctly", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      mockAggregate.mockResolvedValueOnce({
+        _max: { displayOrder: 0 },
+      });
+
+      // Access the db mock's event.create to check args
+      const { db: mockDb } = await import("@/lib/db");
+      const eventCreate = mockDb.event.create as ReturnType<typeof mock>;
+      eventCreate.mockClear();
+
+      await tools.createEvent.execute(
+        {
+          name: "Rehearsal",
+          eventDate: "2026-07-29",
+          startTime: "18:00",
+          endTime: "21:00",
+        },
+        toolCtx,
+      );
+
+      const createData = eventCreate.mock.calls[0]?.[0]?.data;
+      expect(createData.eventDate).toEqual(new Date("2026-07-29T00:00:00Z"));
+      expect(createData.startTime).toEqual(new Date("1970-01-01T18:00:00Z"));
+      expect(createData.endTime).toEqual(new Date("1970-01-01T21:00:00Z"));
+    });
+
+    it("auto-invites all guests when isDefault is true", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      mockAggregate.mockResolvedValueOnce({
+        _max: { displayOrder: 0 },
+      });
+
+      mockFindMany.mockResolvedValueOnce([
+        { id: "g-1" },
+        { id: "g-2" },
+        { id: "g-3" },
+      ]);
+
+      const { db: mockDb } = await import("@/lib/db");
+      const inviteCreateMany = mockDb.guestEventInvite.createMany as ReturnType<
+        typeof mock
+      >;
+      inviteCreateMany.mockClear();
+
+      await tools.createEvent.execute(
+        { name: "Ceremony", isDefault: true },
+        toolCtx,
+      );
+
+      expect(inviteCreateMany).toHaveBeenCalledTimes(1);
+      const inviteData = inviteCreateMany.mock.calls[0][0].data;
+      expect(inviteData).toHaveLength(3);
+    });
+
+    it("does not auto-invite when isDefault is false", async () => {
+      const tools = createWeddingTools(WEDDING_ID);
+
+      mockAggregate.mockResolvedValueOnce({
+        _max: { displayOrder: 0 },
+      });
+
+      const { db: mockDb } = await import("@/lib/db");
+      const inviteCreateMany = mockDb.guestEventInvite.createMany as ReturnType<
+        typeof mock
+      >;
+      inviteCreateMany.mockClear();
+
+      await tools.createEvent.execute(
+        { name: "After Party", isDefault: false },
+        toolCtx,
+      );
+
+      expect(inviteCreateMany).not.toHaveBeenCalled();
     });
   });
 });
