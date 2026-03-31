@@ -43,7 +43,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
-import type { PartyOption } from "./actions";
+import type { EventOption, PartyOption } from "./actions";
 import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
 import { GuestsFilters } from "./guests-filters";
@@ -63,12 +63,14 @@ interface GuestsTableProps {
   initialGuests: Guest[];
   error?: string | null;
   parties: PartyOption[];
+  events: EventOption[];
 }
 
 export function GuestsTable({
   initialGuests,
   error,
   parties,
+  events,
 }: GuestsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -547,9 +549,17 @@ export function GuestsTable({
             }
             className="max-w-sm"
           />
+          <Input
+            placeholder="Filter by notes..."
+            value={(table.getColumn("notes")?.getFilterValue() as string) ?? ""}
+            onChange={(e) =>
+              table.getColumn("notes")?.setFilterValue(e.target.value)
+            }
+            className="max-w-sm"
+          />
         </div>
 
-        <GuestsFilters />
+        <GuestsFilters events={events} />
       </div>
 
       {/* Bulk Actions Bar */}
@@ -749,6 +759,7 @@ export function GuestsTable({
           refreshGuests();
         }}
         parties={parties}
+        events={events}
       />
     </>
   );

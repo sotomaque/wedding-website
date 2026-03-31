@@ -1,5 +1,11 @@
 import { Suspense } from "react";
-import { getGuests, getGuestWithPlusOne, getPartiesForSelect } from "./actions";
+import {
+  getEventsForSelect,
+  getGuestEventIds,
+  getGuests,
+  getGuestWithPlusOne,
+  getPartiesForSelect,
+} from "./actions";
 import { EditGuestSheet } from "./edit-guest-sheet";
 import { GuestsTable } from "./guests-table";
 import { GuestsTableSkeleton } from "./guests-table-skeleton";
@@ -9,7 +15,7 @@ export const dynamic = "force-dynamic";
 interface PageProps {
   searchParams: Promise<{
     side?: "bride" | "groom";
-    rsvpStatus?: "pending" | "yes" | "no";
+    rsvpStatus?: string;
     list?: "a" | "b" | "c";
     family?: "true" | "false";
     isPlusOne?: "true" | "false";
@@ -29,6 +35,7 @@ interface PageProps {
       | "numberOfResends"
       | "createdAt";
     sortOrder?: "asc" | "desc";
+    events?: string;
     page?: string;
     edit?: string;
   }>;
@@ -51,22 +58,43 @@ async function GuestsContent({
     error = "Failed to load guests. Please try again.";
   }
 
-  const parties = await getPartiesForSelect();
+  const [parties, events] = await Promise.all([
+    getPartiesForSelect(),
+    getEventsForSelect(),
+  ]);
 
-  return <GuestsTable initialGuests={guests} error={error} parties={parties} />;
+  return (
+    <GuestsTable
+      initialGuests={guests}
+      error={error}
+      parties={parties}
+      events={events}
+    />
+  );
 }
 
 async function EditGuestContent({ guestId }: { guestId: string }) {
-  const [{ guest, plusOne }, parties] = await Promise.all([
-    getGuestWithPlusOne(guestId),
-    getPartiesForSelect(),
-  ]);
+  const [{ guest, plusOne }, parties, events, guestEventIds] =
+    await Promise.all([
+      getGuestWithPlusOne(guestId),
+      getPartiesForSelect(),
+      getEventsForSelect(),
+      getGuestEventIds(guestId),
+    ]);
 
   if (!guest) {
     return null;
   }
 
-  return <EditGuestSheet guest={guest} plusOne={plusOne} parties={parties} />;
+  return (
+    <EditGuestSheet
+      guest={guest}
+      plusOne={plusOne}
+      parties={parties}
+      events={events}
+      guestEventIds={guestEventIds}
+    />
+  );
 }
 
 export default async function AdminGuestsPage({ searchParams }: PageProps) {

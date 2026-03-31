@@ -167,6 +167,28 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       });
     }
 
+    // If event was default and is now non-default, backfill GuestEventInvite.rsvpStatus
+    // from each guest's main rsvpStatus so RSVP data isn't lost
+    if (isDefault === false && currentEvent.isDefault === true) {
+      const guests = await db.guest.findMany({
+        where: { weddingId },
+        select: { id: true, rsvpStatus: true },
+      });
+
+      for (const guest of guests) {
+        if (guest.rsvpStatus === "pending") continue;
+        await db.guestEventInvite.updateMany({
+          where: {
+            guestId: guest.id,
+            eventId: id,
+            weddingId,
+            rsvpStatus: "pending",
+          },
+          data: { rsvpStatus: guest.rsvpStatus },
+        });
+      }
+    }
+
     return NextResponse.json({ event });
   } catch (error) {
     console.error("Error in PATCH /api/admin/events/[id]:", error);

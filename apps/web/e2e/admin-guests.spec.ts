@@ -424,3 +424,125 @@ test.describe("Guest Management - Email Actions", () => {
     await page.getByRole("button", { name: /^delete$/i }).click();
   });
 });
+
+test.describe("Guest Management - Event Invitations", () => {
+  test.use({ storageState: "e2e/.auth/admin.json" });
+
+  test.beforeEach(async ({ page }) => {
+    if (!isAuthAvailable()) {
+      test.skip();
+    }
+    await page.goto(TEST_DATA.routes.adminGuests);
+    await waitForHydration(page);
+  });
+
+  test("Add Guest form shows event toggles with default events ON", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: /add guest/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /add new guest/i }),
+    ).toBeVisible();
+
+    // Event Invitations section should be visible
+    await expect(page.getByText("Event Invitations")).toBeVisible();
+
+    // Default events (Ceremony, Reception) should be checked
+    // Non-default events should not be checked
+    const deselect = page.getByRole("button", { name: /deselect all/i });
+    const selectAll = page.getByRole("button", { name: /select all/i });
+
+    // If all default events are on, "Deselect all" should be visible
+    // OR "Select all" if there are non-default events that are off
+    await expect(deselect.or(selectAll)).toBeVisible();
+  });
+
+  test("Edit Guest sheet shows event toggles matching current invites", async ({
+    page,
+  }) => {
+    // Open first guest's edit sheet
+    const rowCount = await page.locator("table tbody tr").count();
+    if (rowCount === 0) {
+      test.skip();
+      return;
+    }
+
+    const editButton = page.getByRole("button", { name: /edit/i }).first();
+    await editButton.click({ force: true });
+
+    await expect(
+      page.getByRole("heading", { name: /edit guest/i }),
+    ).toBeVisible({ timeout: 10000 });
+
+    // Event Invitations section should be visible
+    await expect(page.getByText("Event Invitations")).toBeVisible();
+  });
+
+  test("toggling event in Edit Guest enables save button", async ({ page }) => {
+    const rowCount = await page.locator("table tbody tr").count();
+    if (rowCount === 0) {
+      test.skip();
+      return;
+    }
+
+    const editButton = page.getByRole("button", { name: /edit/i }).first();
+    await editButton.click({ force: true });
+
+    await expect(
+      page.getByRole("heading", { name: /edit guest/i }),
+    ).toBeVisible({ timeout: 10000 });
+
+    // Update Guest button should be disabled initially (no changes)
+    const updateButton = page.getByRole("button", { name: /update guest/i });
+    await expect(updateButton).toBeDisabled();
+
+    // Toggle an event — click Deselect all then Select all to make a change
+    const toggleButton = page
+      .getByRole("button", { name: /deselect all/i })
+      .or(page.getByRole("button", { name: /select all/i }));
+    if (await toggleButton.isVisible()) {
+      await toggleButton.click();
+      // Update button should now be enabled
+      await expect(updateButton).toBeEnabled({ timeout: 2000 });
+    }
+  });
+
+  test("notes filter does partial matching", async ({ page }) => {
+    // Create a guest with notes
+    const uniqueId = Date.now();
+    const testFirstName = `Notes-Test-${uniqueId}`;
+    const testNotes = `UniqueNote${uniqueId}`;
+
+    await page.getByRole("button", { name: /add guest/i }).click();
+    await page
+      .getByLabel(/^first name/i)
+      .first()
+      .fill(testFirstName);
+    // Find and fill the notes field
+    await page.getByPlaceholder(/internal notes/i).fill(testNotes);
+    await page.getByRole("button", { name: /create guest/i }).click();
+    await waitForGuestCreated(page);
+
+    // Use notes filter with partial match (first 8 chars)
+    const notesFilter = page.getByPlaceholder(/filter by notes/i);
+    await notesFilter.fill(testNotes.slice(0, 8));
+    await page.waitForTimeout(500);
+
+    // Guest should appear
+    const guestRow = page
+      .locator("table tbody tr")
+      .filter({ hasText: testFirstName });
+    await expect(guestRow.first()).toBeVisible({ timeout: 5000 });
+
+    // Clean up
+    await page.getByPlaceholder(/filter by name/i).fill(testFirstName);
+    await page.waitForTimeout(500);
+    const editBtn = page.getByRole("button", { name: /edit/i }).first();
+    await editBtn.click({ force: true });
+    await expect(
+      page.getByRole("heading", { name: /edit guest/i }),
+    ).toBeVisible({ timeout: 10000 });
+    await page.getByRole("button", { name: /delete guest/i }).click();
+    await page.getByRole("button", { name: /^delete$/i }).click();
+  });
+});

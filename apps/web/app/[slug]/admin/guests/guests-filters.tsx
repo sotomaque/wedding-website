@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
+import { Checkbox } from "@workspace/ui/components/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -10,19 +11,21 @@ import { Filter, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
+import type { EventOption } from "./actions";
 
-export function GuestsFilters() {
+interface GuestsFiltersProps {
+  events?: EventOption[];
+}
+
+export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const slug = useWeddingSlug();
   const [open, setOpen] = useState(false);
 
   const currentSide = searchParams.get("side") as "bride" | "groom" | null;
-  const currentStatus = searchParams.get("rsvpStatus") as
-    | "pending"
-    | "yes"
-    | "no"
-    | null;
+  const currentStatuses =
+    searchParams.get("rsvpStatus")?.split(",").filter(Boolean) ?? [];
   const currentList = searchParams.get("list") as "a" | "b" | "c" | null;
   const currentFamily = searchParams.get("family") as "true" | "false" | null;
   const currentUnder21 = searchParams.get("under21") as "true" | "false" | null;
@@ -46,6 +49,8 @@ export function GuestsFilters() {
     | "maid_of_honor"
     | "any"
     | null;
+  const currentEvents =
+    searchParams.get("events")?.split(",").filter(Boolean) ?? [];
 
   function updateFilter(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
@@ -62,6 +67,38 @@ export function GuestsFilters() {
     router.push(`/${slug}/admin/guests?${params.toString()}`);
   }
 
+  function toggleMultiFilter(key: string, value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    const current = params.get(key)?.split(",").filter(Boolean) ?? [];
+    const updated = current.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...current, value];
+
+    if (updated.length === 0) {
+      params.delete(key);
+    } else {
+      params.set(key, updated.join(","));
+    }
+    params.delete("page");
+    router.push(`/${slug}/admin/guests?${params.toString()}`);
+  }
+
+  function toggleEventFilter(eventId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    const current = params.get("events")?.split(",").filter(Boolean) ?? [];
+    const updated = current.includes(eventId)
+      ? current.filter((id) => id !== eventId)
+      : [...current, eventId];
+
+    if (updated.length === 0) {
+      params.delete("events");
+    } else {
+      params.set("events", updated.join(","));
+    }
+    params.delete("page");
+    router.push(`/${slug}/admin/guests?${params.toString()}`);
+  }
+
   function clearAllFilters() {
     router.push(`/${slug}/admin/guests`);
     setOpen(false);
@@ -69,25 +106,28 @@ export function GuestsFilters() {
 
   const hasActiveFilters =
     currentSide ||
-    currentStatus ||
+    currentStatuses.length > 0 ||
     currentList ||
     currentFamily ||
     currentUnder21 ||
     currentThreeAndUnder ||
     currentIsPlusOne ||
     currentEmailStatus ||
-    currentBridalParty;
-  const filterCount = [
-    currentSide,
-    currentStatus,
-    currentList,
-    currentFamily,
-    currentUnder21,
-    currentThreeAndUnder,
-    currentIsPlusOne,
-    currentEmailStatus,
-    currentBridalParty,
-  ].filter(Boolean).length;
+    currentBridalParty ||
+    currentEvents.length > 0;
+  const filterCount =
+    [
+      currentSide,
+      currentList,
+      currentFamily,
+      currentUnder21,
+      currentThreeAndUnder,
+      currentIsPlusOne,
+      currentEmailStatus,
+      currentBridalParty,
+    ].filter(Boolean).length +
+    (currentStatuses.length > 0 ? 1 : 0) +
+    (currentEvents.length > 0 ? 1 : 0);
 
   return (
     <div className="flex items-center gap-2 mb-4 min-w-0">
@@ -153,42 +193,29 @@ export function GuestsFilters() {
               </div>
             </div>
 
-            {/* RSVP Status Filter */}
+            {/* RSVP Status Filter (multi-select) */}
             <div className="space-y-2">
               <span className="text-sm font-medium">RSVP Status</span>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={currentStatus === null ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => updateFilter("rsvpStatus", null)}
-                  className="w-full"
-                >
-                  All
-                </Button>
-                <Button
-                  variant={currentStatus === "pending" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => updateFilter("rsvpStatus", "pending")}
-                  className="w-full"
-                >
-                  Pending
-                </Button>
-                <Button
-                  variant={currentStatus === "yes" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => updateFilter("rsvpStatus", "yes")}
-                  className="w-full"
-                >
-                  Confirmed
-                </Button>
-                <Button
-                  variant={currentStatus === "no" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => updateFilter("rsvpStatus", "no")}
-                  className="w-full"
-                >
-                  Declined
-                </Button>
+              <div className="space-y-1.5">
+                {[
+                  { value: "pending", label: "Pending" },
+                  { value: "yes", label: "Confirmed" },
+                  { value: "no", label: "Declined" },
+                ].map((option) => (
+                  // biome-ignore lint/a11y/noLabelWithoutControl: Radix Checkbox handles focus internally
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={currentStatuses.includes(option.value)}
+                      onCheckedChange={() =>
+                        toggleMultiFilter("rsvpStatus", option.value)
+                      }
+                    />
+                    {option.label}
+                  </label>
+                ))}
               </div>
             </div>
 
@@ -471,6 +498,28 @@ export function GuestsFilters() {
               </div>
             </div>
 
+            {/* Event Filter */}
+            {events.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-sm font-medium">Invited To Event</span>
+                <div className="space-y-1.5">
+                  {events.map((event) => (
+                    // biome-ignore lint/a11y/noLabelWithoutControl: Radix Checkbox handles focus internally
+                    <label
+                      key={event.id}
+                      className="flex items-center gap-2 text-sm cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={currentEvents.includes(event.id)}
+                        onCheckedChange={() => toggleEventFilter(event.id)}
+                      />
+                      {event.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Clear Filters Button */}
             {hasActiveFilters && (
               <Button
@@ -503,13 +552,18 @@ export function GuestsFilters() {
               </button>
             </span>
           )}
-          {currentStatus && (
+          {currentStatuses.length > 0 && (
             <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
-              {currentStatus === "pending"
-                ? "Pending"
-                : currentStatus === "yes"
-                  ? "Confirmed"
-                  : "Declined"}
+              RSVP:{" "}
+              {currentStatuses
+                .map((s) =>
+                  s === "pending"
+                    ? "Pending"
+                    : s === "yes"
+                      ? "Confirmed"
+                      : "Declined",
+                )
+                .join(", ")}
               <button
                 type="button"
                 onClick={() => updateFilter("rsvpStatus", null)}
@@ -590,6 +644,18 @@ export function GuestsFilters() {
               <button
                 type="button"
                 onClick={() => updateFilter("emailStatus", null)}
+                className="hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {currentEvents.length > 0 && (
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+              Events: {currentEvents.length}
+              <button
+                type="button"
+                onClick={() => updateFilter("events", null)}
                 className="hover:text-foreground"
               >
                 <X className="h-3 w-3" />

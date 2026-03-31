@@ -128,7 +128,11 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
     setFormData({
       name: event.name,
       description: event.description || "",
-      eventDate: event.eventDate || "",
+      eventDate:
+        event.eventDate &&
+        !Number.isNaN(new Date(`${event.eventDate}T00:00:00`).getTime())
+          ? String(event.eventDate)
+          : "",
       startTime: event.startTime
         ? new Date(event.startTime).toISOString().slice(11, 16)
         : "",
@@ -461,7 +465,10 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.eventDate
+                      {formData.eventDate &&
+                      !Number.isNaN(
+                        new Date(`${formData.eventDate}T00:00:00`).getTime(),
+                      )
                         ? format(
                             new Date(`${formData.eventDate}T00:00:00`),
                             "MMM d, yyyy",
@@ -473,7 +480,10 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                     <CalendarPicker
                       mode="single"
                       selected={
-                        formData.eventDate
+                        formData.eventDate &&
+                        !Number.isNaN(
+                          new Date(`${formData.eventDate}T00:00:00`).getTime(),
+                        )
                           ? new Date(`${formData.eventDate}T00:00:00`)
                           : undefined
                       }

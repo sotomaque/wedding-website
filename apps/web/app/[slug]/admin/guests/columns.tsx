@@ -722,6 +722,10 @@ export function createColumns({
     },
     {
       accessorKey: "notes",
+      filterFn: (row, _columnId, filterValue) => {
+        const notes = (row.getValue("notes") as string) ?? "";
+        return notes.toLowerCase().includes(String(filterValue).toLowerCase());
+      },
       header: () => {
         return (
           <button

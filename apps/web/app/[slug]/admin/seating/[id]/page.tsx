@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
 function parseGuestFilter(searchParams: {
   list?: string;
   rsvp?: string;
-}): GuestFilter {
+  event?: string;
+}): GuestFilter & { eventId?: string } {
   const validListValues: GuestListFilter[] = ["a", "b", "c", "ab", "abc"];
   const validRsvpValues: GuestRsvpFilter[] = ["confirmed", "all"];
 
@@ -25,10 +26,17 @@ function parseGuestFilter(searchParams: {
     ? (searchParams.rsvp as GuestRsvpFilter)
     : "confirmed";
 
-  return { list, rsvp };
+  return {
+    list,
+    rsvp,
+    eventId: searchParams.event || undefined,
+  };
 }
 
-async function getChartWithDetails(id: string, filter: GuestFilter) {
+async function getChartWithDetails(
+  id: string,
+  filter: GuestFilter & { eventId?: string },
+) {
   const weddingId = await getWeddingId();
 
   // Fetch the chart
@@ -84,6 +92,13 @@ async function getChartWithDetails(id: string, filter: GuestFilter) {
   }
   // "abc" means all lists, no filter needed
 
+  // Apply event filter — only show guests invited to a specific event
+  if (filter.eventId) {
+    guestWhere.guestEventInvites = {
+      some: { eventId: filter.eventId },
+    };
+  }
+
   const filteredGuests = await db.guest.findMany({
     where: guestWhere,
     orderBy: { firstName: "asc" },
@@ -129,7 +144,7 @@ async function getChartWithDetails(id: string, filter: GuestFilter) {
 
 interface PageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ list?: string; rsvp?: string }>;
+  searchParams: Promise<{ list?: string; rsvp?: string; event?: string }>;
 }
 
 export default async function ChartEditorPage({
@@ -142,14 +157,23 @@ export default async function ChartEditorPage({
     redirect("/sign-in");
   }
 
+  const weddingId = await getWeddingId();
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const filter = parseGuestFilter(resolvedSearchParams);
-  const chart = await getChartWithDetails(id, filter);
+
+  const [chart, events] = await Promise.all([
+    getChartWithDetails(id, filter),
+    db.event.findMany({
+      where: { weddingId },
+      orderBy: { displayOrder: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
 
   if (!chart) {
     notFound();
   }
 
-  return <ChartEditor chart={chart} filter={filter} />;
+  return <ChartEditor chart={chart} filter={filter} events={events} />;
 }

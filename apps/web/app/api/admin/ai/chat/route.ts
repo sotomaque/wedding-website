@@ -148,17 +148,22 @@ export async function POST(request: Request) {
 
     const system = systemPrompt(ctx, stats);
 
-    // Save the latest user message
+    // Save the latest user message (text only for clean history restoration)
     const lastUserMsg = parsed.data.messages.findLast((m) => m.role === "user");
     if (lastUserMsg) {
-      await db.chatMessage.create({
-        data: {
-          weddingId: ctx.weddingId,
-          adminEmail,
-          role: "user",
-          content: JSON.parse(JSON.stringify(lastUserMsg.parts)),
-        },
-      });
+      const textPart = lastUserMsg.parts.find((p) => p.type === "text");
+      const text =
+        textPart && typeof textPart.text === "string" ? textPart.text : null;
+      if (text) {
+        await db.chatMessage.create({
+          data: {
+            weddingId: ctx.weddingId,
+            adminEmail,
+            role: "user",
+            content: [{ type: "text", text }],
+          },
+        });
+      }
     }
 
     const result = streamText({
@@ -168,19 +173,19 @@ export async function POST(request: Request) {
       tools,
       stopWhen: stepCountIs(5),
       temperature: 0.7,
-      onFinish: async ({ response }) => {
-        // Save assistant messages from the response
-        for (const msg of response.messages) {
-          if (msg.role === "assistant") {
-            await db.chatMessage.create({
-              data: {
-                weddingId: ctx.weddingId,
-                adminEmail,
-                role: "assistant",
-                content: JSON.parse(JSON.stringify(msg.content)),
-              },
-            });
-          }
+      onFinish: async ({ text }) => {
+        // Save the final assistant text response only (not intermediate tool calls).
+        // This keeps history simple — restored messages are plain text that won't
+        // cause MissingToolResultsError when sent back to the model.
+        if (text) {
+          await db.chatMessage.create({
+            data: {
+              weddingId: ctx.weddingId,
+              adminEmail,
+              role: "assistant",
+              content: [{ type: "text", text }],
+            },
+          });
         }
       },
     });
