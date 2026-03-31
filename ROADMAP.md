@@ -163,6 +163,63 @@ lib/ai/
 - [ ] External registry links (Amazon, Target, etc.)
 - [ ] URL metadata scraping for auto-fill (metascraper)
 
+### 4.5 Self-Service Stripe Registry (Scalable Payments)
+
+> **Problem:** Today, registry items require manually creating Stripe payment links in the Stripe dashboard, then manually inserting `RegistryItem` DB rows with those URLs. Gift type resolution is hardcoded to 3 global env vars (`STRIPE_PRODUCT_*`). There's no admin UI for registry items and no onboarding path for new couples.
+
+#### Phase A: Admin Registry Item CRUD
+- [ ] Admin UI at `/{slug}/admin/registry` to create/edit/delete/reorder `RegistryItem` records
+- [ ] Fields: title, description, emoji/image, suggested amounts, external URL (optional)
+- [ ] Toggle items active/inactive
+- [ ] This alone unblocks new weddings — they can paste their own Stripe payment links from the dashboard
+
+#### Phase B: Stripe Connect Integration (Full Self-Service)
+- [ ] Integrate **Stripe Connect** (Standard accounts) so each couple connects their own Stripe account
+- [ ] New `stripeAccountId` field on `Wedding` model
+- [ ] OAuth onboarding flow: admin settings → "Connect Stripe" button → Stripe OAuth → store `stripeAccountId`
+- [ ] When creating registry items, auto-generate Stripe payment links via API (`stripe.paymentLinks.create()`) on the couple's connected account
+- [ ] Webhook handler routes charges to correct wedding via `account` field on Connect events (replaces `DEFAULT_WEDDING_SLUG` fallback)
+- [ ] Platform takes optional application fee (`application_fee_amount` on payment intents) for revenue
+
+#### Phase C: Flexible Gift Types
+- [ ] Replace hardcoded `GiftType` enum with per-wedding custom gift categories stored on `RegistryItem`
+- [ ] Remove dependency on `STRIPE_PRODUCT_*` env vars — map gift type via `RegistryItem.stripeProductId` instead
+- [ ] Webhook resolves gift type by matching `product_id` from charge → `RegistryItem` → custom category
+- [ ] Admin can define arbitrary categories (e.g., "Kitchen Fund", "Travel Fund", "Date Night Fund")
+
+#### Phase D: Payment Link Generation UX
+- [ ] "Create Payment Link" button in registry admin generates link via Stripe API
+- [ ] Configure: amount (fixed vs donor-chooses), currency, custom thank-you page redirect back to `/{slug}/registry/thank-you`
+- [ ] Preview card before publishing
+- [ ] Automatic `stripeUrl` population on `RegistryItem` — no copy-pasting from Stripe dashboard
+
+#### Migration Notes
+- Phase A is backward-compatible — existing weddings keep working with manual Stripe links
+- Phase B requires Stripe Connect application approval (platform account)
+- Existing `STRIPE_SECRET_KEY` becomes the platform key; per-wedding keys come from Connect
+- Webhook must handle both direct charges (legacy) and Connect events (new)
+
+### 4.6 Amazon Wishlist Integration
+- [ ] Import items from Amazon wishlist URL (scrape or API)
+- [ ] Display as registry items with images, prices, external buy links
+- [ ] URL metadata scraping (metascraper) for auto-fill of title, image, price
+- [ ] Guest can mark as "purchased" to prevent duplicates
+- [ ] Periodic sync to detect fulfilled items
+
+### 4.7 Spotify Playlist Integration
+- [ ] Couple links Spotify playlist to wedding (embed URL or playlist ID)
+- [ ] Embedded Spotify player on wedding site (public page)
+- [ ] Optional "Request a Song" field in RSVP flow
+- [ ] New `songRequests` table or field on guest record for song suggestions
+- [ ] Admin view of all song requests with export to playlist
+
+### 4.8 Inspiration Page
+- [ ] New `/[slug]/inspo` public page for wedding inspiration
+- [ ] Couple adds Pinterest board links, Instagram posts, or image URLs
+- [ ] Grid/masonry layout with link previews (Open Graph metadata)
+- [ ] New `WeddingContent` section type: `inspo`
+- [ ] Feature toggle: `inspiration: boolean` in `featureToggles`
+
 ---
 
 ## Phase 5: Positioning & Packaging (Months 3–4)

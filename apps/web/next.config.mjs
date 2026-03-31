@@ -12,6 +12,9 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@workspace/ui"],
+  serverActions: {
+    bodySizeLimit: "10mb",
+  },
   images: {
     remotePatterns: [
       {
