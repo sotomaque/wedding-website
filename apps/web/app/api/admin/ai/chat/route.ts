@@ -1,12 +1,14 @@
 export const maxDuration = 60;
 
+import { currentUser } from "@clerk/nextjs/server";
 import { convertToModelMessages, stepCountIs, streamText } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getModel } from "@/lib/ai/client";
-import { systemPrompt } from "@/lib/ai/prompts/chat";
+import { type ChatStats, systemPrompt } from "@/lib/ai/prompts/chat";
 import { createWeddingTools } from "@/lib/ai/tools/wedding-tools";
 import { requireAdmin } from "@/lib/auth/admin";
+import { db } from "@/lib/db";
 import { getWeddingContext } from "@/lib/db/wedding-context";
 
 const requestSchema = z.object({
@@ -21,11 +23,83 @@ const requestSchema = z.object({
     .min(1, "At least one message is required"),
 });
 
+export async function GET() {
+  try {
+    const ctx = await getWeddingContext();
+    const [auth, user] = await Promise.all([
+      requireAdmin(ctx.weddingId),
+      currentUser(),
+    ]);
+    if ("status" in auth) return auth;
+
+    const adminEmail =
+      user?.emailAddresses[0]?.emailAddress?.toLowerCase() ?? "unknown";
+
+    const messages = await db.chatMessage.findMany({
+      where: {
+        weddingId: ctx.weddingId,
+        adminEmail,
+      },
+      orderBy: { createdAt: "asc" },
+      take: 100,
+      select: {
+        id: true,
+        role: true,
+        content: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ messages });
+  } catch (error) {
+    console.error("Error in GET /api/admin/ai/chat:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE() {
+  try {
+    const ctx = await getWeddingContext();
+    const [auth, user] = await Promise.all([
+      requireAdmin(ctx.weddingId),
+      currentUser(),
+    ]);
+    if ("status" in auth) return auth;
+
+    const adminEmail =
+      user?.emailAddresses[0]?.emailAddress?.toLowerCase() ?? "unknown";
+
+    await db.chatMessage.deleteMany({
+      where: {
+        weddingId: ctx.weddingId,
+        adminEmail,
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error in DELETE /api/admin/ai/chat:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const ctx = await getWeddingContext();
-    const auth = await requireAdmin(ctx.weddingId);
+    const [auth, user] = await Promise.all([
+      requireAdmin(ctx.weddingId),
+      currentUser(),
+    ]);
     if ("status" in auth) return auth;
+
+    const adminEmail =
+      user?.emailAddresses[0]?.emailAddress?.toLowerCase() ?? "unknown";
 
     const body = await request.json();
     const parsed = requestSchema.safeParse(body);
@@ -42,7 +116,50 @@ export async function POST(request: Request) {
       parsed.data.messages as any[],
     );
     const tools = createWeddingTools(ctx.weddingId);
-    const system = systemPrompt(ctx);
+
+    // Fetch stats snapshot in parallel (cheap queries, avoids tool call for basic questions)
+    const [totalGuests, attending, declined, pending, giftAgg] =
+      await Promise.all([
+        db.guest.count({ where: { weddingId: ctx.weddingId } }),
+        db.guest.count({
+          where: { weddingId: ctx.weddingId, rsvpStatus: "yes" },
+        }),
+        db.guest.count({
+          where: { weddingId: ctx.weddingId, rsvpStatus: "no" },
+        }),
+        db.guest.count({
+          where: { weddingId: ctx.weddingId, rsvpStatus: "pending" },
+        }),
+        db.gift.aggregate({
+          where: { weddingId: ctx.weddingId },
+          _sum: { amountCents: true },
+          _count: true,
+        }),
+      ]);
+
+    const stats: ChatStats = {
+      totalGuests,
+      attending,
+      declined,
+      pending,
+      totalGifts: giftAgg._count,
+      totalGiftAmountCents: giftAgg._sum.amountCents ?? 0,
+    };
+
+    const system = systemPrompt(ctx, stats);
+
+    // Save the latest user message
+    const lastUserMsg = parsed.data.messages.findLast((m) => m.role === "user");
+    if (lastUserMsg) {
+      await db.chatMessage.create({
+        data: {
+          weddingId: ctx.weddingId,
+          adminEmail,
+          role: "user",
+          content: JSON.parse(JSON.stringify(lastUserMsg.parts)),
+        },
+      });
+    }
 
     const result = streamText({
       model: getModel(),
@@ -51,6 +168,21 @@ export async function POST(request: Request) {
       tools,
       stopWhen: stepCountIs(5),
       temperature: 0.7,
+      onFinish: async ({ response }) => {
+        // Save assistant messages from the response
+        for (const msg of response.messages) {
+          if (msg.role === "assistant") {
+            await db.chatMessage.create({
+              data: {
+                weddingId: ctx.weddingId,
+                adminEmail,
+                role: "assistant",
+                content: JSON.parse(JSON.stringify(msg.content)),
+              },
+            });
+          }
+        }
+      },
     });
 
     return result.toUIMessageStreamResponse();

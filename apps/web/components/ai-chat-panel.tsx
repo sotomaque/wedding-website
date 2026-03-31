@@ -9,14 +9,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@workspace/ui/components/sheet";
+import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import {
   AlertCircle,
   ClipboardCopy,
   MessageSquare,
+  RotateCcw,
   Sparkles,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -56,15 +58,49 @@ const EXAMPLE_QUESTIONS = [
 export function AIChatPanel() {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const historyLoadedRef = useRef(false);
 
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/admin/ai/chat" }),
     [],
   );
 
-  const { messages, sendMessage, status, stop } = useChat({ transport });
+  const { messages, sendMessage, setMessages, status, stop } = useChat({
+    transport,
+  });
 
   const isStreaming = status === "streaming";
+
+  // Load chat history when panel first opens
+  useEffect(() => {
+    if (!open || historyLoadedRef.current) return;
+    historyLoadedRef.current = true;
+
+    fetch("/api/admin/ai/chat")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.messages?.length > 0) {
+          const restored: UIMessage[] = data.messages.map(
+            (m: { id: string; role: string; content: unknown }) => ({
+              id: m.id,
+              role: m.role,
+              parts: Array.isArray(m.content)
+                ? m.content
+                : [{ type: "text", text: String(m.content) }],
+            }),
+          );
+          setMessages(restored);
+        }
+      })
+      .catch(() => {
+        // Silently fail — chat works fine without history
+      });
+  }, [open, setMessages]);
+
+  const handleClearChat = useCallback(() => {
+    setMessages([]);
+    fetch("/api/admin/ai/chat", { method: "DELETE" }).catch(() => {});
+  }, [setMessages]);
 
   function handleSubmit(message: PromptInputMessage) {
     if (!message.text.trim()) return;
@@ -105,10 +141,24 @@ export function AIChatPanel() {
         >
           {/* Header */}
           <SheetHeader className="px-6 py-4 border-b bg-linear-to-r from-purple-600/10 to-pink-500/10">
-            <SheetTitle className="flex items-center gap-2 text-lg font-semibold">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              AI Wedding Assistant
-            </SheetTitle>
+            <div className="flex items-center justify-between">
+              <SheetTitle className="flex items-center gap-2 text-lg font-semibold">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                AI Wedding Assistant
+              </SheetTitle>
+              {visibleMessages.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearChat}
+                  disabled={isStreaming}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                  New chat
+                </Button>
+              )}
+            </div>
             <SheetDescription className="text-sm text-muted-foreground">
               Ask anything about your wedding planning
             </SheetDescription>
@@ -173,7 +223,7 @@ export function AIChatPanel() {
                                   return (
                                     <p
                                       key={key}
-                                      className="whitespace-pre-wrap is-user:text-white"
+                                      className="whitespace-pre-wrap"
                                     >
                                       {part.text}
                                     </p>
@@ -184,52 +234,44 @@ export function AIChatPanel() {
                                     {part.text}
                                   </MessageResponse>
                                 );
-                              default:
-                                if ("toolName" in part && "state" in part) {
-                                  return (
-                                    <Tool key={key}>
-                                      <ToolHeader
-                                        type={part.type}
-                                        state={part.state}
-                                        toolName={
-                                          "toolName" in part
-                                            ? part.toolName
-                                            : ""
-                                        }
-                                      />
-                                      <ToolContent>
-                                        {"input" in part && part.input ? (
-                                          <ToolInput
-                                            input={
-                                              part.input as Record<
-                                                string,
-                                                unknown
-                                              >
-                                            }
-                                          />
-                                        ) : null}
-                                        {"output" in part ? (
-                                          <ToolOutput
-                                            output={
-                                              part.output as Record<
-                                                string,
-                                                unknown
-                                              >
-                                            }
-                                            errorText={
-                                              "errorText" in part
-                                                ? (part.errorText as
-                                                    | string
-                                                    | undefined)
-                                                : undefined
-                                            }
-                                          />
-                                        ) : null}
-                                      </ToolContent>
-                                    </Tool>
-                                  );
-                                }
-                                return null;
+                              default: {
+                                // Handle tool parts (type is "tool-{name}" or "dynamic-tool")
+                                if (
+                                  !("state" in part) ||
+                                  !("toolCallId" in part)
+                                )
+                                  return null;
+                                // biome-ignore lint/suspicious/noExplicitAny: UIMessage tool part types are complex union — cast to ToolPart for rendering
+                                const toolPart = part as any;
+                                const toolName =
+                                  toolPart.toolName ??
+                                  toolPart.type.replace(/^tool-/, "");
+                                return (
+                                  <Tool
+                                    key={key}
+                                    defaultOpen={
+                                      toolPart.state === "output-available"
+                                    }
+                                  >
+                                    <ToolHeader
+                                      type={toolPart.type}
+                                      state={toolPart.state}
+                                      toolName={toolName}
+                                    />
+                                    <ToolContent>
+                                      {toolPart.input ? (
+                                        <ToolInput input={toolPart.input} />
+                                      ) : null}
+                                      {toolPart.output ? (
+                                        <ToolOutput
+                                          output={toolPart.output}
+                                          errorText={toolPart.errorText}
+                                        />
+                                      ) : null}
+                                    </ToolContent>
+                                  </Tool>
+                                );
+                              }
                             }
                           })}
                         </MessageContent>

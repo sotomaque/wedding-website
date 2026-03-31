@@ -450,6 +450,7 @@ model Wedding {
 
   // Relations
   activities            Activity[]
+  chatMessages          ChatMessage[]
   documents             Document[]
   emailTemplates        EmailTemplate[]
   events                Event[]
@@ -573,6 +574,19 @@ model WeddingAdmin {
   @@index([clerkUserId], map: "idx_wedding_admins_clerk_user_id")
   @@index([email], map: "idx_wedding_admins_email")
   @@map("wedding_admins")
+}
+
+model ChatMessage {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId String   @map("wedding_id") @db.Uuid
+  adminEmail String  @map("admin_email")
+  role      String   // "user" | "assistant"
+  content   Json     @db.JsonB // stores the full UIMessage parts array
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  wedding   Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+
+  @@index([weddingId, adminEmail, createdAt], map: "idx_chat_messages_wedding_admin")
+  @@map("chat_messages")
 }
 
 enum ActivityInterestStatus {

@@ -29,7 +29,7 @@ Built with Next.js 16 (App Router), React 19, TypeScript, Prisma, and Supabase i
 1. **`/`** — Landing page with feature showcase and CTAs
 2. **`/sign-up`** — Clerk sign-up → redirects to `/dashboard`
 3. **`/dashboard`** — Lists user's weddings, or redirects to onboarding
-4. **`/onboarding`** — 4-step wizard: names → slug → date/venue → create
+4. **`/onboarding`** — 6-step wizard: names → slug → date/venue → theme → photos → create (split-screen with live preview)
 5. **`/{slug}`** — Public wedding site (story, details, schedule, RSVP)
 6. **`/{slug}/admin`** — Admin dashboard (guests, events, seating, photos, etc.)
 7. **`/{slug}/admin/settings`** — Wedding config (general, notifications, branding, theme, features, admins)
@@ -72,7 +72,8 @@ apps/web/
 │   ├── sign-up/                 # Clerk sign-up
 │   └── api/                     # API routes
 ├── components/                  # Shared React components
-├── lib/                         # Utilities, DB, auth, email, validations
+├── lib/                         # Utilities, DB, auth, email, AI, validations
+│   └── ai/                      # AI infrastructure (client, tools, prompts)
 ├── e2e/                         # Playwright E2E tests
 └── __tests__/                   # Bun unit tests
 packages/db/                     # Prisma schema & client
@@ -109,10 +110,11 @@ The local DB runs on `localhost:54322` with seed data including a default weddin
 ### Platform
 - Landing page with feature showcase
 - Clerk auth (sign-up / sign-in)
-- Onboarding wizard (4-step wedding creation)
+- Onboarding wizard (6-step with split-screen live preview: names → URL → date/venue → theme → photos → create)
 - Dashboard (my weddings list)
 - Platform admin panel (superadmin — manage all weddings)
 - 5 theme presets (Warm Gold, Sage Garden, Dusty Rose, Navy Classic, Terracotta)
+- AI-powered features (see AI Features section below)
 
 ### Per-Wedding Public Site
 - Dynamic content from DB (hero, story, details, schedule, RSVP)
@@ -138,6 +140,18 @@ The local DB runs on `localhost:54322` with seed data including a default weddin
 - Guest photo moderation + ZIP download
 - Settings: general, notifications, branding, theme, features, co-admin management
 - Content editor with Tiptap WYSIWYG for story
+
+### AI Features
+
+Shared AI infrastructure in `lib/ai/` powers all features via OpenAI (gpt-4o). Every AI route follows: `getWeddingContext() → requireAdmin() → build prompt → call shared client → respond`.
+
+| Feature | Type | Description |
+|---------|------|-------------|
+| **AI Planning Assistant (Chat)** | Streaming + tools | Sidebar chat with live DB access — query guests, RSVP stats, dietary info, gifts, events. Can resend invites and update RSVPs. Uses AI SDK `useChat` with tool calling. |
+| **AI Seating Chart** | Structured output | Natural language constraints ("keep divorced parents apart") → optimized table assignments |
+| **AI Todo Generator** | Structured output | Date-aware wedding checklist with custom instructions, filters past-due items |
+| **AI Story Writer** | Streaming | Generates "Our Story" HTML with tone selection (romantic/humorous/formal/casual) → streams into Tiptap editor |
+| **AI Email Drafts** | Structured output | Generates subject + HTML body for email templates, respects `{{{VARIABLE}}}` placeholders |
 
 ---
 
@@ -257,7 +271,7 @@ Validated at build time via `@t3-oss/env-nextjs` in `apps/web/env.ts`.
 | `RESEND_API_KEY` | No | Email sending |
 | `STRIPE_SECRET_KEY` | No | Payment processing |
 | `STRIPE_WEBHOOK_SECRET` | No | Webhook verification |
-| `OPENAI_API_KEY` | No | AI seating chart generation |
+| `OPENAI_API_KEY` | No | AI features (chat, seating, todos, story, email drafts) |
 | `UPLOADTHING_TOKEN` | No | File uploads |
 | `DEFAULT_WEDDING_SLUG` | No | Fallback for legacy URL redirects (default: `helen-and-enrique`) |
 | `RSVP_EMAIL` | No | Fallback notification email (per-wedding config preferred) |
@@ -330,7 +344,7 @@ Supabase migrations in `supabase/migrations/` (numbered `000_` through `044_`). 
 ### Unit tests
 
 ```bash
-bun run test              # run all (~428 tests)
+bun run test              # run all (~557 tests)
 ```
 
 Tests in `apps/web/__tests__/` using `bun:test`. Includes multi-tenancy data isolation tests.

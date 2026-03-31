@@ -1,23 +1,24 @@
 # The Ceremony — Product & Acquisition Roadmap
 
-> Last updated: 2026-03-29
+> Last updated: 2026-03-31
 
 ---
 
 ## Current State
 
-Multi-tenant wedding platform at **theceremony.app** with: Clerk auth, Stripe payments, shared AI infrastructure powering 4 features (seating, todos, story writer, email drafts), per-wedding email templates in 2 languages (DB-stored), i18n with next-intl (English + Spanish), address autocomplete (Geoapify), Vercel cron jobs (RSVP reminders, admin summaries, platform summary), welcome emails on signup, platform admin notifications, full E2E test coverage, and a security-hardened API layer (weddingId-scoped queries on all routes).
+Multi-tenant wedding platform at **theceremony.app** with: Clerk auth, Stripe payments, shared AI infrastructure powering 5 features (chat assistant, seating, todos, story writer, email drafts), per-wedding email templates in 2 languages (DB-stored), i18n with next-intl (English + Spanish), address autocomplete (Geoapify), Vercel cron jobs (RSVP reminders, admin summaries, platform summary), welcome emails on signup, platform admin notifications, full E2E test coverage, and a security-hardened API layer (weddingId-scoped queries on all routes).
 
 | Asset | Status |
 |-------|--------|
 | Domain | `theceremony.app` (production), `helen-and-enrique.com` redirects via middleware |
 | Multi-tenancy | Full (weddingId-scoped queries, RLS, cross-tenant security audit complete) |
-| AI features | Shared infrastructure + 4 features: seating charts, todo generator, story writer, email drafts |
+| AI features | Shared infrastructure + 5 features: **chat assistant (10 tools)**, seating charts, todo generator, story writer, email drafts |
+| Onboarding | 6-step wizard with split-screen live preview (names → URL → date/venue → theme → photos → create) |
 | Payments | Stripe (registry + gifting) |
 | Email system | Per-wedding DB templates, multi-language (EN/ES), toggleable, welcome emails, 3 cron jobs |
 | i18n | English + Spanish via next-intl, per-wedding default language, per-guest language preference |
 | Vendor management | ServiceLinks + vendors page |
-| Tests | 533 unit + Playwright E2E (parallel read-only, serial mutating) |
+| Tests | 557 unit + Playwright E2E (parallel read-only, serial mutating) |
 | Platform admin | Enhanced stats, growth table, revenue tracking, admin notifications, weekly summary cron |
 | Mobile | Web-only (Next.js) — gap vs Zola/Joy native apps |
 
@@ -94,6 +95,7 @@ lib/ai/
 
 | Feature | Status | Route | Notes |
 |---------|--------|-------|-------|
+| **AI Planning Assistant (Chat)** | ✅ | `POST /api/admin/ai/chat` | Persistent sidebar chat with 10 tools (lookupGuest, getRsvpStats, getGuestsByStatus, getDietarySummary, getEventInfo, getGiftSummary, getUninvitedGuests, getWeddingOverview, resendInvite, updateGuestRsvp). AI Elements UI with tool call rendering, streaming, stop button. |
 | **AI Seating Chart** | ✅ | `POST /api/admin/seating-charts/[id]/generate` | Refactored to shared infra. Supports custom prompt for natural language constraints ("keep divorced parents apart", "group college friends"). |
 | **AI Todo Generator** | ✅ | `POST /api/admin/ai/todos/generate` | "AI Generate" button + "Custom Prompt" popover on todos page. Date-aware checklist generation, filters past-due items, avoids duplicating existing todos. |
 | **AI Story Writer** | ✅ | `POST /api/admin/ai/story/generate` | "AI Write" button in Story tab. Streaming HTML output into Tiptap editor. Tone selection (romantic/humorous/formal/casual). |
@@ -112,9 +114,40 @@ lib/ai/
 
 | Feature | Effort | Value | Notes |
 |---------|--------|-------|-------|
-| **AI Planning Assistant (Chat)** | High | Very High | Persistent sidebar chat with live DB context via OpenAI function calling. Use `createTextStream()` with `tools` parameter. The Knot's ChatGPT app — but with real wedding data. |
 | **AI Timeline Generator** | High | High | Minute-by-minute wedding day timeline → PDF export. Use `generateStructured()` with timeline schema + react-pdf for output. |
 | **AI Style Advisor** | High | High | Upload inspiration images → GPT-4 Vision recommends theme preset + custom color overrides. |
+
+### AI Chat — Next-Level Tools & Context
+
+> The AI chat is shipped with read-only tools + resend/update actions. These improvements unlock full wedding management via natural language (e.g., "invite my friend Cody from highschool as an A-lister and send him the RSVP email").
+
+#### Phase A: Write Tools (Immediate Impact, No Infra Changes)
+- [ ] `createGuest` tool — Create a guest with name, email, side, list, gender. Model asks follow-ups for missing required fields.
+- [ ] `updateGuest` tool — Update any guest field (email, dietary restrictions, list tier, side, etc.)
+- [ ] `deleteGuest` tool — Remove a guest (with confirmation)
+- [ ] `createEvent` tool — Create a wedding event with name, date, time, location
+- [ ] `bulkInvite` tool — Send invites to multiple guests by list/status filter
+- [ ] `addTodo` tool — Create a wedding todo item with optional due date and category
+
+#### Phase B: Richer System Prompt (Zero Infra, High Impact)
+- [ ] Inject `person1Name`/`person2Name` with their roles (bride/groom) into system prompt so model knows "my friend" = groom's side
+- [ ] Include wedding feature toggles so model doesn't suggest disabled features
+- [ ] Include RSVP deadline and key dates for time-aware suggestions
+- [ ] Include summary stats snapshot (guest count, RSVP breakdown) so model doesn't need a tool call for basic questions
+
+#### Phase C: Conversation Memory (Small Schema Change)
+- [ ] New `ChatMessage` model — store conversation history per wedding admin
+- [ ] Load recent messages into context on chat open (last N messages or last 24h)
+- [ ] Model can reference prior decisions ("earlier you said to put Cody at table 3")
+- [ ] Clear/archive conversations from admin UI
+
+#### Phase D: RAG & Vector Search (Future, When Scale Demands It)
+> Not recommended until guest lists exceed ~500 or documents need semantic search. Current keyword/Prisma queries are sufficient at wedding scale.
+- [ ] Enable `pgvector` extension in Supabase
+- [ ] Embed guest profiles (name + notes + dietary + side) for semantic search ("find my college friends")
+- [ ] Embed uploaded document contents for retrieval ("what does the venue contract say about cancellation")
+- [ ] `semanticGuestSearch` tool using cosine similarity
+- [ ] `searchDocuments` tool with top-K retrieval injected into context
 
 ### Adding a New AI Feature — Guide
 
@@ -310,6 +343,8 @@ lib/ai/
 | Admin notification on signup | 2026-03 | ADMIN_EMAILS notified when new wedding created |
 | Welcome email | 2026-03 | New `welcome` template type (EN/ES), sent on wedding creation |
 | Platform summary cron | 2026-03 | Weekly platform-wide stats email to ADMIN_EMAILS (Monday 7am UTC) |
+| AI Planning Assistant (Chat) | 2026-03 | Sidebar chat with 10 tools (guest lookup, RSVP stats, dietary, events, gifts, resend invite, update RSVP). AI Elements UI, streaming, tool call rendering. |
+| Onboarding v2 | 2026-03 | 6-step split-screen wizard with live hero preview (theme picker + photo upload steps). UploadThing server-side upload via UTApi. |
 
 ---
 

@@ -17,37 +17,62 @@ export interface WeddingContext {
   rsvpDeadline: string | null;
   timezone: string;
   status: string;
+  person1Name: string | null;
+  person2Name: string | null;
+  featureToggles: Record<string, boolean>;
 }
 
 /**
  * Look up a wedding by slug. Cached per request via React.cache().
  */
+const WEDDING_SELECT = {
+  id: true,
+  slug: true,
+  coupleName: true,
+  weddingDate: true,
+  rsvpDeadline: true,
+  timezone: true,
+  status: true,
+  person1Name: true,
+  person2Name: true,
+  featureToggles: true,
+} as const;
+
+function toContext(row: {
+  id: string;
+  slug: string;
+  coupleName: string;
+  weddingDate: Date;
+  rsvpDeadline: string | null;
+  timezone: string;
+  status: string;
+  person1Name: string | null;
+  person2Name: string | null;
+  featureToggles: unknown;
+}): WeddingContext {
+  return {
+    weddingId: row.id,
+    slug: row.slug,
+    coupleName: row.coupleName,
+    weddingDate: row.weddingDate,
+    rsvpDeadline: row.rsvpDeadline,
+    timezone: row.timezone,
+    status: row.status,
+    person1Name: row.person1Name,
+    person2Name: row.person2Name,
+    featureToggles: (row.featureToggles as Record<string, boolean>) ?? {},
+  };
+}
+
 const getWeddingBySlug = cache(
   async (slug: string): Promise<WeddingContext | null> => {
     const row = await db.wedding.findUnique({
       where: { slug },
-      select: {
-        id: true,
-        slug: true,
-        coupleName: true,
-        weddingDate: true,
-        rsvpDeadline: true,
-        timezone: true,
-        status: true,
-      },
+      select: WEDDING_SELECT,
     });
 
     if (!row) return null;
-
-    return {
-      weddingId: row.id,
-      slug: row.slug,
-      coupleName: row.coupleName,
-      weddingDate: row.weddingDate,
-      rsvpDeadline: row.rsvpDeadline,
-      timezone: row.timezone,
-      status: row.status,
-    };
+    return toContext(row);
   },
 );
 
@@ -58,28 +83,11 @@ const getWeddingById = cache(
   async (id: string): Promise<WeddingContext | null> => {
     const row = await db.wedding.findUnique({
       where: { id },
-      select: {
-        id: true,
-        slug: true,
-        coupleName: true,
-        weddingDate: true,
-        rsvpDeadline: true,
-        timezone: true,
-        status: true,
-      },
+      select: WEDDING_SELECT,
     });
 
     if (!row) return null;
-
-    return {
-      weddingId: row.id,
-      slug: row.slug,
-      coupleName: row.coupleName,
-      weddingDate: row.weddingDate,
-      rsvpDeadline: row.rsvpDeadline,
-      timezone: row.timezone,
-      status: row.status,
-    };
+    return toContext(row);
   },
 );
 

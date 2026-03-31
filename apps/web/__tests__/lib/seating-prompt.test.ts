@@ -15,6 +15,9 @@ const mockWeddingCtx: WeddingContext = {
   rsvpDeadline: "2026-05-01",
   timezone: "America/New_York",
   status: "active",
+  person1Name: "Alice",
+  person2Name: "Bob",
+  featureToggles: {},
 };
 
 describe("formatGuestForSeating", () => {
