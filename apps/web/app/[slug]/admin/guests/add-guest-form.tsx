@@ -24,13 +24,14 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { type AddGuestFormData, addGuestSchema } from "@/lib/validations/guest";
-import type { PartyOption } from "./actions";
+import type { EventOption, PartyOption } from "./actions";
 
 interface AddGuestFormProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
   parties: PartyOption[];
+  events: EventOption[];
 }
 
 export function AddGuestForm({
@@ -38,6 +39,7 @@ export function AddGuestForm({
   onClose,
   onSuccess,
   parties,
+  events,
 }: AddGuestFormProps) {
   const {
     register,
@@ -70,6 +72,7 @@ export function AddGuestForm({
       gender: "",
       bridalPartyRole: "",
       partyId: "",
+      eventIds: events.filter((e) => e.isDefault).map((e) => e.id),
     },
   });
 
@@ -80,6 +83,12 @@ export function AddGuestForm({
   const under21 = watch("under21");
   const threeAndUnder = watch("threeAndUnder");
   const gender = watch("gender");
+  const eventIds = watch("eventIds") ?? [];
+  const allEventsSelected =
+    events.length > 0 && eventIds.length === events.length;
+  const someEventsSelected =
+    eventIds.length > 0 && eventIds.length < events.length;
+  const noEventsSelected = eventIds.length === 0;
 
   async function onSubmit(data: AddGuestFormData) {
     try {
@@ -503,6 +512,65 @@ export function AddGuestForm({
               </div>
             </div>
 
+            {/* Event Invitations */}
+            {events.length > 0 && (
+              <div className="border-t pt-4 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium">Event Invitations</p>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => {
+                      if (allEventsSelected) {
+                        setValue("eventIds", []);
+                      } else {
+                        setValue(
+                          "eventIds",
+                          events.map((e) => e.id),
+                        );
+                      }
+                    }}
+                  >
+                    {allEventsSelected ? "Deselect all" : "Select all"}
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {events.map((event) => (
+                    <div
+                      key={event.id}
+                      className="flex items-center justify-between"
+                    >
+                      <label htmlFor={`event-${event.id}`} className="text-sm">
+                        {event.name}
+                      </label>
+                      <Switch
+                        id={`event-${event.id}`}
+                        checked={eventIds.includes(event.id)}
+                        onCheckedChange={(checked) => {
+                          const current = eventIds;
+                          if (checked) {
+                            setValue("eventIds", [...current, event.id]);
+                          } else {
+                            setValue(
+                              "eventIds",
+                              current.filter((id) => id !== event.id),
+                            );
+                          }
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {allEventsSelected &&
+                    "Single wedding invitation email will be sent"}
+                  {someEventsSelected &&
+                    "Individual event invitation emails will be sent"}
+                  {noEventsSelected && "No invitation emails will be sent"}
+                </p>
+              </div>
+            )}
+
             {/* Send Email Option */}
             <div className="border-t pt-4 mt-2">
               <div className="flex items-center justify-between">
@@ -513,12 +581,17 @@ export function AddGuestForm({
                   id="sendEmail"
                   checked={watch("sendEmail")}
                   onCheckedChange={(checked) => setValue("sendEmail", checked)}
-                  disabled={!email || email.trim() === ""}
+                  disabled={!email || email.trim() === "" || noEventsSelected}
                 />
               </div>
               {(!email || email.trim() === "") && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Email address required to send invitation
+                </p>
+              )}
+              {email && email.trim() !== "" && noEventsSelected && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select at least one event to send invitation
                 </p>
               )}
             </div>

@@ -65,12 +65,13 @@ import { VisualEditor } from "../components/visual-editor";
 
 interface ChartEditorProps {
   chart: SeatingChartWithTables;
-  filter: GuestFilter;
+  filter: GuestFilter & { eventId?: string };
+  events: Array<{ id: string; name: string }>;
 }
 
 type ViewMode = "visual" | "table";
 
-export function ChartEditor({ chart, filter }: ChartEditorProps) {
+export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const slug = useWeddingSlug();
@@ -90,6 +91,18 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("list", list);
     params.set("rsvp", rsvp);
+    startTransition(() => {
+      router.push(`/${slug}/admin/seating/${chart.id}?${params.toString()}`);
+    });
+  };
+
+  const handleEventFilterChange = (eventId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (eventId === "all") {
+      params.delete("event");
+    } else {
+      params.set("event", eventId);
+    }
     startTransition(() => {
       router.push(`/${slug}/admin/seating/${chart.id}?${params.toString()}`);
     });
@@ -479,6 +492,25 @@ export function ChartEditor({ chart, filter }: ChartEditorProps) {
                 ))}
               </SelectContent>
             </Select>
+            {events.length > 0 && (
+              <Select
+                value={filter.eventId ?? "all"}
+                onValueChange={handleEventFilterChange}
+                disabled={isPending}
+              >
+                <SelectTrigger className="h-7 w-[150px] border-0 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Events</SelectItem>
+                  {events.map((event) => (
+                    <SelectItem key={event.id} value={event.id}>
+                      {event.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* View Toggle */}

@@ -7,6 +7,7 @@ import { getEmailFromAddress } from "@/lib/email/helpers";
 import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
 import { weddingUrl } from "@/lib/url";
+import { formatEventDate, formatEventTime } from "@/lib/utils/event-format";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -104,37 +105,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const settings = await getWeddingSettings();
-    // Format event time if available
-    let eventTime: string | null = null;
-    if (event.startTime) {
-      const startTimeStr =
-        event.startTime instanceof Date
-          ? event.startTime.toISOString()
-          : String(event.startTime);
-      const [hours, minutes] = startTimeStr.split(":");
-      const hour = Number.parseInt(hours || "0", 10);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const hour12 = hour % 12 || 12;
-      eventTime = `${hour12}:${minutes} ${ampm}`;
-      if (event.endTime) {
-        const endTimeStr =
-          event.endTime instanceof Date
-            ? event.endTime.toISOString()
-            : String(event.endTime);
-        const [endHours, endMinutes] = endTimeStr.split(":");
-        const endHour = Number.parseInt(endHours || "0", 10);
-        const endAmpm = endHour >= 12 ? "PM" : "AM";
-        const endHour12 = endHour % 12 || 12;
-        eventTime += ` - ${endHour12}:${endMinutes} ${endAmpm}`;
-      }
-    }
-
-    // Format event date string for email template
-    const eventDateStr = event.eventDate
-      ? event.eventDate instanceof Date
-        ? event.eventDate.toISOString().split("T")[0]
-        : String(event.eventDate)
-      : null;
+    const eventTime = formatEventTime(event.startTime, event.endTime);
+    const eventDateStr = formatEventDate(event.eventDate);
 
     // Send emails to all guests
     let sentCount = 0;

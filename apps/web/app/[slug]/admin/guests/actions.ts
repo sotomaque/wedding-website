@@ -5,7 +5,7 @@ import { getWeddingId } from "@/lib/db/wedding-context";
 
 interface GetGuestsParams {
   side?: "bride" | "groom";
-  rsvpStatus?: "pending" | "yes" | "no";
+  rsvpStatus?: string;
   list?: "a" | "b" | "c";
   family?: "true" | "false";
   isPlusOne?: "true" | "false";
@@ -27,6 +27,7 @@ interface GetGuestsParams {
     | "numberOfResends"
     | "createdAt";
   sortOrder?: "asc" | "desc";
+  events?: string;
 }
 
 const sortByMap: Record<string, string> = {
@@ -51,7 +52,12 @@ export async function getGuests(params: GetGuestsParams = {}) {
     }
 
     if (params.rsvpStatus) {
-      where.rsvpStatus = params.rsvpStatus;
+      const statuses = params.rsvpStatus.split(",").filter(Boolean);
+      if (statuses.length === 1) {
+        where.rsvpStatus = statuses[0];
+      } else if (statuses.length > 1) {
+        where.rsvpStatus = { in: statuses };
+      }
     }
 
     if (params.list) {
@@ -89,6 +95,21 @@ export async function getGuests(params: GetGuestsParams = {}) {
         where.bridalPartyRole = { not: null };
       } else {
         where.bridalPartyRole = params.bridalParty;
+      }
+    }
+
+    // Event invitation filter — guests who have a GuestEventInvite for ANY of the selected events
+    if (params.events) {
+      const eventIds = params.events.split(",").filter(Boolean);
+      if (eventIds.length === 1) {
+        where.guestEventInvites = {
+          some: { eventId: eventIds[0] },
+        };
+      } else if (eventIds.length > 1) {
+        // AND logic: guest must be invited to ALL selected events
+        where.AND = eventIds.map((id: string) => ({
+          guestEventInvites: { some: { eventId: id } },
+        }));
       }
     }
 
@@ -134,6 +155,51 @@ export async function getGuestWithPlusOne(guestId: string) {
   } catch (error) {
     console.error("Error fetching guest with plus-one:", error);
     return { guest: null, plusOne: null };
+  }
+}
+
+export interface EventOption {
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
+/**
+ * Get all events for the wedding (for event invite toggles in Add Guest form)
+ */
+export async function getEventsForSelect(): Promise<EventOption[]> {
+  try {
+    const weddingId = await getWeddingId();
+    const events = await db.event.findMany({
+      where: { weddingId },
+      orderBy: { displayOrder: "asc" },
+      select: { id: true, name: true, isDefault: true },
+    });
+    return events.map((e) => ({
+      id: e.id,
+      name: e.name,
+      isDefault: e.isDefault ?? false,
+    }));
+  } catch (error) {
+    console.error("Error fetching events for select:", error);
+    return [];
+  }
+}
+
+/**
+ * Get event IDs a guest is currently invited to
+ */
+export async function getGuestEventIds(guestId: string): Promise<string[]> {
+  try {
+    const weddingId = await getWeddingId();
+    const invites = await db.guestEventInvite.findMany({
+      where: { guestId, weddingId },
+      select: { eventId: true },
+    });
+    return invites.map((i) => i.eventId);
+  } catch (error) {
+    console.error("Error fetching guest event IDs:", error);
+    return [];
   }
 }
 

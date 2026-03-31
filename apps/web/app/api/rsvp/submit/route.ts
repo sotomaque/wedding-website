@@ -41,6 +41,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Sync GuestEventInvite statuses so per-event tracking stays in sync
+    const partyGuests = await db.guest.findMany({
+      where: { inviteCode: normalizedCode, weddingId },
+      select: { id: true },
+    });
+    if (partyGuests.length > 0) {
+      await db.guestEventInvite.updateMany({
+        where: {
+          guestId: { in: partyGuests.map((g) => g.id) },
+          weddingId,
+        },
+        data: { rsvpStatus: attending ? "yes" : "no" },
+      });
+    }
+
     // Send notification email to admin
     const settings = await getWeddingSettings();
     const recipients = getNotificationRecipients(settings);

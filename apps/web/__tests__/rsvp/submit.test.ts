@@ -121,6 +121,7 @@ mock.module("@/lib/db", () => ({
     },
     guestEventInvite: {
       createMany: mock(() => Promise.resolve({ count: 0 })),
+      updateMany: mock(() => Promise.resolve({ count: 0 })),
     },
   },
 }));

@@ -121,6 +121,7 @@ export async function PATCH(
       departureDate,
       departureTransport,
       accommodationNotes,
+      eventIds,
     } = body;
 
     // Fetch the current guest to check if they have a plus one (scoped to wedding)
@@ -305,6 +306,38 @@ export async function PATCH(
     // Clean up the source party if it's now empty (guest was moved to a different party)
     if (sourcePartyId && sourcePartyId !== newPartyId) {
       await deleteEmptyParty(sourcePartyId, weddingId);
+    }
+
+    // Sync event invitations if eventIds provided
+    if (Array.isArray(eventIds)) {
+      const guestIdsToSync = [id];
+      // Also sync plus-one's event invites
+      const plusOneGuest = await db.guest.findFirst({
+        where: { primaryGuestId: id, isPlusOne: true, weddingId },
+        select: { id: true },
+      });
+      if (plusOneGuest) guestIdsToSync.push(plusOneGuest.id);
+
+      for (const gId of guestIdsToSync) {
+        // Remove invites for events no longer selected
+        await db.guestEventInvite.deleteMany({
+          where: {
+            guestId: gId,
+            weddingId,
+            eventId: { notIn: eventIds },
+          },
+        });
+
+        // Add invites for newly selected events
+        await db.guestEventInvite.createMany({
+          data: eventIds.map((eId: string) => ({
+            guestId: gId,
+            eventId: eId,
+            weddingId,
+          })),
+          skipDuplicates: true,
+        });
+      }
     }
 
     return NextResponse.json({ guest: updatedGuest });

@@ -10,6 +10,7 @@ import {
 import { renderEmailTemplate } from "@/lib/email/render-template";
 import { sendEmail } from "@/lib/email/resend-client";
 import { weddingUrl } from "@/lib/url";
+import { formatEventDate, formatEventTime } from "@/lib/utils/event-format";
 import { generateInviteCode } from "@/lib/utils/invite-code";
 
 /**
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
       gender,
       bridalPartyRole,
       partyId,
+      eventIds,
     } = body;
 
     if (!firstName) {
@@ -216,88 +218,174 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Create event invites for selected events
+    const selectedEventIds = Array.isArray(eventIds) ? eventIds : [];
+    if (selectedEventIds.length > 0) {
+      const guestIdsToInvite = [guest.id];
+      if (plusOneGuest) guestIdsToInvite.push(plusOneGuest.id);
+
+      await db.guestEventInvite.createMany({
+        data: guestIdsToInvite.flatMap((gId) =>
+          selectedEventIds.map((eId: string) => ({
+            guestId: gId,
+            eventId: eId,
+            weddingId,
+          })),
+        ),
+        skipDuplicates: true,
+      });
+    }
+
     // Send email if requested
     const settings = await getWeddingSettings();
     const notificationRecipients = getNotificationRecipients(settings);
-    if (shouldSendEmail && notificationRecipients.length > 0) {
-      const rsvpUrl = `${weddingUrl(settings.slug, "/rsvp")}?code=${inviteCode}`;
-      const appUrl = weddingUrl(settings.slug);
+    if (shouldSendEmail && notificationRecipients.length > 0 && email) {
+      const guestName = `${firstName} ${lastName || ""}`.trim();
+      const language = guest.preferredLanguage ?? settings.defaultLanguage;
 
-      // Fetch wedding date and venue from the Wedding Ceremony event
-      let weddingDate = "";
-      let venueName = "";
-      let venueAddress = "";
-      try {
-        const ceremonyEvent = await db.event.findFirst({
-          where: { name: "Wedding Ceremony", weddingId },
-          select: {
-            eventDate: true,
-            locationName: true,
-            locationAddress: true,
-          },
-        });
+      // Fetch all events to determine if all are selected
+      const allEvents = await db.event.findMany({
+        where: { weddingId },
+        select: { id: true },
+      });
+      const isAllEvents =
+        allEvents.length > 0 && selectedEventIds.length >= allEvents.length;
 
-        venueName = ceremonyEvent?.locationName ?? "";
-        venueAddress = ceremonyEvent?.locationAddress ?? "";
+      if (isAllEvents) {
+        // All events selected → single wedding invitation (existing behavior)
+        const rsvpUrl = `${weddingUrl(settings.slug, "/rsvp")}?code=${inviteCode}`;
 
-        if (ceremonyEvent?.eventDate) {
-          const dateValue = ceremonyEvent.eventDate;
-          const dateObj =
-            dateValue instanceof Date
-              ? dateValue
-              : new Date(`${dateValue}T00:00:00`);
+        let weddingDate = "";
+        let venueName = "";
+        let venueAddress = "";
+        try {
+          const ceremonyEvent = await db.event.findFirst({
+            where: { name: "Wedding Ceremony", weddingId },
+            select: {
+              eventDate: true,
+              locationName: true,
+              locationAddress: true,
+            },
+          });
+          venueName = ceremonyEvent?.locationName ?? "";
+          venueAddress = ceremonyEvent?.locationAddress ?? "";
+          if (ceremonyEvent?.eventDate) {
+            const dateObj =
+              ceremonyEvent.eventDate instanceof Date
+                ? ceremonyEvent.eventDate
+                : new Date(`${ceremonyEvent.eventDate}T00:00:00`);
+            if (!Number.isNaN(dateObj.getTime())) {
+              weddingDate = dateObj.toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              });
+            }
+          }
+        } catch (dateError) {
+          console.error("Error fetching wedding date:", dateError);
+        }
 
-          if (!Number.isNaN(dateObj.getTime())) {
-            weddingDate = dateObj.toLocaleDateString("en-US", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
+        try {
+          const rendered = await renderEmailTemplate(
+            weddingId,
+            "wedding_invitation",
+            {
+              COUPLE_NAMES: settings.coupleName,
+              GUEST_NAME: guestName,
+              INVITE_CODE: inviteCode,
+              RSVP_URL: rsvpUrl,
+              WEDDING_DATE: weddingDate,
+              VENUE_NAME: venueName,
+              VENUE_ADDRESS: venueAddress,
+              PERSONAL_MESSAGE: "",
+            },
+            language,
+          );
+
+          if (rendered) {
+            await sendEmail({
+              from: getEmailFromAddress(settings, "Wedding Invitation"),
+              to: email,
+              subject: rendered.subject,
+              html: rendered.html,
+            });
+            await db.guest.update({
+              where: { id: guest.id },
+              data: { numberOfResends: 1 },
             });
           }
+        } catch (emailError) {
+          console.error("Error sending wedding invitation email:", emailError);
         }
-      } catch (dateError) {
-        console.error("Error fetching wedding date:", dateError);
-      }
+      } else if (selectedEventIds.length > 0) {
+        // Partial events → send individual event invitation per event
+        const selectedEvents = await db.event.findMany({
+          where: { id: { in: selectedEventIds }, weddingId },
+        });
 
-      try {
-        const rendered = await renderEmailTemplate(
-          weddingId,
-          "wedding_invitation",
-          {
-            COUPLE_NAMES: settings.coupleName,
-            GUEST_NAME: `${firstName} ${lastName || ""}`.trim(),
-            INVITE_CODE: inviteCode,
-            RSVP_URL: rsvpUrl,
-            WEDDING_DATE: weddingDate,
-            VENUE_NAME: venueName,
-            VENUE_ADDRESS: venueAddress,
-            PERSONAL_MESSAGE: "",
-          },
-          guest.preferredLanguage ?? settings.defaultLanguage,
-        );
+        for (const event of selectedEvents) {
+          try {
+            const rsvpUrl = `${weddingUrl(settings.slug, "/events/rsvp")}?code=${inviteCode}&event=${event.id}`;
+            const rendered = await renderEmailTemplate(
+              weddingId,
+              "event_invitation",
+              {
+                GUEST_NAME: guestName,
+                COUPLE_NAMES: settings.coupleName,
+                EVENT_NAME: event.name,
+                EVENT_DESCRIPTION: event.description || "",
+                EVENT_DATE: formatEventDate(event.eventDate),
+                EVENT_TIME: formatEventTime(event.startTime, event.endTime),
+                LOCATION_NAME: event.locationName || "",
+                LOCATION_ADDRESS: event.locationAddress || "",
+                INVITE_CODE: inviteCode,
+                RSVP_URL: rsvpUrl,
+                BACKGROUND_IMAGE_URL: "",
+              },
+              language,
+            );
 
-        if (!rendered) {
-          console.log(
-            "Wedding invitation template inactive, skipping email send",
-          );
-        } else {
-          await sendEmail({
-            from: getEmailFromAddress(settings, "Wedding Invitation"),
-            to: email,
-            subject: rendered.subject,
-            html: rendered.html,
-          });
+            if (rendered) {
+              await sendEmail({
+                from: getEmailFromAddress(settings),
+                to: email,
+                subject: rendered.subject,
+                html: rendered.html,
+              });
 
-          // Update numberOfResends to 1 after successful email send
-          await db.guest.update({
-            where: { id: guest.id },
-            data: { numberOfResends: 1 },
-          });
+              // Mark the GuestEventInvite as emailed
+              const invite = await db.guestEventInvite.findFirst({
+                where: {
+                  guestId: guest.id,
+                  eventId: event.id,
+                  weddingId,
+                },
+              });
+              if (invite) {
+                await db.guestEventInvite.update({
+                  where: { id: invite.id },
+                  data: {
+                    emailSent: true,
+                    emailSentAt: new Date().toISOString(),
+                    emailResendCount: 1,
+                  },
+                });
+              }
+            }
+          } catch (emailError) {
+            console.error(
+              `Error sending event invitation for ${event.name}:`,
+              emailError,
+            );
+          }
         }
-      } catch (emailError) {
-        console.error("Error sending email:", emailError);
-        // Don't fail the request if email fails
+
+        await db.guest.update({
+          where: { id: guest.id },
+          data: { numberOfResends: 1 },
+        });
       }
     }
 

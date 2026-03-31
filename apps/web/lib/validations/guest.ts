@@ -99,6 +99,7 @@ export const addGuestSchema = z
       .or(z.literal("")),
     preferredLanguage: z.enum(["en", "es"]).optional().or(z.literal("")),
     partyId: z.string().optional().or(z.literal("")),
+    eventIds: z.array(z.string()).optional(),
   })
   .refine(
     (data) => {

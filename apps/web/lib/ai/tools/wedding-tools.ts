@@ -15,20 +15,51 @@ export function createWeddingTools(weddingId: string) {
   return {
     lookupGuest: tool({
       description:
-        "Find guests by name (partial match), email, or invite code. Use this to look up specific guests.",
+        "Find guests by name (partial match), email, or invite code. Supports full names like 'Jacob Foster' or partial matches like 'Jacob'.",
       inputSchema: z.object({
         query: z.string().describe("Name, email, or invite code to search for"),
       }),
       execute: async ({ query }) => {
+        const words = query.trim().split(/\s+/);
+
+        // Build OR conditions: each word matches firstName or lastName,
+        // plus always try the full query against email and invite code
+        const conditions: Record<string, unknown>[] = [];
+
+        // Full-name match: if multiple words, try first word = firstName AND last word = lastName
+        if (words.length >= 2) {
+          conditions.push({
+            firstName: {
+              contains: words[0],
+              mode: "insensitive",
+            },
+            lastName: {
+              contains: words[words.length - 1],
+              mode: "insensitive",
+            },
+          });
+        }
+
+        // Individual word matches against first or last name
+        for (const word of words) {
+          conditions.push({
+            firstName: { contains: word, mode: "insensitive" },
+          });
+          conditions.push({
+            lastName: { contains: word, mode: "insensitive" },
+          });
+        }
+
+        // Email and invite code match on full query
+        conditions.push({
+          email: { contains: query, mode: "insensitive" },
+        });
+        conditions.push({ inviteCode: query });
+
         const guests = await db.guest.findMany({
           where: {
             weddingId,
-            OR: [
-              { firstName: { contains: query, mode: "insensitive" } },
-              { lastName: { contains: query, mode: "insensitive" } },
-              { email: { contains: query, mode: "insensitive" } },
-              { inviteCode: query },
-            ],
+            OR: conditions,
           },
           take: 10,
         });

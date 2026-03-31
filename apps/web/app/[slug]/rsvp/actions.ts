@@ -295,6 +295,17 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       }
     }
 
+    // Sync GuestEventInvite statuses so per-event tracking stays in sync
+    const singleGuestIds = [primaryGuest.id];
+    if (existingPlusOne) singleGuestIds.push(existingPlusOne.id);
+    await db.guestEventInvite.updateMany({
+      where: {
+        guestId: { in: singleGuestIds },
+        weddingId,
+      },
+      data: { rsvpStatus: attending ? "yes" : "no" },
+    });
+
     // Fire-and-forget: send notification email after response
     // Capture settings before after() since headers aren't available inside after()
     const settings = await getWeddingSettings();
@@ -696,6 +707,29 @@ export async function submitMultiGuestRSVP(
         }
       }),
     );
+
+    // Sync GuestEventInvite statuses for all guests in this multi-guest RSVP
+    const allGuestIds = party
+      ? await db.guest
+          .findMany({
+            where: { partyId: party.id, weddingId },
+            select: { id: true, rsvpStatus: true },
+          })
+          .then((guests) =>
+            guests
+              .filter((g) => g.rsvpStatus !== "pending")
+              .map((g) => ({
+                id: g.id,
+                status: g.rsvpStatus,
+              })),
+          )
+      : [];
+    for (const g of allGuestIds) {
+      await db.guestEventInvite.updateMany({
+        where: { guestId: g.id, weddingId },
+        data: { rsvpStatus: g.status as "yes" | "no" | "pending" },
+      });
+    }
 
     // Fire-and-forget: send notification email after response
     // Capture settings before after() since headers aren't available inside after()

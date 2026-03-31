@@ -52,7 +52,7 @@ import {
   type EditGuestFormData,
   editGuestSchema,
 } from "@/lib/validations/guest";
-import type { PartyOption } from "./actions";
+import type { EventOption, PartyOption } from "./actions";
 
 // PostgreSQL date columns are returned as Date objects by the pg driver.
 // Convert to the "YYYY-MM-DD" string that <input type="date"> requires.
@@ -69,12 +69,16 @@ interface EditGuestSheetProps {
   guest: Guest;
   plusOne: Guest | null;
   parties: PartyOption[];
+  events: EventOption[];
+  guestEventIds: string[];
 }
 
 export function EditGuestSheet({
   guest,
   plusOne,
   parties,
+  events,
+  guestEventIds,
 }: EditGuestSheetProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBListEmailDialog, setShowBListEmailDialog] = useState(false);
@@ -83,6 +87,8 @@ export function EditGuestSheet({
   const [isSendingActivities, setIsSendingActivities] = useState(false);
   const [isSettingRsvp, setIsSettingRsvp] = useState(false);
   const [localRsvpStatus, setLocalRsvpStatus] = useState(guest.rsvpStatus);
+  const [selectedEventIds, setSelectedEventIds] =
+    useState<string[]>(guestEventIds);
   const router = useRouter();
   const searchParams = useSearchParams();
   const slug = useWeddingSlug();
@@ -181,12 +187,19 @@ export function EditGuestSheet({
       "accommodationNotes",
     ];
 
-    return fieldsToCompare.some((field) => {
+    const formFieldChanged = fieldsToCompare.some((field) => {
       const initial = initialValues[field] ?? "";
       const current = formValues[field] ?? "";
       return initial !== current;
     });
-  }, [formValues, initialValues]);
+
+    // Also check if event invitations changed
+    const eventsChanged =
+      selectedEventIds.length !== guestEventIds.length ||
+      selectedEventIds.some((id) => !guestEventIds.includes(id));
+
+    return formFieldChanged || eventsChanged;
+  }, [formValues, initialValues, selectedEventIds, guestEventIds]);
 
   function closeSheet() {
     const params = new URLSearchParams(searchParams.toString());
@@ -233,7 +246,7 @@ export function EditGuestSheet({
       const response = await fetch(`/api/admin/guests/${guest.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, eventIds: selectedEventIds }),
       });
 
       if (response.ok) {
@@ -909,6 +922,61 @@ export function EditGuestSheet({
                   </div>
                 </div>
               </div>
+
+              {/* Event Invitations */}
+              {events.length > 0 && (
+                <div className="border-t pt-4 mt-2 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Event Invitations</h3>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => {
+                        if (selectedEventIds.length === events.length) {
+                          setSelectedEventIds([]);
+                        } else {
+                          setSelectedEventIds(events.map((e) => e.id));
+                        }
+                      }}
+                    >
+                      {selectedEventIds.length === events.length
+                        ? "Deselect all"
+                        : "Select all"}
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {events.map((event) => (
+                      <div
+                        key={event.id}
+                        className="flex items-center justify-between"
+                      >
+                        <label
+                          htmlFor={`edit-event-${event.id}`}
+                          className="text-sm"
+                        >
+                          {event.name}
+                        </label>
+                        <Switch
+                          id={`edit-event-${event.id}`}
+                          checked={selectedEventIds.includes(event.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedEventIds((prev) => [
+                                ...prev,
+                                event.id,
+                              ]);
+                            } else {
+                              setSelectedEventIds((prev) =>
+                                prev.filter((id) => id !== event.id),
+                              );
+                            }
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
