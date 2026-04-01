@@ -89,14 +89,38 @@ test.describe("Registry Item Management", () => {
       timeout: 5000,
     });
 
-    // Find the card's switch and toggle it
-    const card = page.locator(".border.rounded-lg").filter({
-      has: page.getByRole("heading", { name: title }),
-    });
-    await card.getByRole("switch").click();
+    // Find the specific card — use the heading's closest card ancestor
+    const heading = page.getByRole("heading", { name: title });
+    const card = heading
+      .locator("ancestor::div[contains(@class,'rounded-lg')]")
+      .first();
 
-    // Should show "Hidden" badge
-    await expect(card.getByText("Hidden")).toBeVisible({ timeout: 3000 });
+    // Fallback: find by filtering direct children of the grid
+    // The switch is inside the card that contains this specific heading
+    const gridCards = page.locator(".grid > .border.rounded-lg");
+    const cardCount = await gridCards.count();
+    let targetSwitch = page.getByRole("switch").first(); // fallback
+
+    for (let i = 0; i < cardCount; i++) {
+      const c = gridCards.nth(i);
+      if (await c.getByRole("heading", { name: title }).isVisible()) {
+        targetSwitch = c.getByRole("switch");
+        break;
+      }
+    }
+
+    await targetSwitch.click();
+
+    // Verify the badge changed — find the card again and check
+    await page.waitForTimeout(500);
+    const badgeVisible = await page
+      .locator(".grid > .border.rounded-lg")
+      .filter({ hasText: title })
+      .getByText("Hidden")
+      .first()
+      .isVisible()
+      .catch(() => false);
+    expect(badgeVisible).toBe(true);
   });
 
   test("can delete a registry item", async ({ page }) => {
