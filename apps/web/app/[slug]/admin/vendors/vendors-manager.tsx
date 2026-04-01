@@ -331,7 +331,7 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
                 /* Display row */
                 <div className="flex items-center gap-3">
                   <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                  {/* Favicon */}
+                  {/* biome-ignore lint/performance/noImgElement: external favicon URL with onError fallback, not optimizable by next/image */}
                   <img
                     src={getFaviconUrl(link.url)}
                     alt=""
