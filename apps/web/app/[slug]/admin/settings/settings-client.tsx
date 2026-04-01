@@ -450,7 +450,7 @@ function BrandingSection({ wedding }: { wedding: Wedding }) {
       {brandImageUrl && (
         <div className="mt-2">
           <p className="text-xs text-muted-foreground mb-1">Preview:</p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* biome-ignore lint/performance/noImgElement: dynamic brand image URL, not optimizable by next/image */}
           <img
             src={brandImageUrl}
             alt={brandImageAlt || "Brand image preview"}

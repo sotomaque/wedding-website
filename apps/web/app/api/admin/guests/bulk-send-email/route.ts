@@ -78,8 +78,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const appUrl = weddingUrl(settings.slug);
-
     // Fetch wedding date and venue from the Wedding Ceremony event
     let weddingDate = "";
     let venueName = "";

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { TEST_DATA, waitForHydration } from "./fixtures";
+import { waitForHydration } from "./fixtures";
 
 test.describe("Trip Planner - Public Access", () => {
   test("page loads and shows calendar", async ({ page }) => {

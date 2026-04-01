@@ -69,6 +69,7 @@ export default async function VendorsPage() {
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 p-4 rounded-lg border hover:bg-secondary/30 transition-colors group"
                       >
+                        {/* biome-ignore lint/performance/noImgElement: external favicon URL with onError fallback */}
                         <img
                           src={getFaviconUrl(link.url)}
                           alt=""

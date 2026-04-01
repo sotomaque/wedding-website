@@ -199,7 +199,7 @@ test.describe("AI Chat Panel", () => {
     await page.getByLabel("Submit").click();
 
     // Wait for streaming to fully complete — textarea becomes enabled again
-    const completed = await page
+    await page
       .getByPlaceholder("Ask about your wedding...")
       .waitFor({ state: "attached", timeout: 30000 })
       .then(() =>
