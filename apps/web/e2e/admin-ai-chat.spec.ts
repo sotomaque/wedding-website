@@ -193,25 +193,41 @@ test.describe("AI Chat Panel", () => {
     // Open chat panel
     await page.getByLabel("Open AI Wedding Assistant").click();
 
-    // Send a message and wait for response
+    // Send a message
     const textarea = page.getByPlaceholder("Ask about your wedding...");
     await textarea.fill("Hello!");
     await page.getByLabel("Submit").click();
 
-    // Wait for an assistant message (skip test if AI API fails in CI)
-    const assistantMsg = page.locator(".is-assistant").first();
-    const hasResponse = await assistantMsg
-      .waitFor({ timeout: 30000 })
-      .then(() => true)
+    // Wait for streaming to fully complete — textarea becomes enabled again
+    const completed = await page
+      .getByPlaceholder("Ask about your wedding...")
+      .waitFor({ state: "attached", timeout: 30000 })
+      .then(() =>
+        page
+          .getByPlaceholder("Ask about your wedding...")
+          .isEnabled({ timeout: 30000 }),
+      )
       .catch(() => false);
 
-    if (!hasResponse) {
+    // Skip if AI API failed or timed out (no response in CI)
+    const hasAssistantText = await page
+      .locator(".is-assistant")
+      .filter({ hasNot: page.getByText("Thinking...") })
+      .first()
+      .isVisible()
+      .catch(() => false);
+
+    if (!hasAssistantText) {
       test.skip(true, "AI API unavailable in CI — no assistant response");
       return;
     }
 
     // Hover to reveal actions
-    await assistantMsg.hover();
+    await page
+      .locator(".is-assistant")
+      .filter({ hasNot: page.getByText("Thinking...") })
+      .first()
+      .hover();
 
     // Copy button
     const copyButton = page
