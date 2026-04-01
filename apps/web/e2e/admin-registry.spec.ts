@@ -8,10 +8,8 @@ test.describe("Registry Item Management", () => {
     if (!isAuthAvailable()) {
       test.skip();
     }
-    // Navigate to registry via admin page (slug resolved from URL)
     await page.goto("/admin");
     await waitForHydration(page);
-    // Get the registry URL from the current slug
     const url = page.url();
     const slug = new URL(url).pathname.split("/")[1];
     await page.goto(`/${slug}/admin/registry`);
@@ -31,97 +29,100 @@ test.describe("Registry Item Management", () => {
 
     await page.getByRole("button", { name: /add item/i }).click();
 
-    // Dialog should open
     await expect(
       page.getByRole("heading", { name: /add registry item/i }),
     ).toBeVisible();
 
-    // Fill form
     await page.getByLabel("Title").fill(title);
     await page.getByLabel("Description").fill("A test registry item");
     await page.getByLabel("Emoji").fill("🎁");
 
-    // Submit
     await page.getByRole("button", { name: /^create$/i }).click();
 
-    // Should show success and item appears
     await expect(page.getByText(title)).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("🎁")).toBeVisible();
   });
 
   test("can edit a registry item", async ({ page }) => {
-    // Create an item first
     const uniqueId = Date.now();
     const title = `Edit-Test ${uniqueId}`;
 
+    // Create an item
     await page.getByRole("button", { name: /add item/i }).click();
     await page.getByLabel("Title").fill(title);
     await page.getByRole("button", { name: /^create$/i }).click();
-    await expect(page.getByText(title)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: title })).toBeVisible({
+      timeout: 5000,
+    });
 
-    // Click edit on the item
-    const card = page.locator(".border.rounded-lg").filter({ hasText: title });
-    await card.getByRole("button", { name: /edit/i }).click();
+    // Find the card by heading and click the pencil (edit) button
+    // The edit button is in the actions row — it's the button right after the switch
+    const card = page.locator(".border.rounded-lg").filter({
+      has: page.getByRole("heading", { name: title }),
+    });
+    // The pencil button is the second-to-last button in the card
+    const editButton = card.getByRole("switch").locator("~ button").first();
+    await editButton.click();
 
-    // Dialog should open with "Edit"
     await expect(
       page.getByRole("heading", { name: /edit registry item/i }),
     ).toBeVisible();
 
-    // Change title
     const titleInput = page.getByLabel("Title");
     await titleInput.clear();
     await titleInput.fill(`${title} Updated`);
     await page.getByRole("button", { name: /^update$/i }).click();
 
-    // Updated title should appear
-    await expect(page.getByText(`${title} Updated`)).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(
+      page.getByRole("heading", { name: `${title} Updated` }),
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test("can toggle item active/inactive", async ({ page }) => {
-    // Create an item
     const uniqueId = Date.now();
     const title = `Toggle-Test ${uniqueId}`;
 
     await page.getByRole("button", { name: /add item/i }).click();
     await page.getByLabel("Title").fill(title);
     await page.getByRole("button", { name: /^create$/i }).click();
-    await expect(page.getByText(title)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: title })).toBeVisible({
+      timeout: 5000,
+    });
 
-    // Find the card and its active toggle
-    const card = page.locator(".border.rounded-lg").filter({ hasText: title });
-    await expect(card.getByText("Active")).toBeVisible();
-
-    // Toggle off
+    // Find the card's switch and toggle it
+    const card = page.locator(".border.rounded-lg").filter({
+      has: page.getByRole("heading", { name: title }),
+    });
     await card.getByRole("switch").click();
 
-    // Should show "Hidden"
+    // Should show "Hidden" badge
     await expect(card.getByText("Hidden")).toBeVisible({ timeout: 3000 });
   });
 
   test("can delete a registry item", async ({ page }) => {
-    // Create an item to delete
     const uniqueId = Date.now();
     const title = `Delete-Test ${uniqueId}`;
 
     await page.getByRole("button", { name: /add item/i }).click();
     await page.getByLabel("Title").fill(title);
     await page.getByRole("button", { name: /^create$/i }).click();
-    await expect(page.getByText(title)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: title })).toBeVisible({
+      timeout: 5000,
+    });
 
-    // Accept the confirmation dialog
+    // Accept the window.confirm dialog
     page.on("dialog", (dialog) => dialog.accept());
 
-    // Click delete
-    const card = page.locator(".border.rounded-lg").filter({ hasText: title });
-    await card
-      .getByRole("button")
-      .filter({ has: page.locator(".text-destructive") })
-      .click();
+    // Find the card and click the last button (trash/delete icon)
+    const card = page.locator(".border.rounded-lg").filter({
+      has: page.getByRole("heading", { name: title }),
+    });
+    // The delete button is the last button in the card
+    await card.getByRole("button").last().click();
 
     // Item should be gone
-    await expect(page.getByText(title)).not.toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: title })).not.toBeVisible({
+      timeout: 5000,
+    });
   });
 });

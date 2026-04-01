@@ -193,21 +193,22 @@ test.describe("AI Chat Panel", () => {
     // Open chat panel
     await page.getByLabel("Open AI Wedding Assistant").click();
 
-    // Send a message and wait for response
+    // Send a message and wait for response to fully complete
     const textarea = page.getByPlaceholder("Ask about your wedding...");
     await textarea.fill("Hello!");
     await page.getByLabel("Submit").click();
 
-    // Wait for assistant response
-    await expect(page.locator(".is-assistant").first()).toBeVisible({
-      timeout: 30000,
-    });
+    // Wait for streaming to complete (Submit button re-enabled means done)
+    await expect(page.getByLabel("Submit")).toBeEnabled({ timeout: 30000 });
 
     // Hover over the assistant message area to reveal actions
     await page.locator(".is-assistant").first().hover();
 
-    // Copy button should be available (accessible name comes from sr-only span, not aria-label)
-    const copyButton = page.getByRole("button", { name: "Copy" }).first();
+    // Copy button — check both by role and by text in case sr-only isn't exposed
+    const copyButton = page
+      .getByRole("button", { name: "Copy" })
+      .or(page.locator("button").filter({ hasText: "Copy" }))
+      .first();
     await expect(copyButton).toBeVisible({ timeout: 5000 });
   });
 

@@ -1,6 +1,6 @@
 # The Ceremony — Product & Acquisition Roadmap
 
-> Last updated: 2026-03-31
+> Last updated: 2026-03-31 (end of session)
 
 ---
 
@@ -12,13 +12,14 @@ Multi-tenant wedding platform at **theceremony.app** with: Clerk auth, Stripe pa
 |-------|--------|
 | Domain | `theceremony.app` (production), `helen-and-enrique.com` redirects via middleware |
 | Multi-tenancy | Full (weddingId-scoped queries, RLS, cross-tenant security audit complete) |
-| AI features | Shared infrastructure + 5 features: **chat assistant (15 tools, write actions, conversation memory, rich context)**, seating charts, todo generator, story writer, email drafts |
+| AI features | Shared infrastructure + 6 features: **chat assistant (16 tools incl. createEvent, write actions, conversation memory, rich context)**, **RSVP insights dashboard**, seating charts, todo generator, story writer, email drafts |
 | Onboarding | 6-step wizard with split-screen live preview (names → URL → date/venue → theme → photos → create) |
+| Registry | Self-service admin CRUD (`/admin/registry`) — add/edit/delete/reorder items with Stripe payment links |
 | Payments | Stripe (registry + gifting) |
 | Email system | Per-wedding DB templates, multi-language (EN/ES), toggleable, welcome emails, 3 cron jobs |
 | i18n | English + Spanish via next-intl, per-wedding default language, per-guest language preference |
 | Vendor management | ServiceLinks + vendors page |
-| Tests | 557 unit + Playwright E2E (parallel read-only, serial mutating) |
+| Tests | 618 unit + Playwright E2E (parallel read-only, serial mutating) |
 | Platform admin | Enhanced stats, growth table, revenue tracking, admin notifications, weekly summary cron |
 | Mobile | Web-only (Next.js) — gap vs Zola/Joy native apps |
 
@@ -95,18 +96,18 @@ lib/ai/
 
 | Feature | Status | Route | Notes |
 |---------|--------|-------|-------|
-| **AI Planning Assistant (Chat)** | ✅ | `POST /api/admin/ai/chat` | Persistent sidebar chat with 10 tools (lookupGuest, getRsvpStats, getGuestsByStatus, getDietarySummary, getEventInfo, getGiftSummary, getUninvitedGuests, getWeddingOverview, resendInvite, updateGuestRsvp). AI Elements UI with tool call rendering, streaming, stop button. |
+| **AI Planning Assistant (Chat)** | ✅ | `POST /api/admin/ai/chat` | Persistent sidebar chat with 16 tools (10 read + 6 write: createGuest, updateGuest, deleteGuest, addTodo, bulkInvite, createEvent). Conversation memory, rich context (couple identity, stats snapshot, feature toggles). AI Elements UI. |
 | **AI Seating Chart** | ✅ | `POST /api/admin/seating-charts/[id]/generate` | Refactored to shared infra. Supports custom prompt for natural language constraints ("keep divorced parents apart", "group college friends"). |
 | **AI Todo Generator** | ✅ | `POST /api/admin/ai/todos/generate` | "AI Generate" button + "Custom Prompt" popover on todos page. Date-aware checklist generation, filters past-due items, avoids duplicating existing todos. |
 | **AI Story Writer** | ✅ | `POST /api/admin/ai/story/generate` | "AI Write" button in Story tab. Streaming HTML output into Tiptap editor. Tone selection (romantic/humorous/formal/casual). |
 | **AI Email Drafts** | ✅ | `POST /api/admin/ai/email-draft/generate` | "AI Draft" button in template editor. Generates subject + HTML body respecting `{{{VARIABLE}}}` placeholders. |
+| **AI RSVP Insights** | ✅ | `POST /api/admin/ai/rsvp-insights/generate` | Dashboard card with on-demand AI analysis. Gathers 6 parallel groupBy queries (status, list, side, dietary, invites), generates 3-5 categorized insights (urgency/trend/action/summary). |
 
 ### Tier 2 — Next Up
 
 | Feature | Effort | Value | Notes |
 |---------|--------|-------|-------|
 | **AI Photo Captions** | Low | Medium | GPT-4 Vision on uploaded guest photos → auto-caption. Add `caption` column to `GuestPhoto`. Use `generateTextResult()` from shared client. |
-| **AI RSVP Insights** | Medium | High | Natural language dashboard insights from existing RSVP/dietary/hotel data. Use `generateStructured()` with an insights Zod schema. No schema changes needed. |
 | **AI Budget Optimizer** | Medium | High | Couple enters budget → AI allocates by category. New `Budget` model. Use `generateStructured()` with budget schema. |
 | **AI Vendor Recommendations** | Medium | Medium | Based on theme, budget, location → suggest vendor categories and styles. |
 
@@ -125,7 +126,7 @@ lib/ai/
 - [x] `createGuest` tool — Create a guest with name, email, side, list, gender. Auto-generates invite code + party.
 - [x] `updateGuest` tool — Update any guest field (email, dietary restrictions, list tier, side, etc.)
 - [x] `deleteGuest` tool — Remove a guest (with confirmation)
-- [ ] `createEvent` tool — Create a wedding event with name, date, time, location
+- [x] `createEvent` tool — Create a wedding event with name, date, time, location, isDefault with auto-invite
 - [x] `bulkInvite` tool — Send invites to multiple guests by list/status filter
 - [x] `addTodo` tool — Create a wedding todo item with auto-incrementing display order
 
@@ -200,11 +201,11 @@ lib/ai/
 
 > **Problem:** Today, registry items require manually creating Stripe payment links in the Stripe dashboard, then manually inserting `RegistryItem` DB rows with those URLs. Gift type resolution is hardcoded to 3 global env vars (`STRIPE_PRODUCT_*`). There's no admin UI for registry items and no onboarding path for new couples.
 
-#### Phase A: Admin Registry Item CRUD
-- [ ] Admin UI at `/{slug}/admin/registry` to create/edit/delete/reorder `RegistryItem` records
-- [ ] Fields: title, description, emoji/image, suggested amounts, external URL (optional)
-- [ ] Toggle items active/inactive
-- [ ] This alone unblocks new weddings — they can paste their own Stripe payment links from the dashboard
+#### Phase A: Admin Registry Item CRUD ✅ COMPLETE
+- [x] Admin UI at `/{slug}/admin/registry` to create/edit/delete/reorder `RegistryItem` records
+- [x] Fields: title, description, emoji, image URL, Stripe payment link URL
+- [x] Toggle items active/inactive with badge display
+- [x] Reorder via arrow buttons, nav link added to admin sidebar
 
 #### Phase B: Stripe Connect Integration (Full Self-Service)
 - [ ] Integrate **Stripe Connect** (Standard accounts) so each couple connects their own Stripe account
@@ -246,7 +247,61 @@ lib/ai/
 - [ ] New `songRequests` table or field on guest record for song suggestions
 - [ ] Admin view of all song requests with export to playlist
 
-### 4.8 Inspiration Page
+### 4.8 Budget Tracker & Expense Management
+
+> Admin page at `/{slug}/admin/budget` for tracking wedding expenses, setting a budget goal, and eventually parsing receipts/contracts via AI.
+
+#### Phase A: Budget Model + Manual Tracking
+- [ ] New `BudgetCategory` model: `id, weddingId, name, allocatedCents, spentCents, displayOrder`
+- [ ] New `BudgetExpense` model: `id, categoryId, weddingId, title, amountCents, vendor, date, notes, documentId?`
+- [ ] Migration SQL for both tables
+- [ ] Admin CRUD page: category management (Venue, Catering, Photography, Attire, Flowers, Music, etc.) with allocated vs spent bars
+- [ ] Budget goal field on Wedding model (`budgetGoalCents`)
+- [ ] Dashboard summary card showing total budget vs total spent
+- [ ] Link expenses to existing `Document` records (receipts, contracts)
+
+#### Phase B: AI Receipt/Contract Parsing
+- [ ] When a document with category `receipt` or `contract` is uploaded, offer "Parse with AI" button
+- [ ] Use GPT-4 Vision on the document (PDF/image) to extract: vendor name, amount, date, line items
+- [ ] Auto-create `BudgetExpense` records from parsed data (with user confirmation)
+- [ ] Parse contract terms: payment schedule, cancellation policy, deposit amounts
+- [ ] Existing `generateStructured()` infrastructure supports this — define Zod schema for parsed receipt/contract
+
+#### Phase C: AI Budget Optimizer (existing Tier 2 item)
+- [ ] Couple enters total budget → AI allocates by category based on guest count, location, priorities
+- [ ] Uses `generateStructured()` with budget allocation schema
+- [ ] Suggests reallocation when overspending in a category
+
+### 4.9 Physical Mail Invitations
+
+> Send physical wedding invitations via API. Guest model already has `mailingAddress` + `physicalInviteSent` fields, and Geoapify address autocomplete is integrated.
+
+#### API Providers (researched)
+| Provider | Strengths | Pricing Model |
+|----------|-----------|---------------|
+| **[Lob](https://www.lob.com)** | Market leader, excellent docs, address verification built-in | Platform subscription + per-piece |
+| **[PostGrid](https://www.postgrid.com)** | REST API, HIPAA/SOC-2 compliant, letter + postcard + check support | Pay-as-you-go |
+| **[LettrLabs](https://www.lettrlabs.com)** | Handwritten cards, premium feel — great for weddings | Per-piece |
+| **[PCM Integrations](https://www.pcmintegrations.com)** | Fast turnaround (1 day postcards), CRM integration | Per-piece |
+
+#### Phase A: Address Validation & Bulk Preview
+- [ ] Integrate Lob or PostGrid address verification API to validate `mailingAddress` on Guest records
+- [ ] Bulk address validation report: show which guests have valid/invalid/missing addresses
+- [ ] Admin UI to review and fix addresses before sending
+
+#### Phase B: Template Designer & Send Flow
+- [ ] Physical invite template designer (or upload custom PDF/image design)
+- [ ] Preview rendered mail piece per guest (with their name/address merged)
+- [ ] Bulk send flow: select guests → review addresses → confirm → API sends to print/mail provider
+- [ ] Update `physicalInviteSent` flag on each Guest after successful send
+- [ ] Track delivery status via provider webhooks (Lob provides scan events)
+
+#### Phase C: Hybrid Digital + Physical
+- [ ] Smart send: guests with email get digital invite, guests without get physical
+- [ ] QR code on physical invite links to RSVP page with pre-filled invite code
+- [ ] Admin dashboard shows digital vs physical invite status per guest
+
+### 4.10 Inspiration Page
 - [ ] New `/[slug]/inspo` public page for wedding inspiration
 - [ ] Couple adds Pinterest board links, Instagram posts, or image URLs
 - [ ] Grid/masonry layout with link previews (Open Graph metadata)
@@ -348,6 +403,11 @@ lib/ai/
 | AI Chat Write Tools | 2026-03 | 5 write tools: createGuest, updateGuest, deleteGuest, addTodo, bulkInvite. Confirmation rules per tool. Multi-step flows (create + invite). |
 | AI Chat Rich Context | 2026-03 | System prompt injects couple identity (person1/person2 + side inference), RSVP deadline, days until wedding, feature toggles, stats snapshot. |
 | AI Chat Memory | 2026-03 | ChatMessage model (migration 053), per-admin conversation persistence, history restore on panel open, "New chat" clear button. |
+| Per-event guest invitations | 2026-03 | Event toggles in Add/Edit Guest forms (defaults from isDefault flag), smart email routing (all events → wedding invite, partial → per-event invites), RSVP sync across all flows. |
+| Guest list filters v2 | 2026-03 | Notes search (partial match), event invitation filter (multi-select AND), multi-select RSVP status, seating chart event scoping. |
+| Registry Item CRUD | 2026-03 | Self-service admin page at `/admin/registry`. Card grid with add/edit dialog, reorder arrows, active toggle, delete with confirmation. Nav link in admin sidebar. |
+| AI RSVP Insights | 2026-03 | Dashboard card with on-demand AI analysis. 6 parallel groupBy queries, generates 3-5 categorized insights (urgency/trend/action/summary) via generateStructured. |
+| createEvent chat tool | 2026-03 | 16th chat tool. Creates events with auto displayOrder, date/time parsing, optional isDefault with auto-invite. |
 
 ---
 
