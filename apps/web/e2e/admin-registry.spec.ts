@@ -89,13 +89,7 @@ test.describe("Registry Item Management", () => {
       timeout: 5000,
     });
 
-    // Find the specific card — use the heading's closest card ancestor
-    const heading = page.getByRole("heading", { name: title });
-    const card = heading
-      .locator("ancestor::div[contains(@class,'rounded-lg')]")
-      .first();
-
-    // Fallback: find by filtering direct children of the grid
+    // Find by filtering direct children of the grid
     // The switch is inside the card that contains this specific heading
     const gridCards = page.locator(".grid > .border.rounded-lg");
     const cardCount = await gridCards.count();
