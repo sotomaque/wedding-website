@@ -1,14 +1,8 @@
-import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/auth/admin";
-
-const AIChatPanel = dynamic(
-  () => import("@/components/ai-chat-panel").then((mod) => mod.AIChatPanel),
-  { ssr: false },
-);
-
 import { getWeddingBySlug } from "@/lib/db/wedding-context";
 import { AdminNav } from "./admin-nav";
+import { LazyChatPanel } from "./lazy-chat-panel";
 
 export default async function AdminLayout({
   children,
@@ -36,7 +30,7 @@ export default async function AdminLayout({
       <main className="max-w-screen-2xl mx-auto px-0 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
         {children}
       </main>
-      <AIChatPanel />
+      <LazyChatPanel />
     </div>
   );
 }
