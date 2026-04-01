@@ -790,5 +790,101 @@ export function createWeddingTools(weddingId: string) {
         }
       },
     }),
+
+    createEvent: tool({
+      description:
+        "Create a new wedding event. Always confirm the details with the user before calling. If isDefault is true, all existing guests will be automatically invited.",
+      inputSchema: z.object({
+        name: z.string().describe("Event name (e.g. 'Rehearsal Dinner')"),
+        description: z.string().optional().describe("Event description"),
+        eventDate: z
+          .string()
+          .optional()
+          .describe("Event date in YYYY-MM-DD format"),
+        startTime: z
+          .string()
+          .optional()
+          .describe("Start time in HH:MM format (24h)"),
+        endTime: z
+          .string()
+          .optional()
+          .describe("End time in HH:MM format (24h)"),
+        locationName: z.string().optional().describe("Venue name"),
+        locationAddress: z.string().optional().describe("Full address"),
+        isDefault: z
+          .boolean()
+          .optional()
+          .describe("If true, all guests are auto-invited to this event"),
+      }),
+      execute: async ({
+        name,
+        description,
+        eventDate,
+        startTime,
+        endTime,
+        locationName,
+        locationAddress,
+        isDefault,
+      }) => {
+        try {
+          const maxOrder = await db.event.aggregate({
+            where: { weddingId },
+            _max: { displayOrder: true },
+          });
+
+          const event = await db.event.create({
+            data: {
+              weddingId,
+              name,
+              description: description ?? null,
+              eventDate: eventDate ? new Date(`${eventDate}T00:00:00Z`) : null,
+              startTime: startTime
+                ? new Date(`1970-01-01T${startTime}:00Z`)
+                : null,
+              endTime: endTime ? new Date(`1970-01-01T${endTime}:00Z`) : null,
+              locationName: locationName ?? null,
+              locationAddress: locationAddress ?? null,
+              isDefault: isDefault ?? false,
+              displayOrder: (maxOrder._max.displayOrder ?? 0) + 1,
+            },
+          });
+
+          // If default event, auto-invite all guests
+          if (isDefault) {
+            const guests = await db.guest.findMany({
+              where: { weddingId },
+              select: { id: true },
+            });
+            if (guests.length > 0) {
+              await db.guestEventInvite.createMany({
+                data: guests.map((g) => ({
+                  guestId: g.id,
+                  eventId: event.id,
+                  weddingId,
+                })),
+                skipDuplicates: true,
+              });
+            }
+          }
+
+          return {
+            success: true,
+            event: {
+              id: event.id,
+              name: event.name,
+              eventDate: eventDate ?? null,
+              startTime: startTime ?? null,
+              endTime: endTime ?? null,
+              locationName: event.locationName,
+              locationAddress: event.locationAddress,
+              isDefault: event.isDefault,
+            },
+          };
+        } catch (error) {
+          console.error("Error in createEvent tool:", error);
+          return { success: false, error: "Failed to create event" };
+        }
+      },
+    }),
   };
 }

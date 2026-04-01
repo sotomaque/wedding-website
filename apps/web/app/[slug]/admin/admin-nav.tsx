@@ -54,6 +54,7 @@ function getNavItems(slug: string): NavItem[] {
     { type: "link", href: `${base}/admin/events`, label: "Events" },
     { type: "link", href: `${base}/admin/calendar`, label: "Calendar" },
     { type: "link", href: `${base}/admin/gifts`, label: "Gifts" },
+    { type: "link", href: `${base}/admin/registry`, label: "Registry" },
     { type: "link", href: `${base}/admin/vendors`, label: "Vendors" },
     { type: "link", href: `${base}/admin/documents`, label: "Documents" },
     { type: "link", href: `${base}/admin/content`, label: "Content" },

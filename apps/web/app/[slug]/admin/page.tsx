@@ -5,6 +5,7 @@ import { Calendar, Clock, Code, Heart, Mail, Users } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
+import { RsvpInsightsCard } from "./rsvp-insights-card";
 
 function getCountdown(targetDate: Date) {
   const now = new Date();
@@ -185,6 +186,8 @@ export default async function AdminPage() {
                 )}
               </div>
             </div>
+
+            <RsvpInsightsCard />
 
             <div>
               <h2 className="text-xl font-semibold text-foreground mb-4">
