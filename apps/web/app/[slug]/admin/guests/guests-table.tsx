@@ -40,13 +40,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { EventOption, PartyOption } from "./actions";
 import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
 import { GuestsFilters } from "./guests-filters";
+import { useBulkGuestActions } from "./use-bulk-guest-actions";
 
 type SortableColumn =
   | "firstName"
@@ -76,9 +77,7 @@ export function GuestsTable({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showAddForm, setShowAddForm] = useState(false);
-  const [isBulkSending, setIsBulkSending] = useState(false);
-  const [isBulkSendingCalendar, setIsBulkSendingCalendar] = useState(false);
-  const [isBulkSettingRsvp, setIsBulkSettingRsvp] = useState(false);
+  // Bulk actions extracted to custom hook — see use-bulk-guest-actions.ts
   const slug = useWeddingSlug();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -224,18 +223,23 @@ export function GuestsTable({
     });
   }
 
-  const columns = createColumns({
-    onEditGuest: handleEditGuest,
-    onSendCalendarInvite: handleSendCalendarInvite,
-    onSetRsvp: handleSetRsvp,
-    currentSortBy,
-    currentSortOrder,
-    onSort: handleSort,
-    onUpdateNotes: handleUpdateNotes,
-    onUpdateSide: handleUpdateSide,
-    onUpdateList: handleUpdateList,
-    onUpdateFamily: handleUpdateFamily,
-  });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: callbacks are stable within render, memoize to avoid table re-computation
+  const columns = useMemo(
+    () =>
+      createColumns({
+        onEditGuest: handleEditGuest,
+        onSendCalendarInvite: handleSendCalendarInvite,
+        onSetRsvp: handleSetRsvp,
+        currentSortBy,
+        currentSortOrder,
+        onSort: handleSort,
+        onUpdateNotes: handleUpdateNotes,
+        onUpdateSide: handleUpdateSide,
+        onUpdateList: handleUpdateList,
+        onUpdateFamily: handleUpdateFamily,
+      }),
+    [currentSortBy, currentSortOrder],
+  );
 
   const table = useReactTable({
     data: initialGuests,
@@ -269,124 +273,9 @@ export function GuestsTable({
   const selectedRows = table.getFilteredSelectedRowModel().rows;
   const selectedGuests = selectedRows.map((row) => row.original);
 
-  // Validation for bulk send email
-  const allHaveEmail = selectedGuests.every((guest) =>
-    guest.email?.includes("@"),
+  const bulkActions = useBulkGuestActions(selectedGuests, () =>
+    setRowSelection({}),
   );
-  const noneHaveRsvpdYes = selectedGuests.every(
-    (guest) => guest.rsvpStatus !== "yes",
-  );
-  const canBulkSendEmail =
-    selectedGuests.length > 0 && allHaveEmail && noneHaveRsvpdYes;
-
-  // Get validation messages for tooltip
-  function getBulkEmailValidationMessage(): string | null {
-    if (selectedGuests.length === 0) return null;
-    if (!allHaveEmail) {
-      const guestsWithoutEmail = selectedGuests.filter(
-        (g) => !g.email?.includes("@"),
-      );
-      return `${guestsWithoutEmail.length} selected guest(s) don't have a valid email`;
-    }
-    if (!noneHaveRsvpdYes) {
-      const guestsAlreadyRsvpd = selectedGuests.filter(
-        (g) => g.rsvpStatus === "yes",
-      );
-      return `${guestsAlreadyRsvpd.length} selected guest(s) have already RSVP'd yes`;
-    }
-    return null;
-  }
-
-  async function handleBulkSendEmail() {
-    if (!canBulkSendEmail) return;
-
-    setIsBulkSending(true);
-    try {
-      const response = await fetch("/api/admin/guests/bulk-send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          guestIds: selectedGuests.map((g) => g.id),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success("Emails sent!", {
-          description: `Successfully sent invitations to ${data.sentCount} guest(s)`,
-        });
-        setRowSelection({});
-        router.refresh();
-      } else {
-        toast.error("Error", {
-          description: data.error || "Failed to send emails",
-        });
-      }
-    } catch (error) {
-      console.error("Error sending bulk emails:", error);
-      toast.error("Error", {
-        description: "Failed to send emails",
-      });
-    } finally {
-      setIsBulkSending(false);
-    }
-  }
-
-  // Validation for bulk calendar invites
-  const allAttendingWithEmail = selectedGuests.every(
-    (g) => g.rsvpStatus === "yes" && g.email?.includes("@"),
-  );
-  const canBulkSendCalendarInvites =
-    selectedGuests.length > 0 && allAttendingWithEmail;
-
-  function getBulkCalendarValidationMessage(): string | null {
-    if (selectedGuests.length === 0) return null;
-    const ineligible = selectedGuests.filter(
-      (g) => g.rsvpStatus !== "yes" || !g.email?.includes("@"),
-    );
-    if (ineligible.length > 0) {
-      return `${ineligible.length} selected guest(s) are not attending or have no email`;
-    }
-    return null;
-  }
-
-  async function handleBulkSendCalendarInvites() {
-    if (!canBulkSendCalendarInvites) return;
-
-    setIsBulkSendingCalendar(true);
-    try {
-      const response = await fetch(
-        "/api/admin/guests/bulk-send-calendar-invites",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            guestIds: selectedGuests.map((g) => g.id),
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success("Calendar invites sent!", {
-          description: `Successfully sent calendar invites to ${data.sentCount} guest(s)`,
-        });
-        setRowSelection({});
-        router.refresh();
-      } else {
-        toast.error("Error", {
-          description: data.error || "Failed to send calendar invites",
-        });
-      }
-    } catch (error) {
-      console.error("Error sending bulk calendar invites:", error);
-      toast.error("Error", { description: "Failed to send calendar invites" });
-    } finally {
-      setIsBulkSendingCalendar(false);
-    }
-  }
 
   async function handleSendCalendarInvite(guestId: string) {
     try {
@@ -394,9 +283,7 @@ export function GuestsTable({
         `/api/admin/guests/${guestId}/send-calendar-invite`,
         { method: "POST" },
       );
-
       const data = await response.json();
-
       if (response.ok) {
         toast.success("Calendar invite sent!", {
           description: `Sent to ${data.email}`,
@@ -422,54 +309,11 @@ export function GuestsTable({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rsvpStatus: status }),
     });
-
     if (!response.ok) {
       const data = await response.json();
       throw new Error(data.error || "Failed to update RSVP status");
     }
-
     router.refresh();
-  }
-
-  async function handleBulkSetRsvp(status: "yes" | "no" | "pending") {
-    if (selectedGuests.length === 0) return;
-
-    setIsBulkSettingRsvp(true);
-    try {
-      const response = await fetch("/api/admin/guests/bulk-set-rsvp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          guestIds: selectedGuests.map((g) => g.id),
-          rsvpStatus: status,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        const label =
-          status === "yes"
-            ? "attending"
-            : status === "no"
-              ? "declined"
-              : "pending";
-        toast.success("RSVP updated!", {
-          description: `Marked ${data.updatedCount} guest(s) as ${label}`,
-        });
-        setRowSelection({});
-        router.refresh();
-      } else {
-        toast.error("Error", {
-          description: data.error || "Failed to update RSVP status",
-        });
-      }
-    } catch (error) {
-      console.error("Error updating bulk RSVP:", error);
-      toast.error("Error", { description: "Failed to update RSVP status" });
-    } finally {
-      setIsBulkSettingRsvp(false);
-    }
   }
 
   function refreshGuests() {
@@ -572,48 +416,55 @@ export function GuestsTable({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleBulkSetRsvp("yes")}
-              disabled={isBulkSettingRsvp}
+              onClick={() => bulkActions.handleBulkSetRsvp("yes")}
+              disabled={bulkActions.isBulkSettingRsvp}
             >
               Mark Attending
             </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleBulkSetRsvp("no")}
-              disabled={isBulkSettingRsvp}
+              onClick={() => bulkActions.handleBulkSetRsvp("no")}
+              disabled={bulkActions.isBulkSettingRsvp}
             >
               Mark Declined
             </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleBulkSetRsvp("pending")}
-              disabled={isBulkSettingRsvp}
+              onClick={() => bulkActions.handleBulkSetRsvp("pending")}
+              disabled={bulkActions.isBulkSettingRsvp}
             >
               Mark Pending
             </Button>
             <Button
               size="sm"
-              onClick={handleBulkSendEmail}
-              disabled={!canBulkSendEmail || isBulkSending}
-              title={getBulkEmailValidationMessage() || undefined}
+              onClick={bulkActions.handleBulkSendEmail}
+              disabled={
+                !bulkActions.canBulkSendEmail || bulkActions.isBulkSending
+              }
+              title={bulkActions.getEmailValidationMessage() || undefined}
             >
-              {isBulkSending ? "Sending..." : "Send Email"}
+              {bulkActions.isBulkSending ? "Sending..." : "Send Email"}
             </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={handleBulkSendCalendarInvites}
-              disabled={!canBulkSendCalendarInvites || isBulkSendingCalendar}
-              title={getBulkCalendarValidationMessage() || undefined}
+              onClick={bulkActions.handleBulkSendCalendarInvites}
+              disabled={
+                !bulkActions.canBulkSendCalendarInvites ||
+                bulkActions.isBulkSendingCalendar
+              }
+              title={bulkActions.getCalendarValidationMessage() || undefined}
             >
               <CalendarCheck className="h-4 w-4 mr-1" />
-              {isBulkSendingCalendar ? "Sending..." : "Send Calendar Invites"}
+              {bulkActions.isBulkSendingCalendar
+                ? "Sending..."
+                : "Send Calendar Invites"}
             </Button>
-            {getBulkCalendarValidationMessage() && (
+            {bulkActions.getCalendarValidationMessage() && (
               <span className="text-xs text-destructive">
-                {getBulkCalendarValidationMessage()}
+                {bulkActions.getCalendarValidationMessage()}
               </span>
             )}
           </div>

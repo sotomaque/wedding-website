@@ -1,6 +1,12 @@
+import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
-import { AIChatPanel } from "@/components/ai-chat-panel";
 import { isAdmin } from "@/lib/auth/admin";
+
+const AIChatPanel = dynamic(
+  () => import("@/components/ai-chat-panel").then((mod) => mod.AIChatPanel),
+  { ssr: false },
+);
+
 import { getWeddingBySlug } from "@/lib/db/wedding-context";
 import { AdminNav } from "./admin-nav";
 

@@ -87,6 +87,28 @@ const defaultFormData: EventFormData = {
   isDefault: false,
 };
 
+// Hoisted helpers — avoid recreating on every render
+function formatTime(time: string) {
+  const timeStr = time.includes("T")
+    ? new Date(time).toISOString().slice(11, 16)
+    : time;
+  const [hours, minutes] = timeStr.split(":");
+  const hour = Number.parseInt(hours || "0", 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
+}
+
+function formatDate(dateStr: string) {
+  const date = new Date(`${dateStr}T00:00:00`);
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export function EventsClient({ initialEvents }: EventsClientProps) {
   const slug = useWeddingSlug();
   const [events, setEvents] = useState<Event[]>(initialEvents);
@@ -94,28 +116,6 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [formData, setFormData] = useState<EventFormData>(defaultFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const formatTime = (time: string) => {
-    // Handle ISO datetime strings (e.g. "1970-01-01T15:00:00.000Z")
-    const timeStr = time.includes("T")
-      ? new Date(time).toISOString().slice(11, 16)
-      : time;
-    const [hours, minutes] = timeStr.split(":");
-    const hour = Number.parseInt(hours || "0", 10);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(`${dateStr}T00:00:00`);
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
 
   const openCreateDialog = () => {
     setEditingEvent(null);

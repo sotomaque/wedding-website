@@ -118,21 +118,54 @@ export function createWeddingTools(weddingId: string) {
     }),
 
     getGuestsByStatus: tool({
-      description: "List guests with a specific RSVP status.",
+      description:
+        "List guests filtered by RSVP status, side, list tier, and/or family. Use this for questions like 'who from the bride's side hasn't RSVP'd' or 'which A-list family members are attending'.",
       inputSchema: z.object({
-        status: z.enum(["yes", "no", "pending"]),
-        limit: z.number().optional().describe("Max guests to return"),
+        status: z
+          .enum(["yes", "no", "pending"])
+          .optional()
+          .describe("Filter by RSVP status"),
+        side: z
+          .enum(["bride", "groom", "both"])
+          .optional()
+          .describe("Filter by side (bride, groom, or both)"),
+        list: z
+          .enum(["a", "b", "c"])
+          .optional()
+          .describe("Filter by list tier"),
+        family: z
+          .boolean()
+          .optional()
+          .describe("Filter by family member status"),
+        limit: z
+          .number()
+          .optional()
+          .describe("Max guests to return (default 30)"),
       }),
-      execute: async ({ status, limit }) => {
+      execute: async ({ status, side, list, family, limit }) => {
+        const where: Record<string, unknown> = {
+          weddingId,
+          isPlusOne: false,
+        };
+        if (status) where.rsvpStatus = status;
+        if (side) where.side = side;
+        if (list) where.list = list;
+        if (family !== undefined) where.family = family;
+
         const guests = await db.guest.findMany({
-          where: { weddingId, rsvpStatus: status, isPlusOne: false },
-          take: limit || 20,
+          where,
+          take: limit || 30,
         });
 
         return guests.map((g) => ({
           id: g.id,
           name: `${g.firstName} ${g.lastName || ""}`.trim(),
           email: g.email,
+          side: g.side,
+          list: g.list,
+          rsvpStatus: g.rsvpStatus,
+          family: g.family,
+          notes: g.notes,
         }));
       },
     }),
