@@ -7,6 +7,18 @@ import { CalendarCheck, Check, Link, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+// Hoisted constants — avoid recreating on every render
+const RSVP_LABELS: Record<string, string> = {
+  pending: "Pending",
+  yes: "Confirmed",
+  no: "Declined",
+};
+const RSVP_COLORS: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-800",
+  yes: "bg-green-100 text-green-800",
+  no: "bg-red-100 text-red-800",
+};
+
 type SortableColumn =
   | "firstName"
   | "email"
@@ -326,16 +338,8 @@ function EditableRsvpCell({
     setIsEditing(false);
   }
 
-  const labels: Record<string, string> = {
-    pending: "Pending",
-    yes: "Confirmed",
-    no: "Declined",
-  };
-  const colors: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-800",
-    yes: "bg-green-100 text-green-800",
-    no: "bg-red-100 text-red-800",
-  };
+  const labels = RSVP_LABELS;
+  const colors = RSVP_COLORS;
 
   if (isEditing) {
     return (

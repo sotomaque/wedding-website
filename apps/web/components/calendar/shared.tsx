@@ -2,7 +2,7 @@
 
 import { CalendarDayButton } from "@workspace/ui/components/calendar";
 import { cn } from "@workspace/ui/lib/utils";
-import * as React from "react";
+import { type ComponentPropsWithoutRef, createContext, use } from "react";
 import { toDateKey } from "@/app/[slug]/admin/calendar/utils";
 
 // ---------------------------------------------------------------------------
@@ -50,7 +50,7 @@ export interface DotContextValue {
   activityDates: Set<string>;
 }
 
-export const DotContext = React.createContext<DotContextValue>({
+export const DotContext = createContext<DotContextValue>({
   eventDates: new Set(),
   arrivalDates: new Set(),
   departureDates: new Set(),
@@ -62,9 +62,9 @@ export function DayButtonWithDots({
   modifiers,
   children,
   ...props
-}: React.ComponentPropsWithoutRef<typeof CalendarDayButton>) {
+}: ComponentPropsWithoutRef<typeof CalendarDayButton>) {
   const { eventDates, arrivalDates, departureDates, activityDates } =
-    React.useContext(DotContext);
+    use(DotContext);
   const key = toDateKey(day.date);
   const hasEvent = eventDates.has(key);
   const hasArrival = arrivalDates.has(key);

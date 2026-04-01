@@ -17,7 +17,6 @@ import { Button } from "@workspace/ui/components/button";
 import { Calendar } from "@workspace/ui/components/calendar";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-import { PhoneInput } from "@workspace/ui/components/phone-input";
 import {
   Popover,
   PopoverContent,
@@ -37,7 +36,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@workspace/ui/components/sheet";
-import { Switch } from "@workspace/ui/components/switch";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { cn } from "@workspace/ui/lib/utils";
 import { format } from "date-fns";
@@ -46,13 +44,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import {
   type EditGuestFormData,
   editGuestSchema,
 } from "@/lib/validations/guest";
 import type { EventOption, PartyOption } from "./actions";
+import {
+  AdminFlagsSection,
+  BridalPartySection,
+  ContactSection,
+  EventInvitationsSection,
+  PlusOneSection,
+} from "./guest-form-sections";
 
 // PostgreSQL date columns are returned as Date objects by the pg driver.
 // Convert to the "YYYY-MM-DD" string that <input type="date"> requires.
@@ -147,11 +151,11 @@ export function EditGuestSheet({
     defaultValues: initialValues,
   });
 
-  const plusOneAllowed = watch("plusOneAllowed");
-  const physicalInviteSent = watch("physicalInviteSent");
-  const family = watch("family");
-  const under21 = watch("under21");
-  const threeAndUnder = watch("threeAndUnder");
+  const _plusOneAllowed = watch("plusOneAllowed");
+  const _physicalInviteSent = watch("physicalInviteSent");
+  const _family = watch("family");
+  const _under21 = watch("under21");
+  const _threeAndUnder = watch("threeAndUnder");
 
   // Watch all form values to detect changes
   const formValues = watch();
@@ -479,144 +483,23 @@ export function EditGuestSheet({
               </p>
             </div>
 
-            {/* Plus One Section - Only show for primary guests */}
-            {!guest.isPlusOne && (
-              <div className="border-t pt-4 mt-2">
-                <div className="flex items-center justify-between mb-3">
-                  <Label htmlFor="plusOneAllowed">Allow Plus One</Label>
-                  <Switch
-                    id="plusOneAllowed"
-                    checked={plusOneAllowed}
-                    onCheckedChange={(checked) => {
-                      setValue("plusOneAllowed", checked);
-                      if (!checked) {
-                        setValue("plusOneFirstName", "");
-                        setValue("plusOneLastName", "");
-                      }
-                    }}
-                  />
-                </div>
-                {plusOneAllowed && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="plusOneFirstName">First Name</Label>
-                      <Input
-                        id="plusOneFirstName"
-                        {...register("plusOneFirstName")}
-                        placeholder="Leave blank if unknown"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="plusOneLastName">Last Name</Label>
-                      <Input
-                        id="plusOneLastName"
-                        {...register("plusOneLastName")}
-                        placeholder="Leave blank if unknown"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Plus One Section */}
+            <PlusOneSection
+              register={register}
+              watch={watch}
+              setValue={setValue}
+              errors={errors}
+              showSection={!guest.isPlusOne}
+            />
 
             {/* Contact Information */}
-            <div className="border-t pt-4 mt-2 space-y-4">
-              <h3 className="text-sm font-semibold">Contact Information</h3>
-
-              <div className="space-y-2">
-                <Label htmlFor="mailingAddress">Mailing Address</Label>
-                <AddressAutocomplete
-                  id="mailingAddress"
-                  value={watch("mailingAddress") || ""}
-                  onChange={(val) => setValue("mailingAddress", val)}
-                  placeholder="123 Main St, City, State, ZIP"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phoneNumber">Phone Number</Label>
-                  <PhoneInput
-                    id="phoneNumber"
-                    value={watch("phoneNumber")}
-                    onChange={(value) => setValue("phoneNumber", value)}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="whatsapp">WhatsApp</Label>
-                  <PhoneInput
-                    id="whatsapp"
-                    value={watch("whatsapp")}
-                    onChange={(value) => setValue("whatsapp", value)}
-                    international
-                    placeholder="+1 (555) 123-4567 or +52 55 5506 7135"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Preferred Contact Method</Label>
-                <Select
-                  value={watch("preferredContactMethod") || "none"}
-                  onValueChange={(
-                    value:
-                      | "none"
-                      | "email"
-                      | "text"
-                      | "whatsapp"
-                      | "phone_call",
-                  ) =>
-                    setValue(
-                      "preferredContactMethod",
-                      value === "none" ? "" : value,
-                    )
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Not specified" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Not specified</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="text">Text Message</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="phone_call">Phone Call</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Preferred Language (Optional)</Label>
-                <Select
-                  value={watch("preferredLanguage") || "none"}
-                  onValueChange={(value: "none" | "en" | "es") =>
-                    setValue("preferredLanguage", value === "none" ? "" : value)
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Use wedding default" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Use wedding default</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="physicalInviteSent">Physical Invite Sent</Label>
-                <Switch
-                  id="physicalInviteSent"
-                  checked={physicalInviteSent}
-                  onCheckedChange={(checked) =>
-                    setValue("physicalInviteSent", checked)
-                  }
-                />
-              </div>
-            </div>
+            <ContactSection
+              register={register}
+              watch={watch}
+              setValue={setValue}
+              errors={errors}
+              showPhysicalInvite
+            />
 
             {/* Admin-Only Fields */}
             <div className="border-t pt-4 mt-2 space-y-4">
@@ -678,37 +561,12 @@ export function EditGuestSheet({
                 )}
               </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="family">Family Member</Label>
-                <Switch
-                  id="family"
-                  checked={family}
-                  onCheckedChange={(checked) => setValue("family", checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="under21">Under 21</Label>
-                <Switch
-                  id="under21"
-                  checked={under21}
-                  onCheckedChange={(checked) => setValue("under21", checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="threeAndUnder">3 and Under</Label>
-                <Switch
-                  id="threeAndUnder"
-                  checked={threeAndUnder}
-                  onCheckedChange={(checked) => {
-                    setValue("threeAndUnder", checked);
-                    if (checked) {
-                      setValue("under21", true);
-                    }
-                  }}
-                />
-              </div>
+              <AdminFlagsSection
+                register={register}
+                watch={watch}
+                setValue={setValue}
+                errors={errors}
+              />
 
               {/* Travel Information Section */}
               <div className="border-t pt-4 mt-2 space-y-4">
@@ -844,139 +702,30 @@ export function EditGuestSheet({
                 </div>
               </div>
 
-              {/* Bridal Party Section */}
-              <div className="border-t pt-4 mt-2 space-y-4">
-                <h3 className="text-sm font-semibold">Bridal Party</h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Gender</Label>
-                    <Select
-                      value={watch("gender") || "none"}
-                      onValueChange={(value: "none" | "male" | "female") => {
-                        setValue("gender", value === "none" ? "" : value);
-                        // Clear bridal party role if gender changes
-                        if (value !== watch("gender")) {
-                          setValue("bridalPartyRole", "");
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Not specified" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Not specified</SelectItem>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Bridal Party Role</Label>
-                    <Select
-                      value={watch("bridalPartyRole") || "none"}
-                      onValueChange={(
-                        value:
-                          | "none"
-                          | "groomsman"
-                          | "best_man"
-                          | "bridesmaid"
-                          | "maid_of_honor",
-                      ) =>
-                        setValue(
-                          "bridalPartyRole",
-                          value === "none" ? "" : value,
-                        )
-                      }
-                      disabled={!watch("gender")}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="None" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {watch("gender") === "male" && (
-                          <>
-                            <SelectItem value="groomsman">Groomsman</SelectItem>
-                            <SelectItem value="best_man">Best Man</SelectItem>
-                          </>
-                        )}
-                        {watch("gender") === "female" && (
-                          <>
-                            <SelectItem value="bridesmaid">
-                              Bridesmaid
-                            </SelectItem>
-                            <SelectItem value="maid_of_honor">
-                              Maid of Honor
-                            </SelectItem>
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {errors.bridalPartyRole && (
-                      <p className="text-sm text-destructive">
-                        {errors.bridalPartyRole.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {/* Bridal Party */}
+              <BridalPartySection
+                register={register}
+                watch={watch}
+                setValue={setValue}
+                errors={errors}
+              />
 
               {/* Event Invitations */}
-              {events.length > 0 && (
-                <div className="border-t pt-4 mt-2 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold">Event Invitations</h3>
-                    <button
-                      type="button"
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      onClick={() => {
-                        if (selectedEventIds.length === events.length) {
-                          setSelectedEventIds([]);
-                        } else {
-                          setSelectedEventIds(events.map((e) => e.id));
-                        }
-                      }}
-                    >
-                      {selectedEventIds.length === events.length
-                        ? "Deselect all"
-                        : "Select all"}
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {events.map((event) => (
-                      <div
-                        key={event.id}
-                        className="flex items-center justify-between"
-                      >
-                        <label
-                          htmlFor={`edit-event-${event.id}`}
-                          className="text-sm"
-                        >
-                          {event.name}
-                        </label>
-                        <Switch
-                          id={`edit-event-${event.id}`}
-                          checked={selectedEventIds.includes(event.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedEventIds((prev) => [
-                                ...prev,
-                                event.id,
-                              ]);
-                            } else {
-                              setSelectedEventIds((prev) =>
-                                prev.filter((id) => id !== event.id),
-                              );
-                            }
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <EventInvitationsSection
+                events={events}
+                selectedEventIds={selectedEventIds}
+                onToggleEvent={(eventId) => {
+                  if (selectedEventIds.includes(eventId)) {
+                    setSelectedEventIds((prev) =>
+                      prev.filter((id) => id !== eventId),
+                    );
+                  } else {
+                    setSelectedEventIds((prev) => [...prev, eventId]);
+                  }
+                }}
+                onSelectAll={() => setSelectedEventIds(events.map((e) => e.id))}
+                onDeselectAll={() => setSelectedEventIds([])}
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>

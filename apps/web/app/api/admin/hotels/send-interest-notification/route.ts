@@ -12,7 +12,10 @@ import { weddingUrl } from "@/lib/url";
 
 /**
  * Send hotel interest notification
- * @description Send a notification email to admin when a guest expresses interest in a hotel booking
+ * @description Send a notification email to admin when a guest expresses interest in a hotel booking.
+ * NOTE: This route is called internally from the hotel interest server action (apps/web/app/[slug]/hotels/actions.ts),
+ * not from the client. Auth is via invite code validation, not requireAdmin(). Despite being under /api/admin/,
+ * this is a server-to-server call triggered by guest actions.
  * @body HotelInterestBody
  * @response 200:SuccessResponse
  * @tag Admin - Hotels

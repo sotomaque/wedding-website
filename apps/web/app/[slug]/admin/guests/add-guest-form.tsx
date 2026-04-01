@@ -3,15 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { Label } from "@workspace/ui/components/label";
-import { PhoneInput } from "@workspace/ui/components/phone-input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select";
 import {
   Sheet,
   SheetContent,
@@ -20,11 +11,19 @@ import {
   SheetTitle,
 } from "@workspace/ui/components/sheet";
 import { Switch } from "@workspace/ui/components/switch";
+import { Textarea } from "@workspace/ui/components/textarea";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { type AddGuestFormData, addGuestSchema } from "@/lib/validations/guest";
 import type { EventOption, PartyOption } from "./actions";
+import {
+  AdminFlagsSection,
+  BridalPartySection,
+  ContactSection,
+  EventInvitationsSection,
+  PartySelect,
+  PlusOneSection,
+} from "./guest-form-sections";
 
 interface AddGuestFormProps {
   open: boolean;
@@ -76,13 +75,7 @@ export function AddGuestForm({
     },
   });
 
-  const plusOneAllowed = watch("plusOneAllowed");
-  const plusOneFirstName = watch("plusOneFirstName");
   const email = watch("email");
-  const family = watch("family");
-  const under21 = watch("under21");
-  const threeAndUnder = watch("threeAndUnder");
-  const gender = watch("gender");
   const eventIds = watch("eventIds") ?? [];
   const allEventsSelected =
     events.length > 0 && eventIds.length === events.length;
@@ -151,11 +144,6 @@ export function AddGuestForm({
                   Last Name
                 </label>
                 <Input id="lastName" {...register("lastName")} />
-                {errors.lastName && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.lastName.message}
-                  </p>
-                )}
               </div>
             </div>
 
@@ -210,365 +198,90 @@ export function AddGuestForm({
             </div>
 
             {/* Party Assignment */}
-            <div>
-              <label
-                htmlFor="partyId"
-                className="block text-sm font-medium mb-1"
-              >
-                Party (Optional)
-              </label>
-              <select
-                id="partyId"
-                {...register("partyId")}
-                className="w-full border rounded px-3 py-2 bg-background"
-              >
-                <option value="">Create new party</option>
-                {parties.map((party) => (
-                  <option key={party.id} value={party.id}>
-                    {party.inviteCode} -{" "}
-                    {party.name || party.guestNames || "Empty party"} (
-                    {party.guestCount} guests)
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Add to an existing party or create a new one with a unique
-                invite code
-              </p>
-            </div>
+            <PartySelect
+              register={register}
+              watch={watch}
+              setValue={setValue}
+              errors={errors}
+              parties={parties}
+            />
 
-            {/* Plus One Section */}
-            <div className="border-t pt-4 mt-2">
-              <div className="flex items-center justify-between mb-3">
-                <label htmlFor="plusOneAllowed" className="text-sm font-medium">
-                  Allow Plus One
-                </label>
-                <Switch
-                  id="plusOneAllowed"
-                  checked={plusOneAllowed}
-                  onCheckedChange={(checked) => {
-                    setValue("plusOneAllowed", checked);
-                    if (!checked) {
-                      setValue("plusOneFirstName", "");
-                      setValue("plusOneLastName", "");
-                    }
-                  }}
-                />
-              </div>
-              {plusOneAllowed && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      htmlFor="plusOneFirstName"
-                      className="block text-sm font-medium mb-1"
-                    >
-                      First Name
-                    </label>
-                    <Input
-                      id="plusOneFirstName"
-                      {...register("plusOneFirstName")}
-                      placeholder="Leave blank if unknown"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="plusOneLastName"
-                      className="block text-sm font-medium mb-1"
-                    >
-                      Last Name
-                    </label>
-                    <Input
-                      id="plusOneLastName"
-                      {...register("plusOneLastName")}
-                      placeholder="Leave blank if unknown"
-                      disabled={!plusOneFirstName}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Plus One */}
+            <PlusOneSection
+              register={register}
+              watch={watch}
+              setValue={setValue}
+              errors={errors}
+            />
 
             {/* Contact Information */}
-            <div className="border-t pt-4 mt-2 space-y-4">
-              <h3 className="text-sm font-semibold">Contact Information</h3>
+            <ContactSection
+              register={register}
+              watch={watch}
+              setValue={setValue}
+              errors={errors}
+            />
 
-              <div>
-                <label
-                  htmlFor="mailingAddress"
-                  className="block text-sm font-medium mb-1"
-                >
-                  Mailing Address
-                </label>
-                <AddressAutocomplete
-                  id="mailingAddress"
-                  value={watch("mailingAddress") || ""}
-                  onChange={(val) => setValue("mailingAddress", val)}
-                  placeholder="123 Main St, City, State, ZIP"
-                />
-              </div>
+            {/* Admin Flags */}
+            <AdminFlagsSection
+              register={register}
+              watch={watch}
+              setValue={setValue}
+              errors={errors}
+            />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="phoneNumber"
-                    className="block text-sm font-medium mb-1"
-                  >
-                    Phone Number
-                  </label>
-                  <PhoneInput
-                    id="phoneNumber"
-                    value={watch("phoneNumber")}
-                    onChange={(value) => setValue("phoneNumber", value)}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="whatsapp"
-                    className="block text-sm font-medium mb-1"
-                  >
-                    WhatsApp
-                  </label>
-                  <PhoneInput
-                    id="whatsapp"
-                    value={watch("whatsapp")}
-                    onChange={(value) => setValue("whatsapp", value)}
-                    international
-                    placeholder="+1 (555) 123-4567 or +52 55 5506 7135"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="preferredContactMethod"
-                  className="block text-sm font-medium mb-1"
-                >
-                  Preferred Contact Method
-                </label>
-                <select
-                  id="preferredContactMethod"
-                  {...register("preferredContactMethod")}
-                  className="w-full border rounded px-3 py-2 bg-background"
-                >
-                  <option value="">Select method...</option>
-                  <option value="email">Email</option>
-                  <option value="text">Text Message</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="phone_call">Phone Call</option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="preferredLanguage"
-                  className="block text-sm font-medium mb-1"
-                >
-                  Preferred Language (Optional)
-                </label>
-                <select
-                  id="preferredLanguage"
-                  {...register("preferredLanguage")}
-                  className="w-full border rounded px-3 py-2 bg-background"
-                >
-                  <option value="">Use wedding default</option>
-                  <option value="en">English</option>
-                  <option value="es">Spanish</option>
-                </select>
-              </div>
+            {/* Notes */}
+            <div>
+              <label htmlFor="notes" className="block text-sm font-medium mb-1">
+                Notes
+              </label>
+              <Textarea
+                id="notes"
+                {...register("notes")}
+                placeholder="Internal notes about this guest..."
+                rows={3}
+              />
             </div>
 
-            {/* Admin-Only Fields */}
-            <div className="border-t pt-4 mt-2 space-y-4">
-              <h3 className="text-sm font-semibold">Admin Information</h3>
-
-              <div className="flex items-center justify-between">
-                <label htmlFor="family" className="text-sm font-medium">
-                  Family Member
-                </label>
-                <Switch
-                  id="family"
-                  checked={family}
-                  onCheckedChange={(checked) => setValue("family", checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label htmlFor="under21" className="text-sm font-medium">
-                  Under 21
-                </label>
-                <Switch
-                  id="under21"
-                  checked={under21}
-                  onCheckedChange={(checked) => setValue("under21", checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label htmlFor="threeAndUnder" className="text-sm font-medium">
-                  3 and Under
-                </label>
-                <Switch
-                  id="threeAndUnder"
-                  checked={threeAndUnder}
-                  onCheckedChange={(checked) => {
-                    setValue("threeAndUnder", checked);
-                    if (checked) {
-                      setValue("under21", true);
-                    }
-                  }}
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="notes"
-                  className="block text-sm font-medium mb-1"
-                >
-                  Notes
-                </label>
-                <textarea
-                  id="notes"
-                  {...register("notes")}
-                  placeholder="Internal notes about this guest..."
-                  rows={3}
-                  className="w-full border rounded px-3 py-2 bg-background resize-none"
-                />
-              </div>
-            </div>
-
-            {/* Bridal Party Section */}
-            <div className="border-t pt-4 mt-2 space-y-4">
-              <h3 className="text-sm font-semibold">Bridal Party</h3>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Gender</Label>
-                  <Select
-                    value={gender || "none"}
-                    onValueChange={(value: "none" | "male" | "female") => {
-                      setValue("gender", value === "none" ? "" : value);
-                      // Clear bridal party role if gender changes
-                      if (value !== gender) {
-                        setValue("bridalPartyRole", "");
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Not specified" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Not specified</SelectItem>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Bridal Party Role</Label>
-                  <Select
-                    value={watch("bridalPartyRole") || "none"}
-                    onValueChange={(
-                      value:
-                        | "none"
-                        | "groomsman"
-                        | "best_man"
-                        | "bridesmaid"
-                        | "maid_of_honor",
-                    ) =>
-                      setValue("bridalPartyRole", value === "none" ? "" : value)
-                    }
-                    disabled={!gender}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {gender === "male" && (
-                        <>
-                          <SelectItem value="groomsman">Groomsman</SelectItem>
-                          <SelectItem value="best_man">Best Man</SelectItem>
-                        </>
-                      )}
-                      {gender === "female" && (
-                        <>
-                          <SelectItem value="bridesmaid">Bridesmaid</SelectItem>
-                          <SelectItem value="maid_of_honor">
-                            Maid of Honor
-                          </SelectItem>
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {errors.bridalPartyRole && (
-                    <p className="text-sm text-red-600">
-                      {errors.bridalPartyRole.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+            {/* Bridal Party */}
+            <BridalPartySection
+              register={register}
+              watch={watch}
+              setValue={setValue}
+              errors={errors}
+            />
 
             {/* Event Invitations */}
+            <EventInvitationsSection
+              events={events}
+              selectedEventIds={eventIds}
+              onToggleEvent={(eventId) => {
+                const current = eventIds;
+                if (current.includes(eventId)) {
+                  setValue(
+                    "eventIds",
+                    current.filter((id) => id !== eventId),
+                  );
+                } else {
+                  setValue("eventIds", [...current, eventId]);
+                }
+              }}
+              onSelectAll={() =>
+                setValue(
+                  "eventIds",
+                  events.map((e) => e.id),
+                )
+              }
+              onDeselectAll={() => setValue("eventIds", [])}
+            />
             {events.length > 0 && (
-              <div className="border-t pt-4 mt-2">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium">Event Invitations</p>
-                  <button
-                    type="button"
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => {
-                      if (allEventsSelected) {
-                        setValue("eventIds", []);
-                      } else {
-                        setValue(
-                          "eventIds",
-                          events.map((e) => e.id),
-                        );
-                      }
-                    }}
-                  >
-                    {allEventsSelected ? "Deselect all" : "Select all"}
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {events.map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex items-center justify-between"
-                    >
-                      <label htmlFor={`event-${event.id}`} className="text-sm">
-                        {event.name}
-                      </label>
-                      <Switch
-                        id={`event-${event.id}`}
-                        checked={eventIds.includes(event.id)}
-                        onCheckedChange={(checked) => {
-                          const current = eventIds;
-                          if (checked) {
-                            setValue("eventIds", [...current, event.id]);
-                          } else {
-                            setValue(
-                              "eventIds",
-                              current.filter((id) => id !== event.id),
-                            );
-                          }
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {allEventsSelected &&
-                    "Single wedding invitation email will be sent"}
-                  {someEventsSelected &&
-                    "Individual event invitation emails will be sent"}
-                  {noEventsSelected && "No invitation emails will be sent"}
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                {allEventsSelected &&
+                  "Single wedding invitation email will be sent"}
+                {someEventsSelected &&
+                  "Individual event invitation emails will be sent"}
+                {noEventsSelected && "No invitation emails will be sent"}
+              </p>
             )}
 
             {/* Send Email Option */}

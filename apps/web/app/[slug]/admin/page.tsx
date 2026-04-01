@@ -23,32 +23,18 @@ function getCountdown(targetDate: Date) {
 }
 
 async function getGuestStats(weddingId: string) {
-  // Get count of accepted A-list guests (not plus-ones)
-  const acceptedAListCount = await db.guest.count({
-    where: {
-      list: "a",
-      rsvpStatus: "yes",
-      isPlusOne: false,
-      weddingId,
-    },
-  });
-
-  // Get total A-list guests (not plus-ones)
-  const totalAListCount = await db.guest.count({
-    where: {
-      list: "a",
-      isPlusOne: false,
-      weddingId,
-    },
-  });
-
-  // Get total accepted guests (including plus-ones)
-  const totalAcceptedCount = await db.guest.count({
-    where: {
-      rsvpStatus: "yes",
-      weddingId,
-    },
-  });
+  const [acceptedAListCount, totalAListCount, totalAcceptedCount] =
+    await Promise.all([
+      db.guest.count({
+        where: { list: "a", rsvpStatus: "yes", isPlusOne: false, weddingId },
+      }),
+      db.guest.count({
+        where: { list: "a", isPlusOne: false, weddingId },
+      }),
+      db.guest.count({
+        where: { rsvpStatus: "yes", weddingId },
+      }),
+    ]);
 
   return {
     acceptedAList: acceptedAListCount,

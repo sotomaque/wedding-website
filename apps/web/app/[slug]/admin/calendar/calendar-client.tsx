@@ -2,7 +2,7 @@
 
 import { Calendar } from "@workspace/ui/components/calendar";
 import { cn } from "@workspace/ui/lib/utils";
-import * as React from "react";
+import { useMemo, useState } from "react";
 import {
   CALENDAR_COMPONENTS,
   DotContext,
@@ -168,25 +168,23 @@ export function CalendarClient({
   parties,
   activityPlans,
 }: CalendarClientProps) {
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>();
-  const [month, setMonth] = React.useState<Date>(() => new Date());
-  const [showEvents, setShowEvents] = React.useState(true);
-  const [showArrivals, setShowArrivals] = React.useState(true);
-  const [showDepartures, setShowDepartures] = React.useState(true);
-  const [showStays, setShowStays] = React.useState(true);
-  const [showActivities, setShowActivities] = React.useState(true);
-  const [sideFilter, setSideFilter] = React.useState<"all" | "bride" | "groom">(
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [month, setMonth] = useState<Date>(() => new Date());
+  const [showEvents, setShowEvents] = useState(true);
+  const [showArrivals, setShowArrivals] = useState(true);
+  const [showDepartures, setShowDepartures] = useState(true);
+  const [showStays, setShowStays] = useState(true);
+  const [showActivities, setShowActivities] = useState(true);
+  const [sideFilter, setSideFilter] = useState<"all" | "bride" | "groom">(
     "all",
   );
-  const [groupMode, setGroupMode] = React.useState<"guests" | "parties">(
-    "guests",
-  );
+  const [groupMode, setGroupMode] = useState<"guests" | "parties">("guests");
 
   // Pick individual guests or collapsed parties based on toggle
   const baseList: TravelEntry[] = groupMode === "parties" ? parties : guests;
 
   // Stable color assignment keyed to unfiltered list — prevents color shift on filter change
-  const colorMap = React.useMemo(() => {
+  const colorMap = useMemo(() => {
     const map = new Map<string, string>();
     baseList.forEach((g, i) => {
       map.set(g.id, STAY_COLORS[i % STAY_COLORS.length] as string);
@@ -195,7 +193,7 @@ export function CalendarClient({
   }, [baseList]);
 
   // Apply side filter
-  const filteredGuests = React.useMemo(
+  const filteredGuests = useMemo(
     () =>
       sideFilter === "all"
         ? baseList
@@ -204,7 +202,7 @@ export function CalendarClient({
   );
 
   // Compute sets of "YYYY-MM-DD" keys per layer
-  const eventDates = React.useMemo(() => {
+  const eventDates = useMemo(() => {
     const set = new Set<string>();
     if (!showEvents) return set;
     for (const e of events) {
@@ -213,7 +211,7 @@ export function CalendarClient({
     return set;
   }, [events, showEvents]);
 
-  const arrivalDates = React.useMemo(() => {
+  const arrivalDates = useMemo(() => {
     const set = new Set<string>();
     if (!showArrivals) return set;
     for (const g of filteredGuests) {
@@ -222,7 +220,7 @@ export function CalendarClient({
     return set;
   }, [filteredGuests, showArrivals]);
 
-  const departureDates = React.useMemo(() => {
+  const departureDates = useMemo(() => {
     const set = new Set<string>();
     if (!showDepartures) return set;
     for (const g of filteredGuests) {
@@ -232,7 +230,7 @@ export function CalendarClient({
   }, [filteredGuests, showDepartures]);
 
   // Filter activity plans by side when a side filter is active
-  const filteredActivityPlans = React.useMemo(
+  const filteredActivityPlans = useMemo(
     () =>
       sideFilter === "all"
         ? activityPlans
@@ -240,7 +238,7 @@ export function CalendarClient({
     [activityPlans, sideFilter],
   );
 
-  const activityDates = React.useMemo(() => {
+  const activityDates = useMemo(() => {
     const set = new Set<string>();
     if (!showActivities) return set;
     for (const ap of filteredActivityPlans) {
@@ -252,7 +250,7 @@ export function CalendarClient({
   // Selected day detail data
   const selectedKey = selectedDate ? toDateKey(selectedDate) : null;
 
-  const dayEvents = React.useMemo(
+  const dayEvents = useMemo(
     () =>
       selectedKey && showEvents
         ? events.filter(
@@ -262,7 +260,7 @@ export function CalendarClient({
     [selectedKey, events, showEvents],
   );
 
-  const dayArrivals = React.useMemo(
+  const dayArrivals = useMemo(
     () =>
       selectedKey && showArrivals
         ? filteredGuests.filter(
@@ -272,7 +270,7 @@ export function CalendarClient({
     [selectedKey, filteredGuests, showArrivals],
   );
 
-  const dayDepartures = React.useMemo(
+  const dayDepartures = useMemo(
     () =>
       selectedKey && showDepartures
         ? filteredGuests.filter(
@@ -284,7 +282,7 @@ export function CalendarClient({
   );
 
   // Group activity plans for the selected day by activity, deduplicating by pre-computed key
-  const dayActivities = React.useMemo(() => {
+  const dayActivities = useMemo(() => {
     if (!selectedKey || !showActivities) return [];
     const plansForDay = filteredActivityPlans.filter(
       (ap) => ap.plannedDate === selectedKey,
@@ -315,7 +313,7 @@ export function CalendarClient({
     return Array.from(byActivity.values());
   }, [selectedKey, filteredActivityPlans, showActivities]);
 
-  const dotContextValue = React.useMemo(
+  const dotContextValue = useMemo(
     () => ({ eventDates, arrivalDates, departureDates, activityDates }),
     [eventDates, arrivalDates, departureDates, activityDates],
   );
