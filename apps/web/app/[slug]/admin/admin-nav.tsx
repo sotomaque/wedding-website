@@ -30,7 +30,7 @@ interface NavGroup {
 
 type NavItem = NavLink | NavGroup;
 
-function getNavItems(slug: string): NavItem[] {
+function getNavItems(slug: string, isSuperAdmin: boolean): NavItem[] {
   const base = `/${slug}`;
   return [
     {
@@ -65,8 +65,12 @@ function getNavItems(slug: string): NavItem[] {
       label: "Admin",
       links: [
         { href: `${base}/admin/settings`, label: "Settings" },
-        { href: `${base}/admin/services`, label: "Services" },
-        { href: `${base}/admin/api-docs`, label: "API Docs" },
+        ...(isSuperAdmin
+          ? [
+              { href: `${base}/admin/services`, label: "Services" },
+              { href: `${base}/admin/api-docs`, label: "API Docs" },
+            ]
+          : []),
       ],
     },
   ];
@@ -118,10 +122,13 @@ function NavDropdown({
   );
 }
 
-export function AdminNav() {
+export function AdminNav({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
   const pathname = usePathname();
   const slug = useWeddingSlug();
-  const navItems = useMemo(() => getNavItems(slug), [slug]);
+  const navItems = useMemo(
+    () => getNavItems(slug, isSuperAdmin),
+    [slug, isSuperAdmin],
+  );
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
