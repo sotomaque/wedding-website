@@ -68,7 +68,7 @@ export default function LandingPage() {
             Sign In
           </Link>
           <Link
-            href="/sign-up"
+            href="/dashboard"
             className="inline-flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm border border-white/30 px-5 py-2 text-sm font-medium text-white hover:bg-white/30 transition-colors"
           >
             Get Started
@@ -102,7 +102,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
-              href="/sign-up"
+              href="/dashboard"
               className="inline-flex items-center justify-center rounded-full bg-white px-8 py-3.5 text-sm font-medium text-black shadow-lg hover:bg-white/90 transition-colors"
             >
               Create Your Free Site
@@ -331,7 +331,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/sign-up"
+              href="/dashboard"
               className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-3.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
             >
               Create Your Free Wedding Site
