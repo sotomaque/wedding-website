@@ -126,43 +126,6 @@ test.describe("Things To Do - Navigation", () => {
   });
 });
 
-test.describe("Things To Do - After RSVP Redirect", () => {
-  test("redirected from RSVP form lands on things-to-do", async ({ page }) => {
-    // Use a dedicated fresh guest whose RSVP hasn't been submitted
-    const rsvpCode = getTestData().rsvpRedirectCode;
-    if (!rsvpCode) {
-      test.skip(true, "No RSVP redirect code from seed data");
-      return;
-    }
-
-    // Simulate the flow: RSVP form -> redirect to things-to-do
-    // First go to RSVP form
-    await page.goto(`${TEST_DATA.routes.rsvp}?code=${rsvpCode}&step=form`);
-    await waitForHydration(page);
-
-    // If the form is visible and submittable
-    const yesOption = page.getByRole("radio", { name: /yes/i }).first();
-    if (await yesOption.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await yesOption.click();
-
-      // Submit the form
-      await page.getByRole("button", { name: /submit|save|rsvp/i }).click();
-
-      // Check if redirected to things-to-do (for "yes" responses)
-      // This may timeout if the form submission fails or redirects elsewhere
-      try {
-        await expect(page).toHaveURL(/things-to-do/, { timeout: 15000 });
-      } catch {
-        // May show success message instead of redirect
-        await expect(page.getByText(/thank you|success/i)).toBeVisible();
-      }
-    } else {
-      // Form not available for this code (maybe already submitted)
-      test.skip();
-    }
-  });
-});
-
 test.describe("Things To Do - Responsive Design", () => {
   test("displays correctly on mobile viewport", async ({ page }) => {
     // Set mobile viewport

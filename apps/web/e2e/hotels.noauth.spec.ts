@@ -27,15 +27,14 @@ test.describe("Hotels Page - Public Access", () => {
     await expect(page.getByText("E2E Budget Inn")).toBeVisible();
   });
 
-  test("hotel cards have interest buttons", async ({ page }) => {
+  test("hotel cards show distance and website link", async ({ page }) => {
     await page.goto(`${TEST_DATA.routes.home}/hotels`);
     await waitForHydration(page);
 
+    // Seed data includes distance info and website links
+    await expect(page.getByText("0.5 miles")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /interested/i }).first(),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /booked/i }).first(),
+      page.getByRole("link", { name: /visit website/i }).first(),
     ).toBeVisible();
   });
 
