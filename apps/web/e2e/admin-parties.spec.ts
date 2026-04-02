@@ -65,11 +65,9 @@ test.describe("Parties List Page", () => {
     await page.goto("/admin/parties");
     await waitForHydration(page);
 
-    // Should show pagination
+    // Should show pagination buttons
     await expect(
-      page
-        .getByRole("button", { name: /previous/i })
-        .or(page.getByRole("button", { name: /next/i })),
+      page.getByRole("button", { name: "Previous", exact: true }),
     ).toBeVisible();
   });
 });

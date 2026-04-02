@@ -52,14 +52,14 @@ test.describe("Todo List Page", () => {
     await page.goto("/admin/todos");
     await waitForHydration(page);
 
-    // Find our test todo checkbox
-    const todoText = page.getByText("E2E Test Todo Item");
-    if (await todoText.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const checkbox = todoText
-        .locator("..")
-        .locator("..")
-        .getByRole("checkbox");
+    // Find our test todo checkbox by its aria-label
+    const checkbox = page.getByRole("checkbox", {
+      name: /E2E Test Todo Item/i,
+    });
+    if (await checkbox.isVisible({ timeout: 3000 }).catch(() => false)) {
       await checkbox.click();
+      await page.waitForTimeout(500);
+
       await page.waitForTimeout(500);
 
       // Should move to completed section

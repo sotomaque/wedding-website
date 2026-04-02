@@ -104,9 +104,11 @@ test.describe("Template View Page", () => {
     await waitForHydration(page);
 
     await page.getByRole("link", { name: /view/i }).first().click();
+    await page.waitForURL(/\/admin\/templates\/[a-z0-9-]+$/i);
     await waitForHydration(page);
 
-    await expect(page.getByRole("switch")).toBeVisible();
+    // Template detail page has a single toggle for this template
+    await expect(page.getByLabel(/toggle template/i)).toBeVisible();
     await expect(page.getByRole("link", { name: /edit/i })).toBeVisible();
   });
 });

@@ -23,11 +23,21 @@ test.describe("Content Editor Page", () => {
     await page.goto("/admin/content");
     await waitForHydration(page);
 
-    await expect(page.getByRole("button", { name: /hero/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /story/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /details/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /schedule/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /rsvp/i })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Hero", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Story", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Details", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Schedule", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "RSVP", exact: true }),
+    ).toBeVisible();
   });
 
   test("Hero tab shows title input and save button", async ({ page }) => {
@@ -35,7 +45,7 @@ test.describe("Content Editor Page", () => {
     await waitForHydration(page);
 
     // Hero tab should be active by default or click it
-    await page.getByRole("button", { name: /hero/i }).click();
+    await page.getByRole("button", { name: "Hero", exact: true }).click();
     await page.waitForTimeout(300);
 
     await expect(page.locator("#hero-title")).toBeVisible();
@@ -48,7 +58,7 @@ test.describe("Content Editor Page", () => {
     await page.goto("/admin/content");
     await waitForHydration(page);
 
-    await page.getByRole("button", { name: /story/i }).click();
+    await page.getByRole("button", { name: "Story", exact: true }).click();
     await page.waitForTimeout(300);
 
     await expect(page.locator("#story-title")).toBeVisible();
@@ -61,7 +71,7 @@ test.describe("Content Editor Page", () => {
     await page.goto("/admin/content");
     await waitForHydration(page);
 
-    await page.getByRole("button", { name: /story/i }).click();
+    await page.getByRole("button", { name: "Story", exact: true }).click();
     await page.waitForTimeout(300);
 
     await expect(page.getByRole("button", { name: /ai write/i })).toBeVisible();
@@ -71,7 +81,7 @@ test.describe("Content Editor Page", () => {
     await page.goto("/admin/content");
     await waitForHydration(page);
 
-    await page.getByRole("button", { name: /details/i }).click();
+    await page.getByRole("button", { name: "Details", exact: true }).click();
     await page.waitForTimeout(300);
 
     await expect(page.locator("#details-title")).toBeVisible();
@@ -84,7 +94,7 @@ test.describe("Content Editor Page", () => {
     await page.goto("/admin/content");
     await waitForHydration(page);
 
-    await page.getByRole("button", { name: /details/i }).click();
+    await page.getByRole("button", { name: "Details", exact: true }).click();
     await page.waitForTimeout(300);
 
     await expect(page.locator("#ceremony-venue")).toBeVisible();
@@ -95,7 +105,7 @@ test.describe("Content Editor Page", () => {
     await page.goto("/admin/content");
     await waitForHydration(page);
 
-    await page.getByRole("button", { name: /schedule/i }).click();
+    await page.getByRole("button", { name: "Schedule", exact: true }).click();
     await page.waitForTimeout(300);
 
     await expect(page.locator("#schedule-title")).toBeVisible();
@@ -108,7 +118,7 @@ test.describe("Content Editor Page", () => {
     await page.goto("/admin/content");
     await waitForHydration(page);
 
-    await page.getByRole("button", { name: /rsvp/i }).click();
+    await page.getByRole("button", { name: "RSVP", exact: true }).click();
     await page.waitForTimeout(300);
 
     await expect(page.locator("#rsvp-title")).toBeVisible();

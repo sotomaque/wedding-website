@@ -321,9 +321,12 @@ test.describe("Seating Chart Editor - View Modes", () => {
   });
 
   test("can switch to table view", async ({ page }) => {
-    // Click on Table view button
-    const tableViewButton = page.getByRole("button", { name: /table/i });
-    if (await tableViewButton.isVisible()) {
+    // Click on Table view button (exact match to avoid "Add Table")
+    const tableViewButton = page.getByRole("button", {
+      name: "Table",
+      exact: true,
+    });
+    if (await tableViewButton.isVisible({ timeout: 3000 }).catch(() => false)) {
       await tableViewButton.click();
 
       // Table view should now be active

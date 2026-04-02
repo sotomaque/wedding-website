@@ -96,7 +96,14 @@ test.describe("Events Page - CRUD", () => {
     await nameInput.clear();
     await nameInput.fill("E2E Updated Event");
 
-    await page.getByRole("button", { name: /update event/i }).click();
+    // Submit — button may say "Update Event" or "Save"
+    await page
+      .getByRole("button", { name: /update|save/i })
+      .last()
+      .click();
+
+    // Wait for dialog to close and page to refresh
+    await page.waitForTimeout(1000);
 
     await expect(page.getByText("E2E Updated Event")).toBeVisible({
       timeout: 5000,
