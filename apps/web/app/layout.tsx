@@ -8,6 +8,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 
 import "@workspace/ui/globals.css";
+import "@clerk/ui/themes/shadcn.css";
 import { Providers } from "@/components/providers";
 import { env } from "@/env";
 

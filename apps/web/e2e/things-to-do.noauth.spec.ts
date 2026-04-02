@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { setInviteCodeCookie, TEST_DATA, waitForHydration } from "./fixtures";
+import {
+  getTestData,
+  setInviteCodeCookie,
+  TEST_DATA,
+  waitForHydration,
+} from "./fixtures";
 
 /**
  * Things To Do Page Tests (No Auth Required)
@@ -11,7 +16,9 @@ import { setInviteCodeCookie, TEST_DATA, waitForHydration } from "./fixtures";
  * - Not auth'd and manually navigated
  */
 
-const TEST_INVITE_CODE = process.env.TEST_INVITE_CODE || "TEST-1234";
+function getInviteCode(): string | null {
+  return getTestData().inviteCode;
+}
 
 test.describe("Things To Do - Public Access", () => {
   test("page loads without authentication", async ({ page }) => {
@@ -39,13 +46,13 @@ test.describe("Things To Do - Public Access", () => {
 
 test.describe("Things To Do - With Invite Code", () => {
   test("page loads with code in URL", async ({ page }) => {
-    // Skip test if no valid test code is set
-    if (TEST_INVITE_CODE === "TEST-1234") {
-      test.skip();
+    const inviteCode = getInviteCode();
+    if (!inviteCode) {
+      test.skip(true, "No invite code from seed data");
       return;
     }
 
-    await page.goto(`${TEST_DATA.routes.thingsToDo}?code=${TEST_INVITE_CODE}`);
+    await page.goto(`${TEST_DATA.routes.thingsToDo}?code=${inviteCode}`);
     await waitForHydration(page);
 
     // Page should load successfully
@@ -53,14 +60,14 @@ test.describe("Things To Do - With Invite Code", () => {
   });
 
   test("page loads with code in cookie", async ({ page, context }) => {
-    // Skip test if no valid test code is set
-    if (TEST_INVITE_CODE === "TEST-1234") {
-      test.skip();
+    const inviteCode = getInviteCode();
+    if (!inviteCode) {
+      test.skip(true, "No invite code from seed data");
       return;
     }
 
     // Set the invite code cookie
-    await setInviteCodeCookie(page, context, TEST_INVITE_CODE);
+    await setInviteCodeCookie(page, context, inviteCode);
 
     await page.goto(TEST_DATA.routes.thingsToDo);
     await waitForHydration(page);
@@ -109,17 +116,15 @@ test.describe("Things To Do - Navigation", () => {
 
 test.describe("Things To Do - After RSVP Redirect", () => {
   test("redirected from RSVP form lands on things-to-do", async ({ page }) => {
-    // Skip test if no valid test code is set
-    if (TEST_INVITE_CODE === "TEST-1234") {
-      test.skip();
+    const inviteCode = getInviteCode();
+    if (!inviteCode) {
+      test.skip(true, "No invite code from seed data");
       return;
     }
 
     // Simulate the flow: RSVP form -> redirect to things-to-do
     // First go to RSVP form
-    await page.goto(
-      `${TEST_DATA.routes.rsvp}?code=${TEST_INVITE_CODE}&step=form`,
-    );
+    await page.goto(`${TEST_DATA.routes.rsvp}?code=${inviteCode}&step=form`);
     await waitForHydration(page);
 
     // If the form is visible and submittable

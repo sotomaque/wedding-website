@@ -33,6 +33,32 @@ test.beforeEach(async () => {
   }
 });
 
+/**
+ * Navigate to the first available seating chart editor.
+ * If no chart exists, create one on the fly so downstream tests don't skip.
+ */
+async function navigateToChartEditor(page: import("@playwright/test").Page) {
+  await page.goto("/admin/seating");
+  await waitForHydration(page);
+
+  const chartLink = page.locator("a").filter({ hasText: /chart/i }).first();
+
+  if (await chartLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await chartLink.click();
+    await waitForHydration(page);
+    return;
+  }
+
+  // No chart found — create one
+  await page.getByRole("button", { name: /new chart/i }).click();
+  await page.getByLabel(/chart name/i).fill(`E2E Test Chart ${Date.now()}`);
+  await page.getByRole("button", { name: /create chart/i }).click();
+  await page.waitForURL(/\/admin\/seating\/[a-z0-9-]+/i, {
+    timeout: 15000,
+  });
+  await waitForHydration(page);
+}
+
 // Clean up any seating charts created during these tests
 test.afterAll(async ({ browser }) => {
   if (!isAuthAvailable()) {
@@ -196,29 +222,7 @@ test.describe("Seating Chart Management - CRUD Operations", () => {
 
 test.describe("Seating Chart Editor - Tables", () => {
   test.beforeEach(async ({ page }) => {
-    // Create a test chart or use an existing one
-    await page.goto("/admin/seating");
-    await waitForHydration(page);
-
-    // Check for existing charts
-    const chartLink = page.locator("a").filter({ hasText: /chart/i }).first();
-
-    if (await chartLink.isVisible()) {
-      await chartLink.click();
-      await page.waitForLoadState("networkidle");
-    } else {
-      // Create a new chart
-      await page.getByRole("button", { name: /new chart/i }).click();
-      await page.getByLabel(/chart name/i).fill(`Table Test ${Date.now()}`);
-      await page.getByRole("button", { name: /create chart/i }).click();
-      // Increase timeout and wait for navigation
-      await page.waitForURL(/\/admin\/seating\/[a-z0-9-]+/i, {
-        timeout: 15000,
-      });
-      await page.waitForLoadState("networkidle");
-    }
-
-    await waitForHydration(page);
+    await navigateToChartEditor(page);
   });
 
   test("can add a table to the chart", async ({ page }) => {
@@ -273,18 +277,7 @@ test.describe("Seating Chart Editor - Tables", () => {
 
 test.describe("Seating Chart Editor - Filters", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/admin/seating");
-    await waitForHydration(page);
-
-    // Navigate to first chart
-    const chartLink = page.locator("a").filter({ hasText: /chart/i }).first();
-
-    if (await chartLink.isVisible()) {
-      await chartLink.click();
-      await waitForHydration(page);
-    } else {
-      test.skip();
-    }
+    await navigateToChartEditor(page);
   });
 
   test("displays filter controls", async ({ page }) => {
@@ -324,18 +317,7 @@ test.describe("Seating Chart Editor - Filters", () => {
 
 test.describe("Seating Chart Editor - View Modes", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/admin/seating");
-    await waitForHydration(page);
-
-    // Navigate to first chart
-    const chartLink = page.locator("a").filter({ hasText: /chart/i }).first();
-
-    if (await chartLink.isVisible()) {
-      await chartLink.click();
-      await waitForHydration(page);
-    } else {
-      test.skip();
-    }
+    await navigateToChartEditor(page);
   });
 
   test("can switch to table view", async ({ page }) => {
@@ -371,18 +353,7 @@ test.describe("Seating Chart Editor - View Modes", () => {
 
 test.describe("Seating Chart Editor - AI Generate", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/admin/seating");
-    await waitForHydration(page);
-
-    // Navigate to first chart
-    const chartLink = page.locator("a").filter({ hasText: /chart/i }).first();
-
-    if (await chartLink.isVisible()) {
-      await chartLink.click();
-      await waitForHydration(page);
-    } else {
-      test.skip();
-    }
+    await navigateToChartEditor(page);
   });
 
   test("shows AI Generate button", async ({ page }) => {
@@ -407,24 +378,11 @@ test.describe("Seating Chart Editor - AI Generate", () => {
 
 test.describe("Seating Chart Editor - Guest Pool", () => {
   test.beforeEach(async ({ page }) => {
-    // Increase timeout for navigation since this runs later in the test suite
-    await page.goto("/admin/seating", { timeout: 30000 });
-    await waitForHydration(page);
-
-    // Navigate to first chart
-    const chartLink = page.locator("a").filter({ hasText: /chart/i }).first();
-
-    if (await chartLink.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await chartLink.click();
-      await waitForHydration(page);
-    } else {
-      test.skip();
-    }
+    await navigateToChartEditor(page);
   });
 
   test("displays unassigned guests section", async ({ page }) => {
-    // Should show unassigned guests header - wait a bit longer as this test
-    // runs late in the suite and may need more time
+    // Should show unassigned guests header
     await expect(page.getByText(/unassigned/i)).toBeVisible({ timeout: 10000 });
   });
 

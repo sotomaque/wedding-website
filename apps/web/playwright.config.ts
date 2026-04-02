@@ -21,6 +21,15 @@ const readOnlySpecs = [
   "registry.noauth.spec.ts",
   "trip-planner.noauth.spec.ts",
   "platform-admin.spec.ts",
+  // Read-only admin pages (display only, no DB mutations)
+  "admin-calendar.spec.ts",
+  "admin-api-docs.spec.ts",
+  "admin-gifts.spec.ts",
+  // Read-only public pages
+  "hotels.noauth.spec.ts",
+  "vendors.noauth.spec.ts",
+  "events-rsvp.noauth.spec.ts",
+  "auth-pages.noauth.spec.ts",
 ];
 
 const readOnlyPattern = readOnlySpecs.map((f) => `**/${f}`);
