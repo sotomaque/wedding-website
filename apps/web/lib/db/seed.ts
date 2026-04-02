@@ -52,6 +52,12 @@ export const SEED = {
     hidden1: { id: crypto.randomUUID() },
     deletable: { id: crypto.randomUUID() },
   },
+  // Fresh guest for RSVP redirect test (never pre-submitted)
+  rsvpRedirect: {
+    partyId: crypto.randomUUID(),
+    guestId: crypto.randomUUID(),
+    inviteCode: "E2E4-RSVP",
+  },
   wedding2: {
     slug: "e2e-test-wedding",
     inviteCode: "E2E3-WED2",
@@ -368,6 +374,64 @@ async function seedData() {
         displayOrder: 2,
       },
     ],
+  });
+
+  // --- Hotels (for hotels page E2E tests) ---
+  await db.hotel.createMany({
+    data: [
+      {
+        name: "E2E Luxury Resort",
+        description: "Beachfront luxury hotel",
+        hotelType: "luxury",
+        distanceToVenue: "0.5 miles",
+        websiteUrl: "https://example.com/luxury",
+        displayOrder: 0,
+        weddingId,
+      },
+      {
+        name: "E2E Budget Inn",
+        description: "Affordable and convenient",
+        hotelType: "budget",
+        distanceToVenue: "2 miles",
+        websiteUrl: "https://example.com/budget",
+        displayOrder: 1,
+        weddingId,
+      },
+    ],
+  });
+
+  // --- Fresh RSVP guest (for things-to-do redirect test) ---
+  await db.party.create({
+    data: {
+      id: SEED.rsvpRedirect.partyId,
+      inviteCode: SEED.rsvpRedirect.inviteCode,
+      name: "RSVP Redirect Party",
+      side: "bride",
+      list: "a",
+      weddingId,
+    },
+  });
+
+  await db.guest.create({
+    data: {
+      id: SEED.rsvpRedirect.guestId,
+      firstName: "E2E-RSVPTest",
+      lastName: "Redirect",
+      email: "e2e-rsvp-redirect@example.com",
+      inviteCode: SEED.rsvpRedirect.inviteCode,
+      rsvpStatus: "pending",
+      plusOneAllowed: false,
+      side: "bride",
+      list: "a",
+      isPlusOne: false,
+      numberOfResends: 0,
+      physicalInviteSent: false,
+      family: false,
+      under21: false,
+      threeAndUnder: false,
+      partyId: SEED.rsvpRedirect.partyId,
+      weddingId,
+    },
   });
 
   // --- Second wedding for multi-tenancy testing ---

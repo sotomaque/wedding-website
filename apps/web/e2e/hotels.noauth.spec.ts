@@ -18,14 +18,13 @@ test.describe("Hotels Page - Public Access", () => {
     ).toBeVisible();
   });
 
-  test("shows hotel cards", async ({ page }) => {
+  test("shows seeded hotel cards", async ({ page }) => {
     await page.goto(`${TEST_DATA.routes.home}/hotels`);
     await waitForHydration(page);
 
-    // Should show hotel cards with names
-    const hotelCards = page.getByRole("heading", { level: 3 });
-    const count = await hotelCards.count();
-    expect(count).toBeGreaterThan(0);
+    // Seed data includes 2 hotels
+    await expect(page.getByText("E2E Luxury Resort")).toBeVisible();
+    await expect(page.getByText("E2E Budget Inn")).toBeVisible();
   });
 
   test("hotel cards have interest buttons", async ({ page }) => {
@@ -40,14 +39,13 @@ test.describe("Hotels Page - Public Access", () => {
     ).toBeVisible();
   });
 
-  test("hotel cards show type badges", async ({ page }) => {
+  test("shows group booking section", async ({ page }) => {
     await page.goto(`${TEST_DATA.routes.home}/hotels`);
     await waitForHydration(page);
 
-    // Should show luxury/moderate/budget badges
-    const badges = page.locator("[class*='badge']");
-    const count = await badges.count();
-    expect(count).toBeGreaterThan(0);
+    await expect(
+      page.getByRole("heading", { name: /group booking/i }),
+    ).toBeVisible();
   });
 
   test("has navigation header", async ({ page }) => {

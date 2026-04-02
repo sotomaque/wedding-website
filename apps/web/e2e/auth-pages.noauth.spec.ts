@@ -13,16 +13,10 @@ test.describe("Sign-In Page", () => {
     await page.goto("/sign-in");
     await waitForHydration(page);
 
-    // Clerk's sign-in renders an email input
-    await expect(
-      page
-        .getByLabel(/email/i)
-        .or(
-          page
-            .locator("[data-clerk-component]")
-            .or(page.locator(".cl-rootBox")),
-        ),
-    ).toBeVisible({ timeout: 10000 });
+    // Clerk's sign-in renders with a data-clerk-component attribute
+    await expect(page.locator('[data-clerk-component="SignIn"]')).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test("sign-in page is centered", async ({ page }) => {
@@ -47,15 +41,9 @@ test.describe("Sign-Up Page", () => {
     await page.goto("/sign-up");
     await waitForHydration(page);
 
-    // Clerk's sign-up renders an email input or sign-up form
-    await expect(
-      page
-        .getByLabel(/email/i)
-        .or(
-          page
-            .locator("[data-clerk-component]")
-            .or(page.locator(".cl-rootBox")),
-        ),
-    ).toBeVisible({ timeout: 10000 });
+    // Clerk's sign-up renders with a data-clerk-component attribute
+    await expect(page.locator('[data-clerk-component="SignUp"]')).toBeVisible({
+      timeout: 10000,
+    });
   });
 });

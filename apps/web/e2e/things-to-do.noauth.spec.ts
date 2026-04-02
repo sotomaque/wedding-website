@@ -83,17 +83,29 @@ test.describe("Things To Do - Navigation", () => {
     await page.goto(TEST_DATA.routes.home);
     await waitForHydration(page);
 
-    // Look for Things To Do link in navigation
-    const navLink = page.getByRole("link", { name: /things to do/i });
+    // "Things To Do" is inside the "Planning" dropdown — open it first
+    const planningButton = page.getByRole("button", { name: /planning/i });
+    if (await planningButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await planningButton.click();
 
-    if (await navLink.isVisible()) {
-      await navLink.click();
-
-      // Should navigate to things-to-do page
-      await expect(page).toHaveURL(/things-to-do/);
+      const navLink = page
+        .getByRole("menuitem", { name: /things to do/i })
+        .or(page.getByRole("link", { name: /things to do/i }));
+      if (await navLink.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await navLink.click();
+        await expect(page).toHaveURL(/things-to-do/);
+      } else {
+        test.skip(true, "Things To Do not in Planning dropdown");
+      }
     } else {
-      // If not in main nav, the test passes (not all sites have it in nav)
-      test.skip();
+      // Try direct link (some nav configs may not use dropdown)
+      const directLink = page.getByRole("link", { name: /things to do/i });
+      if (await directLink.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await directLink.click();
+        await expect(page).toHaveURL(/things-to-do/);
+      } else {
+        test.skip(true, "No Things To Do nav link found");
+      }
     }
   });
 
@@ -116,15 +128,16 @@ test.describe("Things To Do - Navigation", () => {
 
 test.describe("Things To Do - After RSVP Redirect", () => {
   test("redirected from RSVP form lands on things-to-do", async ({ page }) => {
-    const inviteCode = getInviteCode();
-    if (!inviteCode) {
-      test.skip(true, "No invite code from seed data");
+    // Use a dedicated fresh guest whose RSVP hasn't been submitted
+    const rsvpCode = getTestData().rsvpRedirectCode;
+    if (!rsvpCode) {
+      test.skip(true, "No RSVP redirect code from seed data");
       return;
     }
 
     // Simulate the flow: RSVP form -> redirect to things-to-do
     // First go to RSVP form
-    await page.goto(`${TEST_DATA.routes.rsvp}?code=${inviteCode}&step=form`);
+    await page.goto(`${TEST_DATA.routes.rsvp}?code=${rsvpCode}&step=form`);
     await waitForHydration(page);
 
     // If the form is visible and submittable
