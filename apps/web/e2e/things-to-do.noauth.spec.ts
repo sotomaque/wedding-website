@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { setInviteCodeCookie, TEST_DATA, waitForHydration } from "./fixtures";
+import {
+  getTestData,
+  setInviteCodeCookie,
+  TEST_DATA,
+  waitForHydration,
+} from "./fixtures";
 
 /**
  * Things To Do Page Tests (No Auth Required)
@@ -11,7 +16,9 @@ import { setInviteCodeCookie, TEST_DATA, waitForHydration } from "./fixtures";
  * - Not auth'd and manually navigated
  */
 
-const TEST_INVITE_CODE = process.env.TEST_INVITE_CODE || "TEST-1234";
+function getInviteCode(): string | null {
+  return getTestData().inviteCode;
+}
 
 test.describe("Things To Do - Public Access", () => {
   test("page loads without authentication", async ({ page }) => {
@@ -39,13 +46,13 @@ test.describe("Things To Do - Public Access", () => {
 
 test.describe("Things To Do - With Invite Code", () => {
   test("page loads with code in URL", async ({ page }) => {
-    // Skip test if no valid test code is set
-    if (TEST_INVITE_CODE === "TEST-1234") {
-      test.skip();
+    const inviteCode = getInviteCode();
+    if (!inviteCode) {
+      test.skip(true, "No invite code from seed data");
       return;
     }
 
-    await page.goto(`${TEST_DATA.routes.thingsToDo}?code=${TEST_INVITE_CODE}`);
+    await page.goto(`${TEST_DATA.routes.thingsToDo}?code=${inviteCode}`);
     await waitForHydration(page);
 
     // Page should load successfully
@@ -53,14 +60,14 @@ test.describe("Things To Do - With Invite Code", () => {
   });
 
   test("page loads with code in cookie", async ({ page, context }) => {
-    // Skip test if no valid test code is set
-    if (TEST_INVITE_CODE === "TEST-1234") {
-      test.skip();
+    const inviteCode = getInviteCode();
+    if (!inviteCode) {
+      test.skip(true, "No invite code from seed data");
       return;
     }
 
     // Set the invite code cookie
-    await setInviteCodeCookie(page, context, TEST_INVITE_CODE);
+    await setInviteCodeCookie(page, context, inviteCode);
 
     await page.goto(TEST_DATA.routes.thingsToDo);
     await waitForHydration(page);
@@ -76,17 +83,29 @@ test.describe("Things To Do - Navigation", () => {
     await page.goto(TEST_DATA.routes.home);
     await waitForHydration(page);
 
-    // Look for Things To Do link in navigation
-    const navLink = page.getByRole("link", { name: /things to do/i });
+    // "Things To Do" is inside the "Planning" dropdown — open it first
+    const planningButton = page.getByRole("button", { name: /planning/i });
+    if (await planningButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await planningButton.click();
 
-    if (await navLink.isVisible()) {
-      await navLink.click();
-
-      // Should navigate to things-to-do page
-      await expect(page).toHaveURL(/things-to-do/);
+      const navLink = page
+        .getByRole("menuitem", { name: /things to do/i })
+        .or(page.getByRole("link", { name: /things to do/i }));
+      if (await navLink.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await navLink.click();
+        await expect(page).toHaveURL(/things-to-do/);
+      } else {
+        test.skip(true, "Things To Do not in Planning dropdown");
+      }
     } else {
-      // If not in main nav, the test passes (not all sites have it in nav)
-      test.skip();
+      // Try direct link (some nav configs may not use dropdown)
+      const directLink = page.getByRole("link", { name: /things to do/i });
+      if (await directLink.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await directLink.click();
+        await expect(page).toHaveURL(/things-to-do/);
+      } else {
+        test.skip(true, "No Things To Do nav link found");
+      }
     }
   });
 
@@ -104,44 +123,6 @@ test.describe("Things To Do - Navigation", () => {
 
     // Should have footer visible
     await expect(page.locator("footer")).toBeVisible();
-  });
-});
-
-test.describe("Things To Do - After RSVP Redirect", () => {
-  test("redirected from RSVP form lands on things-to-do", async ({ page }) => {
-    // Skip test if no valid test code is set
-    if (TEST_INVITE_CODE === "TEST-1234") {
-      test.skip();
-      return;
-    }
-
-    // Simulate the flow: RSVP form -> redirect to things-to-do
-    // First go to RSVP form
-    await page.goto(
-      `${TEST_DATA.routes.rsvp}?code=${TEST_INVITE_CODE}&step=form`,
-    );
-    await waitForHydration(page);
-
-    // If the form is visible and submittable
-    const yesOption = page.getByRole("radio", { name: /yes/i }).first();
-    if (await yesOption.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await yesOption.click();
-
-      // Submit the form
-      await page.getByRole("button", { name: /submit|save|rsvp/i }).click();
-
-      // Check if redirected to things-to-do (for "yes" responses)
-      // This may timeout if the form submission fails or redirects elsewhere
-      try {
-        await expect(page).toHaveURL(/things-to-do/, { timeout: 15000 });
-      } catch {
-        // May show success message instead of redirect
-        await expect(page.getByText(/thank you|success/i)).toBeVisible();
-      }
-    } else {
-      // Form not available for this code (maybe already submitted)
-      test.skip();
-    }
   });
 });
 

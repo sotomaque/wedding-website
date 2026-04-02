@@ -17,6 +17,8 @@ interface TestData {
   // Multi-guest party data
   multiGuestPartyCode: string | null;
   multiGuestPartyNames: string[];
+  // Fresh RSVP guest for redirect test
+  rsvpRedirectCode: string | null;
 }
 
 /**
@@ -34,6 +36,7 @@ export function getTestData(): TestData {
       authAvailable: false,
       multiGuestPartyCode: null,
       multiGuestPartyNames: [],
+      rsvpRedirectCode: null,
     };
   }
 }

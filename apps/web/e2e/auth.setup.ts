@@ -65,6 +65,7 @@ setup("authenticate as admin", async ({ page }) => {
     testGuestName: "E2E-Alice",
     testGuestEmail: "e2e-alice@example.com",
     multiGuestPartyNames: ["E2E-Bob", "E2E-Carol"],
+    rsvpRedirectCode: "E2E4-RSVP",
   };
 
   fs.mkdirSync(path.dirname(testDataFile), { recursive: true });
