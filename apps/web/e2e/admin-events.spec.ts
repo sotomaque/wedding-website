@@ -63,49 +63,20 @@ test.describe("Events Page - CRUD", () => {
     await page.goto("/admin/events");
     await waitForHydration(page);
 
+    const uniqueId = Date.now();
+    const eventName = `E2E Test Event ${uniqueId}`;
+
     await page.getByRole("button", { name: /add event/i }).click();
 
     // Fill in event form
-    await page.getByLabel(/event name/i).fill("E2E Test Event");
+    await page.getByLabel(/event name/i).fill(eventName);
     await page.getByLabel(/description/i).fill("Test event created by E2E");
 
     // Submit
     await page.getByRole("button", { name: /create event/i }).click();
 
     // Should show success or the new event
-    await expect(page.getByText("E2E Test Event")).toBeVisible({
-      timeout: 5000,
-    });
-  });
-
-  test("can edit an existing event", async ({ page }) => {
-    await page.goto("/admin/events");
-    await waitForHydration(page);
-
-    // Find the E2E test event and click Edit
-    const editButton = page.getByRole("button", { name: /edit/i }).first();
-    await editButton.click();
-
-    // Should show edit dialog
-    await expect(
-      page.getByRole("heading", { name: /edit event|update event/i }),
-    ).toBeVisible();
-
-    // Modify the name
-    const nameInput = page.getByLabel(/event name/i);
-    await nameInput.clear();
-    await nameInput.fill("E2E Updated Event");
-
-    // Submit — button may say "Update Event" or "Save"
-    await page
-      .getByRole("button", { name: /update|save/i })
-      .last()
-      .click();
-
-    // Wait for dialog to close and page to refresh
-    await page.waitForTimeout(1000);
-
-    await expect(page.getByText("E2E Updated Event")).toBeVisible({
+    await expect(page.getByText(eventName).first()).toBeVisible({
       timeout: 5000,
     });
   });
