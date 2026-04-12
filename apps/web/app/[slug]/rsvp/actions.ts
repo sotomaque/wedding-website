@@ -89,35 +89,32 @@ export async function verifyInviteCode(code: string): Promise<{
       return { success: false, error: "Invite code is required" };
     }
 
-    const party = await db.party.findFirst({
-      where: { inviteCode: code.toUpperCase(), weddingId },
-      select: { id: true, inviteCode: true },
-    });
-
-    if (!party) {
-      // Fallback: check guests table directly for backwards compatibility
-      const guestsByCode = await db.guest.findMany({
-        where: { inviteCode: code.toUpperCase(), weddingId },
-        select: RSVP_GUEST_SELECT,
-      });
-
-      if (!guestsByCode || guestsByCode.length === 0) {
-        return { success: false, error: "Invalid invite code" };
-      }
-
-      return { success: true, guests: guestsByCode as RsvpGuest[] };
-    }
-
-    const guests = await db.guest.findMany({
-      where: { partyId: party.id, weddingId },
+    // Find primary guest(s) by invite code
+    const primaryGuests = await db.guest.findMany({
+      where: {
+        inviteCode: code.toUpperCase(),
+        weddingId,
+        isPlusOne: false,
+      },
       select: RSVP_GUEST_SELECT,
     });
 
-    if (!guests || guests.length === 0) {
-      return { success: false, error: "No guests found for this party" };
+    if (!primaryGuests || primaryGuests.length === 0) {
+      return { success: false, error: "Invalid invite code" };
     }
 
-    return { success: true, guests: guests as RsvpGuest[] };
+    // Fetch plus-ones linked to these primary guests
+    const primaryIds = primaryGuests.map((g) => g.id);
+    const plusOnes = await db.guest.findMany({
+      where: {
+        primaryGuestId: { in: primaryIds },
+        weddingId,
+      },
+      select: RSVP_GUEST_SELECT,
+    });
+
+    const guests = [...primaryGuests, ...plusOnes] as RsvpGuest[];
+    return { success: true, guests };
   } catch (error) {
     console.error("Error verifying invite code:", error);
     return { success: false, error: "Internal server error" };
@@ -191,27 +188,27 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
 
     const weddingId = await getWeddingId();
 
-    const party = await db.party.findFirst({
-      where: { inviteCode: inviteCode.toUpperCase(), weddingId },
-      select: { id: true, inviteCode: true },
+    // Find primary guest by invite code + their plus-one
+    const guestsByCode = await db.guest.findMany({
+      where: {
+        inviteCode: inviteCode.toUpperCase(),
+        weddingId,
+        isPlusOne: false,
+      },
+      select: PARTY_GUEST_SELECT,
     });
 
-    const guests = party
-      ? await db.guest.findMany({
-          where: { partyId: party.id, weddingId },
-          select: PARTY_GUEST_SELECT,
-        })
-      : await db.guest.findMany({
-          where: { inviteCode: inviteCode.toUpperCase(), weddingId },
-          select: PARTY_GUEST_SELECT,
-        });
-
-    if (!guests || guests.length === 0) {
+    if (!guestsByCode || guestsByCode.length === 0) {
       return { success: false, error: "Invalid invite code" };
     }
 
-    const primaryGuest = guests.find((g) => !g.isPlusOne);
-    const existingPlusOne = guests.find((g) => g.isPlusOne);
+    const primaryGuest = guestsByCode[0];
+    const existingPlusOne = primaryGuest
+      ? await db.guest.findFirst({
+          where: { primaryGuestId: primaryGuest.id, weddingId },
+          select: PARTY_GUEST_SELECT,
+        })
+      : null;
 
     if (!primaryGuest) {
       return { success: false, error: "Primary guest not found" };
@@ -311,7 +308,10 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
     const settings = await getWeddingSettings();
     const recipients = getNotificationRecipients(settings);
     if (getResendClient() && recipients.length > 0) {
-      const capturedParty = party;
+      const capturedGuestIds = [
+        primaryGuest.id,
+        ...(existingPlusOne ? [existingPlusOne.id] : []),
+      ];
       const capturedInviteCode = inviteCode;
       const capturedAttending = attending;
       const capturedDietary = dietaryRestrictions;
@@ -323,9 +323,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
       after(async () => {
         try {
           const updatedGuests = await db.guest.findMany({
-            where: capturedParty
-              ? { partyId: capturedParty.id, weddingId }
-              : { inviteCode: capturedInviteCode.toUpperCase(), weddingId },
+            where: { id: { in: capturedGuestIds }, weddingId },
             select: {
               id: true,
               firstName: true,
@@ -578,20 +576,29 @@ export async function submitMultiGuestRSVP(
 
     const weddingId = await getWeddingId();
 
-    const party = await db.party.findFirst({
-      where: { inviteCode: inviteCode.toUpperCase(), weddingId },
-      select: { id: true, inviteCode: true },
+    // Find primary guest(s) by invite code + their plus-ones
+    const primaryGuests = await db.guest.findMany({
+      where: {
+        inviteCode: inviteCode.toUpperCase(),
+        weddingId,
+        isPlusOne: false,
+      },
+      select: PARTY_GUEST_SELECT,
     });
 
-    const partyGuests = party
-      ? await db.guest.findMany({
-          where: { partyId: party.id, weddingId },
-          select: PARTY_GUEST_SELECT,
-        })
-      : await db.guest.findMany({
-          where: { inviteCode: inviteCode.toUpperCase(), weddingId },
-          select: PARTY_GUEST_SELECT,
-        });
+    const primaryIds = primaryGuests.map((g) => g.id);
+    const plusOnes =
+      primaryIds.length > 0
+        ? await db.guest.findMany({
+            where: {
+              primaryGuestId: { in: primaryIds },
+              weddingId,
+            },
+            select: PARTY_GUEST_SELECT,
+          })
+        : [];
+
+    const partyGuests = [...primaryGuests, ...plusOnes];
 
     if (!partyGuests || partyGuests.length === 0) {
       return { success: false, error: "Invalid invite code" };
@@ -708,22 +715,21 @@ export async function submitMultiGuestRSVP(
       }),
     );
 
-    // Sync GuestEventInvite statuses for all guests in this multi-guest RSVP
-    const allGuestIds = party
-      ? await db.guest
-          .findMany({
-            where: { partyId: party.id, weddingId },
-            select: { id: true, rsvpStatus: true },
-          })
-          .then((guests) =>
-            guests
-              .filter((g) => g.rsvpStatus !== "pending")
-              .map((g) => ({
-                id: g.id,
-                status: g.rsvpStatus,
-              })),
-          )
-      : [];
+    // Sync GuestEventInvite statuses for all guests in this RSVP submission
+    const allSubmittedIds = partyGuests.map((g) => g.id);
+    const allGuestIds = await db.guest
+      .findMany({
+        where: { id: { in: allSubmittedIds }, weddingId },
+        select: { id: true, rsvpStatus: true },
+      })
+      .then((guests) =>
+        guests
+          .filter((g) => g.rsvpStatus !== "pending")
+          .map((g) => ({
+            id: g.id,
+            status: g.rsvpStatus,
+          })),
+      );
     for (const g of allGuestIds) {
       await db.guestEventInvite.updateMany({
         where: { guestId: g.id, weddingId },
@@ -736,7 +742,7 @@ export async function submitMultiGuestRSVP(
     const settingsMulti = await getWeddingSettings();
     const recipientsMulti = getNotificationRecipients(settingsMulti);
     if (getResendClient() && recipientsMulti.length > 0) {
-      const capturedParty = party;
+      const capturedGuestIdsMulti = allSubmittedIds;
       const capturedInviteCode = inviteCode;
       const capturedGuestRsvps = guestRsvps;
       const capturedFromAddress = getEmailFromAddress(
@@ -750,9 +756,7 @@ export async function submitMultiGuestRSVP(
       after(async () => {
         try {
           const updatedGuests = await db.guest.findMany({
-            where: capturedParty
-              ? { partyId: capturedParty.id, weddingId }
-              : { inviteCode: capturedInviteCode.toUpperCase(), weddingId },
+            where: { id: { in: capturedGuestIdsMulti }, weddingId },
             select: {
               id: true,
               firstName: true,
