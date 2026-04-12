@@ -102,6 +102,7 @@ mock.module("@/lib/db/wedding-context", () => ({
 
 // Mock db
 const mockGuestFindMany = mock(() => Promise.resolve([]));
+const mockGuestFindFirst = mock(() => Promise.resolve(null));
 const mockGuestUpdate = mock(() => Promise.resolve({}));
 const mockGuestCreate = mock(() => Promise.resolve({}));
 const mockPartyFindFirst = mock(() => Promise.resolve(null));
@@ -110,6 +111,7 @@ mock.module("@/lib/db", () => ({
   db: {
     guest: {
       findMany: mockGuestFindMany,
+      findFirst: mockGuestFindFirst,
       update: mockGuestUpdate,
       create: mockGuestCreate,
     },
@@ -130,6 +132,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
     mockGuestFindMany.mockClear();
+    mockGuestFindFirst.mockClear();
     mockGuestUpdate.mockClear();
     mockGuestCreate.mockClear();
     mockPartyFindFirst.mockClear();
@@ -231,6 +234,7 @@ describe("RSVP - Plus One Scenarios", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
     mockGuestFindMany.mockClear();
+    mockGuestFindFirst.mockClear();
     mockGuestUpdate.mockClear();
     mockGuestCreate.mockClear();
     mockPartyFindFirst.mockClear();
@@ -250,15 +254,15 @@ describe("RSVP - Plus One Scenarios", () => {
         list: "a",
         under21: false,
       },
-      {
-        id: "guest-456",
-        firstName: "Jane",
-        inviteCode: "ABCD-1234",
-        isPlusOne: true,
-        primaryGuestId: "guest-123",
-        under21: false,
-      },
     ]);
+    mockGuestFindFirst.mockResolvedValue({
+      id: "guest-456",
+      firstName: "Jane",
+      inviteCode: "ABCD-1234",
+      isPlusOne: true,
+      primaryGuestId: "guest-123",
+      under21: false,
+    });
 
     const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
@@ -295,16 +299,16 @@ describe("RSVP - Plus One Scenarios", () => {
         family: false,
         under21: false,
       },
-      {
-        id: "guest-456",
-        firstName: "Placeholder",
-        lastName: "- Plus One",
-        inviteCode: "ABCD-1234",
-        isPlusOne: true,
-        primaryGuestId: "guest-123",
-        under21: false,
-      },
     ]);
+    mockGuestFindFirst.mockResolvedValue({
+      id: "guest-456",
+      firstName: "Placeholder",
+      lastName: "- Plus One",
+      inviteCode: "ABCD-1234",
+      isPlusOne: true,
+      primaryGuestId: "guest-123",
+      under21: false,
+    });
 
     const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
@@ -344,15 +348,15 @@ describe("RSVP - Plus One Scenarios", () => {
         list: "a",
         under21: false,
       },
-      {
-        id: "guest-456",
-        firstName: "Jane",
-        inviteCode: "ABCD-1234",
-        isPlusOne: true,
-        primaryGuestId: "guest-123",
-        under21: false,
-      },
     ]);
+    mockGuestFindFirst.mockResolvedValue({
+      id: "guest-456",
+      firstName: "Jane",
+      inviteCode: "ABCD-1234",
+      isPlusOne: true,
+      primaryGuestId: "guest-123",
+      under21: false,
+    });
 
     const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
@@ -388,8 +392,11 @@ describe("RSVP - Plus One Scenarios", () => {
         list: "a",
         family: false,
         under21: false,
+        partyId: "party-1",
       },
     ]);
+    // No existing plus-one
+    mockGuestFindFirst.mockResolvedValue(null);
 
     const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
 
@@ -422,6 +429,7 @@ describe("RSVP - Contact Information", () => {
   beforeEach(() => {
     mockSendEmail.mockClear();
     mockGuestFindMany.mockClear();
+    mockGuestFindFirst.mockClear();
     mockGuestUpdate.mockClear();
     mockGuestCreate.mockClear();
     mockPartyFindFirst.mockClear();
@@ -523,6 +531,7 @@ describe("RSVP - Notification Email", () => {
   beforeEach(() => {
     mockAfter.mockClear();
     mockGuestFindMany.mockClear();
+    mockGuestFindFirst.mockClear();
     mockGuestUpdate.mockClear();
     mockGuestCreate.mockClear();
     mockPartyFindFirst.mockClear();

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { generateInviteCode } from "@/lib/utils/invite-code";
 
 /**
  * Helper function to delete a party if it has no guests remaining
@@ -156,8 +157,20 @@ export async function PATCH(
         newPartyId = targetParty.id;
         newInviteCode = targetParty.inviteCode;
       } else {
-        // Removing from party (set to null)
-        newPartyId = null;
+        // Removing from party — create a new solo party so the guest
+        // always has a valid party + invite code for RSVP
+        const soloCode = generateInviteCode();
+        const soloParty = await db.party.create({
+          data: {
+            inviteCode: soloCode,
+            name: `${currentGuest.firstName} ${currentGuest.lastName ?? ""}`.trim(),
+            side: currentGuest.side,
+            list: currentGuest.list,
+            weddingId,
+          },
+        });
+        newPartyId = soloParty.id;
+        newInviteCode = soloCode;
       }
     }
 
