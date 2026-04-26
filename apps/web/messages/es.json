@@ -35,6 +35,7 @@
   },
   "rsvpPage": {
     "viewWeddingDetails": "Ver Detalles de la Boda",
+    "rsvpByPrefix": "Por favor confirma antes del",
     "enterInviteCode": "Ingresa tu código de invitación",
     "codeInEmail": "Tu código de invitación fue incluido en tu correo de invitación",
     "placeholder": "XXXX-XXXX",

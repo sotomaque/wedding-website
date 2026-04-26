@@ -35,6 +35,7 @@
   },
   "rsvpPage": {
     "viewWeddingDetails": "View Wedding Details",
+    "rsvpByPrefix": "Please RSVP by",
     "enterInviteCode": "Enter your invite code",
     "codeInEmail": "Your invite code was included in your invitation email",
     "placeholder": "XXXX-XXXX",

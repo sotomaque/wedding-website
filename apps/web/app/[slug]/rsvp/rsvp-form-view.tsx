@@ -4,6 +4,7 @@ import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 import { MainNavigation } from "@/components/main-navigation";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
@@ -28,6 +29,7 @@ export function RSVPFormView({
 }: RSVPFormViewProps) {
   const router = useRouter();
   const slug = useWeddingSlug();
+  const t = useTranslations("rsvpPage");
   const { user, isLoaded } = useUser();
   const hasLinked = useRef(false);
 
@@ -58,9 +60,11 @@ export function RSVPFormView({
           <p className="text-sm text-center text-muted-foreground mb-1">
             {weddingDateFormatted}
           </p>
-          <p className="text-xs text-center text-muted-foreground">
-            {rsvpDeadlineText}
-          </p>
+          {rsvpDeadlineText && (
+            <p className="text-xs text-center text-muted-foreground">
+              {t("rsvpByPrefix")} {rsvpDeadlineText}
+            </p>
+          )}
           <p className="text-center mt-2">
             <Link
               href={`/${slug}#details`}
@@ -109,9 +113,11 @@ export function RSVPFormView({
               {weddingDateFormatted}
             </p>
             <div className="w-24 h-1 bg-white/80 mx-auto mb-4" />
-            <p className="text-white/80 text-center mb-4 drop-shadow-md">
-              {rsvpDeadlineText}
-            </p>
+            {rsvpDeadlineText && (
+              <p className="text-white/80 text-center mb-4 drop-shadow-md">
+                {t("rsvpByPrefix")} {rsvpDeadlineText}
+              </p>
+            )}
             <p className="text-center mb-8">
               <Link
                 href={`/${slug}#details`}
