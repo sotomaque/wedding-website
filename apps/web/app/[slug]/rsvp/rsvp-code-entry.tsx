@@ -72,9 +72,11 @@ export function RSVPCodeEntry({
             {weddingDateFormatted}
           </p>
           <div className="w-24 h-1 bg-white/80 mx-auto mb-4" />
-          <p className="text-white/80 text-center mb-4 drop-shadow-md">
-            {rsvpDeadlineText}
-          </p>
+          {rsvpDeadlineText && (
+            <p className="text-white/80 text-center mb-4 drop-shadow-md">
+              {t("rsvpByPrefix")} {rsvpDeadlineText}
+            </p>
+          )}
           <p className="text-center mb-12">
             <Link
               href={`/${slug}#details`}
