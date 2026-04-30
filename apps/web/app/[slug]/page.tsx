@@ -35,6 +35,16 @@ export default async function Page() {
   const heroPhotos = shuffleArray([...photos]);
   const storyPhotos = pickRandomItems([...photos], 3);
 
+  const detailsContent = content.details as DetailsContent | undefined;
+  const weddingDateFormatted =
+    detailsContent?.dateFormatted ??
+    settings.weddingDate.toLocaleDateString(locale, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <WeddingNavigation />
@@ -52,7 +62,10 @@ export default async function Page() {
           content={content.story as StoryContent}
         />
         <DetailsSection content={content.details as DetailsContent} />
-        <ScheduleSection content={content.schedule as ScheduleContent} />
+        <ScheduleSection
+          content={content.schedule as ScheduleContent}
+          weddingDateFormatted={weddingDateFormatted}
+        />
         <RSVPSection
           content={content.rsvp as RsvpContent}
           contactEmail={settings.contactEmail ?? undefined}
