@@ -12,8 +12,10 @@ import {
 } from "@workspace/ui/components/sheet";
 import { Switch } from "@workspace/ui/components/switch";
 import { Textarea } from "@workspace/ui/components/textarea";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import { type AddGuestFormData, addGuestSchema } from "@/lib/validations/guest";
 import type { EventOption, PartyOption } from "./actions";
 import {
@@ -75,8 +77,10 @@ export function AddGuestForm({
     },
   });
 
+  const slug = useWeddingSlug();
   const email = watch("email");
   const eventIds = watch("eventIds") ?? [];
+  const noEvents = events.length === 0;
   const allEventsSelected =
     events.length > 0 && eventIds.length === events.length;
   const someEventsSelected =
@@ -302,11 +306,25 @@ export function AddGuestForm({
                   Email address required to send invitation
                 </p>
               )}
-              {email && email.trim() !== "" && noEventsSelected && (
+              {email && email.trim() !== "" && noEvents && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Select at least one event to send invitation
+                  <Link
+                    href={`/${slug}/admin/events`}
+                    className="underline hover:text-foreground"
+                  >
+                    Create an event
+                  </Link>{" "}
+                  to enable invitation emails
                 </p>
               )}
+              {email &&
+                email.trim() !== "" &&
+                !noEvents &&
+                noEventsSelected && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Select at least one event to send invitation
+                  </p>
+                )}
             </div>
           </div>
 
