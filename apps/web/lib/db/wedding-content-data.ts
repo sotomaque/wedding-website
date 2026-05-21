@@ -125,3 +125,58 @@ export async function getRsvpContent(): Promise<RsvpContent | undefined> {
   const sections = await getWeddingContentSections();
   return sections.rsvp as RsvpContent | undefined;
 }
+
+// --- Ceremony / Reception derived from Events ---
+
+interface VenueInfo {
+  title: string;
+  venue: string;
+  address?: string;
+  time?: string;
+}
+
+function formatEventTime(time: Date | null): string | undefined {
+  if (!time) return undefined;
+  // Prisma maps PG `time` columns to a Date with the time-of-day component.
+  const iso = time.toISOString();
+  const hh = Number.parseInt(iso.slice(11, 13), 10);
+  const mm = iso.slice(14, 16);
+  const ampm = hh >= 12 ? "PM" : "AM";
+  const hour12 = hh % 12 || 12;
+  return `${hour12}:${mm} ${ampm}`;
+}
+
+/**
+ * Derive ceremony / reception venue cards for the public details section
+ * from the events table — single source of truth so editing an event also
+ * updates the page. Matches by case-insensitive name contains.
+ */
+export const getCeremonyAndReception = cache(
+  async (): Promise<{
+    ceremony: VenueInfo | undefined;
+    reception: VenueInfo | undefined;
+  }> => {
+    const weddingId = await getWeddingId();
+    const events = await db.event.findMany({
+      where: { weddingId },
+      orderBy: { displayOrder: "asc" },
+    });
+
+    function pick(kind: "ceremony" | "reception"): VenueInfo | undefined {
+      const ev = events.find((e) => e.name.toLowerCase().includes(kind));
+      if (!ev) return undefined;
+      const venue = ev.locationName?.trim() ?? "";
+      const address = ev.locationAddress?.trim() ?? "";
+      const time = formatEventTime(ev.startTime ?? null);
+      if (!venue && !address && !time) return undefined;
+      return {
+        title: ev.name,
+        venue,
+        address: address || undefined,
+        time,
+      };
+    }
+
+    return { ceremony: pick("ceremony"), reception: pick("reception") };
+  },
+);
