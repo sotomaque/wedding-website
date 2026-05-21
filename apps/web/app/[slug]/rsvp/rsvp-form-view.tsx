@@ -18,6 +18,7 @@ interface RSVPFormViewProps {
   rsvpTitle: string;
   weddingDateFormatted: string;
   rsvpDeadlineText?: string;
+  thingsToDoEnabled: boolean;
 }
 
 export function RSVPFormView({
@@ -26,6 +27,7 @@ export function RSVPFormView({
   rsvpTitle,
   weddingDateFormatted,
   rsvpDeadlineText,
+  thingsToDoEnabled,
 }: RSVPFormViewProps) {
   const router = useRouter();
   const slug = useWeddingSlug();
@@ -81,6 +83,7 @@ export function RSVPFormView({
             guests={guests}
             inviteCode={inviteCode}
             onBack={handleBack}
+            thingsToDoEnabled={thingsToDoEnabled}
           />
         </div>
       </div>
@@ -142,22 +145,25 @@ export function RSVPFormView({
               {/* Form - Right Side */}
               <div className="bg-card p-8 rounded-lg shadow-sm border border-border">
                 {/* Things to Do Link */}
-                <div className="mb-6 p-4 bg-accent/10 border border-accent/30 rounded-lg">
-                  <p className="text-sm text-center text-foreground">
-                    Planning your trip to San Diego?{" "}
-                    <Link
-                      href={`/${slug}/things-to-do`}
-                      className="font-semibold underline hover:text-accent transition-colors"
-                    >
-                      Check out Things to Do
-                    </Link>
-                  </p>
-                </div>
+                {thingsToDoEnabled && (
+                  <div className="mb-6 p-4 bg-accent/10 border border-accent/30 rounded-lg">
+                    <p className="text-sm text-center text-foreground">
+                      Planning your trip to San Diego?{" "}
+                      <Link
+                        href={`/${slug}/things-to-do`}
+                        className="font-semibold underline hover:text-accent transition-colors"
+                      >
+                        Check out Things to Do
+                      </Link>
+                    </p>
+                  </div>
+                )}
 
                 <RSVPForm
                   guests={guests}
                   inviteCode={inviteCode}
                   onBack={handleBack}
+                  thingsToDoEnabled={thingsToDoEnabled}
                 />
               </div>
             </div>

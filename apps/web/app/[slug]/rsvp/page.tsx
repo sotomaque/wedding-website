@@ -50,6 +50,8 @@ async function RSVPContent({
     rsvpDeadlineText,
   };
 
+  const thingsToDoEnabled = Boolean(settings.featureToggles.thingsToDo);
+
   // If code is provided, verify it server-side
   if (code && code.length >= 8) {
     const result = await verifyInviteCode(code);
@@ -62,6 +64,7 @@ async function RSVPContent({
           <RSVPFormView
             guests={result.guests}
             inviteCode={code}
+            thingsToDoEnabled={thingsToDoEnabled}
             {...rsvpDisplayProps}
           />
         );
