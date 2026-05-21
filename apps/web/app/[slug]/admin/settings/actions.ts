@@ -15,13 +15,12 @@ export async function updateGeneralSettings(data: {
   rsvpDeadline?: string;
   status: string;
 }) {
-  const auth = await isAdmin();
+  const weddingId = await getWeddingId();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const weddingId = await getWeddingId();
-
     await db.wedding.update({
       where: { id: weddingId },
       data: {
@@ -49,13 +48,12 @@ export async function updateNotificationSettings(data: {
   emailFromName: string;
   emailFromAddress: string;
 }) {
-  const auth = await isAdmin();
+  const weddingId = await getWeddingId();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const weddingId = await getWeddingId();
-
     await db.wedding.update({
       where: { id: weddingId },
       data: {
@@ -78,13 +76,12 @@ export async function updateBrandingSettings(data: {
   brandImageUrl: string;
   brandImageAlt: string;
 }) {
-  const auth = await isAdmin();
+  const weddingId = await getWeddingId();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const weddingId = await getWeddingId();
-
     await db.wedding.update({
       where: { id: weddingId },
       data: {
@@ -102,13 +99,12 @@ export async function updateBrandingSettings(data: {
 }
 
 export async function updateFeatureToggles(data: Record<string, boolean>) {
-  const auth = await isAdmin();
+  const weddingId = await getWeddingId();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const weddingId = await getWeddingId();
-
     await db.wedding.update({
       where: { id: weddingId },
       data: {
@@ -125,13 +121,12 @@ export async function updateFeatureToggles(data: Record<string, boolean>) {
 }
 
 export async function updateTheme(themeId: string) {
-  const auth = await isAdmin();
+  const weddingId = await getWeddingId();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const weddingId = await getWeddingId();
-
     await db.wedding.update({
       where: { id: weddingId },
       data: { themeId },
@@ -146,13 +141,12 @@ export async function updateTheme(themeId: string) {
 }
 
 export async function updateDefaultLanguage(language: string) {
-  const auth = await isAdmin();
+  const weddingId = await getWeddingId();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const weddingId = await getWeddingId();
-
     await db.wedding.update({
       where: { id: weddingId },
       data: { defaultLanguage: language },

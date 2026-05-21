@@ -11,13 +11,12 @@ export async function updateWeddingContent(
   content: Record<string, unknown>,
 ) {
   const jsonContent = content as unknown as Prisma.InputJsonValue;
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const { weddingId, slug } = await getWeddingContext();
-
     await db.weddingContent.upsert({
       where: { weddingId_section: { weddingId, section } },
       update: { content: jsonContent, updatedAt: new Date() },

@@ -3,6 +3,7 @@ import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 
 import { isAdmin } from "@/lib/auth/admin";
+import { getWeddingId } from "@/lib/db/wedding-context";
 
 const f = createUploadthing();
 
@@ -14,7 +15,8 @@ async function checkAdmin() {
     throw new UploadThingError("Unauthorized");
   }
 
-  const { authorized } = await isAdmin();
+  const weddingId = await getWeddingId();
+  const { authorized } = await isAdmin(weddingId);
   if (!authorized) {
     throw new UploadThingError("Forbidden");
   }

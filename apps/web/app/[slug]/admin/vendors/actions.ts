@@ -45,7 +45,8 @@ export async function createServiceLink(data: {
   description: string;
   category: ServiceLinkCategory;
 }): Promise<{ success: boolean; link?: ServiceLink; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
@@ -61,8 +62,6 @@ export async function createServiceLink(data: {
     } catch {
       return { success: false, error: "Please enter a valid URL" };
     }
-
-    const { weddingId, slug } = await getWeddingContext();
 
     // Get max sortOrder to append at end
     const last = await db.serviceLink.aggregate({
@@ -101,7 +100,8 @@ export async function updateServiceLink(
     category?: ServiceLinkCategory;
   },
 ): Promise<{ success: boolean; link?: ServiceLink; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
@@ -113,8 +113,6 @@ export async function updateServiceLink(
         return { success: false, error: "Please enter a valid URL" };
       }
     }
-
-    const { slug } = await getWeddingContext();
     const link = await db.serviceLink.update({
       where: { id },
       data: {
@@ -139,12 +137,12 @@ export async function updateServiceLink(
 export async function deleteServiceLink(
   id: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const { slug } = await getWeddingContext();
     await db.serviceLink.delete({ where: { id } });
     revalidatePath(`/${slug}/admin/vendors`);
     revalidatePath(`/${slug}/vendors`);
@@ -158,12 +156,12 @@ export async function deleteServiceLink(
 export async function reorderServiceLinks(
   orderedIds: string[],
 ): Promise<{ success: boolean; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const { slug } = await getWeddingContext();
     await Promise.all(
       orderedIds.map((id, index) =>
         db.serviceLink.update({
