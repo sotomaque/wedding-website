@@ -114,33 +114,32 @@ export async function createWedding(data: {
       },
     });
 
-    if (data.ceremonyVenue) {
-      await db.event.create({
-        data: {
+    // Always create Ceremony and Reception events for new weddings so that
+    // (1) there's a sensible default schedule and (2) admins can immediately
+    // invite guests to them. Venue/address are optional — they can be
+    // filled in later on the Events page.
+    await db.event.createMany({
+      data: [
+        {
           weddingId: wedding.id,
-          name: "Ceremony",
-          locationName: data.ceremonyVenue,
+          name: "Wedding Ceremony",
+          locationName: data.ceremonyVenue || null,
           locationAddress: data.ceremonyAddress || null,
           eventDate: new Date(data.weddingDate),
           isDefault: true,
           displayOrder: 1,
         },
-      });
-    }
-
-    if (data.receptionVenue) {
-      await db.event.create({
-        data: {
+        {
           weddingId: wedding.id,
-          name: "Reception",
-          locationName: data.receptionVenue,
+          name: "Wedding Reception",
+          locationName: data.receptionVenue || null,
           locationAddress: data.receptionAddress || null,
           eventDate: new Date(data.weddingDate),
           isDefault: true,
           displayOrder: 2,
         },
-      });
-    }
+      ],
+    });
 
     await db.emailTemplate.createMany({
       data: getDefaultTemplates(wedding.id),
@@ -164,22 +163,16 @@ export async function createWedding(data: {
         {
           weddingId: wedding.id,
           section: "details",
+          // Ceremony / reception are sourced from the events table by the
+          // public page — don't duplicate here. additionalInfo gets three
+          // sensible defaults so the section isn't empty on day one.
           content: {
             title: "Wedding Details",
-            ceremony: data.ceremonyVenue
-              ? {
-                  title: "Ceremony",
-                  venue: data.ceremonyVenue,
-                  address: data.ceremonyAddress || "",
-                }
-              : undefined,
-            reception: data.receptionVenue
-              ? {
-                  title: "Reception",
-                  venue: data.receptionVenue,
-                  address: data.receptionAddress || "",
-                }
-              : undefined,
+            additionalInfo: [
+              { title: "Attire", description: "Formal" },
+              { title: "Accommodations", description: "Hotels nearby" },
+              { title: "Registry", description: "Coming soon" },
+            ],
           },
         },
         {

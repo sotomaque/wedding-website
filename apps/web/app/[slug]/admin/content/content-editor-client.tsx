@@ -21,9 +21,9 @@ import {
 } from "@workspace/ui/components/select";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
-import { useCallback, useState, useTransition } from "react";
+import Link from "next/link";
+import { useCallback, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type {
@@ -322,68 +322,75 @@ function StoryEditor({ initial }: { initial?: StoryContent }) {
   );
 }
 
+interface AdditionalInfoItem {
+  clientId: string;
+  title: string;
+  description: string;
+}
+
 function DetailsEditor({ initial }: { initial?: DetailsContent }) {
   const [isPending, startTransition] = useTransition();
+  const slug = useWeddingSlug();
   const [title, setTitle] = useState(initial?.title ?? "");
-  const [ceremony, setCeremony] = useState({
-    venue: initial?.ceremony?.venue ?? "",
-    address: initial?.ceremony?.address ?? "",
-    time: initial?.ceremony?.time ?? "",
-    location: initial?.ceremony?.location ?? "",
-  });
-  const [reception, setReception] = useState({
-    venue: initial?.reception?.venue ?? "",
-    address: initial?.reception?.address ?? "",
-    time: initial?.reception?.time ?? "",
-    description: initial?.reception?.description ?? "",
-  });
-  const [additionalInfo, setAdditionalInfo] = useState<
-    { title: string; description: string }[]
-  >(initial?.additionalInfo ?? []);
+
+  // Use stable clientIds (not array indices, and not the item's own title)
+  // for React keys so editing a title doesn't remount the input and lose
+  // focus on every keystroke.
+  const nextClientId = useRef(0);
+  const [additionalInfo, setAdditionalInfo] = useState<AdditionalInfoItem[]>(
+    () =>
+      (initial?.additionalInfo ?? []).map((item) => ({
+        clientId: `seed-${nextClientId.current++}`,
+        title: item.title,
+        description: item.description,
+      })),
+  );
 
   function addInfo() {
-    setAdditionalInfo((prev) => [...prev, { title: "", description: "" }]);
+    setAdditionalInfo((prev) => [
+      ...prev,
+      {
+        clientId: `new-${nextClientId.current++}`,
+        title: "",
+        description: "",
+      },
+    ]);
   }
 
-  function removeInfo(index: number) {
-    setAdditionalInfo((prev) => prev.filter((_, i) => i !== index));
+  function removeInfo(clientId: string) {
+    setAdditionalInfo((prev) =>
+      prev.filter((item) => item.clientId !== clientId),
+    );
   }
 
   function updateInfo(
-    index: number,
+    clientId: string,
     field: "title" | "description",
     value: string,
   ) {
     setAdditionalInfo((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+      prev.map((item) =>
+        item.clientId === clientId ? { ...item, [field]: value } : item,
+      ),
     );
   }
 
   function handleSave() {
     startTransition(async () => {
+      // Ceremony and reception venue/address/time are sourced from the
+      // events table — admins edit them on the Events page, not here, so
+      // we don't write those fields from the details editor anymore. Any
+      // existing values stay in the DB row untouched (we only overwrite
+      // title and additionalInfo); the public page prefers events anyway.
       const data: Record<string, unknown> = { title };
-      if (ceremony.venue) {
-        data.ceremony = {
-          title: "Ceremony",
-          venue: ceremony.venue,
-          address: ceremony.address || undefined,
-          time: ceremony.time || undefined,
-          location: ceremony.location || undefined,
-        };
-      }
-      if (reception.venue) {
-        data.reception = {
-          title: "Reception",
-          venue: reception.venue,
-          address: reception.address || undefined,
-          time: reception.time || undefined,
-          description: reception.description || undefined,
-        };
-      }
-      if (additionalInfo.length > 0) {
-        data.additionalInfo = additionalInfo.filter(
-          (item) => item.title.trim() !== "",
-        );
+      const filtered = additionalInfo.filter(
+        (item) => item.title.trim() !== "",
+      );
+      if (filtered.length > 0) {
+        data.additionalInfo = filtered.map(({ title, description }) => ({
+          title,
+          description,
+        }));
       }
 
       const result = await updateWeddingContent("details", data);
@@ -408,117 +415,16 @@ function DetailsEditor({ initial }: { initial?: DetailsContent }) {
         />
       </div>
 
-      <fieldset className="border border-border rounded-lg p-4 space-y-3">
-        <legend className="text-sm font-medium px-2">Ceremony</legend>
-        <div>
-          <Label htmlFor="ceremony-venue">Venue</Label>
-          <Input
-            id="ceremony-venue"
-            value={ceremony.venue}
-            onChange={(e) =>
-              setCeremony((prev) => ({ ...prev, venue: e.target.value }))
-            }
-            className="mt-1"
-          />
-        </div>
-        <div>
-          <Label htmlFor="ceremony-address">Address</Label>
-          <AddressAutocomplete
-            id="ceremony-address"
-            value={ceremony.address}
-            onChange={(val) =>
-              setCeremony((prev) => ({ ...prev, address: val }))
-            }
-            className="mt-1"
-            placeholder="Start typing an address..."
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="ceremony-time">Time</Label>
-            <Input
-              id="ceremony-time"
-              value={ceremony.time}
-              onChange={(e) =>
-                setCeremony((prev) => ({ ...prev, time: e.target.value }))
-              }
-              placeholder="3:00 PM"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ceremony-location">Location</Label>
-            <Input
-              id="ceremony-location"
-              value={ceremony.location}
-              onChange={(e) =>
-                setCeremony((prev) => ({
-                  ...prev,
-                  location: e.target.value,
-                }))
-              }
-              placeholder="Garden"
-              className="mt-1"
-            />
-          </div>
-        </div>
-      </fieldset>
-
-      <fieldset className="border border-border rounded-lg p-4 space-y-3">
-        <legend className="text-sm font-medium px-2">Reception</legend>
-        <div>
-          <Label htmlFor="reception-venue">Venue</Label>
-          <Input
-            id="reception-venue"
-            value={reception.venue}
-            onChange={(e) =>
-              setReception((prev) => ({ ...prev, venue: e.target.value }))
-            }
-            className="mt-1"
-          />
-        </div>
-        <div>
-          <Label htmlFor="reception-address">Address</Label>
-          <AddressAutocomplete
-            id="reception-address"
-            value={reception.address}
-            onChange={(val) =>
-              setReception((prev) => ({ ...prev, address: val }))
-            }
-            className="mt-1"
-            placeholder="Start typing an address..."
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="reception-time">Time</Label>
-            <Input
-              id="reception-time"
-              value={reception.time}
-              onChange={(e) =>
-                setReception((prev) => ({ ...prev, time: e.target.value }))
-              }
-              placeholder="5:00 PM"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="reception-description">Description</Label>
-            <Input
-              id="reception-description"
-              value={reception.description}
-              onChange={(e) =>
-                setReception((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-              placeholder="Dinner & Dancing"
-              className="mt-1"
-            />
-          </div>
-        </div>
-      </fieldset>
+      <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+        Ceremony and reception venue, address, and time come from your{" "}
+        <Link
+          href={`/${slug}/admin/events`}
+          className="font-medium text-foreground underline"
+        >
+          Events page
+        </Link>
+        . Edit them there to update what guests see in this section.
+      </div>
 
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -529,20 +435,24 @@ function DetailsEditor({ initial }: { initial?: DetailsContent }) {
           </Button>
         </div>
         <div className="space-y-3">
-          {additionalInfo.map((item, i) => (
+          {additionalInfo.map((item) => (
             <div
-              key={`info-${i}-${item.title.slice(0, 10)}`}
+              key={item.clientId}
               className="flex gap-2 items-start border border-border rounded-lg p-3"
             >
               <div className="flex-1 space-y-2">
                 <Input
                   value={item.title}
-                  onChange={(e) => updateInfo(i, "title", e.target.value)}
+                  onChange={(e) =>
+                    updateInfo(item.clientId, "title", e.target.value)
+                  }
                   placeholder="Title"
                 />
                 <Input
                   value={item.description}
-                  onChange={(e) => updateInfo(i, "description", e.target.value)}
+                  onChange={(e) =>
+                    updateInfo(item.clientId, "description", e.target.value)
+                  }
                   placeholder="Description"
                 />
               </div>
@@ -550,7 +460,7 @@ function DetailsEditor({ initial }: { initial?: DetailsContent }) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => removeInfo(i)}
+                onClick={() => removeInfo(item.clientId)}
                 className="shrink-0 text-destructive hover:text-destructive/80"
               >
                 <Trash2 className="h-4 w-4" />
