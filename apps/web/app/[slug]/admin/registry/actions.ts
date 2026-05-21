@@ -42,15 +42,14 @@ export async function createRegistryItem(data: {
   stripeUrl?: string;
   isActive?: boolean;
 }): Promise<{ success: boolean; item?: RegistryItem; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
     const title = data.title.trim();
     if (!title) return { success: false, error: "Title is required" };
-
-    const { weddingId, slug } = await getWeddingContext();
 
     const last = await db.registryItem.aggregate({
       where: { weddingId },
@@ -91,13 +90,12 @@ export async function updateRegistryItem(
     isActive?: boolean;
   },
 ): Promise<{ success: boolean; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const { slug } = await getWeddingContext();
-
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
@@ -129,13 +127,12 @@ export async function updateRegistryItem(
 export async function deleteRegistryItem(
   id: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const { slug } = await getWeddingContext();
-
     await db.registryItem.delete({ where: { id } });
 
     revalidatePath(`/${slug}/admin/registry`);
@@ -151,13 +148,12 @@ export async function deleteRegistryItem(
 export async function reorderRegistryItems(
   orderedIds: string[],
 ): Promise<{ success: boolean; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const { slug } = await getWeddingContext();
-
     await Promise.all(
       orderedIds.map((id, index) =>
         db.registryItem.update({
@@ -181,13 +177,12 @@ export async function toggleRegistryItemActive(
   id: string,
   isActive: boolean,
 ): Promise<{ success: boolean; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const { slug } = await getWeddingContext();
-
     await db.registryItem.update({
       where: { id },
       data: { isActive, updatedAt: new Date() },

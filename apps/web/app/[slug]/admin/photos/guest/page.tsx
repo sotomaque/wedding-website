@@ -14,10 +14,10 @@ export default async function GuestPhotosAdminPage() {
   const user = await currentUser();
   if (!user) redirect("/unauthorized");
 
-  const { authorized } = await isAdmin();
-  if (!authorized) redirect("/unauthorized");
-
   const { weddingId, slug } = await getWeddingContext();
+
+  const { authorized } = await isAdmin(weddingId);
+  if (!authorized) redirect("/unauthorized");
 
   const photos = await db.guestPhoto.findMany({
     where: { weddingId },

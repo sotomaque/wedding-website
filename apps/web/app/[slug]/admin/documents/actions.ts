@@ -51,7 +51,8 @@ export async function createDocument(data: {
   category: DocumentCategory;
   uploadedBy: string;
 }): Promise<{ success: boolean; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
@@ -59,8 +60,6 @@ export async function createDocument(data: {
     const title = data.title.trim();
     if (!title) return { success: false, error: "Title is required" };
     if (!data.fileUrl) return { success: false, error: "File URL is required" };
-
-    const { weddingId, slug } = await getWeddingContext();
 
     await db.document.create({
       data: {
@@ -91,13 +90,12 @@ export async function updateDocument(
     category?: DocumentCategory;
   },
 ): Promise<{ success: boolean; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const { slug } = await getWeddingContext();
-
     await db.document.update({
       where: { id },
       data: {
@@ -120,13 +118,12 @@ export async function updateDocument(
 export async function deleteDocument(
   id: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const auth = await isAdmin();
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const { slug } = await getWeddingContext();
-
     await db.document.delete({ where: { id } });
     revalidatePath(`/${slug}/admin/documents`);
     return { success: true };

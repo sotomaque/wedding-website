@@ -11,16 +11,17 @@ export interface AdminAuthResult {
 }
 
 /**
- * Check if the current user is an admin.
+ * Check if the current user is an admin for the given wedding.
  *
- * When `weddingId` is provided, checks the `wedding_admins` table for
- * per-wedding access. Always falls back to `ADMIN_EMAILS` env var as
- * a superadmin override.
+ * Checks ADMIN_EMAILS env var first (superadmin override — global access),
+ * then the `wedding_admins` table for per-wedding access.
  *
- * Existing call sites that don't pass `weddingId` continue to work
- * (backward compat — checks ADMIN_EMAILS only).
+ * `weddingId` is required to prevent the "forgot to pass it" footgun
+ * that silently denies per-wedding admins. If you genuinely want a
+ * superadmin-only check, resolve the wedding context anyway and pass it —
+ * the superadmin path runs first and short-circuits.
  */
-export async function isAdmin(weddingId?: string): Promise<AdminAuthResult> {
+export async function isAdmin(weddingId: string): Promise<AdminAuthResult> {
   const user = await currentUser();
   if (!user) return { authorized: false, error: "Unauthorized", role: null };
 
@@ -37,22 +38,20 @@ export async function isAdmin(weddingId?: string): Promise<AdminAuthResult> {
   }
 
   // Per-wedding check: wedding_admins table
-  if (weddingId) {
-    const admin = await db.weddingAdmin.findFirst({
-      where: {
-        weddingId,
-        OR: [{ email: userEmail }, { clerkUserId: user.id }],
-      },
-      select: { role: true },
-    });
+  const admin = await db.weddingAdmin.findFirst({
+    where: {
+      weddingId,
+      OR: [{ email: userEmail }, { clerkUserId: user.id }],
+    },
+    select: { role: true },
+  });
 
-    if (admin) {
-      return {
-        authorized: true,
-        error: null,
-        role: admin.role as "owner" | "editor",
-      };
-    }
+  if (admin) {
+    return {
+      authorized: true,
+      error: null,
+      role: admin.role as "owner" | "editor",
+    };
   }
 
   return { authorized: false, error: "Forbidden", role: null };
@@ -68,7 +67,7 @@ export async function isAdmin(weddingId?: string): Promise<AdminAuthResult> {
  *   // auth.role is available here
  */
 export async function requireAdmin(
-  weddingId?: string,
+  weddingId: string,
 ): Promise<
   NextResponse | { authorized: true; role: "owner" | "editor" | "superadmin" }
 > {
