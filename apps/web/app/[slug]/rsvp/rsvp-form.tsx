@@ -49,9 +49,15 @@ interface RSVPFormProps {
   guests: RsvpGuest[];
   inviteCode: string;
   onBack: () => void;
+  thingsToDoEnabled: boolean;
 }
 
-export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
+export function RSVPForm({
+  guests,
+  inviteCode,
+  onBack,
+  thingsToDoEnabled,
+}: RSVPFormProps) {
   const router = useRouter();
   const slug = useWeddingSlug();
 
@@ -150,9 +156,11 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
           ? "Your RSVP has been updated successfully."
           : "Thank you for your response. We can't wait to celebrate with you!",
       });
-      // Redirect to things-to-do page for first-time RSVPs with at least one attending
+      // Redirect to things-to-do page for first-time RSVPs with at least one
+      // attending, but only if the wedding has that feature enabled —
+      // otherwise the destination 404s.
       const anyAttending = data.guests.some((g) => g.attending);
-      if (!hasRSVPd && anyAttending) {
+      if (!hasRSVPd && anyAttending && thingsToDoEnabled) {
         router.push(`/${slug}/things-to-do`);
       } else {
         router.refresh();
@@ -178,17 +186,19 @@ export function RSVPForm({ guests, inviteCode, onBack }: RSVPFormProps) {
     >
       <div className="flex-1 overflow-y-auto overscroll-none px-4 py-4 space-y-6 md:flex-none md:overflow-visible md:overscroll-auto md:px-0 md:py-0">
         {/* Things to Do Link - mobile only */}
-        <div className="p-3 bg-accent/10 border border-accent/30 rounded-lg md:hidden">
-          <p className="text-xs text-center text-foreground">
-            Planning your trip to San Diego?{" "}
-            <Link
-              href={`/${slug}/things-to-do`}
-              className="font-semibold underline hover:text-accent transition-colors"
-            >
-              Check out Things to Do
-            </Link>
-          </p>
-        </div>
+        {thingsToDoEnabled && (
+          <div className="p-3 bg-accent/10 border border-accent/30 rounded-lg md:hidden">
+            <p className="text-xs text-center text-foreground">
+              Planning your trip to San Diego?{" "}
+              <Link
+                href={`/${slug}/things-to-do`}
+                className="font-semibold underline hover:text-accent transition-colors"
+              >
+                Check out Things to Do
+              </Link>
+            </p>
+          </div>
+        )}
 
         {/* RSVP Status Banner - only show if previously submitted */}
         {hasRSVPd && (
