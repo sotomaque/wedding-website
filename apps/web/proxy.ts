@@ -65,6 +65,20 @@ function getSlugFromPath(pathname: string): string | null {
   return firstSegment;
 }
 
+/**
+ * For /api/* requests the URL has no slug segment, so the wedding has to be
+ * inferred from the page that initiated the call. The Referer header gives us
+ * that page's URL — extract the slug from its pathname.
+ */
+function getSlugFromReferer(referer: string | null): string | null {
+  if (!referer) return null;
+  try {
+    return getSlugFromPath(new URL(referer).pathname);
+  } catch {
+    return null;
+  }
+}
+
 export default clerkMiddleware(async (auth, req: NextRequest) => {
   const { pathname } = req.nextUrl;
   const host = req.headers.get("host") ?? "";
@@ -98,7 +112,13 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   }
 
   // --- Slug extraction ---
-  const slug = getSlugFromPath(pathname);
+  // For /api/* the path has no slug, so fall back to the Referer (the page
+  // that initiated the request).
+  const slug =
+    getSlugFromPath(pathname) ??
+    (pathname.startsWith("/api/")
+      ? getSlugFromReferer(req.headers.get("referer"))
+      : null);
 
   // --- Clerk auth for admin routes ---
   if (isProtectedRoute(req)) {
