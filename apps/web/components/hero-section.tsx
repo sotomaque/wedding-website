@@ -65,7 +65,17 @@ export function HeroSection({ photos, title }: HeroSectionProps) {
   }, [api, startAutoScroll]);
 
   if (photos.length === 0) {
-    return null;
+    return (
+      <section className="relative overflow-hidden">
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full">
+          <div className="relative h-[calc(100dvh-8rem)] bg-gradient-to-br from-accent/20 via-accent/5 to-background flex items-center justify-center">
+            <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-serif text-foreground uppercase opacity-70 drop-shadow-lg tracking-widest text-center px-4">
+              {title}
+            </h1>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
