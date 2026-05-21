@@ -40,7 +40,7 @@ Built with Next.js 16 (App Router), React 19, TypeScript, Prisma, and Supabase i
 
 - Every table has a `wedding_id` FK with NOT NULL constraint
 - All Prisma queries scoped by `weddingId` (~54 files)
-- Middleware extracts slug from URL, sets `x-wedding-slug` header
+- Middleware extracts slug from URL (or from `Referer` for `/api/*` requests, which have no slug segment), sets `x-wedding-slug` header
 - `getWeddingId()` resolves wedding context per-request (cached via `React.cache()`)
 - `requireAdmin(weddingId)` checks per-wedding admin access
 - RLS policies on all tables as defense-in-depth
@@ -301,7 +301,7 @@ Prisma schema at `packages/db/prisma/schema.prisma`. Key models:
 
 - **Wedding** — top-level entity with slug, config, theme, feature toggles
 - **WeddingAdmin** — per-wedding admin access (owner/editor roles)
-- **WeddingContent** — section + JSONB content (hero, story, details, schedule, RSVP)
+- **WeddingContent** — section + JSONB content (hero, story, details, schedule, RSVP). Note: ceremony/reception venue, address, and time on the details section are derived from the `events` table, not stored here.
 - **RegistryItem** — per-wedding Stripe payment links
 - **Guest**, **Party**, **Event**, **GuestEventInvite** — guest management
 - **SeatingChart**, **SeatingTable**, **GuestTableAssignment** — seating
