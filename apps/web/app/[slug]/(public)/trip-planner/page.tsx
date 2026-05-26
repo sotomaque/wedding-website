@@ -1,12 +1,12 @@
 import { Footer } from "@workspace/ui/components/footer";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
+import { GuestIdentifier } from "@/app/[slug]/(public)/things-to-do/guest-identifier";
 import {
   type ActivityPlan,
   groupByParty,
   type PartyTravel,
 } from "@/app/[slug]/admin/calendar/utils";
-import { GuestIdentifier } from "@/app/[slug]/things-to-do/guest-identifier";
 import { WeddingNavigation } from "@/components/wedding-navigation";
 import { getGuestParty } from "@/lib/auth/guest-session";
 import { toDateStr } from "@/lib/calendar/date-utils";

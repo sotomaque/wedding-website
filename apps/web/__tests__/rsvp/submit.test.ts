@@ -159,7 +159,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
   });
 
   it("should submit RSVP for attending guest", async () => {
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -183,7 +183,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
   });
 
   it("should submit RSVP for declining guest", async () => {
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -202,7 +202,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
   });
 
   it("should require invite code", async () => {
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "",
@@ -217,7 +217,7 @@ describe("RSVP - Submit (Manual Entry)", () => {
   it("should return error for invalid invite code", async () => {
     mockGuestFindMany.mockResolvedValue([]);
 
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "INVALID",
@@ -264,7 +264,7 @@ describe("RSVP - Plus One Scenarios", () => {
       under21: false,
     });
 
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -310,7 +310,7 @@ describe("RSVP - Plus One Scenarios", () => {
       under21: false,
     });
 
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -358,7 +358,7 @@ describe("RSVP - Plus One Scenarios", () => {
       under21: false,
     });
 
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -398,7 +398,7 @@ describe("RSVP - Plus One Scenarios", () => {
     // No existing plus-one
     mockGuestFindFirst.mockResolvedValue(null);
 
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -451,7 +451,7 @@ describe("RSVP - Contact Information", () => {
   });
 
   it("should save mailing address", async () => {
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -470,7 +470,7 @@ describe("RSVP - Contact Information", () => {
   });
 
   it("should save phone number", async () => {
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -489,7 +489,7 @@ describe("RSVP - Contact Information", () => {
   });
 
   it("should save preferred contact method", async () => {
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -508,7 +508,7 @@ describe("RSVP - Contact Information", () => {
   });
 
   it("should save under21 status", async () => {
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     await submitRSVP({
       inviteCode: "ABCD-1234",
@@ -554,7 +554,7 @@ describe("RSVP - Notification Email", () => {
   });
 
   it("should schedule notification email via after() on RSVP submission", async () => {
-    const { submitRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitRSVP } = await import("@/app/[slug]/(public)/rsvp/actions");
 
     const result = await submitRSVP({
       inviteCode: "ABCD-1234",

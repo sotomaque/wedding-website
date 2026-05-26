@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { formatDate, getSummaryText } from "@/app/[slug]/things-to-do/utils";
+import {
+  formatDate,
+  getSummaryText,
+} from "@/app/[slug]/(public)/things-to-do/utils";
 
 describe("formatDate", () => {
   it("should format a date string to short format", () => {

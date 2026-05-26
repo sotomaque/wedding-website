@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
 import { getWeddingBySlug } from "@/lib/db/wedding-context";
-import { generateThemeCss, getThemePreset } from "@/lib/themes";
 
 interface SlugLayoutProps {
   children: React.ReactNode;
@@ -33,6 +31,13 @@ export async function generateMetadata({
   };
 }
 
+/**
+ * Bare slug layout — handles metadata + the 404 check shared by every route
+ * under /[slug]/. The wedding's theme / font CSS is **not** injected here so
+ * that the admin sub-tree (which renders below this layout) keeps the
+ * project's default appearance. Guest-facing pages live in the (public)
+ * route group, whose layout injects the per-wedding design CSS.
+ */
 export default async function SlugLayout({
   children,
   params,
@@ -44,25 +49,5 @@ export default async function SlugLayout({
     notFound();
   }
 
-  // Load theme for this wedding
-  const weddingRecord = await db.wedding.findUnique({
-    where: { id: wedding.weddingId },
-    select: { themeId: true },
-  });
-  const theme = getThemePreset(weddingRecord?.themeId);
-  const themeCss = generateThemeCss(theme);
-
-  return (
-    <>
-      {themeCss && (
-        <style
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: theme CSS variables are controlled server-side from preset definitions
-          dangerouslySetInnerHTML={{
-            __html: themeCss,
-          }}
-        />
-      )}
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

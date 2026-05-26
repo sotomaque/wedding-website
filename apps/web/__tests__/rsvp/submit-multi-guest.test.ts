@@ -138,7 +138,9 @@ describe("submitMultiGuestRSVP - Basic Scenarios", () => {
   });
 
   it("should require invite code", async () => {
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "",
@@ -157,7 +159,9 @@ describe("submitMultiGuestRSVP - Basic Scenarios", () => {
   });
 
   it("should require at least one guest", async () => {
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -171,7 +175,9 @@ describe("submitMultiGuestRSVP - Basic Scenarios", () => {
   it("should return error for invalid invite code", async () => {
     mockGuestFindMany.mockResolvedValue([]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "INVALID",
@@ -209,7 +215,9 @@ describe("submitMultiGuestRSVP - Basic Scenarios", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -258,7 +266,9 @@ describe("submitMultiGuestRSVP - Basic Scenarios", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -345,7 +355,9 @@ describe("submitMultiGuestRSVP - Multi-Guest Party", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -409,7 +421,9 @@ describe("submitMultiGuestRSVP - Multi-Guest Party", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -467,7 +481,9 @@ describe("submitMultiGuestRSVP - Plus-One Handling", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -531,7 +547,9 @@ describe("submitMultiGuestRSVP - Plus-One Handling", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -594,7 +612,9 @@ describe("submitMultiGuestRSVP - Plus-One Handling", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -651,7 +671,9 @@ describe("submitMultiGuestRSVP - Plus-One Handling", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "FAMILY-123",
@@ -747,7 +769,9 @@ describe("submitMultiGuestRSVP - Under 21 and Three and Under", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -828,7 +852,9 @@ describe("submitMultiGuestRSVP - Under 21 and Three and Under", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -905,7 +931,9 @@ describe("submitMultiGuestRSVP - Shared Contact Information", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -986,7 +1014,9 @@ describe("submitMultiGuestRSVP - Travel Information", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -1048,7 +1078,9 @@ describe("submitMultiGuestRSVP - Travel Information", () => {
       },
     ]);
 
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
@@ -1104,7 +1136,9 @@ describe("submitMultiGuestRSVP - Notification Email", () => {
   });
 
   it("should schedule notification email via after() on multi-guest RSVP", async () => {
-    const { submitMultiGuestRSVP } = await import("@/app/[slug]/rsvp/actions");
+    const { submitMultiGuestRSVP } = await import(
+      "@/app/[slug]/(public)/rsvp/actions"
+    );
 
     const result = await submitMultiGuestRSVP({
       inviteCode: "ABCD-1234",
