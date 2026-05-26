@@ -11,6 +11,7 @@ const ALL_SECTIONS: SectionKey[] = [
   "details",
   "schedule",
   "rsvp",
+  "welcome",
   "wedding-party",
   "gallery",
   "things-to-do",
@@ -47,10 +48,11 @@ describe("LAYOUT_PRESETS", () => {
     expect(classic.navVariant).toBe("centered");
   });
 
-  it("lovebird-elegant lists the full nine-section flow in order", () => {
+  it("lovebird-elegant lists the full ten-section flow in order", () => {
     const lovebird = getLayoutPreset("lovebird-elegant");
     expect(lovebird.sections).toEqual([
       "hero",
+      "welcome",
       "story",
       "schedule",
       "wedding-party",

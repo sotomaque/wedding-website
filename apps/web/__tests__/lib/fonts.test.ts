@@ -47,15 +47,19 @@ describe("generateFontCss", () => {
     expect(css).not.toContain("--font-body");
   });
 
-  it("emits the optional UI font override when a pairing defines uiVar", () => {
+  it("emits all four font slot overrides when a pairing defines them (lovebird-elegant)", () => {
     const css = generateFontCss(getFontPairing("lovebird-elegant"));
-    expect(css).toContain("--font-heading: var(--font-sacramento)");
-    expect(css).toContain("--font-body: var(--font-eb-garamond)");
+    // Lovebird-elegant uses the trio: Sacramento display, Quicksand body
+    // (also reused as heading at smaller sizes), Inter UI chrome.
+    expect(css).toContain("--font-heading: var(--font-quicksand)");
+    expect(css).toContain("--font-body: var(--font-quicksand)");
     expect(css).toContain("--font-ui-text: var(--font-inter)");
+    expect(css).toContain("--font-display-text: var(--font-sacramento)");
   });
 
-  it("does not emit a UI font override when uiVar is unset", () => {
+  it("does not emit UI/display overrides when uiVar/displayVar are unset", () => {
     const css = generateFontCss(getFontPairing("elegant"));
     expect(css).not.toContain("--font-ui-text");
+    expect(css).not.toContain("--font-display-text");
   });
 });
