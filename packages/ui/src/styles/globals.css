@@ -104,6 +104,22 @@
 }
 
 @theme inline {
+  /* Font tokens. --font-heading / --font-body / --font-ui-text /
+     --font-display-text are remapped per-wedding by the selected font
+     pairing (see apps/web/lib/fonts.ts). When unset they fall back to the
+     default appearance: serif headings + Geist body + Geist UI controls +
+     heading font for display text.
+
+     The four slots:
+       --font-serif   (h3, subsection titles, anywhere wanting "headingy")
+       --font-sans    (body prose, paragraphs)
+       --font-ui      (buttons, nav, form controls)
+       --font-display (section h2 titles, hero couple-names — the spot for
+                       script/decorative fonts that work at large size only) */
+  --font-sans: var(--font-body, var(--font-geist), ui-sans-serif, system-ui, sans-serif);
+  --font-serif: var(--font-heading, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif);
+  --font-ui: var(--font-ui-text, var(--font-body), var(--font-geist), ui-sans-serif, system-ui, sans-serif);
+  --font-display: var(--font-display-text, var(--font-heading), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

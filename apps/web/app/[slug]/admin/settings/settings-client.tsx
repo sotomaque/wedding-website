@@ -25,37 +25,31 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { locales } from "@/i18n/config";
 import { TIMEZONES } from "@/lib/constants/timezones";
-import { THEME_PRESETS } from "@/lib/themes";
+import { FONT_PAIRINGS } from "@/lib/fonts";
+import { TEMPLATE_PRESETS } from "@/lib/templates";
+import { getThemePreset, THEME_PRESETS } from "@/lib/themes";
+import { designConfigSchema } from "@/lib/validations/wedding-content";
 import {
   inviteAdmin,
   removeAdmin,
   updateBrandingSettings,
   updateDefaultLanguage,
   updateFeatureToggles,
+  updateFont,
   updateGeneralSettings,
   updateNotificationSettings,
+  updateTemplate,
   updateTheme,
 } from "./actions";
 
-type Tab =
-  | "general"
-  | "notifications"
-  | "branding"
-  | "theme"
-  | "language"
-  | "features"
-  | "emails"
-  | "admins";
+type Tab = "general" | "appearance" | "notifications" | "features" | "team";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "general", label: "General" },
+  { key: "appearance", label: "Appearance" },
   { key: "notifications", label: "Notifications" },
-  { key: "emails", label: "Automated Emails" },
-  { key: "branding", label: "Branding" },
-  { key: "theme", label: "Theme" },
-  { key: "language", label: "Language" },
   { key: "features", label: "Features" },
-  { key: "admins", label: "Admins" },
+  { key: "team", label: "Team" },
 ];
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -123,22 +117,65 @@ export function SettingsClient({
         ))}
       </div>
 
-      {activeTab === "general" && <GeneralSection wedding={wedding} />}
+      {activeTab === "general" && (
+        <div className="space-y-10">
+          <GeneralSection wedding={wedding} />
+          <SettingsSubsection title="Language">
+            <LanguageSection wedding={wedding} />
+          </SettingsSubsection>
+        </div>
+      )}
+      {activeTab === "appearance" && (
+        <div className="space-y-10">
+          <SettingsSubsection title="Template">
+            <TemplateSection wedding={wedding} />
+          </SettingsSubsection>
+          <SettingsSubsection title="Color theme">
+            <ThemeSection wedding={wedding} />
+          </SettingsSubsection>
+          <SettingsSubsection title="Typography">
+            <TypographySection wedding={wedding} />
+          </SettingsSubsection>
+          <SettingsSubsection title="Logo">
+            <BrandingSection wedding={wedding} />
+          </SettingsSubsection>
+        </div>
+      )}
       {activeTab === "notifications" && (
-        <NotificationsSection wedding={wedding} />
+        <div className="space-y-10">
+          <NotificationsSection wedding={wedding} />
+          <SettingsSubsection title="Automated emails">
+            <AutomatedEmailsSection
+              reminderSchedules={initialReminders}
+              adminSummaryConfig={initialSummaryConfig}
+            />
+          </SettingsSubsection>
+        </div>
       )}
-      {activeTab === "branding" && <BrandingSection wedding={wedding} />}
-      {activeTab === "theme" && <ThemeSection wedding={wedding} />}
-      {activeTab === "language" && <LanguageSection wedding={wedding} />}
       {activeTab === "features" && <FeaturesSection wedding={wedding} />}
-      {activeTab === "emails" && (
-        <AutomatedEmailsSection
-          reminderSchedules={initialReminders}
-          adminSummaryConfig={initialSummaryConfig}
-        />
-      )}
-      {activeTab === "admins" && <AdminsSection admins={admins} />}
+      {activeTab === "team" && <AdminsSection admins={admins} />}
     </div>
+  );
+}
+
+/**
+ * Visual divider + heading for grouping multiple section components under
+ * one tab. Keeps tab-internal navigation scannable without nesting tabs.
+ */
+function SettingsSubsection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <h2 className="text-base font-medium mb-4 pb-2 border-b border-border">
+        {title}
+      </h2>
+      {children}
+    </section>
   );
 }
 
@@ -524,6 +561,148 @@ function ThemeSection({ wedding }: { wedding: Wedding }) {
             </p>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function TypographySection({ wedding }: { wedding: Wedding }) {
+  const [isPending, startTransition] = useTransition();
+  const design = designConfigSchema.parse(wedding.designConfig ?? {});
+  const currentFontId = design.fontId ?? "classic";
+
+  function handleSelect(fontId: string) {
+    startTransition(async () => {
+      const result = await updateFont(fontId);
+      if (result.success) {
+        toast.success("Font updated");
+      } else {
+        toast.error(result.error ?? "Failed to update font");
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <p className="text-sm text-muted-foreground">
+        Choose a font pairing for your wedding site. Headings and body text
+        update across all public-facing pages.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {FONT_PAIRINGS.map((font) => (
+          <button
+            key={font.id}
+            type="button"
+            onClick={() => handleSelect(font.id)}
+            disabled={isPending}
+            className={`text-left p-4 rounded-lg border-2 transition-all ${
+              currentFontId === font.id
+                ? "border-accent shadow-md"
+                : "border-border hover:border-accent/40"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium">{font.name}</p>
+              {currentFontId === font.id && (
+                <span className="text-xs font-medium text-accent">Active</span>
+              )}
+            </div>
+            <p
+              className="text-xl leading-tight"
+              style={{ fontFamily: font.preview.heading }}
+            >
+              Aa
+            </p>
+            <p
+              className="text-sm mt-1"
+              style={{ fontFamily: font.preview.body }}
+            >
+              The quick brown fox
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {font.description}
+            </p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Top-level Appearance control. A template bundles layout + motif +
+ * default theme + default font into one pickable unit. Picking a template
+ * sets only `Wedding.templateId`; any custom color theme / font pairing the
+ * user has selected is preserved (additive — see actions.ts `updateTemplate`).
+ */
+function TemplateSection({ wedding }: { wedding: Wedding }) {
+  const [isPending, startTransition] = useTransition();
+  const currentTemplateId = wedding.templateId ?? "classic";
+
+  function handleSelect(templateId: string) {
+    startTransition(async () => {
+      const result = await updateTemplate(templateId);
+      if (result.success) {
+        toast.success("Template updated");
+      } else {
+        toast.error(result.error ?? "Failed to update template");
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <p className="text-sm text-muted-foreground">
+        Pick a template to set the overall look of your wedding site — section
+        order, decorative dividers, and the default colors and fonts. After
+        picking a template you can fine-tune the color theme and typography
+        below; your customizations are preserved if you switch templates later.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {TEMPLATE_PRESETS.map((template) => {
+          const defaultTheme = getThemePreset(template.defaultThemeId);
+          return (
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => handleSelect(template.id)}
+              disabled={isPending}
+              className={`text-left p-4 rounded-lg border-2 transition-all ${
+                currentTemplateId === template.id
+                  ? "border-accent shadow-md"
+                  : "border-border hover:border-accent/40"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium">{template.name}</p>
+                {currentTemplateId === template.id && (
+                  <span className="text-xs font-medium text-accent">
+                    Active
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-1 mb-3">
+                <div
+                  className="w-5 h-5 rounded-full border border-border"
+                  style={{
+                    backgroundColor: defaultTheme.preview.background,
+                  }}
+                />
+                <div
+                  className="w-5 h-5 rounded-full border border-border"
+                  style={{ backgroundColor: defaultTheme.preview.primary }}
+                />
+                <div
+                  className="w-5 h-5 rounded-full border border-border"
+                  style={{ backgroundColor: defaultTheme.preview.accent }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {template.description}
+              </p>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

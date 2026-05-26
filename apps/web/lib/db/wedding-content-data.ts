@@ -8,6 +8,7 @@
 import { cache } from "react";
 import type {
   ContentSection,
+  DesignConfig,
   DetailsContent,
   FeatureToggles,
   HeroContent,
@@ -15,7 +16,10 @@ import type {
   ScheduleContent,
   StoryContent,
 } from "@/lib/validations/wedding-content";
-import { featureTogglesSchema } from "@/lib/validations/wedding-content";
+import {
+  designConfigSchema,
+  featureTogglesSchema,
+} from "@/lib/validations/wedding-content";
 import { db } from "./index";
 import { getWeddingId } from "./wedding-context";
 
@@ -38,8 +42,10 @@ export interface WeddingSettings {
   brandImageUrl: string | null;
   brandImageAlt: string | null;
   themeId: string | null;
+  templateId: string | null;
   defaultLanguage: string;
   featureToggles: FeatureToggles;
+  designConfig: DesignConfig;
 }
 
 export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
@@ -63,17 +69,21 @@ export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
       brandImageUrl: true,
       brandImageAlt: true,
       themeId: true,
+      templateId: true,
       defaultLanguage: true,
       featureToggles: true,
+      designConfig: true,
     },
   });
 
-  // Parse feature toggles with defaults
+  // Parse feature toggles + design config with defaults
   const toggles = featureTogglesSchema.parse(wedding.featureToggles ?? {});
+  const design = designConfigSchema.parse(wedding.designConfig ?? {});
 
   return {
     ...wedding,
     featureToggles: toggles,
+    designConfig: design,
   };
 });
 

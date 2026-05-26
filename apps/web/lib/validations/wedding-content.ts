@@ -3,6 +3,12 @@ import { z } from "zod";
 // --- Hero Section ---
 export const heroContentSchema = z.object({
   title: z.string(),
+  /**
+   * Optional uppercase location for hero cards that surface it
+   * (Lovebird-style "SEATTLE, WASHINGTON" line beneath couple names + date).
+   * Templates that render only a hero title ignore this field.
+   */
+  location: z.string().optional(),
 });
 export type HeroContent = z.infer<typeof heroContentSchema>;
 
@@ -79,6 +85,18 @@ export const featureTogglesSchema = z.object({
   slideshow: z.boolean().default(true),
 });
 export type FeatureToggles = z.infer<typeof featureTogglesSchema>;
+
+// --- Design Config (font pairing only) ---
+// Layout and motif now ride along with the chosen template (see
+// `Wedding.templateId` + `apps/web/lib/templates.ts`) — they are no longer
+// stored here. Legacy rows may still carry layoutId/motifId in this JSON
+// blob; Zod's default `.strip()` behavior silently drops them on parse, so
+// older data validates without throwing and the legacy fields are ignored.
+// Color theme stays on the separate `themeId` column.
+export const designConfigSchema = z.object({
+  fontId: z.string().optional(),
+});
+export type DesignConfig = z.infer<typeof designConfigSchema>;
 
 // --- Content Section Union ---
 export type ContentSection = "hero" | "story" | "details" | "schedule" | "rsvp";
