@@ -40,6 +40,18 @@ export const MOTIF_PACKS: MotifPack[] = [
     description:
       "Center-clustered rose-and-leaves divider — pairs with the Lovebird-style dark template",
   },
+  {
+    id: "eucalyptus",
+    name: "Eucalyptus",
+    description:
+      "Pendulous eucalyptus / olive sprig dividers — pairs with warm, boho-leaning templates",
+  },
+  {
+    id: "peony-sprig",
+    name: "Peony Sprig",
+    description:
+      "Single peony bloom flanked by leaves on extending hairlines — soft and floral",
+  },
 ];
 
 const DEFAULT_MOTIF = MOTIF_PACKS[0] as MotifPack;
