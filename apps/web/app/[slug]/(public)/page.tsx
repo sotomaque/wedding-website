@@ -169,7 +169,11 @@ export default async function Page() {
     details: <DetailsSection content={detailsContentWithEvents} />,
     schedule:
       template.scheduleStyle === "events-card" ? (
-        <LovebirdScheduleSection events={scheduleEvents} locale={locale} />
+        <LovebirdScheduleSection
+          events={scheduleEvents}
+          locale={locale}
+          motifId={motifId}
+        />
       ) : (
         <ScheduleSection
           content={content.schedule as ScheduleContent}

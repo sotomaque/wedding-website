@@ -1,4 +1,6 @@
-import { Calendar, MapPin } from "lucide-react";
+"use client";
+
+import { getIconSet } from "@workspace/ui/components/motif-icons";
 
 interface LovebirdScheduleEvent {
   id: string;
@@ -16,6 +18,7 @@ interface LovebirdScheduleSectionProps {
   /** BCP-47 locale (e.g. "en-US", "es-ES"). Passed in so the section
    * formats dates in the guest's language instead of hardcoded English. */
   locale: string;
+  motifId?: string | null;
 }
 
 const MONTH_SHORT = [
@@ -66,8 +69,13 @@ function formatLongDate(d: Date, locale: string): string {
 export function LovebirdScheduleSection({
   events,
   locale,
+  motifId,
 }: LovebirdScheduleSectionProps) {
   if (events.length === 0) return null;
+
+  const iconSet = getIconSet(motifId);
+  const DateIcon = iconSet.schedule.date;
+  const LocationIcon = iconSet.schedule.location;
 
   return (
     <section id="schedule" className="py-24 px-6 bg-background scroll-mt-24">
@@ -119,10 +127,10 @@ export function LovebirdScheduleSection({
 
                   {longDate && (
                     <p className="flex items-center gap-2 text-foreground/80 mb-2 text-sm md:text-base">
-                      <Calendar
+                      <DateIcon
                         aria-hidden="true"
                         className="size-4 opacity-70 shrink-0"
-                        strokeWidth={1.5}
+                        weight={iconSet.weight}
                       />
                       <span>
                         {longDate}
@@ -151,10 +159,10 @@ export function LovebirdScheduleSection({
 
                   {ev.locationAddress && (
                     <p className="flex items-center gap-2 text-foreground/75 text-sm">
-                      <MapPin
+                      <LocationIcon
                         aria-hidden="true"
                         className="size-4 opacity-70 shrink-0"
-                        strokeWidth={1.5}
+                        weight={iconSet.weight}
                       />
                       <span>{ev.locationAddress}</span>
                     </p>
