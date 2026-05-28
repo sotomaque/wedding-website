@@ -23,6 +23,7 @@ const DEFAULT_MESSAGE =
  */
 export function WelcomeSection({ message, hashtag }: WelcomeSectionProps) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const tag = hashtag ? `#${hashtag.replace(/^#/, "")}` : null;
   const text = message?.trim() || DEFAULT_MESSAGE;
 
@@ -31,9 +32,16 @@ export function WelcomeSection({ message, hashtag }: WelcomeSectionProps) {
     try {
       await navigator.clipboard.writeText(tag);
       setCopied(true);
+      setCopyFailed(false);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // clipboard blocked — quietly no-op; the hashtag is visible to read.
+    } catch (err) {
+      // Clipboard API throws on insecure context (http://), Safari iframe,
+      // and when permission is denied. Surface a "Copy failed" state so the
+      // guest knows to long-press the hashtag instead of getting silent
+      // nothing, and log for diagnosis.
+      console.warn("Hashtag copy failed:", err);
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 2000);
     }
   }
 
@@ -55,9 +63,10 @@ export function WelcomeSection({ message, hashtag }: WelcomeSectionProps) {
             <button
               type="button"
               onClick={copy}
+              aria-live="polite"
               className="text-xs uppercase tracking-[0.2em] text-foreground/80 hover:text-foreground border-b border-foreground/40 hover:border-foreground pb-0.5 transition-colors"
             >
-              {copied ? "Copied!" : "Copy"}
+              {copyFailed ? "Copy failed" : copied ? "Copied!" : "Copy"}
             </button>
           </div>
         )}

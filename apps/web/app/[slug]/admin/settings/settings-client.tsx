@@ -28,7 +28,10 @@ import { TIMEZONES } from "@/lib/constants/timezones";
 import { FONT_PAIRINGS } from "@/lib/fonts";
 import { TEMPLATE_PRESETS } from "@/lib/templates";
 import { getThemePreset, THEME_PRESETS } from "@/lib/themes";
-import { designConfigSchema } from "@/lib/validations/wedding-content";
+import {
+  designConfigSchema,
+  featureTogglesSchema,
+} from "@/lib/validations/wedding-content";
 import {
   inviteAdmin,
   removeAdmin,
@@ -760,10 +763,12 @@ function LanguageSection({ wedding }: { wedding: Wedding }) {
 
 function FeaturesSection({ wedding }: { wedding: Wedding }) {
   const [isPending, startTransition] = useTransition();
-  const initialToggles = (wedding.featureToggles ?? {}) as Record<
-    string,
-    boolean
-  >;
+  // Parse the JSON blob via the same schema the rest of the app uses, so
+  // unknown keys are stripped and missing ones get their declared defaults
+  // instead of trusting an unchecked `as Record<string, boolean>` cast.
+  const initialToggles = featureTogglesSchema.parse(
+    wedding.featureToggles ?? {},
+  ) as Record<string, boolean>;
   const [toggles, setToggles] = useState<Record<string, boolean>>(() => {
     const defaults: Record<string, boolean> = {};
     for (const key of Object.keys(FEATURE_LABELS)) {

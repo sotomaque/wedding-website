@@ -9,14 +9,20 @@ import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { isValidFontId } from "@/lib/fonts";
+import { isValidTemplateId } from "@/lib/templates";
 import {
   type DesignConfig,
   designConfigSchema,
 } from "@/lib/validations/wedding-content";
 
 /**
- * Read-merge a partial update into the wedding's designConfig JSON so that
- * updating one field (font/layout/motif) never clobbers the others.
+ * Read-merge a partial update into the wedding's designConfig JSON.
+ *
+ * Wrapped in a transaction with row-level locking (`SELECT ... FOR UPDATE`)
+ * because the merge happens in JS — without the lock, two concurrent updates
+ * (e.g. an admin switching font + another switching template in parallel)
+ * race and one write silently overwrites the other.
  */
 async function updateDesignConfig(patch: Partial<DesignConfig>) {
   const weddingId = await getWeddingId();
@@ -25,16 +31,19 @@ async function updateDesignConfig(patch: Partial<DesignConfig>) {
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    const current = await db.wedding.findUniqueOrThrow({
-      where: { id: weddingId },
-      select: { designConfig: true },
-    });
-    const existing = designConfigSchema.parse(current.designConfig ?? {});
-    const next = { ...existing, ...patch };
-
-    await db.wedding.update({
-      where: { id: weddingId },
-      data: { designConfig: next },
+    await db.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ design_config: unknown }[]>`
+        SELECT design_config
+        FROM weddings
+        WHERE id = ${weddingId}::uuid
+        FOR UPDATE
+      `;
+      const existing = designConfigSchema.parse(rows[0]?.design_config ?? {});
+      const next = { ...existing, ...patch };
+      await tx.wedding.update({
+        where: { id: weddingId },
+        data: { designConfig: next },
+      });
     });
 
     revalidatePath("/[slug]", "layout");
@@ -46,6 +55,9 @@ async function updateDesignConfig(patch: Partial<DesignConfig>) {
 }
 
 export async function updateFont(fontId: string) {
+  if (!isValidFontId(fontId)) {
+    return { success: false, error: "Unknown font pairing" };
+  }
   return updateDesignConfig({ fontId });
 }
 
@@ -57,6 +69,10 @@ export async function updateFont(fontId: string) {
  * matching the Zola / The Knot / Withjoy industry pattern.
  */
 export async function updateTemplate(templateId: string) {
+  if (!isValidTemplateId(templateId)) {
+    return { success: false, error: "Unknown template" };
+  }
+
   const weddingId = await getWeddingId();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)

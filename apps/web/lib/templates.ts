@@ -106,3 +106,9 @@ export function getTemplatePreset(
   if (!templateId) return DEFAULT_TEMPLATE;
   return TEMPLATE_PRESETS.find((t) => t.id === templateId) ?? DEFAULT_TEMPLATE;
 }
+
+/** Whether `id` corresponds to a real template preset. Use to validate
+ *  user-supplied IDs at the server-action boundary before writing. */
+export function isValidTemplateId(id: string): boolean {
+  return TEMPLATE_PRESETS.some((t) => t.id === id);
+}

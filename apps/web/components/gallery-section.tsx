@@ -33,6 +33,10 @@ export function GallerySection({ photos }: GallerySectionProps) {
                   src={photo.src}
                   alt={photo.alt}
                   fill
+                  // Gallery is centered inside a max-w-4xl wrapper (896px)
+                  // with px-6 outside. Below md the image fills the viewport;
+                  // above it the parent caps at the wrapper width.
+                  sizes="(min-width: 896px) 896px, 100vw"
                   className="object-cover"
                   unoptimized
                 />

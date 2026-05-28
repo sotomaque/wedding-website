@@ -38,6 +38,8 @@ export function LovebirdHeroSection({
             src={heroPhoto.src}
             alt={heroPhoto.alt}
             fill
+            // Hero spans the full viewport width at every breakpoint.
+            sizes="100vw"
             className="object-cover object-center"
             priority
           />

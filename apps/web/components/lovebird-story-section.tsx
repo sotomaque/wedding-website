@@ -37,9 +37,14 @@ export function LovebirdStorySection({ content }: LovebirdStorySectionProps) {
           />
         ) : (
           <div className="text-left space-y-4">
-            {(content?.paragraphs ?? []).map((paragraph) => (
+            {(content?.paragraphs ?? []).map((paragraph, i) => (
+              // Compose the key from index + content length so identical-prefix
+              // paragraphs don't collide (substring-of-paragraph would) and the
+              // key isn't a pure index (Biome rejects that, and it'd churn on
+              // edits anyway). Order is stable: paragraphs come from server-
+              // rendered content with no client-side reordering.
               <p
-                key={paragraph.substring(0, 20)}
+                key={`para-${i}-${paragraph.length}`}
                 className="text-foreground/85 text-lg leading-relaxed"
               >
                 {paragraph}

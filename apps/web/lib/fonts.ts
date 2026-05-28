@@ -124,6 +124,12 @@ export function getFontPairing(fontId: string | null | undefined): FontPairing {
   return FONT_PAIRINGS.find((f) => f.id === fontId) ?? DEFAULT_FONT;
 }
 
+/** Whether `id` corresponds to a real font pairing. Use to validate
+ *  user-supplied IDs at the server-action boundary before writing. */
+export function isValidFontId(id: string): boolean {
+  return FONT_PAIRINGS.some((f) => f.id === id);
+}
+
 /**
  * Generate inline CSS overriding the `--font-heading` / `--font-body`
  * indirection tokens for a pairing. Returns "" for the default pairing

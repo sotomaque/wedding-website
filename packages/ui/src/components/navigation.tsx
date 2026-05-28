@@ -43,6 +43,10 @@ export interface NavigationProps {
     width?: number;
     height?: number;
   };
+  /** Destination for the brand logo / text. Defaults to "/" for the platform
+   * landing; wedding sites must pass `/${slug}` so the logo returns to the
+   * wedding home instead of the platform marketing page. */
+  brandHref?: string;
   leftLinks?: NavItem[];
   rightLinks?: NavItem[];
   variant?: NavVariant;
@@ -136,14 +140,16 @@ function renderNavItem(item: NavItem, pathname: string) {
 function Brand({
   brandText,
   brandImage,
+  brandHref,
   className,
 }: {
   brandText?: string;
   brandImage?: NavigationProps["brandImage"];
+  brandHref?: string;
   className?: string;
 }) {
   return (
-    <a href="/" className={className}>
+    <a href={brandHref ?? "/"} className={className}>
       <span className="sr-only">Go home</span>
       {brandImage ? (
         <Image
@@ -209,6 +215,7 @@ function MobileMenu({
 function Navigation({
   brandText,
   brandImage,
+  brandHref,
   leftLinks = [],
   rightLinks = [],
   variant = "centered",
@@ -237,6 +244,7 @@ function Navigation({
             <Brand
               brandText={brandText}
               brandImage={brandImage}
+              brandHref={brandHref}
               className="lg:text-center lg:justify-center flex justify-start lg:justify-center"
             />
             <div className="hidden lg:flex items-center gap-6 ml-auto">
@@ -251,6 +259,7 @@ function Navigation({
             <Brand
               brandText={brandText}
               brandImage={brandImage}
+              brandHref={brandHref}
               className="flex justify-start"
             />
             <div className="hidden lg:flex items-center gap-6 ml-auto">
@@ -268,6 +277,7 @@ function Navigation({
               <Brand
                 brandText={brandText}
                 brandImage={brandImage}
+                brandHref={brandHref}
                 className="flex justify-start lg:justify-center"
               />
               <div className="hidden lg:flex items-center justify-center gap-6 flex-wrap">

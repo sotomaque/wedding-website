@@ -145,6 +145,16 @@ export default async function Page() {
   const layout = getLayoutPreset(template.layoutId);
   const motifId = template.motifId;
 
+  // Hashtag derivation: prefer the alphanumeric-stripped couple name + year
+  // (e.g. "helenandenrique2026"), but fall back to the slug for couple names
+  // that strip to empty (any non-Latin script like "山田 & 佐藤"). The slug is
+  // ASCII-safe by construction.
+  const nameStripped = settings.coupleName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+  const hashtagBase = nameStripped || settings.slug.replace(/-/g, "");
+  const hashtag = `${hashtagBase}${settings.weddingDate.getFullYear()}`;
+
   // Section registry — each key maps to its rendered component with the same
   // props as before. The layout template decides which sections appear and
   // in what order; each component keeps its own anchor id for nav links.
@@ -192,7 +202,7 @@ export default async function Page() {
     details: <DetailsSection content={detailsContentWithEvents} />,
     schedule:
       template.scheduleStyle === "events-card" ? (
-        <LovebirdScheduleSection events={scheduleEvents} />
+        <LovebirdScheduleSection events={scheduleEvents} locale={locale} />
       ) : (
         <ScheduleSection
           content={content.schedule as ScheduleContent}
@@ -211,13 +221,7 @@ export default async function Page() {
     // they don't (welcome + wedding-party + faqs ship Phase 3). null = "no
     // data, skip this slot entirely" — the layout iteration filters them
     // out so we don't leave stray motif dividers between empty rows.
-    welcome: (
-      <WelcomeSection
-        hashtag={`${settings.coupleName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "")}${settings.weddingDate.getFullYear()}`}
-      />
-    ),
+    welcome: <WelcomeSection hashtag={hashtag} />,
     "wedding-party": <WeddingPartySection />,
     gallery: photos.length > 0 ? <GallerySection photos={photos} /> : null,
     "things-to-do":

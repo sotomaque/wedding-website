@@ -13,6 +13,9 @@ interface LovebirdScheduleEvent {
 
 interface LovebirdScheduleSectionProps {
   events: LovebirdScheduleEvent[];
+  /** BCP-47 locale (e.g. "en-US", "es-ES"). Passed in so the section
+   * formats dates in the guest's language instead of hardcoded English. */
+  locale: string;
 }
 
 const MONTH_SHORT = [
@@ -41,8 +44,8 @@ function formatTimeOfDay(t: Date | null): string | null {
   return `${h % 12 || 12}:${m} ${ampm}`;
 }
 
-function formatLongDate(d: Date): string {
-  return d.toLocaleDateString("en-US", {
+function formatLongDate(d: Date, locale: string): string {
+  return d.toLocaleDateString(locale, {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -62,6 +65,7 @@ function formatLongDate(d: Date): string {
  */
 export function LovebirdScheduleSection({
   events,
+  locale,
 }: LovebirdScheduleSectionProps) {
   if (events.length === 0) return null;
 
@@ -81,7 +85,7 @@ export function LovebirdScheduleSection({
             const year = d ? d.getFullYear() : null;
             const start = formatTimeOfDay(ev.startTime);
             const end = formatTimeOfDay(ev.endTime);
-            const longDate = d ? formatLongDate(d) : null;
+            const longDate = d ? formatLongDate(d, locale) : null;
 
             return (
               <article

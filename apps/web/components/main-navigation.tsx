@@ -46,6 +46,7 @@ export function MainNavigation({
   return (
     <Navigation
       brandImage={navConfig.brandImage}
+      brandHref={`/${slug}`}
       leftLinks={navConfig.leftLinks}
       rightLinks={rightLinks}
       variant={variant}
