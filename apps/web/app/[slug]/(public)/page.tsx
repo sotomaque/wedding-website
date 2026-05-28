@@ -7,6 +7,7 @@ import { DetailsSection } from "@/components/details-section";
 import { FaqSection } from "@/components/faq-section";
 import { GallerySection } from "@/components/gallery-section";
 import { HeroSection } from "@/components/hero-section";
+import { HeroSectionEmpty } from "@/components/hero-section-empty";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { LovebirdHeroSection } from "@/components/lovebird-hero-section";
 import { LovebirdScheduleSection } from "@/components/lovebird-schedule-section";
@@ -128,7 +129,10 @@ export default async function Page() {
     // Two hero variants:
     //   - "couple-names" (Lovebird-style): contained photo + dark card with
     //     script names, M | D | YYYY date, location, live countdown.
-    //   - "title" (Classic): full-bleed carousel + uppercase title overlay.
+    //   - "title" (Classic): full-bleed carousel + uppercase title overlay,
+    //     or a gradient-backed title for weddings with no photos yet —
+    //     picked here at the page level so the empty-state hero ships as
+    //     a Server Component (no carousel JS).
     hero:
       template.heroDisplay === "couple-names" ? (
         <LovebirdHeroSection
@@ -144,6 +148,8 @@ export default async function Page() {
             .replace(/\//g, " | ")}
           location={(content.hero as HeroContent)?.location}
         />
+      ) : heroPhotos.length === 0 ? (
+        <HeroSectionEmpty title={(content.hero as HeroContent)?.title} />
       ) : (
         <HeroSection
           photos={heroPhotos}

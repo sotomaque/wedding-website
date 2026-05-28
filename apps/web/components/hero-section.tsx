@@ -31,6 +31,12 @@ interface HeroSectionProps {
   coupleNamesDisplay?: string;
 }
 
+/**
+ * Photo-carousel hero variant. Always called with a non-empty `photos`
+ * array — the empty-state hero is HeroSectionEmpty (RSC) so brand-new
+ * weddings don't pay the carousel JS cost. The page picks between them
+ * based on photos.length.
+ */
 export function HeroSection({
   photos,
   title,
@@ -76,26 +82,6 @@ export function HeroSection({
       api.off("select", handleSelect);
     };
   }, [api, startAutoScroll]);
-
-  if (photos.length === 0) {
-    return (
-      <section className="relative overflow-hidden">
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full">
-          <div className="relative h-[calc(100dvh-8rem)] bg-gradient-to-br from-accent/20 via-accent/5 to-background flex items-center justify-center">
-            {coupleNamesDisplay ? (
-              <h1 className="text-7xl sm:text-8xl md:text-9xl lg:text-[10rem] font-display text-foreground drop-shadow-lg text-center px-4 leading-tight">
-                {coupleNamesDisplay}
-              </h1>
-            ) : (
-              <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-serif text-foreground uppercase opacity-70 drop-shadow-lg tracking-widest text-center px-4">
-                {title}
-              </h1>
-            )}
-          </div>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className="relative overflow-hidden">

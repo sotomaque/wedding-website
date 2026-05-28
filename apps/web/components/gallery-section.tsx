@@ -38,7 +38,6 @@ export function GallerySection({ photos }: GallerySectionProps) {
                   // above it the parent caps at the wrapper width.
                   sizes="(min-width: 896px) 896px, 100vw"
                   className="object-cover"
-                  unoptimized
                 />
               </div>
               {(photo.description || photo.alt) && (
