@@ -11,9 +11,18 @@ test.beforeEach(async () => {
 
 test.describe("Automated Emails Settings", () => {
   test.beforeEach(async ({ page }) => {
+    // Settings page is now tab-organized. Automated emails lives as a
+    // subsection under the Notifications tab — open that tab first.
     await page.goto("/admin/settings");
     await waitForHydration(page);
-    await page.getByRole("button", { name: /automated emails/i }).click();
+    await page
+      .getByRole("button", { name: "Notifications", exact: true })
+      .click();
+    // The Automated emails subsection mounts when the tab is shown; wait
+    // for its heading before any spec body asserts on its inner content.
+    await expect(
+      page.getByRole("heading", { name: /automated emails/i }),
+    ).toBeVisible();
   });
 
   test("displays RSVP reminders and admin summary sections", async ({
