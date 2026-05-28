@@ -3,13 +3,13 @@ import { ExternalLink } from "lucide-react";
 import { notFound } from "next/navigation";
 import { WeddingNavigation } from "@/components/wedding-navigation";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
-import type { ServiceLinkCategory } from "../admin/vendors/actions";
-import { getServiceLinks } from "../admin/vendors/actions";
+import type { ServiceLinkCategory } from "../../admin/vendors/actions";
+import { getServiceLinks } from "../../admin/vendors/actions";
 import {
   CATEGORIES,
   CATEGORY_COLORS,
   getFaviconUrl,
-} from "../admin/vendors/constants";
+} from "../../admin/vendors/constants";
 
 export const dynamic = "force-dynamic";
 

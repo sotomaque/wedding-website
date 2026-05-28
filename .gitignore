@@ -28,6 +28,11 @@ coverage
 # Vercel
 .vercel
 
+# Local-only analysis artifacts from scripts/extract-lovebird.mjs and
+# scripts/snap-ours.mjs — Playwright-rendered reference HTML / PNGs
+# captured from third-party sites for design comparison; not source.
+/.lovebird-analysis/
+
 # Build Outputs
 .next/
 out/

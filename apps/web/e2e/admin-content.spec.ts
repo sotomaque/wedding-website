@@ -90,15 +90,22 @@ test.describe("Content Editor Page", () => {
     ).toBeVisible();
   });
 
-  test("Details tab shows ceremony and reception fields", async ({ page }) => {
+  test("Details tab points ceremony / reception editing to the Events page", async ({
+    page,
+  }) => {
     await page.goto("/admin/content");
     await waitForHydration(page);
 
     await page.getByRole("button", { name: "Details", exact: true }).click();
     await page.waitForTimeout(300);
 
-    await expect(page.locator("#ceremony-venue")).toBeVisible();
-    await expect(page.locator("#reception-venue")).toBeVisible();
+    // Ceremony / reception inputs were removed in favor of sourcing those
+    // fields from the events table. The Details editor now shows a callout
+    // linking admins to the Events page for those edits.
+    await expect(page.getByText(/ceremony and reception/i)).toBeVisible();
+    const eventsLink = page.getByRole("link", { name: /events page/i });
+    await expect(eventsLink).toBeVisible();
+    await expect(eventsLink).toHaveAttribute("href", /\/admin\/events$/);
   });
 
   test("can switch to Schedule tab", async ({ page }) => {

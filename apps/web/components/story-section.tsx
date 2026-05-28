@@ -19,20 +19,25 @@ export function StorySection({ photos, content }: StorySectionProps) {
 
   const storyBody = content?.bodyHtml ? (
     <div
-      className="prose prose-sm max-w-none [&_p]:my-2 [&_h2]:text-xl [&_h2]:font-serif [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:my-1 text-muted-foreground"
+      className="max-w-none [&_p]:my-3 [&_p]:text-lg [&_p]:leading-relaxed [&_h2]:text-2xl [&_h2]:font-serif [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_a]:underline text-foreground/85"
       // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side by admin via Tiptap editor
       dangerouslySetInnerHTML={{ __html: content.bodyHtml }}
     />
   ) : (
     (content?.paragraphs ?? []).map((paragraph) => (
-      <p key={paragraph.substring(0, 20)}>{paragraph}</p>
+      <p
+        key={paragraph.substring(0, 20)}
+        className="text-foreground/85 text-lg leading-relaxed mb-3"
+      >
+        {paragraph}
+      </p>
     ))
   );
 
   return (
     <section id="story" className="py-24 px-6 bg-card scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-4xl md:text-5xl font-serif text-center mb-16 text-foreground">
+        <h2 className="text-5xl md:text-6xl font-display text-center mb-16 text-foreground">
           {content?.title ?? t("defaultTitle")}
         </h2>
         <div className="w-24 h-1 bg-accent mx-auto mb-16 -mt-12" />

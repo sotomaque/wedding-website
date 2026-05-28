@@ -20,9 +20,28 @@ export interface HeroPhoto {
 interface HeroSectionProps {
   photos: HeroPhoto[];
   title?: string;
+  /**
+   * Optional couple-names display (e.g. "Harper & James"). When provided,
+   * renders centered over the hero in the heading font — without the
+   * uppercase / wide-tracking treatment used for `title` — so script display
+   * fonts (Sacramento, etc.) read naturally. Used by template layouts that
+   * want a Lovebird-style hero. When unset, the hero falls back to the
+   * existing uppercase `title` rendering.
+   */
+  coupleNamesDisplay?: string;
 }
 
-export function HeroSection({ photos, title }: HeroSectionProps) {
+/**
+ * Photo-carousel hero variant. Always called with a non-empty `photos`
+ * array — the empty-state hero is HeroSectionEmpty (RSC) so brand-new
+ * weddings don't pay the carousel JS cost. The page picks between them
+ * based on photos.length.
+ */
+export function HeroSection({
+  photos,
+  title,
+  coupleNamesDisplay,
+}: HeroSectionProps) {
   const [api, setApi] = useState<CarouselApi>();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -64,20 +83,6 @@ export function HeroSection({ photos, title }: HeroSectionProps) {
     };
   }, [api, startAutoScroll]);
 
-  if (photos.length === 0) {
-    return (
-      <section className="relative overflow-hidden">
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full">
-          <div className="relative h-[calc(100dvh-8rem)] bg-gradient-to-br from-accent/20 via-accent/5 to-background flex items-center justify-center">
-            <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-serif text-foreground uppercase opacity-70 drop-shadow-lg tracking-widest text-center px-4">
-              {title}
-            </h1>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="relative overflow-hidden">
       <div className="max-w-screen-2xl mx-auto px-4 md:px-12 w-full">
@@ -108,11 +113,17 @@ export function HeroSection({ photos, title }: HeroSectionProps) {
             <CarouselPrevious className="left-4 bg-background/80 hover:bg-background border-accent/30" />
             <CarouselNext className="right-4 bg-background/80 hover:bg-background border-accent/30" />
           </Carousel>
-          {/* Overlay with title */}
+          {/* Overlay with title (or script couple names for Lovebird-style templates) */}
           <div className="absolute inset-0 flex flex-col items-center text-center justify-center bg-black/30 pointer-events-none">
-            <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-serif text-white uppercase opacity-50 drop-shadow-lg tracking-widest">
-              {title}
-            </h1>
+            {coupleNamesDisplay ? (
+              <h1 className="text-7xl sm:text-8xl md:text-9xl lg:text-[10rem] font-display text-white drop-shadow-lg leading-tight">
+                {coupleNamesDisplay}
+              </h1>
+            ) : (
+              <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-serif text-white uppercase opacity-50 drop-shadow-lg tracking-widest">
+                {title}
+              </h1>
+            )}
           </div>
         </div>
       </div>

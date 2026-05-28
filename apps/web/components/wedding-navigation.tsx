@@ -1,3 +1,4 @@
+import type { NavVariant } from "@workspace/ui/components/navigation";
 import { getTranslations } from "next-intl/server";
 import { getNavigationConfig } from "@/app/navigation-config";
 import { isAdmin } from "@/lib/auth/admin";
@@ -10,7 +11,7 @@ import { MainNavigation } from "./main-navigation";
  * loads wedding settings and passes the correct navConfig with
  * feature toggles and i18n labels applied.
  */
-export async function WeddingNavigation() {
+export async function WeddingNavigation({ variant }: { variant?: NavVariant }) {
   const [weddingId, settings, t] = await Promise.all([
     getWeddingId(),
     getWeddingSettings(),
@@ -34,6 +35,10 @@ export async function WeddingNavigation() {
   });
 
   return (
-    <MainNavigation isAdmin={adminResult.authorized} navConfig={navConfig} />
+    <MainNavigation
+      isAdmin={adminResult.authorized}
+      navConfig={navConfig}
+      variant={variant}
+    />
   );
 }

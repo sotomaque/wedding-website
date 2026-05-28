@@ -12,7 +12,7 @@ export function DetailsSection({ content }: DetailsSectionProps) {
     <section id="details" className="py-24 px-6 bg-secondary scroll-mt-24">
       <div className="max-w-5xl mx-auto">
         <div className="animate-fade-in-up">
-          <h2 className="text-4xl md:text-5xl font-serif text-center mb-4 text-foreground">
+          <h2 className="text-5xl md:text-6xl font-display text-center mb-4 text-foreground">
             {content.title}
           </h2>
           <p className="text-xl md:text-2xl text-center text-muted-foreground mb-16">

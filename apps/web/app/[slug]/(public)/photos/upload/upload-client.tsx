@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { saveGuestPhoto } from "@/app/[slug]/photos/actions";
+import { saveGuestPhoto } from "@/app/[slug]/(public)/photos/actions";
 import { UploadDropzone } from "@/lib/uploadthing-components";
 
 export function UploadClient() {

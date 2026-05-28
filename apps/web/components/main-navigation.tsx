@@ -1,6 +1,10 @@
 "use client";
 
-import { type NavItem, Navigation } from "@workspace/ui/components/navigation";
+import {
+  type NavItem,
+  Navigation,
+  type NavVariant,
+} from "@workspace/ui/components/navigation";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { getNavigationConfig } from "@/app/navigation-config";
@@ -15,11 +19,13 @@ interface NavConfig {
 interface MainNavigationProps {
   isAdmin?: boolean;
   navConfig?: NavConfig;
+  variant?: NavVariant;
 }
 
 export function MainNavigation({
   isAdmin = false,
   navConfig: navConfigProp,
+  variant,
 }: MainNavigationProps) {
   const slug = useWeddingSlug();
   const t = useTranslations("nav");
@@ -40,8 +46,10 @@ export function MainNavigation({
   return (
     <Navigation
       brandImage={navConfig.brandImage}
+      brandHref={`/${slug}`}
       leftLinks={navConfig.leftLinks}
       rightLinks={rightLinks}
+      variant={variant}
     />
   );
 }

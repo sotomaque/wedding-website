@@ -22,7 +22,7 @@ export function RSVPSection({
   return (
     <section id="rsvp" className="py-24 px-6 bg-secondary scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-4xl md:text-5xl font-serif text-center mb-6 text-foreground">
+        <h2 className="text-5xl md:text-6xl font-display text-center mb-6 text-foreground">
           {content?.title ?? t("defaultTitle")}
         </h2>
         <div className="w-24 h-1 bg-accent mx-auto mb-6" />

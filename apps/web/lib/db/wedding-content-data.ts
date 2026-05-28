@@ -8,6 +8,7 @@
 import { cache } from "react";
 import type {
   ContentSection,
+  DesignConfig,
   DetailsContent,
   FeatureToggles,
   HeroContent,
@@ -15,7 +16,10 @@ import type {
   ScheduleContent,
   StoryContent,
 } from "@/lib/validations/wedding-content";
-import { featureTogglesSchema } from "@/lib/validations/wedding-content";
+import {
+  designConfigSchema,
+  featureTogglesSchema,
+} from "@/lib/validations/wedding-content";
 import { db } from "./index";
 import { getWeddingId } from "./wedding-context";
 
@@ -38,8 +42,10 @@ export interface WeddingSettings {
   brandImageUrl: string | null;
   brandImageAlt: string | null;
   themeId: string | null;
+  templateId: string | null;
   defaultLanguage: string;
   featureToggles: FeatureToggles;
+  designConfig: DesignConfig;
 }
 
 export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
@@ -63,17 +69,21 @@ export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
       brandImageUrl: true,
       brandImageAlt: true,
       themeId: true,
+      templateId: true,
       defaultLanguage: true,
       featureToggles: true,
+      designConfig: true,
     },
   });
 
-  // Parse feature toggles with defaults
+  // Parse feature toggles + design config with defaults
   const toggles = featureTogglesSchema.parse(wedding.featureToggles ?? {});
+  const design = designConfigSchema.parse(wedding.designConfig ?? {});
 
   return {
     ...wedding,
     featureToggles: toggles,
+    designConfig: design,
   };
 });
 
@@ -126,6 +136,42 @@ export async function getRsvpContent(): Promise<RsvpContent | undefined> {
   return sections.rsvp as RsvpContent | undefined;
 }
 
+// --- Events ---
+
+export interface WeddingEvent {
+  id: string;
+  name: string;
+  description: string | null;
+  eventDate: Date | null;
+  startTime: Date | null;
+  endTime: Date | null;
+  locationName: string | null;
+  locationAddress: string | null;
+}
+
+/**
+ * All events for the current wedding, ordered by displayOrder. Cached per
+ * request — `getCeremonyAndReception` and the public page's schedule
+ * section both consume this so the events table is queried at most once.
+ */
+export const getEvents = cache(async (): Promise<WeddingEvent[]> => {
+  const weddingId = await getWeddingId();
+  return db.event.findMany({
+    where: { weddingId },
+    orderBy: { displayOrder: "asc" },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      eventDate: true,
+      startTime: true,
+      endTime: true,
+      locationName: true,
+      locationAddress: true,
+    },
+  });
+});
+
 // --- Ceremony / Reception derived from Events ---
 
 interface VenueInfo {
@@ -156,11 +202,7 @@ export const getCeremonyAndReception = cache(
     ceremony: VenueInfo | undefined;
     reception: VenueInfo | undefined;
   }> => {
-    const weddingId = await getWeddingId();
-    const events = await db.event.findMany({
-      where: { weddingId },
-      orderBy: { displayOrder: "asc" },
-    });
+    const events = await getEvents();
 
     function pick(kind: "ceremony" | "reception"): VenueInfo | undefined {
       const ev = events.find((e) => e.name.toLowerCase().includes(kind));
@@ -178,5 +220,87 @@ export const getCeremonyAndReception = cache(
     }
 
     return { ceremony: pick("ceremony"), reception: pick("reception") };
+  },
+);
+
+// --- Teaser data (hotels / activities / registry) ---
+
+export interface TeaserHotel {
+  id: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  distanceToVenue: string | null;
+  websiteUrl: string | null;
+  phone: string | null;
+}
+
+export const getHotels = cache(async (): Promise<TeaserHotel[]> => {
+  const weddingId = await getWeddingId();
+  return db.hotel.findMany({
+    where: { weddingId },
+    orderBy: { displayOrder: "asc" },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      imageUrl: true,
+      distanceToVenue: true,
+      websiteUrl: true,
+      phone: true,
+    },
+  });
+});
+
+export interface TeaserActivity {
+  id: string;
+  name: string;
+  description: string | null;
+  emoji: string | null;
+  imageUrl: string | null;
+}
+
+export const getTeaserActivities = cache(
+  async (): Promise<TeaserActivity[]> => {
+    const weddingId = await getWeddingId();
+    return db.activity.findMany({
+      where: { weddingId, isVenue: { not: true } },
+      orderBy: { displayOrder: "asc" },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        emoji: true,
+        imageUrl: true,
+      },
+      take: 6,
+    });
+  },
+);
+
+export interface TeaserRegistryItem {
+  id: string;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  emoji: string | null;
+  stripeUrl: string | null;
+}
+
+export const getActiveRegistryItems = cache(
+  async (): Promise<TeaserRegistryItem[]> => {
+    const weddingId = await getWeddingId();
+    return db.registryItem.findMany({
+      where: { weddingId, isActive: true },
+      orderBy: { displayOrder: "asc" },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        imageUrl: true,
+        emoji: true,
+        stripeUrl: true,
+      },
+    });
   },
 );

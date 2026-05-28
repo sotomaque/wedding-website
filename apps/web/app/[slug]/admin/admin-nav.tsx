@@ -37,34 +37,52 @@ function getNavItems(slug: string, isSuperAdmin: boolean): NavItem[] {
       type: "group",
       label: "Guests",
       links: [
-        { href: `${base}/admin/guests`, label: "Management" },
+        { href: `${base}/admin/guests`, label: "Guest List" },
         { href: `${base}/admin/parties`, label: "Parties" },
         { href: `${base}/admin/seating`, label: "Seating" },
       ],
     },
     {
       type: "group",
-      label: "Photos",
+      label: "Schedule",
       links: [
-        { href: `${base}/admin/photos`, label: "Main Photos" },
+        { href: `${base}/admin/events`, label: "Events" },
+        { href: `${base}/admin/calendar`, label: "Calendar" },
+      ],
+    },
+    {
+      type: "group",
+      label: "Site",
+      links: [
+        { href: `${base}/admin/content`, label: "Page Content" },
+        { href: `${base}/admin/photos`, label: "Photos" },
         { href: `${base}/admin/photos/guest`, label: "Guest Photos" },
         { href: `${base}/slideshow`, label: "Slideshow ↗", external: true },
       ],
     },
-    { type: "link", href: `${base}/admin/events`, label: "Events" },
-    { type: "link", href: `${base}/admin/calendar`, label: "Calendar" },
-    { type: "link", href: `${base}/admin/gifts`, label: "Gifts" },
-    { type: "link", href: `${base}/admin/registry`, label: "Registry" },
-    { type: "link", href: `${base}/admin/vendors`, label: "Vendors" },
-    { type: "link", href: `${base}/admin/documents`, label: "Documents" },
-    { type: "link", href: `${base}/admin/content`, label: "Content" },
-    { type: "link", href: `${base}/admin/templates`, label: "Templates" },
-    { type: "link", href: `${base}/admin/todos`, label: "Todos" },
     {
       type: "group",
-      label: "Admin",
+      label: "Registry",
+      links: [
+        { href: `${base}/admin/registry`, label: "Registry Items" },
+        { href: `${base}/admin/gifts`, label: "Gifts Received" },
+      ],
+    },
+    {
+      type: "group",
+      label: "Planning",
+      links: [
+        { href: `${base}/admin/todos`, label: "Todos" },
+        { href: `${base}/admin/vendors`, label: "Vendors" },
+        { href: `${base}/admin/documents`, label: "Documents" },
+      ],
+    },
+    {
+      type: "group",
+      label: "Settings",
       links: [
         { href: `${base}/admin/settings`, label: "Settings" },
+        { href: `${base}/admin/templates`, label: "Email Templates" },
         ...(isSuperAdmin
           ? [
               { href: `${base}/admin/services`, label: "Services" },
