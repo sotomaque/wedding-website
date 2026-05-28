@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import { CopyHashtagButton } from "./copy-hashtag-button";
 
 interface WelcomeSectionProps {
   /** Greeting paragraph. Defaults to a generic invite-style line if empty. */
@@ -18,32 +16,15 @@ const DEFAULT_MESSAGE =
  * the first under-hero block, kept brief so guests immediately see the
  * tone of voice and can grab the hashtag for social posts.
  *
+ * Server Component — only the copy button is a Client Component so the
+ * surrounding static markup doesn't ship as hydration JS.
+ *
  * Currently takes its props from the page (with sensible defaults). A
  * dedicated `welcome` content section + admin editor is a follow-up.
  */
 export function WelcomeSection({ message, hashtag }: WelcomeSectionProps) {
-  const [copied, setCopied] = useState(false);
-  const [copyFailed, setCopyFailed] = useState(false);
   const tag = hashtag ? `#${hashtag.replace(/^#/, "")}` : null;
   const text = message?.trim() || DEFAULT_MESSAGE;
-
-  async function copy() {
-    if (!tag) return;
-    try {
-      await navigator.clipboard.writeText(tag);
-      setCopied(true);
-      setCopyFailed(false);
-      setTimeout(() => setCopied(false), 1500);
-    } catch (err) {
-      // Clipboard API throws on insecure context (http://), Safari iframe,
-      // and when permission is denied. Surface a "Copy failed" state so the
-      // guest knows to long-press the hashtag instead of getting silent
-      // nothing, and log for diagnosis.
-      console.warn("Hashtag copy failed:", err);
-      setCopyFailed(true);
-      setTimeout(() => setCopyFailed(false), 2000);
-    }
-  }
 
   return (
     <section id="welcome" className="py-24 px-6 bg-background scroll-mt-24">
@@ -60,14 +41,7 @@ export function WelcomeSection({ message, hashtag }: WelcomeSectionProps) {
             <p className="text-foreground text-2xl md:text-3xl font-serif tracking-wide">
               {tag}
             </p>
-            <button
-              type="button"
-              onClick={copy}
-              aria-live="polite"
-              className="text-xs uppercase tracking-[0.2em] text-foreground/80 hover:text-foreground border-b border-foreground/40 hover:border-foreground pb-0.5 transition-colors"
-            >
-              {copyFailed ? "Copy failed" : copied ? "Copied!" : "Copy"}
-            </button>
+            <CopyHashtagButton text={tag} />
           </div>
         )}
       </div>

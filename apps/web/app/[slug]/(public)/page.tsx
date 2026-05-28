@@ -21,9 +21,12 @@ import { WeddingNavigation } from "@/components/wedding-navigation";
 import { WeddingPartySection } from "@/components/wedding-party-section";
 import { WelcomeSection } from "@/components/welcome-section";
 import type { Locale } from "@/i18n/config";
-import { db } from "@/lib/db";
 import {
+  getActiveRegistryItems,
   getCeremonyAndReception,
+  getEvents,
+  getHotels,
+  getTeaserActivities,
   getWeddingContentSections,
   getWeddingSettings,
 } from "@/lib/db/wedding-content-data";
@@ -39,6 +42,9 @@ import type {
 } from "@/lib/validations/wedding-content";
 
 export default async function Page() {
+  // Top-level fetches — settings is needed to decide whether to fetch
+  // registry items, so it kicks off in this first wave with everything
+  // else that doesn't depend on it.
   const [photos, content, settings, venueDerived, t, locale] =
     await Promise.all([
       getAllPhotos(),
@@ -49,67 +55,22 @@ export default async function Page() {
       getLocale(),
     ]);
 
-  // Lift teaser data fetching to the page so we can omit empty sections from
-  // the layout iteration entirely — otherwise the motif divider would still
-  // render around a section component that produced no DOM.
+  // Teaser data — each accessor is React.cache-wrapped in
+  // wedding-content-data.ts so any sibling component that needs the same
+  // data hits the cache instead of re-querying. Omitting empty teasers
+  // happens in the section map below.
   const [hotels, activities, registryItems, scheduleEvents] = await Promise.all(
     [
-      db.hotel.findMany({
-        where: { weddingId: settings.id },
-        orderBy: { displayOrder: "asc" },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          imageUrl: true,
-          distanceToVenue: true,
-          websiteUrl: true,
-          phone: true,
-        },
-      }),
-      db.activity.findMany({
-        where: { weddingId: settings.id, isVenue: { not: true } },
-        orderBy: { displayOrder: "asc" },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          emoji: true,
-          imageUrl: true,
-        },
-        take: 6,
-      }),
+      getHotels(),
+      getTeaserActivities(),
       settings.featureToggles.registry
-        ? db.registryItem.findMany({
-            where: { weddingId: settings.id, isActive: true },
-            orderBy: { displayOrder: "asc" },
-            select: {
-              id: true,
-              title: true,
-              description: true,
-              imageUrl: true,
-              emoji: true,
-              stripeUrl: true,
-            },
-          })
+        ? getActiveRegistryItems()
         : Promise.resolve([]),
       // Events feed the Lovebird-style schedule (richer than ScheduleContent's
       // flat {time, event, description}). Classic uses ScheduleContent and
-      // ignores this fetch.
-      db.event.findMany({
-        where: { weddingId: settings.id },
-        orderBy: { displayOrder: "asc" },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          eventDate: true,
-          startTime: true,
-          endTime: true,
-          locationName: true,
-          locationAddress: true,
-        },
-      }),
+      // ignores this — but getCeremonyAndReception above also reads events,
+      // and both calls share a single DB roundtrip via React.cache.
+      getEvents(),
     ],
   );
 

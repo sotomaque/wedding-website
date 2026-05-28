@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingBySlug } from "@/lib/db/wedding-context";
 import { generateFontCss, getFontPairing } from "@/lib/fonts";
 import { getTemplatePreset } from "@/lib/templates";
 import { generateThemeCss, getThemePreset } from "@/lib/themes";
-import { designConfigSchema } from "@/lib/validations/wedding-content";
 
 /**
  * Route-group layout that scopes the wedding's selected template / theme /
@@ -30,15 +29,15 @@ export default async function PublicLayout({
   // fields on the wedding inherit the template's defaults; non-null fields
   // win (user customization). This is what makes template switches additive:
   // a user-customized themeId or fontId survives even when templateId changes.
-  const weddingRecord = await db.wedding.findUnique({
-    where: { id: wedding.weddingId },
-    select: { themeId: true, templateId: true, designConfig: true },
-  });
-  const template = getTemplatePreset(weddingRecord?.templateId);
-  const design = designConfigSchema.parse(weddingRecord?.designConfig ?? {});
+  //
+  // getWeddingSettings is React.cache()-wrapped, so the page below this
+  // layout reuses the same DB row instead of issuing a second query.
+  const settings = await getWeddingSettings();
+  const template = getTemplatePreset(settings.templateId);
 
-  const effectiveThemeId = weddingRecord?.themeId ?? template.defaultThemeId;
-  const effectiveFontId = design.fontId ?? template.defaultFontId;
+  const effectiveThemeId = settings.themeId ?? template.defaultThemeId;
+  const effectiveFontId =
+    settings.designConfig.fontId ?? template.defaultFontId;
 
   const themeCss = generateThemeCss(getThemePreset(effectiveThemeId));
   const fontCss = generateFontCss(getFontPairing(effectiveFontId));

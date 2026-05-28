@@ -1,14 +1,13 @@
 "use server";
 
-// Each action ends with `revalidatePath("/[slug]", "layout")` so picker
-// changes feel instant. The dynamic route literal invalidates the layout
-// segment for all weddings (which cascades to admin + public pages); a
-// multi-tenant scope is fine because each action is gated by weddingId.
+// Each action ends with `revalidatePath(`/${slug}`, "layout")` so picker
+// changes feel instant. Scoped to the specific wedding's slug so editing one
+// tenant's settings doesn't invalidate every other tenant's layout cache.
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingContext } from "@/lib/db/wedding-context";
 import { isValidFontId } from "@/lib/fonts";
 import { isValidTemplateId } from "@/lib/templates";
 import {
@@ -25,7 +24,7 @@ import {
  * race and one write silently overwrites the other.
  */
 async function updateDesignConfig(patch: Partial<DesignConfig>) {
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -46,7 +45,7 @@ async function updateDesignConfig(patch: Partial<DesignConfig>) {
       });
     });
 
-    revalidatePath("/[slug]", "layout");
+    revalidatePath(`/${slug}`, "layout");
     return { success: true };
   } catch (error) {
     console.error("Error updating design config:", error);
@@ -73,7 +72,7 @@ export async function updateTemplate(templateId: string) {
     return { success: false, error: "Unknown template" };
   }
 
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -84,7 +83,7 @@ export async function updateTemplate(templateId: string) {
       data: { templateId },
     });
 
-    revalidatePath("/[slug]", "layout");
+    revalidatePath(`/${slug}`, "layout");
     return { success: true };
   } catch (error) {
     console.error("Error updating template:", error);
@@ -101,7 +100,7 @@ export async function updateGeneralSettings(data: {
   rsvpDeadline?: string;
   status: string;
 }) {
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -120,7 +119,7 @@ export async function updateGeneralSettings(data: {
       },
     });
 
-    revalidatePath("/[slug]", "layout");
+    revalidatePath(`/${slug}`, "layout");
     return { success: true };
   } catch (error) {
     console.error("Error updating general settings:", error);
@@ -134,7 +133,7 @@ export async function updateNotificationSettings(data: {
   emailFromName: string;
   emailFromAddress: string;
 }) {
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -150,7 +149,7 @@ export async function updateNotificationSettings(data: {
       },
     });
 
-    revalidatePath("/[slug]", "layout");
+    revalidatePath(`/${slug}`, "layout");
     return { success: true };
   } catch (error) {
     console.error("Error updating notification settings:", error);
@@ -162,7 +161,7 @@ export async function updateBrandingSettings(data: {
   brandImageUrl: string;
   brandImageAlt: string;
 }) {
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -176,7 +175,7 @@ export async function updateBrandingSettings(data: {
       },
     });
 
-    revalidatePath("/[slug]", "layout");
+    revalidatePath(`/${slug}`, "layout");
     return { success: true };
   } catch (error) {
     console.error("Error updating branding settings:", error);
@@ -185,7 +184,7 @@ export async function updateBrandingSettings(data: {
 }
 
 export async function updateFeatureToggles(data: Record<string, boolean>) {
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -198,7 +197,7 @@ export async function updateFeatureToggles(data: Record<string, boolean>) {
       },
     });
 
-    revalidatePath("/[slug]", "layout");
+    revalidatePath(`/${slug}`, "layout");
     return { success: true };
   } catch (error) {
     console.error("Error updating feature toggles:", error);
@@ -207,7 +206,7 @@ export async function updateFeatureToggles(data: Record<string, boolean>) {
 }
 
 export async function updateTheme(themeId: string) {
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -218,7 +217,7 @@ export async function updateTheme(themeId: string) {
       data: { themeId },
     });
 
-    revalidatePath("/[slug]", "layout");
+    revalidatePath(`/${slug}`, "layout");
     return { success: true };
   } catch (error) {
     console.error("Error updating theme:", error);
@@ -227,7 +226,7 @@ export async function updateTheme(themeId: string) {
 }
 
 export async function updateDefaultLanguage(language: string) {
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -238,7 +237,7 @@ export async function updateDefaultLanguage(language: string) {
       data: { defaultLanguage: language },
     });
 
-    revalidatePath("/[slug]", "layout");
+    revalidatePath(`/${slug}`, "layout");
     return { success: true };
   } catch (error) {
     console.error("Error updating default language:", error);
@@ -247,7 +246,7 @@ export async function updateDefaultLanguage(language: string) {
 }
 
 export async function inviteAdmin(data: { email: string; role: string }) {
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -277,7 +276,7 @@ export async function inviteAdmin(data: { email: string; role: string }) {
       },
     });
 
-    revalidatePath("/[slug]", "layout");
+    revalidatePath(`/${slug}`, "layout");
     return { success: true };
   } catch (error) {
     console.error("Error inviting admin:", error);
@@ -286,7 +285,7 @@ export async function inviteAdmin(data: { email: string; role: string }) {
 }
 
 export async function removeAdmin(adminId: string) {
-  const weddingId = await getWeddingId();
+  const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
@@ -314,7 +313,7 @@ export async function removeAdmin(adminId: string) {
 
     await db.weddingAdmin.delete({ where: { id: adminId } });
 
-    revalidatePath("/[slug]", "layout");
+    revalidatePath(`/${slug}`, "layout");
     return { success: true };
   } catch (error) {
     console.error("Error removing admin:", error);
@@ -323,7 +322,7 @@ export async function removeAdmin(adminId: string) {
 }
 
 export async function getAdmins() {
-  const weddingId = await getWeddingId();
+  const { weddingId } = await getWeddingContext();
   return db.weddingAdmin.findMany({
     where: { weddingId },
     orderBy: { createdAt: "asc" },
