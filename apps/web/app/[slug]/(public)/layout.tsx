@@ -1,4 +1,7 @@
 import { notFound } from "next/navigation";
+import { InlineCustomizer } from "@/components/customization/inline-customizer";
+import { isAdmin } from "@/lib/auth/admin";
+import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingBySlug } from "@/lib/db/wedding-context";
 import { generateFontCss, getFontPairing } from "@/lib/fonts";
@@ -44,6 +47,21 @@ export default async function PublicLayout({
 
   const customCss = `${themeCss}${fontCss ? ` ${fontCss}` : ""}`;
 
+  // Surface the inline customizer (floating button + Sheet) only when the
+  // viewer is an admin of this wedding. The auth check + admin-scoped reads
+  // (full Wedding record + weddingContent rows for the content editor) are
+  // skipped entirely for guests so their request path is unchanged.
+  const auth = await isAdmin(wedding.weddingId);
+  const [adminWedding, contentRows] = auth.authorized
+    ? await Promise.all([
+        db.wedding.findUnique({ where: { id: wedding.weddingId } }),
+        db.weddingContent.findMany({ where: { weddingId: wedding.weddingId } }),
+      ])
+    : [null, null];
+  const contentMap = contentRows
+    ? Object.fromEntries(contentRows.map((r) => [r.section, r.content]))
+    : {};
+
   return (
     <>
       {customCss && (
@@ -55,6 +73,9 @@ export default async function PublicLayout({
         />
       )}
       {children}
+      {adminWedding && (
+        <InlineCustomizer wedding={adminWedding} content={contentMap} />
+      )}
     </>
   );
 }

@@ -1,30 +1,29 @@
 import { User } from "lucide-react";
+import type { WeddingPartyContent } from "@/lib/validations/wedding-content";
 
 /**
  * Wedding Party — Lovebird-style 3-column grid of circular member avatars
- * with name + role beneath. Currently renders a hardcoded sample so the
- * Elegant template has a visible block; the real feature (a
- * `WeddingPartyMember` Prisma model + admin CRUD + per-member photo upload)
- * is Phase 3. When that ships this component takes members as a prop.
+ * with name + role beneath. WYSIWYG: renders exactly the wedding's
+ * `wedding-party` content (what the admin sees in the editor). Returns
+ * `null` when there is no content or the members list is empty, so the
+ * layout iteration skips the section entirely (matches the gallery-empty
+ * filter pattern).
  */
 
-interface WeddingPartyMember {
-  name: string;
-  role: string;
-  photoUrl: string | null;
+const DEFAULT_TITLE = "Wedding Party";
+
+interface WeddingPartySectionProps {
+  content?: WeddingPartyContent;
 }
 
-const PLACEHOLDER_MEMBERS: WeddingPartyMember[] = [
-  { name: "Lauren Johnson", role: "Maid of Honor", photoUrl: null },
-  { name: "Jackie Mueller", role: "Bridesmaid", photoUrl: null },
-  { name: "Cheryl Clarke", role: "Bridesmaid", photoUrl: null },
-  { name: "Kenneth Massey", role: "Best Man", photoUrl: null },
-  { name: "Howard Brown", role: "Groomsman", photoUrl: null },
-  { name: "Jake Holland", role: "Groomsman", photoUrl: null },
-];
+export function WeddingPartySection({ content }: WeddingPartySectionProps) {
+  const title = content?.title?.trim() || DEFAULT_TITLE;
 
-export function WeddingPartySection() {
-  const members = PLACEHOLDER_MEMBERS;
+  if (!content || content.members.length === 0) {
+    return null;
+  }
+
+  const members = content.members;
 
   return (
     <section
@@ -33,16 +32,16 @@ export function WeddingPartySection() {
     >
       <div className="max-w-4xl mx-auto">
         <h2 className="text-5xl md:text-6xl font-display text-center mb-4 text-foreground">
-          Wedding Party
+          {title}
         </h2>
         <div className="w-24 h-1 bg-accent mx-auto mb-16" />
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-12">
           {members.map((member) => (
-            <div key={`${member.name}-${member.role}`} className="text-center">
+            <div key={member.id} className="text-center">
               <div className="relative w-32 h-32 md:w-40 md:h-40 mx-auto mb-4 rounded-full overflow-hidden bg-secondary flex items-center justify-center">
                 {member.photoUrl ? (
-                  // biome-ignore lint/performance/noImgElement: photoUrl may be any host; placeholder until Phase 3 schema lands
+                  // biome-ignore lint/performance/noImgElement: photoUrl is an arbitrary upload host (UploadThing CDN)
                   <img
                     src={member.photoUrl}
                     alt={member.name}

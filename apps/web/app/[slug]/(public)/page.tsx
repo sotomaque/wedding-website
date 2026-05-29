@@ -36,10 +36,13 @@ import { getAllPhotos } from "@/lib/photos";
 import { getTemplatePreset } from "@/lib/templates";
 import type {
   DetailsContent,
+  FaqsContent,
   HeroContent,
   RsvpContent,
   ScheduleContent,
   StoryContent,
+  WeddingPartyContent,
+  WelcomeContent,
 } from "@/lib/validations/wedding-content";
 
 export default async function Page() {
@@ -107,16 +110,6 @@ export default async function Page() {
   const layout = getLayoutPreset(template.layoutId);
   const motifId = template.motifId;
 
-  // Hashtag derivation: prefer the alphanumeric-stripped couple name + year
-  // (e.g. "helenandenrique2026"), but fall back to the slug for couple names
-  // that strip to empty (any non-Latin script like "山田 & 佐藤"). The slug is
-  // ASCII-safe by construction.
-  const nameStripped = settings.coupleName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "");
-  const hashtagBase = nameStripped || settings.slug.replace(/-/g, "");
-  const hashtag = `${hashtagBase}${settings.weddingDate.getFullYear()}`;
-
   // Section registry — each key maps to its rendered component with the same
   // props as before. The layout template decides which sections appear and
   // in what order; each component keeps its own anchor id for nav links.
@@ -125,6 +118,14 @@ export default async function Page() {
   // backing components and data models ship in Phase 2 (teasers) and
   // Phase 3 (new CRUD features). Until then they leave a quiet empty slot
   // in the Lovebird layout rather than break the page.
+  // Gate the content-driven Lovebird sections on having actual content so
+  // the layout's null-filter skips both the section AND its motif divider
+  // when empty (same pattern as gallery/teasers below).
+  const weddingPartyContent = content["wedding-party"] as
+    | WeddingPartyContent
+    | undefined;
+  const faqsContent = content.faqs as FaqsContent | undefined;
+
   const sectionMap: Record<SectionKey, ReactNode> = {
     // Two hero variants:
     //   - "couple-names" (Lovebird-style): contained photo + dark card with
@@ -192,8 +193,13 @@ export default async function Page() {
     // they don't (welcome + wedding-party + faqs ship Phase 3). null = "no
     // data, skip this slot entirely" — the layout iteration filters them
     // out so we don't leave stray motif dividers between empty rows.
-    welcome: <WelcomeSection hashtag={hashtag} />,
-    "wedding-party": <WeddingPartySection />,
+    welcome: (
+      <WelcomeSection content={content.welcome as WelcomeContent | undefined} />
+    ),
+    "wedding-party":
+      weddingPartyContent && weddingPartyContent.members.length > 0 ? (
+        <WeddingPartySection content={weddingPartyContent} />
+      ) : null,
     gallery: photos.length > 0 ? <GallerySection photos={photos} /> : null,
     "things-to-do":
       activities.length > 0 ? (
@@ -205,7 +211,10 @@ export default async function Page() {
       registryItems.length > 0 ? (
         <RegistryTeaserSection items={registryItems} />
       ) : null,
-    faqs: <FaqSection />,
+    faqs:
+      faqsContent && faqsContent.items.length > 0 ? (
+        <FaqSection content={faqsContent} />
+      ) : null,
   };
 
   return (

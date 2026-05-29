@@ -74,6 +74,42 @@ export const rsvpContentSchema = z.object({
 });
 export type RsvpContent = z.infer<typeof rsvpContentSchema>;
 
+// --- Welcome Section ---
+export const welcomeContentSchema = z.object({
+  title: z.string().optional(),
+  message: z.string().optional(),
+});
+export type WelcomeContent = z.infer<typeof welcomeContentSchema>;
+
+// --- Wedding Party Section ---
+export const weddingPartyMemberSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: z.string(),
+  photoUrl: z.string().optional(),
+});
+
+export const weddingPartyContentSchema = z.object({
+  title: z.string().optional(),
+  members: z.array(weddingPartyMemberSchema),
+});
+export type WeddingPartyContent = z.infer<typeof weddingPartyContentSchema>;
+export type WeddingPartyMember = z.infer<typeof weddingPartyMemberSchema>;
+
+// --- FAQs Section ---
+export const faqItemSchema = z.object({
+  id: z.string(),
+  question: z.string(),
+  answer: z.string(),
+});
+
+export const faqsContentSchema = z.object({
+  title: z.string().optional(),
+  items: z.array(faqItemSchema),
+});
+export type FaqsContent = z.infer<typeof faqsContentSchema>;
+export type FaqItem = z.infer<typeof faqItemSchema>;
+
 // --- Feature Toggles ---
 export const featureTogglesSchema = z.object({
   hotels: z.boolean().default(true),
@@ -99,7 +135,15 @@ export const designConfigSchema = z.object({
 export type DesignConfig = z.infer<typeof designConfigSchema>;
 
 // --- Content Section Union ---
-export type ContentSection = "hero" | "story" | "details" | "schedule" | "rsvp";
+export type ContentSection =
+  | "hero"
+  | "story"
+  | "details"
+  | "schedule"
+  | "rsvp"
+  | "welcome"
+  | "wedding-party"
+  | "faqs";
 
 export const contentSectionSchemas: Record<ContentSection, z.ZodType> = {
   hero: heroContentSchema,
@@ -107,4 +151,7 @@ export const contentSectionSchemas: Record<ContentSection, z.ZodType> = {
   details: detailsContentSchema,
   schedule: scheduleContentSchema,
   rsvp: rsvpContentSchema,
+  welcome: welcomeContentSchema,
+  "wedding-party": weddingPartyContentSchema,
+  faqs: faqsContentSchema,
 };
