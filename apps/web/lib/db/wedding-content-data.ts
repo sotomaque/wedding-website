@@ -8,6 +8,7 @@
 import { cache } from "react";
 import type {
   ContentSection,
+  DashboardConfig,
   DesignConfig,
   DetailsContent,
   FeatureToggles,
@@ -17,6 +18,7 @@ import type {
   StoryContent,
 } from "@/lib/validations/wedding-content";
 import {
+  dashboardConfigSchema,
   designConfigSchema,
   featureTogglesSchema,
 } from "@/lib/validations/wedding-content";
@@ -46,6 +48,7 @@ export interface WeddingSettings {
   defaultLanguage: string;
   featureToggles: FeatureToggles;
   designConfig: DesignConfig;
+  dashboardConfig: DashboardConfig;
 }
 
 export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
@@ -73,17 +76,20 @@ export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
       defaultLanguage: true,
       featureToggles: true,
       designConfig: true,
+      dashboardConfig: true,
     },
   });
 
   // Parse feature toggles + design config with defaults
   const toggles = featureTogglesSchema.parse(wedding.featureToggles ?? {});
   const design = designConfigSchema.parse(wedding.designConfig ?? {});
+  const dashboard = dashboardConfigSchema.parse(wedding.dashboardConfig ?? {});
 
   return {
     ...wedding,
     featureToggles: toggles,
     designConfig: design,
+    dashboardConfig: dashboard,
   };
 });
 

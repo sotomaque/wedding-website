@@ -3,8 +3,11 @@ import { currentUser } from "@clerk/nextjs/server";
 import { Button } from "@workspace/ui/components/button";
 import { Calendar, Clock, Code, Heart, Mail, Users } from "lucide-react";
 import Link from "next/link";
+import { buildExclusionFilter } from "@/lib/dashboard";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
+import type { DashboardConfig } from "@/lib/validations/wedding-content";
+import { DashboardConfigPanel } from "./dashboard-config-panel";
 import { RsvpInsightsCard } from "./rsvp-insights-card";
 
 function getCountdown(targetDate: Date) {
@@ -22,17 +25,25 @@ function getCountdown(targetDate: Date) {
   return { days, hours, minutes, isPast: false };
 }
 
-async function getGuestStats(weddingId: string) {
+async function getGuestStats(weddingId: string, config: DashboardConfig) {
+  const exclusions = buildExclusionFilter(config);
+
   const [acceptedAListCount, totalAListCount, totalAcceptedCount] =
     await Promise.all([
       db.guest.count({
-        where: { list: "a", rsvpStatus: "yes", isPlusOne: false, weddingId },
+        where: {
+          list: "a",
+          rsvpStatus: "yes",
+          isPlusOne: false,
+          weddingId,
+          ...exclusions,
+        },
       }),
       db.guest.count({
-        where: { list: "a", isPlusOne: false, weddingId },
+        where: { list: "a", isPlusOne: false, weddingId, ...exclusions },
       }),
       db.guest.count({
-        where: { rsvpStatus: "yes", weddingId },
+        where: { rsvpStatus: "yes", weddingId, ...exclusions },
       }),
     ]);
 
@@ -81,7 +92,11 @@ export default async function AdminPage() {
       year: "numeric",
     },
   );
-  const stats = await getGuestStats(settings.id);
+  const stats = await getGuestStats(settings.id, settings.dashboardConfig);
+  const hasExclusions =
+    settings.dashboardConfig.excludeThreeAndUnder ||
+    settings.dashboardConfig.excludeUnder21 ||
+    settings.dashboardConfig.excludePlusOnes;
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -115,7 +130,10 @@ export default async function AdminPage() {
                 <p className="text-3xl font-bold text-foreground">
                   {stats.totalAccepted}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">accepted</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  accepted
+                  {hasExclusions && " (filtered)"}
+                </p>
               </div>
 
               {/* RSVP Deadline Countdown */}
@@ -172,6 +190,8 @@ export default async function AdminPage() {
                 )}
               </div>
             </div>
+
+            <DashboardConfigPanel config={settings.dashboardConfig} />
 
             <RsvpInsightsCard />
 

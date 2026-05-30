@@ -461,6 +461,9 @@ model Wedding {
   // by a follow-up migration if desired.
   designConfig          Json                   @default("{}") @map("design_config") @db.JsonB
 
+  // Admin dashboard configuration (RSVP count exclusions, etc.)
+  dashboardConfig       Json                   @default("{}") @map("dashboard_config") @db.JsonB
+
   // Relations
   activities            Activity[]
   chatMessages          ChatMessage[]

@@ -86,6 +86,13 @@ export const featureTogglesSchema = z.object({
 });
 export type FeatureToggles = z.infer<typeof featureTogglesSchema>;
 
+export const dashboardConfigSchema = z.object({
+  excludeThreeAndUnder: z.boolean().default(false),
+  excludeUnder21: z.boolean().default(false),
+  excludePlusOnes: z.boolean().default(false),
+});
+export type DashboardConfig = z.infer<typeof dashboardConfigSchema>;
+
 // --- Design Config (font pairing only) ---
 // Layout and motif now ride along with the chosen template (see
 // `Wedding.templateId` + `apps/web/lib/templates.ts`) — they are no longer

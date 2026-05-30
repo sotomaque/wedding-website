@@ -11,7 +11,9 @@ import { getWeddingContext } from "@/lib/db/wedding-context";
 import { isValidFontId } from "@/lib/fonts";
 import { isValidTemplateId } from "@/lib/templates";
 import {
+  type DashboardConfig,
   type DesignConfig,
+  dashboardConfigSchema,
   designConfigSchema,
 } from "@/lib/validations/wedding-content";
 
@@ -327,4 +329,25 @@ export async function getAdmins() {
     where: { weddingId },
     orderBy: { createdAt: "asc" },
   });
+}
+
+export async function updateDashboardConfig(data: DashboardConfig) {
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
+  try {
+    const parsed = dashboardConfigSchema.parse(data);
+    await db.wedding.update({
+      where: { id: weddingId },
+      data: { dashboardConfig: parsed },
+    });
+
+    revalidatePath(`/${slug}`, "layout");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating dashboard config:", error);
+    return { success: false, error: "Failed to update dashboard settings" };
+  }
 }
