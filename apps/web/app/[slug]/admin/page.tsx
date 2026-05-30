@@ -5,6 +5,8 @@ import { Calendar, Clock, Code, Heart, Mail, Users } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
+import { buildHeadcountWhere, describeHeadcount } from "@/lib/headcount";
+import type { HeadcountConfig } from "@/lib/validations/wedding-content";
 import { RsvpInsightsCard } from "./rsvp-insights-card";
 
 function getCountdown(targetDate: Date) {
@@ -22,25 +24,13 @@ function getCountdown(targetDate: Date) {
   return { days, hours, minutes, isPast: false };
 }
 
-async function getGuestStats(weddingId: string) {
-  const [acceptedAListCount, totalAListCount, totalAcceptedCount] =
-    await Promise.all([
-      db.guest.count({
-        where: { list: "a", rsvpStatus: "yes", isPlusOne: false, weddingId },
-      }),
-      db.guest.count({
-        where: { list: "a", isPlusOne: false, weddingId },
-      }),
-      db.guest.count({
-        where: { rsvpStatus: "yes", weddingId },
-      }),
-    ]);
-
-  return {
-    acceptedAList: acceptedAListCount,
-    totalAList: totalAListCount,
-    totalAccepted: totalAcceptedCount,
-  };
+/**
+ * Count the guests that match the admin's headcount criteria. Defaults to every
+ * accepted guest; admins can narrow by list or exclude 3-and-under / under-21
+ * via the Headcount tab in Settings. See apps/web/lib/headcount.ts.
+ */
+async function getHeadcount(weddingId: string, config: HeadcountConfig) {
+  return db.guest.count({ where: buildHeadcountWhere(weddingId, config) });
 }
 
 export default async function AdminPage() {
@@ -81,7 +71,7 @@ export default async function AdminPage() {
       year: "numeric",
     },
   );
-  const stats = await getGuestStats(settings.id);
+  const headcount = await getHeadcount(settings.id, settings.headcountConfig);
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -104,18 +94,20 @@ export default async function AdminPage() {
           <div className="space-y-6">
             {/* Summary Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Accepted A-List Guests */}
+              {/* Headcount — criteria configurable via Settings → Headcount */}
               <div className="p-6 bg-secondary rounded-lg">
                 <div className="flex items-center gap-3 mb-3">
                   <Users className="w-6 h-6 text-primary" />
                   <h3 className="font-semibold text-foreground">
-                    A-List RSVPs
+                    {settings.headcountConfig.label}
                   </h3>
                 </div>
                 <p className="text-3xl font-bold text-foreground">
-                  {stats.totalAccepted}
+                  {headcount}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">accepted</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {describeHeadcount(settings.headcountConfig)}
+                </p>
               </div>
 
               {/* RSVP Deadline Countdown */}

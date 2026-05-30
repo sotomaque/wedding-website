@@ -461,6 +461,13 @@ model Wedding {
   // by a follow-up migration if desired.
   designConfig          Json                   @default("{}") @map("design_config") @db.JsonB
 
+  // Headcount config — admin-defined criteria for which guests count toward the
+  // dashboard's RSVP headcount stat (e.g. exclude 3-and-under, narrow to
+  // specific lists). Defaulting to '{}' + NOT NULL lets missing keys resolve to
+  // the historical "every accepted guest counts" behavior without a backfill.
+  // See apps/web/lib/headcount.ts and the headcountConfigSchema validation.
+  headcountConfig       Json                   @default("{}") @map("headcount_config") @db.JsonB
+
   // Relations
   activities            Activity[]
   chatMessages          ChatMessage[]
