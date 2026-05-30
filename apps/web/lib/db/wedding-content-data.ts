@@ -11,6 +11,7 @@ import type {
   DesignConfig,
   DetailsContent,
   FeatureToggles,
+  HeadcountConfig,
   HeroContent,
   RsvpContent,
   ScheduleContent,
@@ -19,6 +20,7 @@ import type {
 import {
   designConfigSchema,
   featureTogglesSchema,
+  headcountConfigSchema,
 } from "@/lib/validations/wedding-content";
 import { db } from "./index";
 import { getWeddingId } from "./wedding-context";
@@ -46,6 +48,7 @@ export interface WeddingSettings {
   defaultLanguage: string;
   featureToggles: FeatureToggles;
   designConfig: DesignConfig;
+  headcountConfig: HeadcountConfig;
 }
 
 export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
@@ -73,17 +76,20 @@ export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
       defaultLanguage: true,
       featureToggles: true,
       designConfig: true,
+      headcountConfig: true,
     },
   });
 
-  // Parse feature toggles + design config with defaults
+  // Parse feature toggles + design + headcount config with defaults
   const toggles = featureTogglesSchema.parse(wedding.featureToggles ?? {});
   const design = designConfigSchema.parse(wedding.designConfig ?? {});
+  const headcount = headcountConfigSchema.parse(wedding.headcountConfig ?? {});
 
   return {
     ...wedding,
     featureToggles: toggles,
     designConfig: design,
+    headcountConfig: headcount,
   };
 });
 

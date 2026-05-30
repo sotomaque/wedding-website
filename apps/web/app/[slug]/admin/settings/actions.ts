@@ -13,6 +13,7 @@ import { isValidTemplateId } from "@/lib/templates";
 import {
   type DesignConfig,
   designConfigSchema,
+  headcountConfigSchema,
 } from "@/lib/validations/wedding-content";
 
 /**
@@ -202,6 +203,43 @@ export async function updateFeatureToggles(data: Record<string, boolean>) {
   } catch (error) {
     console.error("Error updating feature toggles:", error);
     return { success: false, error: "Failed to update feature toggles" };
+  }
+}
+
+export async function updateHeadcountConfig(data: {
+  label: string;
+  includedLists: string[];
+  excludeThreeAndUnder: boolean;
+  excludeUnder21: boolean;
+}) {
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
+  // Validate + coerce via the shared schema — unknown lists are rejected and an
+  // empty/blank label falls back to the default so the card never goes blank.
+  const parsed = headcountConfigSchema.safeParse({
+    label: data.label.trim() || undefined,
+    includedLists: data.includedLists,
+    excludeThreeAndUnder: data.excludeThreeAndUnder,
+    excludeUnder21: data.excludeUnder21,
+  });
+  if (!parsed.success) {
+    return { success: false, error: "Invalid headcount criteria" };
+  }
+
+  try {
+    await db.wedding.update({
+      where: { id: weddingId },
+      data: { headcountConfig: parsed.data },
+    });
+
+    revalidatePath(`/${slug}`, "layout");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating headcount config:", error);
+    return { success: false, error: "Failed to update headcount settings" };
   }
 }
 

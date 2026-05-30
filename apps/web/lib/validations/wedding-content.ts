@@ -98,6 +98,25 @@ export const designConfigSchema = z.object({
 });
 export type DesignConfig = z.infer<typeof designConfigSchema>;
 
+// --- Headcount Config ---
+// Admin-defined criteria for which guests count toward the dashboard's RSVP
+// headcount stat. Every field defaults to the historical "count every accepted
+// guest across all lists" behavior, so weddings created before this feature —
+// whose `headcount_config` is `{}` — render byte-identically.
+export const guestListValues = ["a", "b", "c"] as const;
+
+export const headcountConfigSchema = z.object({
+  // Heading shown on the dashboard stat card.
+  label: z.string().default("Accepted RSVPs"),
+  // Which guest lists count toward the headcount. All three by default.
+  includedLists: z.array(z.enum(guestListValues)).default([...guestListValues]),
+  // Skip children flagged three-and-under (often excluded from venue limits).
+  excludeThreeAndUnder: z.boolean().default(false),
+  // Skip guests flagged under-21 (e.g. for bar / catering counts).
+  excludeUnder21: z.boolean().default(false),
+});
+export type HeadcountConfig = z.infer<typeof headcountConfigSchema>;
+
 // --- Content Section Union ---
 export type ContentSection = "hero" | "story" | "details" | "schedule" | "rsvp";
 
