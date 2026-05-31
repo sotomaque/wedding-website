@@ -1,7 +1,9 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { createTemplateSchema } from "@/lib/validations/admin-api";
 
 /**
  * List email templates for the current wedding
@@ -45,25 +47,31 @@ export async function POST(request: Request): Promise<NextResponse> {
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
-    const body = await request.json();
-    const { type, name, subject, htmlBody, isActive, variables } = body;
-
-    if (!type || !name || !subject || !htmlBody) {
+    const body = await request.json().catch(() => null);
+    const parsed = createTemplateSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "type, name, subject, and htmlBody are required" },
+        {
+          error:
+            parsed.error.issues[0]?.message ??
+            "type, name, subject, and htmlBody are required",
+        },
         { status: 400 },
       );
     }
+    const { type, name, subject, htmlBody, isActive, variables } = parsed.data;
 
     const template = await db.emailTemplate.create({
       data: {
         weddingId,
-        type,
+        // `type` is validated as a non-empty string; cast to the Prisma enum
+        // (Prisma rejects an unknown value at the DB layer, as before).
+        type: type as Prisma.EmailTemplateCreateInput["type"],
         name,
         subject,
         htmlBody,
         isActive: isActive ?? true,
-        variables: variables ?? [],
+        variables: (variables ?? []) as Prisma.InputJsonValue,
       },
     });
 
