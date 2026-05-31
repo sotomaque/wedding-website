@@ -74,3 +74,38 @@ export const multiGuestRsvpSchema = z.object({
 });
 
 export type MultiGuestRsvpFormData = z.infer<typeof multiGuestRsvpSchema>;
+
+// --- Public REST API request schemas ---
+// These guard the public /api/rsvp/* endpoints (the documented REST surface),
+// where the request body comes from untrusted external callers rather than the
+// in-app form. Invite codes are length-bounded; free-text fields are capped to
+// keep a malformed/abusive payload from reaching the database.
+
+const inviteCode = z.string().trim().min(1).max(100);
+const contactMethod = z
+  .enum(["email", "text", "whatsapp", "phone_call"])
+  .or(z.literal(""))
+  .nullish();
+
+/** GET /api/rsvp/verify — `code` query parameter. */
+export const rsvpVerifyQuerySchema = z.object({
+  code: inviteCode,
+});
+
+/** POST /api/rsvp/submit — single party-level accept/decline. */
+export const rsvpSubmitSchema = z.object({
+  inviteCode,
+  attending: z.boolean(),
+  dietaryRestrictions: z.string().max(2000).nullish(),
+});
+export type RsvpSubmitData = z.infer<typeof rsvpSubmitSchema>;
+
+/** PATCH /api/rsvp/update-info — party-level contact details. */
+export const rsvpUpdateInfoSchema = z.object({
+  inviteCode,
+  mailingAddress: z.string().max(500).nullish(),
+  phoneNumber: z.string().max(50).nullish(),
+  whatsapp: z.string().max(50).nullish(),
+  preferredContactMethod: contactMethod,
+});
+export type RsvpUpdateInfoData = z.infer<typeof rsvpUpdateInfoSchema>;

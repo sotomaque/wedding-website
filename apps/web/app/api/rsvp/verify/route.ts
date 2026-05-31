@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { rsvpVerifyQuerySchema } from "@/lib/validations/rsvp";
 
 /**
  * Verify invite code
@@ -13,9 +14,11 @@ import { getWeddingId } from "@/lib/db/wedding-context";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const code = searchParams.get("code");
+    const parsed = rsvpVerifyQuerySchema.safeParse({
+      code: searchParams.get("code") ?? undefined,
+    });
 
-    if (!code) {
+    if (!parsed.success) {
       return NextResponse.json(
         { error: "Invite code is required" },
         { status: 400 },
@@ -25,7 +28,7 @@ export async function GET(request: NextRequest) {
     const weddingId = await getWeddingId();
 
     const guests = await db.guest.findMany({
-      where: { inviteCode: code.toUpperCase(), weddingId },
+      where: { inviteCode: parsed.data.code.toUpperCase(), weddingId },
     });
 
     if (!guests || guests.length === 0) {
