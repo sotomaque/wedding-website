@@ -62,6 +62,14 @@ function getNavItems(slug: string, isSuperAdmin: boolean): NavItem[] {
     },
     {
       type: "group",
+      label: "Travel",
+      links: [
+        { href: `${base}/admin/hotels`, label: "Hotels" },
+        { href: `${base}/admin/activities`, label: "Things to Do" },
+      ],
+    },
+    {
+      type: "group",
       label: "Registry",
       links: [
         { href: `${base}/admin/registry`, label: "Registry Items" },
