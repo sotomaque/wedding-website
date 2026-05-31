@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { rsvpUpdateInfoSchema } from "@/lib/validations/rsvp";
 
 /**
  * Update guest contact info
@@ -12,21 +13,21 @@ import { getWeddingId } from "@/lib/db/wedding-context";
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    const parsed = rsvpUpdateInfoSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid request" },
+        { status: 400 },
+      );
+    }
     const {
       inviteCode,
       mailingAddress,
       phoneNumber,
       whatsapp,
       preferredContactMethod,
-    } = body;
-
-    if (!inviteCode) {
-      return NextResponse.json(
-        { error: "Invite code is required" },
-        { status: 400 },
-      );
-    }
+    } = parsed.data;
 
     const normalizedCode = inviteCode.toUpperCase().trim();
     const weddingId = await getWeddingId();
