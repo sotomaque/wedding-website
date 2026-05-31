@@ -1,5 +1,6 @@
 "use server";
 
+import type { Guest } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   buildGuestListWhere,
@@ -29,7 +30,9 @@ const sortByMap: Record<string, string> = {
   createdAt: "createdAt",
 };
 
-export async function getGuests(params: GetGuestsParams = {}) {
+export async function getGuests(
+  params: GetGuestsParams = {},
+): Promise<Guest[]> {
   try {
     const weddingId = await getWeddingId();
     const where = buildGuestListWhere(weddingId, params);
@@ -43,15 +46,16 @@ export async function getGuests(params: GetGuestsParams = {}) {
       orderBy: { [sortBy]: sortOrder },
     });
 
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    return guests as any;
+    return guests;
   } catch (error) {
     console.error("Error fetching guests:", error);
     throw error;
   }
 }
 
-export async function getGuestWithPlusOne(guestId: string) {
+export async function getGuestWithPlusOne(
+  guestId: string,
+): Promise<{ guest: Guest | null; plusOne: Guest | null }> {
   try {
     const weddingId = await getWeddingId();
     const guest = await db.guest.findFirst({
@@ -71,8 +75,7 @@ export async function getGuestWithPlusOne(guestId: string) {
       },
     });
 
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    return { guest: guest as any, plusOne: (plusOne || null) as any };
+    return { guest, plusOne: plusOne || null };
   } catch (error) {
     console.error("Error fetching guest with plus-one:", error);
     return { guest: null, plusOne: null };

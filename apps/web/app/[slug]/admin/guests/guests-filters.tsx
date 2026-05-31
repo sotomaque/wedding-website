@@ -10,6 +10,7 @@ import {
 import { Filter, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { RSVP_STATUS_LABELS } from "@/lib/constants/labels";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { EventOption } from "./actions";
 
@@ -198,9 +199,9 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
               <span className="text-sm font-medium">RSVP Status</span>
               <div className="space-y-1.5">
                 {[
-                  { value: "pending", label: "Pending" },
-                  { value: "yes", label: "Confirmed" },
-                  { value: "no", label: "Declined" },
+                  { value: "pending", label: RSVP_STATUS_LABELS.pending },
+                  { value: "yes", label: RSVP_STATUS_LABELS.yes },
+                  { value: "no", label: RSVP_STATUS_LABELS.no },
                 ].map((option) => (
                   // biome-ignore lint/a11y/noLabelWithoutControl: Radix Checkbox handles focus internally
                   <label
@@ -556,13 +557,7 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
             <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
               RSVP:{" "}
               {currentStatuses
-                .map((s) =>
-                  s === "pending"
-                    ? "Pending"
-                    : s === "yes"
-                      ? "Confirmed"
-                      : "Declined",
-                )
+                .map((s) => RSVP_STATUS_LABELS[s] ?? s)
                 .join(", ")}
               <button
                 type="button"
