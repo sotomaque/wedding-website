@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { updateGiftSchema } from "@/lib/validations/admin-api";
 
 /**
  * List all gifts
@@ -98,15 +99,15 @@ export async function PATCH(request: NextRequest) {
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
-    const body = await request.json();
-    const { id, thankYouEmailSent, guestId, notes } = body;
-
-    if (!id) {
+    const body = await request.json().catch(() => null);
+    const parsed = updateGiftSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Gift ID is required" },
+        { error: parsed.error.issues[0]?.message ?? "Gift ID is required" },
         { status: 400 },
       );
     }
+    const { id, thankYouEmailSent, guestId, notes } = parsed.data;
 
     // Build update object
     const updates: Record<string, unknown> = {
