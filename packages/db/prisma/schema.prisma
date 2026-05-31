@@ -147,6 +147,7 @@ model GuestEventInvite {
 
   @@unique([guestId, eventId])
   @@index([eventId, emailSent], map: "idx_guest_event_invites_email_sent")
+  @@index([eventId, rsvpStatus], map: "idx_guest_event_invites_event_rsvp")
   @@index([eventId], map: "idx_guest_event_invites_event_id")
   @@index([guestId], map: "idx_guest_event_invites_guest_id")
   @@index([weddingId], map: "idx_guest_event_invites_wid")
@@ -278,6 +279,8 @@ model Guest {
   @@index([side], map: "idx_guests_side")
   @@index([threeAndUnder], map: "idx_guests_three_and_under")
   @@index([under21], map: "idx_guests_under_21")
+  @@index([weddingId, numberOfResends], map: "idx_guests_wedding_resends")
+  @@index([weddingId, rsvpStatus], map: "idx_guests_wedding_rsvp_status")
   @@index([weddingId], map: "idx_guests_wedding_id")
   @@map("guests")
 }
