@@ -8,6 +8,7 @@ import {
 } from "@/lib/ai/prompts/rsvp-insights";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getRsvpStats } from "@/lib/db/admin/rsvp-stats";
 import { getWeddingContext } from "@/lib/db/wedding-context";
 
 export async function POST() {
@@ -16,50 +17,36 @@ export async function POST() {
     const auth = await requireAdmin(ctx.weddingId);
     if ("status" in auth) return auth;
 
-    // Gather stats in parallel
-    const [
-      statusGroups,
-      listGroups,
-      sideGroups,
-      dietaryGuests,
-      invitedCount,
-      totalCount,
-    ] = await Promise.all([
-      db.guest.groupBy({
-        by: ["rsvpStatus"],
-        where: { weddingId: ctx.weddingId },
-        _count: true,
-      }),
-      db.guest.groupBy({
-        by: ["list", "rsvpStatus"],
-        where: { weddingId: ctx.weddingId },
-        _count: true,
-      }),
-      db.guest.groupBy({
-        by: ["side", "rsvpStatus"],
-        where: { weddingId: ctx.weddingId },
-        _count: true,
-      }),
-      db.guest.findMany({
-        where: {
-          weddingId: ctx.weddingId,
-          rsvpStatus: "yes",
-          dietaryRestrictions: { not: null },
-        },
-        select: { dietaryRestrictions: true },
-      }),
-      db.guest.count({
-        where: { weddingId: ctx.weddingId, numberOfResends: { gt: 0 } },
-      }),
-      db.guest.count({ where: { weddingId: ctx.weddingId } }),
-    ]);
+    // Gather stats in parallel. Top-line RSVP counts come from the shared
+    // aggregator (one groupBy); the per-list / per-side breakdowns and dietary
+    // notes are insights-specific.
+    const [rsvp, listGroups, sideGroups, dietaryGuests, invitedCount] =
+      await Promise.all([
+        getRsvpStats(ctx.weddingId),
+        db.guest.groupBy({
+          by: ["list", "rsvpStatus"],
+          where: { weddingId: ctx.weddingId },
+          _count: true,
+        }),
+        db.guest.groupBy({
+          by: ["side", "rsvpStatus"],
+          where: { weddingId: ctx.weddingId },
+          _count: true,
+        }),
+        db.guest.findMany({
+          where: {
+            weddingId: ctx.weddingId,
+            rsvpStatus: "yes",
+            dietaryRestrictions: { not: null },
+          },
+          select: { dietaryRestrictions: true },
+        }),
+        db.guest.count({
+          where: { weddingId: ctx.weddingId, numberOfResends: { gt: 0 } },
+        }),
+      ]);
 
-    const attending =
-      statusGroups.find((g) => g.rsvpStatus === "yes")?._count ?? 0;
-    const declined =
-      statusGroups.find((g) => g.rsvpStatus === "no")?._count ?? 0;
-    const pending =
-      statusGroups.find((g) => g.rsvpStatus === "pending")?._count ?? 0;
+    const { attending, declined, pending, totalGuests: totalCount } = rsvp;
 
     const now = new Date();
     const daysUntilWedding = Math.ceil(

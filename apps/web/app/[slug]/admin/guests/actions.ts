@@ -1,23 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
+import {
+  buildGuestListWhere,
+  type GuestListFilterParams,
+} from "@/lib/db/admin/guest-list-where";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
-interface GetGuestsParams {
-  side?: "bride" | "groom";
-  rsvpStatus?: string;
-  list?: "a" | "b" | "c";
-  family?: "true" | "false";
-  isPlusOne?: "true" | "false";
-  emailStatus?: "not_sent" | "sent" | "resent";
-  under21?: "true" | "false";
-  threeAndUnder?: "true" | "false";
-  bridalParty?:
-    | "groomsman"
-    | "best_man"
-    | "bridesmaid"
-    | "maid_of_honor"
-    | "any";
+interface GetGuestsParams extends GuestListFilterParams {
   sortBy?:
     | "firstName"
     | "email"
@@ -27,7 +17,6 @@ interface GetGuestsParams {
     | "numberOfResends"
     | "createdAt";
   sortOrder?: "asc" | "desc";
-  events?: string;
 }
 
 const sortByMap: Record<string, string> = {
@@ -43,75 +32,7 @@ const sortByMap: Record<string, string> = {
 export async function getGuests(params: GetGuestsParams = {}) {
   try {
     const weddingId = await getWeddingId();
-    // Build where clause
-    // biome-ignore lint/suspicious/noExplicitAny: dynamic filter building
-    const where: any = { weddingId };
-
-    if (params.side) {
-      where.side = params.side;
-    }
-
-    if (params.rsvpStatus) {
-      const statuses = params.rsvpStatus.split(",").filter(Boolean);
-      if (statuses.length === 1) {
-        where.rsvpStatus = statuses[0];
-      } else if (statuses.length > 1) {
-        where.rsvpStatus = { in: statuses };
-      }
-    }
-
-    if (params.list) {
-      where.list = params.list;
-    }
-
-    if (params.family !== undefined) {
-      where.family = params.family === "true";
-    }
-
-    if (params.isPlusOne !== undefined) {
-      where.isPlusOne = params.isPlusOne === "true";
-    }
-
-    if (params.emailStatus) {
-      if (params.emailStatus === "not_sent") {
-        where.numberOfResends = 0;
-      } else if (params.emailStatus === "sent") {
-        where.numberOfResends = 1;
-      } else if (params.emailStatus === "resent") {
-        where.numberOfResends = { gt: 1 };
-      }
-    }
-
-    if (params.under21 !== undefined) {
-      where.under21 = params.under21 === "true";
-    }
-
-    if (params.threeAndUnder !== undefined) {
-      where.threeAndUnder = params.threeAndUnder === "true";
-    }
-
-    if (params.bridalParty) {
-      if (params.bridalParty === "any") {
-        where.bridalPartyRole = { not: null };
-      } else {
-        where.bridalPartyRole = params.bridalParty;
-      }
-    }
-
-    // Event invitation filter — guests who have a GuestEventInvite for ANY of the selected events
-    if (params.events) {
-      const eventIds = params.events.split(",").filter(Boolean);
-      if (eventIds.length === 1) {
-        where.guestEventInvites = {
-          some: { eventId: eventIds[0] },
-        };
-      } else if (eventIds.length > 1) {
-        // AND logic: guest must be invited to ALL selected events
-        where.AND = eventIds.map((id: string) => ({
-          guestEventInvites: { some: { eventId: id } },
-        }));
-      }
-    }
+    const where = buildGuestListWhere(weddingId, params);
 
     // Apply sorting
     const sortBy = sortByMap[params.sortBy || "createdAt"] || "createdAt";
