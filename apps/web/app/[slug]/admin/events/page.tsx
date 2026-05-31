@@ -1,6 +1,11 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import {
+  emptyTally,
+  tallyInviteGroups,
+  tallyRsvpStatuses,
+} from "@/lib/db/admin/rsvp-tally";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { EventsClient } from "./events-client";
 
@@ -14,77 +19,73 @@ async function getEvents() {
     orderBy: [{ displayOrder: "asc" }, { eventDate: "asc" }],
   });
 
-  // Get invite counts for each event
-  const eventsWithCounts = await Promise.all(
-    events.map(async (event) => {
-      let total: number;
-      let confirmed: number;
-      let declined: number;
-      let pending: number;
+  // Compute invite counts in two queries instead of one-per-event:
+  //  - Default events (ceremony/reception) invite everyone, so they all share
+  //    the same tally derived from each guest's main RSVP status — fetched once.
+  //  - Non-default events are tallied from a single grouped invite query.
+  const hasDefault = events.some((e) => e.isDefault);
+  const nonDefaultIds = events.filter((e) => !e.isDefault).map((e) => e.id);
 
-      if (event.isDefault) {
-        // For default events (ceremony, reception), use the guest's main RSVP status
-        // since all guests are automatically invited to these events
-        const guests = await db.guest.findMany({
-          where: { weddingId },
-          select: { rsvpStatus: true },
-        });
+  const [defaultTally, inviteGroups] = await Promise.all([
+    hasDefault
+      ? db.guest
+          .findMany({ where: { weddingId }, select: { rsvpStatus: true } })
+          .then((guests) => tallyRsvpStatuses(guests.map((g) => g.rsvpStatus)))
+      : Promise.resolve(emptyTally()),
+    nonDefaultIds.length > 0
+      ? db.guestEventInvite.groupBy({
+          by: ["eventId", "rsvpStatus"],
+          where: { weddingId, eventId: { in: nonDefaultIds } },
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
+  ]);
 
-        total = guests.length;
-        confirmed = guests.filter((g) => g.rsvpStatus === "yes").length;
-        declined = guests.filter((g) => g.rsvpStatus === "no").length;
-        pending = guests.filter((g) => g.rsvpStatus === "pending").length;
-      } else {
-        // For non-default events, use event-specific invites
-        const invites = await db.guestEventInvite.findMany({
-          where: { eventId: event.id, weddingId },
-          select: { rsvpStatus: true },
-        });
+  const inviteTallies = tallyInviteGroups(inviteGroups);
 
-        total = invites.length;
-        confirmed = invites.filter((i) => i.rsvpStatus === "yes").length;
-        declined = invites.filter((i) => i.rsvpStatus === "no").length;
-        pending = invites.filter((i) => i.rsvpStatus === "pending").length;
-      }
+  const eventsWithCounts = events.map((event) => {
+    const tally = event.isDefault
+      ? defaultTally
+      : (inviteTallies.get(event.id) ?? emptyTally());
+    const { total, confirmed, declined, pending } = tally;
 
-      const eventDateStr =
-        event.eventDate instanceof Date
-          ? (event.eventDate.toISOString().split("T")[0] ?? "")
-          : String(event.eventDate);
-      const createdAtStr =
-        event.createdAt instanceof Date
-          ? event.createdAt.toISOString()
-          : String(event.createdAt);
+    const eventDateStr =
+      event.eventDate instanceof Date
+        ? (event.eventDate.toISOString().split("T")[0] ?? "")
+        : String(event.eventDate);
+    const createdAtStr =
+      event.createdAt instanceof Date
+        ? event.createdAt.toISOString()
+        : String(event.createdAt);
 
-      return {
-        id: event.id,
-        name: event.name,
-        description: event.description,
-        eventDate: eventDateStr,
-        startTime: event.startTime
-          ? event.startTime instanceof Date
-            ? event.startTime.toISOString()
-            : String(event.startTime)
-          : null,
-        endTime: event.endTime
-          ? event.endTime instanceof Date
-            ? event.endTime.toISOString()
-            : String(event.endTime)
-          : null,
-        locationName: event.locationName,
-        locationAddress: event.locationAddress,
-        latitude: event.latitude ? Number(event.latitude) : null,
-        longitude: event.longitude ? Number(event.longitude) : null,
-        isDefault: event.isDefault ?? false,
-        displayOrder: event.displayOrder ?? 0,
-        createdAt: createdAtStr,
-        inviteCount: total,
-        confirmedCount: confirmed,
-        declinedCount: declined,
-        pendingCount: pending,
-      };
-    }),
-  );
+    return {
+      id: event.id,
+      name: event.name,
+      description: event.description,
+      eventDate: eventDateStr,
+      startTime: event.startTime
+        ? event.startTime instanceof Date
+          ? event.startTime.toISOString()
+          : String(event.startTime)
+        : null,
+      endTime: event.endTime
+        ? event.endTime instanceof Date
+          ? event.endTime.toISOString()
+          : String(event.endTime)
+        : null,
+      locationName: event.locationName,
+      locationAddress: event.locationAddress,
+      latitude: event.latitude ? Number(event.latitude) : null,
+      longitude: event.longitude ? Number(event.longitude) : null,
+      isDefault: event.isDefault ?? false,
+      displayOrder: event.displayOrder ?? 0,
+      createdAt: createdAtStr,
+      inviteCount: total,
+      confirmedCount: confirmed,
+      declinedCount: declined,
+      pendingCount: pending,
+    };
+  });
 
   return eventsWithCounts;
 }

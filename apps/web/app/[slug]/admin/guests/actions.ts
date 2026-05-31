@@ -217,39 +217,36 @@ export interface PartyOption {
 export async function getPartiesForSelect(): Promise<PartyOption[]> {
   try {
     const weddingId = await getWeddingId();
+    // Single query with the guests joined in, instead of one guest query per
+    // party (previously an N+1 over Promise.all).
     const parties = await db.party.findMany({
       where: { weddingId },
       orderBy: { createdAt: "desc" },
+      include: {
+        guests: {
+          select: { firstName: true },
+          orderBy: { isPlusOne: "asc" },
+        },
+      },
     });
 
-    // Fetch guest counts and names for each party
-    const partiesWithInfo = await Promise.all(
-      parties.map(async (party) => {
-        const guests = await db.guest.findMany({
-          where: { partyId: party.id, weddingId },
-          select: { firstName: true, lastName: true },
-          orderBy: { isPlusOne: "asc" },
-        });
+    return parties.map((party) => {
+      const guestNames = party.guests
+        .slice(0, 3)
+        .map((g) => g.firstName)
+        .join(", ");
 
-        const guestNames = guests
-          .slice(0, 3)
-          .map((g) => g.firstName)
-          .join(", ");
-
-        return {
-          id: party.id,
-          inviteCode: party.inviteCode,
-          name: party.name,
-          guestNames:
-            guests.length > 3
-              ? `${guestNames} +${guests.length - 3}`
-              : guestNames,
-          guestCount: guests.length,
-        };
-      }),
-    );
-
-    return partiesWithInfo;
+      return {
+        id: party.id,
+        inviteCode: party.inviteCode,
+        name: party.name,
+        guestNames:
+          party.guests.length > 3
+            ? `${guestNames} +${party.guests.length - 3}`
+            : guestNames,
+        guestCount: party.guests.length,
+      };
+    });
   } catch (error) {
     console.error("Error fetching parties for select:", error);
     return [];
