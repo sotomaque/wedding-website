@@ -32,6 +32,7 @@ import {
 import {
   AlertCircle,
   CalendarCheck,
+  Download,
   Plus,
   RefreshCw,
   SearchX,
@@ -46,6 +47,7 @@ import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { EventOption, PartyOption } from "./actions";
 import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
+import { ExportWizard } from "./export-wizard";
 import { GuestsFilters } from "./guests-filters";
 import { useBulkGuestActions } from "./use-bulk-guest-actions";
 
@@ -77,6 +79,7 @@ export function GuestsTable({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   // Bulk actions extracted to custom hook — see use-bulk-guest-actions.ts
   const slug = useWeddingSlug();
   const router = useRouter();
@@ -359,6 +362,22 @@ export function GuestsTable({
             </Link>
           </Button>
           <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setShowExport(true)}
+            className="md:hidden"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowExport(true)}
+            className="hidden md:flex"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button
             size="icon"
             onClick={() => setShowAddForm(true)}
             className="md:hidden"
@@ -612,6 +631,9 @@ export function GuestsTable({
         parties={parties}
         events={events}
       />
+
+      {/* Export Wizard */}
+      <ExportWizard open={showExport} onOpenChange={setShowExport} />
     </>
   );
 }
