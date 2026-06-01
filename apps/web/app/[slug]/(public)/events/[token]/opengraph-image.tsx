@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import sharp from "sharp";
 import { db } from "@/lib/db";
 
 export const size = { width: 1200, height: 630 };
@@ -30,24 +31,29 @@ function formatDate(value: Date | string | null): string | null {
 }
 
 /**
- * Best-effort load of the hero image as a base64 data URI that Satori can embed
- * directly (no fetch happens during image rendering). Returns null on any
- * problem — a slow/redirecting host, a non-200, an oversized file, or a format
- * Satori can't decode (it only handles PNG/JPEG) — so the card still renders.
+ * Best-effort load of the hero image as a base64 data URI Satori can embed
+ * (no fetch happens during image rendering). The fetched image is transcoded
+ * with sharp to a baseline JPEG sized for the card — Satori only decodes
+ * PNG/JPEG, so this makes any common gallery format (webp/avif/png/jpeg/…)
+ * usable, and auto-orients phone photos. Returns null on any problem (slow
+ * host, non-200, oversized, undecodable) so the card still renders.
  */
 async function loadHeroDataUri(url: string | null): Promise<string | null> {
   if (!url || !/^https?:\/\//i.test(url)) return null;
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2500);
+    const timeout = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
     if (!res.ok) return null;
-    const type = res.headers.get("content-type") ?? "";
-    if (!/^image\/(png|jpe?g)$/i.test(type)) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.byteLength > 5_000_000) return null;
-    return `data:${type};base64,${buf.toString("base64")}`;
+    const input = Buffer.from(await res.arrayBuffer());
+    if (input.byteLength > 20_000_000) return null;
+    const jpeg = await sharp(input, { failOn: "none" })
+      .rotate()
+      .resize(size.width, size.height, { fit: "cover" })
+      .jpeg({ quality: 82 })
+      .toBuffer();
+    return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
   } catch {
     return null;
   }
