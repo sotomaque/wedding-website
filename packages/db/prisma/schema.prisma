@@ -552,6 +552,18 @@ model RegistryItem {
   stripeProductId String?  @map("stripe_product_id")
   displayOrder    Int      @default(0) @map("display_order")
   isActive        Boolean  @default(true) @map("is_active")
+  // "fund" = cash contribution via Stripe (never "taken"); "product" = a
+  // specific gift a guest can claim (becomes "taken"). Defaults to fund so
+  // existing items keep their current behavior.
+  itemType        RegistryItemType @default(fund) @map("item_type")
+  // Product-only: external link (e.g. Amazon) + optional display price.
+  productUrl      String?  @map("product_url")
+  priceCents      Int?     @map("price_cents")
+  // A claim is recorded by setting these (a product is "taken" when claimedAt
+  // is non-null). claimedByName/Email identify the claimant to admins only.
+  claimedByName   String?  @map("claimed_by_name")
+  claimedByEmail  String?  @map("claimed_by_email")
+  claimedAt       DateTime? @map("claimed_at") @db.Timestamptz(6)
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
   wedding         Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
@@ -559,6 +571,13 @@ model RegistryItem {
 
   @@index([weddingId, displayOrder], map: "idx_registry_items_wedding_order")
   @@map("registry_items")
+}
+
+enum RegistryItemType {
+  fund
+  product
+
+  @@map("registry_item_type")
 }
 
 model ReminderSchedule {
