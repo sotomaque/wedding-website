@@ -16,6 +16,8 @@ export interface GuestListFilterParams {
   emailStatus?: "not_sent" | "sent" | "resent";
   under21?: "true" | "false";
   threeAndUnder?: "true" | "false";
+  /** Guests who added themselves via a public per-event RSVP link. */
+  selfRegistered?: "true" | "false";
   bridalParty?:
     | "groomsman"
     | "best_man"
@@ -64,6 +66,8 @@ export function buildGuestListWhere(
   if (params.under21 !== undefined) where.under21 = params.under21 === "true";
   if (params.threeAndUnder !== undefined)
     where.threeAndUnder = params.threeAndUnder === "true";
+  if (params.selfRegistered !== undefined)
+    where.selfRegistered = params.selfRegistered === "true";
 
   if (params.bridalParty === "any") where.bridalPartyRole = { not: null };
   else if (params.bridalParty) where.bridalPartyRole = params.bridalParty;

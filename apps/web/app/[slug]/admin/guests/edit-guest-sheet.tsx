@@ -58,6 +58,7 @@ import {
   EventInvitationsSection,
   PlusOneSection,
 } from "./guest-form-sections";
+import { MergeGuestDialog } from "./merge-guest-dialog";
 
 // PostgreSQL date columns are returned as Date objects by the pg driver.
 // Convert to the "YYYY-MM-DD" string that <input type="date"> requires.
@@ -86,6 +87,7 @@ export function EditGuestSheet({
   guestEventIds,
 }: EditGuestSheetProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [showBListEmailDialog, setShowBListEmailDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -771,6 +773,17 @@ export function EditGuestSheet({
               </Button>
             </div>
 
+            {/* Merge — fold this guest (e.g. a self-registration) into another */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowMergeDialog(true)}
+              disabled={isSubmitting}
+              className="w-full"
+            >
+              Merge into another guest
+            </Button>
+
             {/* Activities Email - only show for guests who RSVP'd yes */}
             {guest.rsvpStatus === "yes" && (
               <Button
@@ -805,6 +818,18 @@ export function EditGuestSheet({
           </div>
         </form>
       </SheetContent>
+
+      {/* Merge Dialog */}
+      <MergeGuestDialog
+        open={showMergeDialog}
+        onOpenChange={setShowMergeDialog}
+        sourceIds={[guest.id]}
+        sourceLabel={`${guest.firstName} ${guest.lastName || ""}`.trim()}
+        onMerged={() => {
+          closeSheet();
+          router.refresh();
+        }}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

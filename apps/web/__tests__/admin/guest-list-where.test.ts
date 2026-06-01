@@ -35,6 +35,13 @@ describe("buildGuestListWhere", () => {
     expect(
       buildGuestListWhere(WID, { threeAndUnder: "true" }).threeAndUnder,
     ).toBe(true);
+    expect(
+      buildGuestListWhere(WID, { selfRegistered: "true" }).selfRegistered,
+    ).toBe(true);
+    expect(
+      buildGuestListWhere(WID, { selfRegistered: "false" }).selfRegistered,
+    ).toBe(false);
+    expect(buildGuestListWhere(WID, {}).selfRegistered).toBeUndefined();
   });
 
   it("maps emailStatus to numberOfResends", () => {

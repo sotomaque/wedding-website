@@ -17,6 +17,7 @@ export function useBulkGuestActions(
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [isBulkSendingCalendar, setIsBulkSendingCalendar] = useState(false);
   const [isBulkSettingRsvp, setIsBulkSettingRsvp] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Validation
   const allHaveEmail = selectedGuests.every((g) => g.email?.includes("@"));
@@ -168,10 +169,43 @@ export function useBulkGuestActions(
     }
   }
 
+  async function handleBulkDelete() {
+    if (selectedGuests.length === 0) return;
+
+    setIsBulkDeleting(true);
+    try {
+      const response = await fetch("/api/admin/guests/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guestIds: selectedGuests.map((g) => g.id) }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Guests deleted", {
+          description: `Removed ${data.deletedCount} guest(s)`,
+        });
+        clearSelection();
+        router.refresh();
+      } else {
+        toast.error("Error", {
+          description: data.error || "Failed to delete guests",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting bulk guests:", error);
+      toast.error("Error", { description: "Failed to delete guests" });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  }
+
   return {
     isBulkSending,
     isBulkSendingCalendar,
     isBulkSettingRsvp,
+    isBulkDeleting,
     canBulkSendEmail,
     canBulkSendCalendarInvites,
     getEmailValidationMessage,
@@ -179,5 +213,6 @@ export function useBulkGuestActions(
     handleBulkSendEmail,
     handleBulkSendCalendarInvites,
     handleBulkSetRsvp,
+    handleBulkDelete,
   };
 }
