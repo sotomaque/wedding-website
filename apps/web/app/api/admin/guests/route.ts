@@ -310,6 +310,11 @@ export async function POST(request: NextRequest) {
               to: email,
               subject: rendered.subject,
               html: rendered.html,
+              log: {
+                weddingId,
+                guestId: guest.id,
+                type: "wedding_invitation",
+              },
             });
             await db.guest.update({
               where: { id: guest.id },
@@ -353,6 +358,11 @@ export async function POST(request: NextRequest) {
                 to: email,
                 subject: rendered.subject,
                 html: rendered.html,
+                log: {
+                  weddingId,
+                  guestId: guest.id,
+                  type: "event_invitation",
+                },
               });
 
               // Mark the GuestEventInvite as emailed

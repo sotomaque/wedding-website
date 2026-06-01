@@ -260,6 +260,7 @@ model Guest {
   calendarInviteResendCount           Int                     @default(0) @map("calendar_invite_resend_count")
   lastReminderSentAt                  DateTime?               @map("last_reminder_sent_at") @db.Timestamptz(6)
   reminderCount                       Int                     @default(0) @map("reminder_count")
+  emailLogs                           EmailLog[]
   gifts                               Gift[]
   guestActivityInterests              GuestActivityInterest[]
   guestEventInvites                   GuestEventInvite[]
@@ -482,6 +483,7 @@ model Wedding {
   activities            Activity[]
   chatMessages          ChatMessage[]
   documents             Document[]
+  emailLogs             EmailLog[]
   emailTemplates        EmailTemplate[]
   events                Event[]
   gifts                 Gift[]
@@ -525,6 +527,29 @@ model EmailTemplate {
   @@unique([weddingId, type, language])
   @@index([weddingId], map: "idx_email_templates_wedding_id")
   @@map("email_templates")
+}
+
+/// Append-only audit trail of every outbound email, so the admin can see who
+/// has been contacted and when. `type` is free text (mirrors EmailTemplateType
+/// values where applicable, plus "custom") so ad-hoc sends fit too. guestId is
+/// optional — couple/admin notifications aren't tied to a single guest.
+model EmailLog {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId         String   @map("wedding_id") @db.Uuid
+  guestId           String?  @map("guest_id") @db.Uuid
+  recipientEmail    String   @map("recipient_email")
+  type              String
+  subject           String?
+  status            String   @default("sent")
+  providerMessageId String?  @map("provider_message_id")
+  errorMessage      String?  @map("error_message")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  wedding           Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  guest             Guest?   @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([guestId, createdAt(sort: Desc)], map: "idx_email_logs_guest_created")
+  @@index([weddingId, createdAt(sort: Desc)], map: "idx_email_logs_wedding_created")
+  @@map("email_logs")
 }
 
 model WeddingContent {

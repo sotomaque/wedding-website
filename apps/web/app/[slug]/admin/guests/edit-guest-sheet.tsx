@@ -50,6 +50,7 @@ import {
   editGuestSchema,
 } from "@/lib/validations/guest";
 import type { EventOption, PartyOption } from "./actions";
+import { CommunicationHistorySection } from "./communication-history-section";
 import {
   AdminFlagsSection,
   BridalPartySection,
@@ -736,6 +737,9 @@ export function EditGuestSheet({
                   rows={3}
                 />
               </div>
+
+              {/* Communication History */}
+              <CommunicationHistorySection guestId={guest.id} />
             </div>
           </div>
 

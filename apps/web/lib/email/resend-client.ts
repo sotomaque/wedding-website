@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { env } from "@/env";
+import { type EmailLogMeta, recordEmailLog } from "./email-log";
 
 /**
  * Check if we're in E2E test mode (skip actual email sending)
@@ -42,15 +43,17 @@ type HtmlEmailParams = {
   attachments?: EmailAttachment[];
 };
 
-type EmailParams = HtmlEmailParams;
+type EmailParams = HtmlEmailParams & {
+  /**
+   * When provided, the send is recorded in the communication log
+   * (`email_logs`). Best-effort — logging never blocks or fails the send.
+   */
+  log?: EmailLogMeta;
+};
 
-/**
- * Send an email using Resend, with E2E test mode support
- * In E2E test mode, emails are not actually sent
- */
-export async function sendEmail(
-  params: EmailParams,
-): Promise<{ data: { id: string } | null; error: Error | null }> {
+type SendResult = { data: { id: string } | null; error: Error | null };
+
+async function deliver(params: HtmlEmailParams): Promise<SendResult> {
   // In E2E test mode, skip actual email sending
   if (isE2ETestMode()) {
     const to = Array.isArray(params.to) ? params.to.join(", ") : params.to;
@@ -68,4 +71,18 @@ export async function sendEmail(
 
   // Type assertion needed because Resend SDK typing is complex
   return resend.emails.send(params as Parameters<typeof resend.emails.send>[0]);
+}
+
+/**
+ * Send an email using Resend, with E2E test mode support.
+ * In E2E test mode, emails are not actually sent. When `log` metadata is
+ * supplied, the attempt is appended to the communication log.
+ */
+export async function sendEmail(params: EmailParams): Promise<SendResult> {
+  const { log, ...emailParams } = params;
+  const result = await deliver(emailParams);
+  if (log) {
+    await recordEmailLog(log, emailParams, result);
+  }
+  return result;
 }

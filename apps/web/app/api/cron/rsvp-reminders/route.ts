@@ -165,6 +165,11 @@ export async function GET(request: NextRequest) {
             to: guest.email as string,
             subject: rendered.subject,
             html: rendered.html,
+            log: {
+              weddingId: wedding.id,
+              guestId: guest.id,
+              type: "rsvp_reminder",
+            },
           });
 
           if (result.error) {
