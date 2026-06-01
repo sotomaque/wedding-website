@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
@@ -7,7 +8,7 @@ import {
 } from "@/lib/email/helpers";
 import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
-import { isEventFull } from "@/lib/utils/event-capacity";
+import { canAccommodate } from "@/lib/utils/event-capacity";
 import { generateInviteCode } from "@/lib/utils/invite-code";
 import { publicEventRsvpSchema } from "@/lib/validations/event-rsvp";
 
@@ -20,8 +21,12 @@ class CapacityFullError extends Error {}
  *   - "name": a new invitee types their name and self-registers (a guest record
  *     is created, flagged `selfRegistered` for admin review, with a fresh code).
  *
- * Capacity-limited events stop accepting new *attending* RSVPs once full
- * (declines and already-confirmed guests are never blocked).
+ * Either path may bring additional household members (plus-ones / kids), who
+ * RSVP with the same status and each count toward the event's capacity.
+ *
+ * Capacity-limited events stop accepting new attendees once full — the whole
+ * party must fit. Declines and guests re-confirming an existing "yes" are never
+ * blocked (their existing seats are excluded from the count).
  *
  * @description Submit a public per-event RSVP (by invite code or by name)
  * @body PublicEventRsvpBody
@@ -63,15 +68,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Resolve (or create) the guest.
-    let guest: {
-      id: string;
-      firstName: string;
-      lastName: string | null;
-      email: string | null;
-      inviteCode: string | null;
-    };
+    // Household members only ride along on an acceptance.
+    const additional = input.attending
+      ? (input.additionalGuests ?? []).map((a) => ({
+          firstName: a.firstName.trim(),
+          lastName: a.lastName?.trim() || null,
+        }))
+      : [];
+
+    // --- Resolve the primary guest (existing id, or data to create) ---
+    let primaryId: string | null = null;
+    let primaryToCreate: Prisma.GuestCreateInput | null = null;
     let generatedCode: string | null = null;
+    let primaryEmailInfo = {
+      firstName: "",
+      lastName: null as string | null,
+      email: null as string | null,
+      inviteCode: null as string | null,
+    };
 
     if (input.mode === "code") {
       const found = await db.guest.findFirst({
@@ -94,14 +108,15 @@ export async function POST(request: NextRequest) {
           { status: 404 },
         );
       }
-      guest = found;
+      primaryId = found.id;
+      primaryEmailInfo = found;
     } else {
       const firstName = input.firstName.trim();
       const lastName = input.lastName?.trim() || null;
       const email = input.email?.trim() || null;
 
-      // Reuse an existing matching guest (case-insensitive name) to avoid
-      // creating a duplicate when someone re-RSVPs by name.
+      // Reuse an existing matching guest (case-insensitive name) to avoid a
+      // duplicate when someone re-RSVPs by name.
       const existing = await db.guest.findFirst({
         where: {
           weddingId,
@@ -118,7 +133,8 @@ export async function POST(request: NextRequest) {
       });
 
       if (existing) {
-        guest = existing;
+        primaryId = existing.id;
+        primaryEmailInfo = existing;
       } else {
         // Mint a unique invite code so the self-registered guest can manage
         // their RSVP later.
@@ -132,59 +148,110 @@ export async function POST(request: NextRequest) {
           code = generateInviteCode();
         }
         generatedCode = code;
-        guest = await db.guest.create({
-          data: {
-            firstName,
-            lastName,
-            email,
-            inviteCode: code,
-            weddingId,
-            selfRegistered: true,
-            list: "c",
-          },
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            inviteCode: true,
-          },
-        });
+        primaryToCreate = {
+          firstName,
+          lastName,
+          email,
+          inviteCode: code,
+          selfRegistered: true,
+          list: "c",
+          wedding: { connect: { id: weddingId } },
+        };
+        primaryEmailInfo = { firstName, lastName, email, inviteCode: code };
       }
     }
 
-    // Capacity gate + invite upsert run in one transaction that locks the event
-    // row first (SELECT … FOR UPDATE), so concurrent RSVPs to a capacity-limited
-    // event serialize on that row — two requests can't both read "not full" and
-    // both confirm. Only *new* attendees are gated; declines and guests
-    // re-confirming an existing "yes" are never blocked (the count excludes the
-    // current guest).
+    // --- Resolve additional guests (reuse matching plus-ones if the primary
+    // already exists, otherwise create them) ---
+    const additionalExistingIds: string[] = [];
+    const additionalToCreate: { firstName: string; lastName: string | null }[] =
+      [];
+    for (const a of additional) {
+      let matchedId: string | null = null;
+      if (primaryId) {
+        const match = await db.guest.findFirst({
+          where: {
+            weddingId,
+            primaryGuestId: primaryId,
+            isPlusOne: true,
+            firstName: { equals: a.firstName, mode: "insensitive" },
+            lastName: a.lastName
+              ? { equals: a.lastName, mode: "insensitive" }
+              : null,
+          },
+          select: { id: true },
+        });
+        matchedId = match?.id ?? null;
+      }
+      if (matchedId) additionalExistingIds.push(matchedId);
+      else additionalToCreate.push(a);
+    }
+
+    // Seats this party already holds (excluded from the "others" count) and the
+    // number of seats it needs once everyone is confirmed.
+    const partyExistingIds = [
+      ...(primaryId ? [primaryId] : []),
+      ...additionalExistingIds,
+    ];
+    const requested = input.attending ? 1 + additional.length : 0;
+
+    let resolvedPrimaryId = primaryId;
     try {
       await db.$transaction(async (tx) => {
         if (input.attending && event.capacity != null) {
+          // Serialize concurrent RSVPs to this event on its row.
           await tx.$queryRaw`SELECT id FROM events WHERE id = ${event.id}::uuid FOR UPDATE`;
-          const confirmedOthers = await tx.guestEventInvite.count({
-            where: {
-              eventId: event.id,
-              rsvpStatus: "yes",
-              guestId: { not: guest.id },
-            },
-          });
-          if (isEventFull(confirmedOthers, event.capacity)) {
+          const where: Prisma.GuestEventInviteWhereInput = {
+            eventId: event.id,
+            rsvpStatus: "yes",
+          };
+          if (partyExistingIds.length > 0) {
+            where.guestId = { notIn: partyExistingIds };
+          }
+          const confirmedOthers = await tx.guestEventInvite.count({ where });
+          if (!canAccommodate(confirmedOthers, requested, event.capacity)) {
             throw new CapacityFullError();
           }
         }
 
-        await tx.guestEventInvite.upsert({
-          where: { guestId_eventId: { guestId: guest.id, eventId: event.id } },
-          create: {
-            guestId: guest.id,
-            eventId: event.id,
-            weddingId,
-            rsvpStatus,
-          },
-          update: { rsvpStatus },
-        });
+        // Create the primary now (inside the tx) so a capacity failure doesn't
+        // leave an orphan self-registered guest.
+        if (!resolvedPrimaryId && primaryToCreate) {
+          const created = await tx.guest.create({
+            data: primaryToCreate,
+            select: { id: true },
+          });
+          resolvedPrimaryId = created.id;
+        }
+        if (!resolvedPrimaryId) {
+          // Shouldn't happen — either we found a primary or had data to create.
+          throw new Error("No primary guest to RSVP");
+        }
+
+        const partyIds = [resolvedPrimaryId, ...additionalExistingIds];
+        for (const a of additionalToCreate) {
+          const created = await tx.guest.create({
+            data: {
+              firstName: a.firstName,
+              lastName: a.lastName,
+              isPlusOne: true,
+              selfRegistered: true,
+              list: "c",
+              wedding: { connect: { id: weddingId } },
+              primaryGuest: { connect: { id: resolvedPrimaryId } },
+            },
+            select: { id: true },
+          });
+          partyIds.push(created.id);
+        }
+
+        for (const guestId of partyIds) {
+          await tx.guestEventInvite.upsert({
+            where: { guestId_eventId: { guestId, eventId: event.id } },
+            create: { guestId, eventId: event.id, weddingId, rsvpStatus },
+            update: { rsvpStatus },
+          });
+        }
       });
     } catch (txError) {
       if (txError instanceof CapacityFullError) {
@@ -196,6 +263,8 @@ export async function POST(request: NextRequest) {
       throw txError;
     }
 
+    const partyCount = 1 + additional.length;
+
     // Notify the couple in the background — best-effort, never blocks the RSVP.
     after(async () => {
       try {
@@ -204,13 +273,17 @@ export async function POST(request: NextRequest) {
         const recipients = getNotificationRecipients(settings);
         if (recipients.length === 0) return;
 
+        const partySuffix =
+          additional.length > 0 ? ` (+${additional.length})` : "";
         const rendered = await renderEmailTemplate(
           weddingId,
           "event_rsvp_notification",
           {
-            GUEST_NAME: `${guest.firstName} ${guest.lastName || ""}`.trim(),
-            GUEST_EMAIL: guest.email || "No email provided",
-            INVITE_CODE: guest.inviteCode ?? "",
+            GUEST_NAME:
+              `${primaryEmailInfo.firstName} ${primaryEmailInfo.lastName || ""}`.trim() +
+              partySuffix,
+            GUEST_EMAIL: primaryEmailInfo.email || "No email provided",
+            INVITE_CODE: primaryEmailInfo.inviteCode ?? "",
             EVENT_NAME: event.name,
             STATUS: input.attending ? "Attending" : "Not Attending",
             STATUS_COLOR: input.attending ? "#48bb78" : "#f56565",
@@ -231,7 +304,7 @@ export async function POST(request: NextRequest) {
             html: rendered.html,
             log: {
               weddingId,
-              guestId: guest.id,
+              guestId: resolvedPrimaryId ?? undefined,
               type: "event_rsvp_notification",
             },
           });
@@ -244,6 +317,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       rsvpStatus,
+      partyCount,
       // Returned only for first-time self-registrations so the page can show
       // the guest the code they'll use to manage their RSVP.
       inviteCode: generatedCode,

@@ -23,3 +23,17 @@ export function remainingCapacity(
   if (capacity == null) return null;
   return Math.max(0, capacity - confirmedCount);
 }
+
+/**
+ * Whether `requested` additional attendees fit alongside `confirmedOthers`
+ * already-confirmed guests. Used by the public RSVP flow when a party (a primary
+ * guest plus household members) confirms together — every head must fit.
+ */
+export function canAccommodate(
+  confirmedOthers: number,
+  requested: number,
+  capacity: number | null | undefined,
+): boolean {
+  if (capacity == null) return true;
+  return confirmedOthers + requested <= capacity;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Check, Clock, MapPin, X } from "lucide-react";
+import { Calendar, Check, Clock, MapPin, Plus, X } from "lucide-react";
 import { useState } from "react";
 
 interface PublicEventRsvpProps {
@@ -48,10 +48,14 @@ export function PublicEventRsvp({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [additionalGuests, setAdditionalGuests] = useState<
+    { firstName: string; lastName: string }[]
+  >([]);
   const [attending, setAttending] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [submittedPartyCount, setSubmittedPartyCount] = useState(1);
   const [isFull, setIsFull] = useState(initialFull);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,7 +71,19 @@ export function PublicEventRsvp({
     setError(null);
 
     try {
-      const payload =
+      // Only bring household members along on an acceptance, and drop any blank
+      // rows the guest left behind.
+      const cleanedAdditional =
+        attending === true
+          ? additionalGuests
+              .map((g) => ({
+                firstName: g.firstName.trim(),
+                lastName: g.lastName.trim() || undefined,
+              }))
+              .filter((g) => g.firstName.length > 0)
+          : [];
+
+      const base =
         mode === "code"
           ? { mode, token, code: code.trim(), attending }
           : {
@@ -78,6 +94,10 @@ export function PublicEventRsvp({
               email: email.trim() || undefined,
               attending,
             };
+      const payload =
+        cleanedAdditional.length > 0
+          ? { ...base, additionalGuests: cleanedAdditional }
+          : base;
 
       const res = await fetch("/api/events/rsvp/public", {
         method: "POST",
@@ -92,6 +112,7 @@ export function PublicEventRsvp({
       }
 
       setGeneratedCode(data.inviteCode ?? null);
+      setSubmittedPartyCount(data.partyCount ?? 1);
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit RSVP");
@@ -134,7 +155,9 @@ export function PublicEventRsvp({
           </h1>
           <p className="text-gray-600 mb-6">
             {attending
-              ? `We're excited to have you at ${event.name}!`
+              ? submittedPartyCount > 1
+                ? `We're excited to have all ${submittedPartyCount} of you at ${event.name}!`
+                : `We're excited to have you at ${event.name}!`
               : `We'll miss you at ${event.name}, but thank you for responding.`}
           </p>
           {generatedCode && (
@@ -314,6 +337,77 @@ export function PublicEventRsvp({
             </div>
           </button>
         </div>
+
+        {/* Additional household members — only when accepting */}
+        {attending === true && (
+          <div className="mb-6">
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              Anyone else in your party?
+            </p>
+            <div className="space-y-2">
+              {additionalGuests.map((g, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional and reorder-free
+                <div key={i} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={g.firstName}
+                    onChange={(e) =>
+                      setAdditionalGuests((prev) =>
+                        prev.map((row, idx) =>
+                          idx === i
+                            ? { ...row, firstName: e.target.value }
+                            : row,
+                        ),
+                      )
+                    }
+                    placeholder="First name"
+                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-gray-900 focus:border-purple-400 focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={g.lastName}
+                    onChange={(e) =>
+                      setAdditionalGuests((prev) =>
+                        prev.map((row, idx) =>
+                          idx === i
+                            ? { ...row, lastName: e.target.value }
+                            : row,
+                        ),
+                      )
+                    }
+                    placeholder="Last name"
+                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-gray-900 focus:border-purple-400 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAdditionalGuests((prev) =>
+                        prev.filter((_, idx) => idx !== i),
+                      )
+                    }
+                    className="px-3 rounded-lg border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-300"
+                    aria-label="Remove guest"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setAdditionalGuests((prev) => [
+                  ...prev,
+                  { firstName: "", lastName: "" },
+                ])
+              }
+              className="mt-2 inline-flex items-center gap-1 text-sm text-purple-600 hover:text-purple-700"
+            >
+              <Plus className="w-4 h-4" />
+              Add a guest
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
