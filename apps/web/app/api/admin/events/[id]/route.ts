@@ -105,6 +105,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       isDefault,
       displayOrder,
       capacity,
+      publicRsvpEnabled,
     } = body;
 
     // Get current event to check if isDefault changed
@@ -144,6 +145,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (capacity !== undefined)
       updateData.capacity =
         capacity === null || capacity === "" ? null : Number(capacity);
+    if (publicRsvpEnabled !== undefined)
+      updateData.publicRsvpEnabled = Boolean(publicRsvpEnabled);
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(

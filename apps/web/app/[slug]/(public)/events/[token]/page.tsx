@@ -123,6 +123,7 @@ export default async function PublicEventRsvpPage({ params }: PageProps) {
         locationAddress: event.locationAddress,
       }}
       isFull={isFull}
+      closed={!event.publicRsvpEnabled}
     />
   );
 }

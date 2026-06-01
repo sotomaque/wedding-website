@@ -54,6 +54,7 @@ interface Event {
   isDefault: boolean;
   capacity: number | null;
   publicRsvpToken: string | null;
+  publicRsvpEnabled: boolean;
   displayOrder: number;
   createdAt: string;
   inviteCount: number;
@@ -379,7 +380,11 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                       </a>
                     </Button>
                   )}
-                  <ShareEventDialog eventId={event.id} eventName={event.name} />
+                  <ShareEventDialog
+                    eventId={event.id}
+                    eventName={event.name}
+                    initialEnabled={event.publicRsvpEnabled}
+                  />
                   <Button
                     variant="outline"
                     size="sm"

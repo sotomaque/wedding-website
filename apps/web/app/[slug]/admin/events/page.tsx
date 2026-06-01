@@ -87,6 +87,7 @@ async function getEvents() {
       isDefault: event.isDefault ?? false,
       capacity: event.capacity ?? null,
       publicRsvpToken: event.publicRsvpToken ?? null,
+      publicRsvpEnabled: event.publicRsvpEnabled ?? true,
       displayOrder: event.displayOrder ?? 0,
       createdAt: createdAtStr,
       inviteCount: total,
