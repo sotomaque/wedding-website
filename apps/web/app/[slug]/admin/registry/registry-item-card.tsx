@@ -127,6 +127,7 @@ export function RegistryItemCard({
             variant="ghost"
             size="icon"
             className="h-8 w-8"
+            aria-label={`Edit ${item.title}`}
             onClick={() => onEdit(item)}
           >
             <Pencil className="h-3.5 w-3.5" />
@@ -135,6 +136,7 @@ export function RegistryItemCard({
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
+            aria-label={`Delete ${item.title}`}
             onClick={() => onDelete(item.id)}
           >
             <Trash2 className="h-3.5 w-3.5" />

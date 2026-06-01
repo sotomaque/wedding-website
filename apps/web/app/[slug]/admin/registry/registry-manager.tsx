@@ -86,10 +86,36 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
     setIsSaving(true);
     try {
       if (editId) {
-        const result = await updateRegistryItem(editId, formToInput());
+        const input = formToInput();
+        const result = await updateRegistryItem(editId, input);
         if (result.success) {
-          // Refresh from the server so derived fields (cleared links, cents)
-          // reflect exactly what was persisted.
+          // Optimistically reflect the edit immediately, then refresh from the
+          // server to reconcile derived fields (cleared links on type switch).
+          setItems((prev) =>
+            prev.map((item) =>
+              item.id === editId
+                ? {
+                    ...item,
+                    title: input.title.trim(),
+                    description: input.description.trim() || null,
+                    emoji: input.emoji.trim() || null,
+                    imageUrl: input.imageUrl.trim() || null,
+                    itemType: input.itemType,
+                    stripeUrl:
+                      input.itemType === "fund"
+                        ? input.stripeUrl.trim() || null
+                        : null,
+                    productUrl:
+                      input.itemType === "product"
+                        ? input.productUrl.trim() || null
+                        : null,
+                    priceCents:
+                      input.itemType === "product" ? input.priceCents : null,
+                    isActive: input.isActive,
+                  }
+                : item,
+            ),
+          );
           router.refresh();
           toast.success("Registry item updated");
         } else {
