@@ -49,6 +49,7 @@ export interface WeddingSettings {
   featureToggles: FeatureToggles;
   designConfig: DesignConfig;
   headcountConfig: HeadcountConfig;
+  registryWishlistUrl: string | null;
 }
 
 export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
@@ -77,6 +78,7 @@ export const getWeddingSettings = cache(async (): Promise<WeddingSettings> => {
       featureToggles: true,
       designConfig: true,
       headcountConfig: true,
+      registryWishlistUrl: true,
     },
   });
 

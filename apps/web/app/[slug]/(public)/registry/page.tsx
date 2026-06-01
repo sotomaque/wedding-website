@@ -44,6 +44,19 @@ export default async function RegistryPage() {
               <p className="text-lg text-muted-foreground leading-relaxed animate-fade-in-up animation-delay-300">
                 {t("description")}
               </p>
+              {settings.registryWishlistUrl && (
+                <div className="mt-8 animate-fade-in-up animation-delay-300">
+                  <a
+                    href={settings.registryWishlistUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-base font-medium text-accent-foreground transition-opacity hover:opacity-90"
+                  >
+                    {t("viewWishlist")}
+                    <span aria-hidden="true">↗</span>
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </section>

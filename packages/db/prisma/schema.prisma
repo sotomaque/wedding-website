@@ -472,6 +472,12 @@ model Wedding {
   // See apps/web/lib/headcount.ts and the headcountConfigSchema validation.
   headcountConfig       Json                   @default("{}") @map("headcount_config") @db.JsonB
 
+  // Optional external registry wishlist link (e.g. an Amazon wishlist) shown
+  // at the top of the public registry page. Items there are tracked by the
+  // external provider, not by us — only individual product items added in the
+  // admin support our "claimed / taken" state.
+  registryWishlistUrl   String?                @map("registry_wishlist_url")
+
   // Relations
   activities            Activity[]
   chatMessages          ChatMessage[]

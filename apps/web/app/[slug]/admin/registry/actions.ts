@@ -197,3 +197,39 @@ export async function toggleRegistryItemActive(
     return { success: false, error: "Failed to toggle registry item" };
   }
 }
+
+/**
+ * Set (or clear) the wedding's external registry wishlist URL — shown at the
+ * top of the public registry page. Pass an empty string to clear it.
+ */
+export async function updateRegistryWishlistUrl(
+  url: string,
+): Promise<{ success: boolean; error?: string }> {
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
+  const trimmed = url.trim();
+  if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+    return {
+      success: false,
+      error: "Enter a valid URL starting with https://",
+    };
+  }
+
+  try {
+    await db.wedding.update({
+      where: { id: weddingId },
+      data: { registryWishlistUrl: trimmed || null },
+    });
+
+    revalidatePath(`/${slug}/admin/registry`);
+    revalidatePath(`/${slug}/registry`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating registry wishlist URL:", error);
+    return { success: false, error: "Failed to update wishlist link" };
+  }
+}
