@@ -36,12 +36,14 @@ import { toast } from "sonner";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
+import { formatEventDateRange } from "@/lib/utils/event-format";
 
 interface Event {
   id: string;
   name: string;
   description: string | null;
   eventDate: string | null;
+  endDate?: string | null;
   startTime: string | null;
   endTime: string | null;
   locationName: string | null;
@@ -65,6 +67,7 @@ interface EventFormData {
   name: string;
   description: string;
   eventDate: string;
+  endDate: string;
   startTime: string;
   endTime: string;
   locationName: string;
@@ -78,6 +81,7 @@ const defaultFormData: EventFormData = {
   name: "",
   description: "",
   eventDate: "",
+  endDate: "",
   startTime: "",
   endTime: "",
   locationName: "",
@@ -133,6 +137,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
         !Number.isNaN(new Date(`${event.eventDate}T00:00:00`).getTime())
           ? String(event.eventDate)
           : "",
+      endDate: event.endDate || "",
       startTime: event.startTime
         ? new Date(event.startTime).toISOString().slice(11, 16)
         : "",
@@ -157,6 +162,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
         name: formData.name,
         description: formData.description || null,
         eventDate: formData.eventDate,
+        endDate: formData.endDate || null,
         startTime: formData.startTime,
         endTime: formData.endTime || null,
         locationName: formData.locationName,
@@ -299,7 +305,14 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                     {event.eventDate ? (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        <span>{formatDate(event.eventDate)}</span>
+                        <span>
+                          {event.endDate && event.endDate > event.eventDate
+                            ? formatEventDateRange(
+                                event.eventDate,
+                                event.endDate,
+                              )
+                            : formatDate(event.eventDate)}
+                        </span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-muted-foreground italic">
@@ -454,7 +467,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 {/* biome-ignore lint/a11y/noLabelWithoutControl: Calendar popover trigger acts as the control */}
-                <label className="text-sm font-medium">Date</label>
+                <label className="text-sm font-medium">Start Date</label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -506,6 +519,76 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                 </Popover>
               </div>
               <div className="space-y-2">
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: Calendar popover trigger acts as the control */}
+                <label className="text-sm font-medium">End Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.endDate && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.endDate &&
+                      !Number.isNaN(
+                        new Date(`${formData.endDate}T00:00:00`).getTime(),
+                      )
+                        ? format(
+                            new Date(`${formData.endDate}T00:00:00`),
+                            "MMM d, yyyy",
+                          )
+                        : "Single day"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker
+                      mode="single"
+                      selected={
+                        formData.endDate
+                          ? new Date(`${formData.endDate}T00:00:00`)
+                          : undefined
+                      }
+                      onSelect={(date) => {
+                        if (date) {
+                          const yyyy = date.getFullYear();
+                          const mm = String(date.getMonth() + 1).padStart(
+                            2,
+                            "0",
+                          );
+                          const dd = String(date.getDate()).padStart(2, "0");
+                          setFormData((prev) => ({
+                            ...prev,
+                            endDate: `${yyyy}-${mm}-${dd}`,
+                          }));
+                        }
+                      }}
+                    />
+                    {formData.endDate && (
+                      <div className="border-t border-border p-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full"
+                          onClick={() =>
+                            setFormData((prev) => ({ ...prev, endDate: "" }))
+                          }
+                        >
+                          Clear (single day)
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-muted-foreground">
+                  Leave blank for a single-day event.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="startTime">Start Time</Label>
                 <Input
                   id="startTime"
@@ -519,18 +602,20 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                   }
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="endTime">End Time</Label>
-              <Input
-                id="endTime"
-                type="time"
-                value={formData.endTime}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, endTime: e.target.value }))
-                }
-              />
+              <div className="space-y-2">
+                <Label htmlFor="endTime">End Time</Label>
+                <Input
+                  id="endTime"
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      endTime: e.target.value,
+                    }))
+                  }
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

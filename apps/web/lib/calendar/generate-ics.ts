@@ -2,10 +2,18 @@ export interface CalendarEvent {
   id: string;
   name: string;
   event_date: Date | null;
+  end_date?: Date | null; // multi-day events end on this date
   start_time: string | null; // "HH:MM"
   end_time: string | null; // "HH:MM"
   location_name: string | null;
   location_address: string | null;
+}
+
+/** Add one UTC day (used for the exclusive DTEND of all-day spans). */
+function addOneDayUtc(date: Date): Date {
+  const d = new Date(date);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d;
 }
 
 /**
@@ -134,8 +142,14 @@ export function generateIcs(
     const startTime = event.start_time;
     const endTime =
       event.end_time ?? (startTime ? addTwoHours(startTime) : null);
+    // Multi-day events end on end_date; the end time applies to that last day.
+    const endDateBase = event.end_date ?? event.event_date;
+    const isMultiDay =
+      !!event.end_date &&
+      endDateBase.toISOString().slice(0, 10) >
+        event.event_date.toISOString().slice(0, 10);
     const dtStart = formatIcsDateTime(event.event_date, startTime);
-    const dtEnd = formatIcsDateTime(event.event_date, endTime);
+    const dtEnd = formatIcsDateTime(endDateBase, endTime);
     const couple = coupleName ?? "the couple";
     const summary = escapeIcsText(`${event.name} — ${couple}`);
     const location = escapeIcsText(
@@ -162,9 +176,13 @@ export function generateIcs(
       lines.push(`DTSTART;TZID=America/New_York:${dtStart}`);
       lines.push(`DTEND;TZID=America/New_York:${dtEnd}`);
     } else {
-      // All-day event
+      // All-day event. iCal DTEND is exclusive: for a multi-day span it's the
+      // day after the last day; single-day keeps its prior same-day value.
+      const allDayEnd = isMultiDay
+        ? addOneDayUtc(endDateBase)
+        : event.event_date;
       lines.push(`DTSTART;VALUE=DATE:${dtStart}`);
-      lines.push(`DTEND;VALUE=DATE:${dtEnd}`);
+      lines.push(`DTEND;VALUE=DATE:${formatIcsDateTime(allDayEnd, null)}`);
     }
 
     lines.push(`SUMMARY:${summary}`);
