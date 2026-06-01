@@ -23,6 +23,8 @@ const TYPE_LABELS: Record<string, string> = {
   event_rsvp_notification: "Event RSVP Notification",
   hotel_interest_notification: "Hotel Interest Notification",
   calendar_invite: "Calendar Invite",
+  rsvp_confirmation: "RSVP Confirmation",
+  gift_thank_you: "Gift Thank You",
 };
 
 export function TemplateViewer({ template }: TemplateViewerProps) {

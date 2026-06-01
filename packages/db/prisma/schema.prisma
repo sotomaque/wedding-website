@@ -757,6 +757,8 @@ enum EmailTemplateType {
   rsvp_reminder
   admin_summary
   welcome
+  rsvp_confirmation
+  gift_thank_you
 
   @@map("email_template_type")
 }

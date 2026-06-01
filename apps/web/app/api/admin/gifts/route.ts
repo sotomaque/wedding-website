@@ -1,8 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { getEmailFromAddress } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
+import { sendEmail } from "@/lib/email/resend-client";
 import { updateGiftSchema } from "@/lib/validations/admin-api";
+
+const GIFT_TYPE_LABELS: Record<string, string> = {
+  baby_fund: "Baby Fund",
+  honeymoon: "Honeymoon Fund",
+  student_loans: "Student Loans Fund",
+};
 
 /**
  * List all gifts
@@ -139,6 +149,46 @@ export async function PATCH(request: NextRequest) {
       where: { id },
       data: updates,
     });
+
+    // Send the donor thank-you when an admin flips the flag false -> true and
+    // the donor has an email. Best-effort: a send failure doesn't fail the
+    // request (the flag reflects the admin's intent and is editable).
+    if (
+      thankYouEmailSent === true &&
+      !existing.thankYouEmailSent &&
+      existing.donorEmail?.includes("@")
+    ) {
+      try {
+        const settings = await getWeddingSettings();
+        const amount = new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: (existing.currency || "usd").toUpperCase(),
+        }).format(existing.amountCents / 100);
+        const rendered = await renderEmailTemplate(
+          weddingId,
+          "gift_thank_you",
+          {
+            DONOR_NAME: existing.donorName || "there",
+            AMOUNT: amount,
+            GIFT_TYPE: existing.giftType
+              ? (GIFT_TYPE_LABELS[existing.giftType] ?? "gift")
+              : "gift",
+            COUPLE_NAMES: settings.coupleName,
+          },
+          settings.defaultLanguage,
+        );
+        if (rendered) {
+          await sendEmail({
+            from: getEmailFromAddress(settings, settings.coupleName),
+            to: existing.donorEmail,
+            subject: rendered.subject,
+            html: rendered.html,
+          });
+        }
+      } catch (emailError) {
+        console.error("Error sending gift thank-you email:", emailError);
+      }
+    }
 
     return NextResponse.json({ gift: updatedGift });
   } catch (error) {
