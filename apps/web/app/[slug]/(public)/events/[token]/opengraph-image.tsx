@@ -8,7 +8,8 @@ export const alt = "Wedding event RSVP";
 export const runtime = "nodejs";
 
 interface ImageProps {
-  params: { slug: string; token: string };
+  // Next passes route params as a Promise — must be awaited (see below).
+  params: Promise<{ slug: string; token: string }>;
 }
 
 function formatDate(value: Date | string | null): string | null {
@@ -152,8 +153,9 @@ function Card({ name, couple, dateStr, location, hero }: CardData) {
  */
 export default async function OpengraphImage({ params }: ImageProps) {
   try {
+    const { token } = await params;
     const event = await db.event.findUnique({
-      where: { publicRsvpToken: params.token },
+      where: { publicRsvpToken: token },
       include: {
         wedding: { select: { coupleName: true } },
       },
