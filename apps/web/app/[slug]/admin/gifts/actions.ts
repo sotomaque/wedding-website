@@ -3,6 +3,14 @@
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
+// Prisma returns Date objects for timestamp columns; serialize them to the
+// ISO strings the client table consumes. Tolerant of values that are already
+// strings (e.g. in tests) and of null.
+function dateToString(value: Date | string | null | undefined): string {
+  if (!value) return "";
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
 interface Gift {
   id: string;
   stripeCheckoutSessionId: string | null;
@@ -89,17 +97,19 @@ export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
       },
     });
 
-    // Map to expected shape with flattened guest data
-    const mapped = gifts.map((gift) => ({
+    // Flatten guest data and serialize dates to the string shape the client
+    // table consumes. Destructuring `guest` out drops the nested relation.
+    return gifts.map(({ guest, ...gift }) => ({
       ...gift,
-      guestFirstName: gift.guest?.firstName ?? null,
-      guestLastName: gift.guest?.lastName ?? null,
-      guestEmail: gift.guest?.email ?? null,
-      guest: undefined,
+      createdAt: dateToString(gift.createdAt),
+      updatedAt: dateToString(gift.updatedAt),
+      thankYouEmailSentAt: gift.thankYouEmailSentAt
+        ? dateToString(gift.thankYouEmailSentAt)
+        : null,
+      guestFirstName: guest?.firstName ?? null,
+      guestLastName: guest?.lastName ?? null,
+      guestEmail: guest?.email ?? null,
     }));
-
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    return mapped as any;
   } catch (error) {
     console.error("Error fetching gifts:", error);
     throw error;
@@ -125,17 +135,19 @@ export async function getGiftWithGuest(giftId: string) {
       return null;
     }
 
-    // Map to expected shape with flattened guest data
-    const mapped = {
-      ...gift,
-      guestFirstName: gift.guest?.firstName ?? null,
-      guestLastName: gift.guest?.lastName ?? null,
-      guestEmail: gift.guest?.email ?? null,
-      guest: undefined,
+    // Flatten guest data and serialize dates to strings.
+    const { guest, ...rest } = gift;
+    return {
+      ...rest,
+      createdAt: dateToString(rest.createdAt),
+      updatedAt: dateToString(rest.updatedAt),
+      thankYouEmailSentAt: rest.thankYouEmailSentAt
+        ? dateToString(rest.thankYouEmailSentAt)
+        : null,
+      guestFirstName: guest?.firstName ?? null,
+      guestLastName: guest?.lastName ?? null,
+      guestEmail: guest?.email ?? null,
     };
-
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    return mapped as any as Gift;
   } catch (error) {
     console.error("Error fetching gift:", error);
     return null;

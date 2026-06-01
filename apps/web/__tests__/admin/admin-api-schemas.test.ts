@@ -1,8 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import {
   createEventSchema,
+  createReminderSchema,
+  createSeatingChartSchema,
   createTemplateSchema,
+  deleteReminderSchema,
   updateGiftSchema,
+  updateRemindersSchema,
 } from "@/lib/validations/admin-api";
 
 describe("createEventSchema", () => {
@@ -82,5 +86,61 @@ describe("updateGiftSchema", () => {
       updateGiftSchema.safeParse({ id: "g1", thankYouEmailSent: "yes" })
         .success,
     ).toBe(false);
+  });
+});
+
+describe("createSeatingChartSchema", () => {
+  it("requires a non-empty name with the original message", () => {
+    const res = createSeatingChartSchema.safeParse({ notes: "x" });
+    expect(res.success).toBe(false);
+    if (!res.success)
+      expect(res.error.issues[0]?.message).toBe("Chart name is required");
+  });
+
+  it("accepts a name with optional seats/notes", () => {
+    expect(
+      createSeatingChartSchema.safeParse({
+        name: "Main",
+        defaultSeatsPerTable: 10,
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe("createReminderSchema", () => {
+  it("accepts a positive integer", () => {
+    expect(
+      createReminderSchema.safeParse({ daysBeforeDeadline: 10 }).success,
+    ).toBe(true);
+  });
+
+  it("rejects non-positive, non-integer, and missing values", () => {
+    expect(
+      createReminderSchema.safeParse({ daysBeforeDeadline: -5 }).success,
+    ).toBe(false);
+    expect(
+      createReminderSchema.safeParse({ daysBeforeDeadline: 3.5 }).success,
+    ).toBe(false);
+    expect(createReminderSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("updateRemindersSchema", () => {
+  it("requires schedules to be an array", () => {
+    expect(updateRemindersSchema.safeParse({ schedules: "nope" }).success).toBe(
+      false,
+    );
+    expect(
+      updateRemindersSchema.safeParse({
+        schedules: [{ id: "s1", isEnabled: false }],
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe("deleteReminderSchema", () => {
+  it("requires an id", () => {
+    expect(deleteReminderSchema.safeParse({}).success).toBe(false);
+    expect(deleteReminderSchema.safeParse({ id: "s1" }).success).toBe(true);
   });
 });

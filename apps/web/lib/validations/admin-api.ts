@@ -50,3 +50,40 @@ export const updateGiftSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 export type UpdateGiftInput = z.infer<typeof updateGiftSchema>;
+
+// --- POST /api/admin/seating-charts ---
+export const createSeatingChartSchema = z.object({
+  name: z
+    .string({ error: "Chart name is required" })
+    .trim()
+    .min(1, { error: "Chart name is required" }),
+  defaultSeatsPerTable: z.number().int().positive().optional(),
+  notes: z.string().nullish(),
+});
+export type CreateSeatingChartInput = z.infer<typeof createSeatingChartSchema>;
+
+// --- /api/admin/reminders ---
+const positiveDays = "daysBeforeDeadline must be a positive integer";
+
+export const createReminderSchema = z.object({
+  daysBeforeDeadline: z
+    .number({ error: positiveDays })
+    .int({ error: positiveDays })
+    .positive({ error: positiveDays }),
+  isEnabled: z.boolean().optional(),
+});
+
+export const updateRemindersSchema = z.object({
+  schedules: z.array(
+    z.object({
+      id: z.string().min(1),
+      isEnabled: z.boolean().optional(),
+      daysBeforeDeadline: z.number().int().positive().optional(),
+    }),
+    { error: "schedules must be an array" },
+  ),
+});
+
+export const deleteReminderSchema = z.object({
+  id: z.string({ error: "id is required" }).min(1, { error: "id is required" }),
+});
