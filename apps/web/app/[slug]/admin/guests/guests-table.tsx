@@ -43,12 +43,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { EventOption, PartyOption } from "./actions";
 import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
 import { ExportWizard } from "./export-wizard";
 import { GuestsFilters } from "./guests-filters";
+import { MergeGuestDialog } from "./merge-guest-dialog";
 import { useBulkGuestActions } from "./use-bulk-guest-actions";
 
 type SortableColumn =
@@ -80,6 +82,7 @@ export function GuestsTable({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [showBulkMerge, setShowBulkMerge] = useState(false);
   // Bulk actions extracted to custom hook — see use-bulk-guest-actions.ts
   const slug = useWeddingSlug();
   const router = useRouter();
@@ -486,6 +489,30 @@ export function GuestsTable({
                 {bulkActions.getCalendarValidationMessage()}
               </span>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowBulkMerge(true)}
+            >
+              Merge into…
+            </Button>
+            <ConfirmDialog
+              trigger={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  disabled={bulkActions.isBulkDeleting}
+                >
+                  {bulkActions.isBulkDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              }
+              title={`Delete ${selectedGuests.length} guest(s)?`}
+              description="This permanently removes the selected guests and their RSVP information. This cannot be undone."
+              confirmLabel="Delete"
+              variant="destructive"
+              onConfirm={bulkActions.handleBulkDelete}
+            />
           </div>
           <Button
             variant="ghost"
@@ -497,6 +524,21 @@ export function GuestsTable({
           </Button>
         </div>
       )}
+
+      <MergeGuestDialog
+        open={showBulkMerge}
+        onOpenChange={setShowBulkMerge}
+        sourceIds={selectedGuests.map((g) => g.id)}
+        sourceLabel={
+          selectedGuests.length === 1
+            ? `${selectedGuests[0]?.firstName ?? "guest"}`
+            : `${selectedGuests.length} guests`
+        }
+        onMerged={() => {
+          setRowSelection({});
+          router.refresh();
+        }}
+      />
 
       {/* Table */}
       <div className="-mx-2 sm:-mx-4 md:mx-0 md:rounded-md md:border">
