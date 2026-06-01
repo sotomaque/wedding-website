@@ -65,6 +65,13 @@ model Event {
   longitude        Decimal?           @db.Decimal(10, 7)
   isDefault        Boolean?           @default(false) @map("is_default")
   displayOrder     Int?               @default(0) @map("display_order")
+  // Optional cap on confirmed ("yes") attendees. Null = unlimited. Enforced on
+  // the public per-event RSVP flow so a capacity-limited event (e.g. a reception
+  // with a head-count limit) stops accepting new attendees once full.
+  capacity         Int?
+  // Unguessable token for the public shareable RSVP link
+  // (/{slug}/events/{token}). Minted lazily the first time the event is shared.
+  publicRsvpToken  String?            @unique @map("public_rsvp_token")
   createdAt        DateTime?          @default(now()) @map("created_at") @db.Timestamptz(6)
   weddingId        String            @map("wedding_id") @db.Uuid
   wedding          Wedding           @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -238,6 +245,10 @@ model Guest {
   family                              Boolean                 @default(false)
   notes                               String?
   under21                             Boolean                 @default(false) @map("under_21")
+  // True when the guest added themselves via a public per-event RSVP link
+  // (by typing their name rather than using an invite code). Flagged so the
+  // couple can review / merge these in the admin guest list.
+  selfRegistered                      Boolean                 @default(false) @map("self_registered")
   clerkUserId                         String?                 @map("clerk_user_id")
   activitiesEmailSent                 Boolean?                @default(false) @map("activities_email_sent")
   activitiesEmailSentAt               DateTime?               @map("activities_email_sent_at") @db.Timestamptz(6)

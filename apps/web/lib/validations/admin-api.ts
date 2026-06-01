@@ -29,6 +29,8 @@ export const createEventSchema = z.object({
   latitude: z.number().nullish(),
   longitude: z.number().nullish(),
   isDefault: z.boolean().optional(),
+  // Optional cap on confirmed attendees (null/omitted = unlimited).
+  capacity: z.number().int().positive().nullish(),
 });
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 

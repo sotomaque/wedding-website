@@ -530,6 +530,14 @@ export function createColumns({
               +1
             </span>
           )}
+          {row.original.selfRegistered && (
+            <span
+              className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 px-2 py-0.5 rounded"
+              title="Added themselves via a public event RSVP link"
+            >
+              Self-registered
+            </span>
+          )}
         </div>
       ),
     },

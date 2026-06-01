@@ -104,6 +104,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       longitude,
       isDefault,
       displayOrder,
+      capacity,
     } = body;
 
     // Get current event to check if isDefault changed
@@ -140,6 +141,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (longitude !== undefined) updateData.longitude = longitude || null;
     if (isDefault !== undefined) updateData.isDefault = isDefault;
     if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
+    if (capacity !== undefined)
+      updateData.capacity =
+        capacity === null || capacity === "" ? null : Number(capacity);
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
