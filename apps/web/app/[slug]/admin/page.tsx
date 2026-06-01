@@ -4,10 +4,12 @@ import { Button } from "@workspace/ui/components/button";
 import { Calendar, Clock, Code, Heart, Mail, Users } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { getDashboardStats } from "@/lib/db/admin/dashboard-stats";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { buildHeadcountWhere, describeHeadcount } from "@/lib/headcount";
 import type { HeadcountConfig } from "@/lib/validations/wedding-content";
 import { RsvpInsightsCard } from "./rsvp-insights-card";
+import { RsvpStatsPanel } from "./rsvp-stats-panel";
 
 function getCountdown(targetDate: Date) {
   const now = new Date();
@@ -71,7 +73,10 @@ export default async function AdminPage() {
       year: "numeric",
     },
   );
-  const headcount = await getHeadcount(settings.id, settings.headcountConfig);
+  const [headcount, dashboardStats] = await Promise.all([
+    getHeadcount(settings.id, settings.headcountConfig),
+    getDashboardStats(settings.id),
+  ]);
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -164,6 +169,8 @@ export default async function AdminPage() {
                 )}
               </div>
             </div>
+
+            <RsvpStatsPanel stats={dashboardStats} />
 
             <RsvpInsightsCard />
 
