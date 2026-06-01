@@ -65,6 +65,9 @@ model Event {
   longitude        Decimal?           @db.Decimal(10, 7)
   isDefault        Boolean?           @default(false) @map("is_default")
   displayOrder     Int?               @default(0) @map("display_order")
+  // Optional image for this event's public share-link preview (iMessage /
+  // social). Uploaded or chosen from the gallery; falls back to a styled card.
+  imageUrl         String?            @map("image_url")
   // Optional cap on confirmed ("yes") attendees. Null = unlimited. Enforced on
   // the public per-event RSVP flow so a capacity-limited event (e.g. a reception
   // with a head-count limit) stops accepting new attendees once full.
