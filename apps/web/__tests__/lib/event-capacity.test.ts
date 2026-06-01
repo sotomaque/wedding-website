@@ -1,0 +1,31 @@
+import { describe, expect, it } from "bun:test";
+import { isEventFull, remainingCapacity } from "@/lib/utils/event-capacity";
+
+describe("isEventFull", () => {
+  it("is never full when capacity is null/undefined (unlimited)", () => {
+    expect(isEventFull(1000, null)).toBe(false);
+    expect(isEventFull(1000, undefined)).toBe(false);
+  });
+
+  it("is full when confirmed meets or exceeds capacity", () => {
+    expect(isEventFull(100, 100)).toBe(true);
+    expect(isEventFull(101, 100)).toBe(true);
+  });
+
+  it("is not full below capacity", () => {
+    expect(isEventFull(99, 100)).toBe(false);
+    expect(isEventFull(0, 1)).toBe(false);
+  });
+});
+
+describe("remainingCapacity", () => {
+  it("returns null for unlimited capacity", () => {
+    expect(remainingCapacity(50, null)).toBeNull();
+  });
+
+  it("returns seats left, clamped at zero", () => {
+    expect(remainingCapacity(40, 100)).toBe(60);
+    expect(remainingCapacity(100, 100)).toBe(0);
+    expect(remainingCapacity(120, 100)).toBe(0);
+  });
+});

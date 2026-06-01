@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
       latitude,
       longitude,
       isDefault,
+      capacity,
     } = parsed.data;
 
     // Get the highest display_order
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
         latitude: latitude || null,
         longitude: longitude || null,
         isDefault: isDefault || false,
+        capacity: capacity ?? null,
         displayOrder: newOrder,
         weddingId,
       },

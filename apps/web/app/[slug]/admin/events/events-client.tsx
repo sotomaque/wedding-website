@@ -37,6 +37,7 @@ import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import { formatEventDateRange } from "@/lib/utils/event-format";
+import { ShareEventDialog } from "./share-event-dialog";
 
 interface Event {
   id: string;
@@ -51,6 +52,8 @@ interface Event {
   latitude: number | null;
   longitude: number | null;
   isDefault: boolean;
+  capacity: number | null;
+  publicRsvpToken: string | null;
   displayOrder: number;
   createdAt: string;
   inviteCount: number;
@@ -75,6 +78,7 @@ interface EventFormData {
   latitude: string;
   longitude: string;
   isDefault: boolean;
+  capacity: string;
 }
 
 const defaultFormData: EventFormData = {
@@ -89,6 +93,7 @@ const defaultFormData: EventFormData = {
   latitude: "",
   longitude: "",
   isDefault: false,
+  capacity: "",
 };
 
 // Hoisted helpers — avoid recreating on every render
@@ -149,6 +154,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
       latitude: event.latitude?.toString() || "",
       longitude: event.longitude?.toString() || "",
       isDefault: event.isDefault,
+      capacity: event.capacity != null ? String(event.capacity) : "",
     });
     setIsDialogOpen(true);
   };
@@ -174,6 +180,9 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
           ? Number.parseFloat(formData.longitude)
           : null,
         isDefault: formData.isDefault,
+        capacity: formData.capacity
+          ? Number.parseInt(formData.capacity, 10)
+          : null,
       };
 
       if (editingEvent) {
@@ -370,6 +379,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                       </a>
                     </Button>
                   )}
+                  <ShareEventDialog eventId={event.id} eventName={event.name} />
                   <Button
                     variant="outline"
                     size="sm"
@@ -413,6 +423,20 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                     <span className="w-3 h-3 rounded-full bg-yellow-500" />
                     <span>Pending: {event.pendingCount}</span>
                   </div>
+                  {event.capacity != null && (
+                    <div className="flex items-center gap-2">
+                      <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span
+                        className={
+                          event.confirmedCount >= event.capacity
+                            ? "text-amber-600 font-medium"
+                            : ""
+                        }
+                      >
+                        Capacity: {event.confirmedCount}/{event.capacity}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -677,6 +701,24 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                   setFormData((prev) => ({ ...prev, isDefault: checked }))
                 }
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="capacity">Capacity</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min={1}
+                value={formData.capacity}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, capacity: e.target.value }))
+                }
+                placeholder="No limit"
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional. Once this many guests have confirmed, the public RSVP
+                link stops accepting new attendees.
+              </p>
             </div>
 
             <DialogFooter>

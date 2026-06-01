@@ -85,6 +85,8 @@ async function getEvents() {
       latitude: event.latitude ? Number(event.latitude) : null,
       longitude: event.longitude ? Number(event.longitude) : null,
       isDefault: event.isDefault ?? false,
+      capacity: event.capacity ?? null,
+      publicRsvpToken: event.publicRsvpToken ?? null,
       displayOrder: event.displayOrder ?? 0,
       createdAt: createdAtStr,
       inviteCount: total,
