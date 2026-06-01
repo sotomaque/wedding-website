@@ -118,7 +118,19 @@
     "thankYou": "Gracias por celebrar este momento especial con nosotros. Tu amor y apoyo significan más de lo que cualquier regalo podría expresar.",
     "contribute": "Contribuir",
     "comingSoon": "Próximamente",
-    "viewWishlist": "Ver nuestra lista de deseos"
+    "viewWishlist": "Ver nuestra lista de deseos",
+    "viewItem": "Ver artículo",
+    "claim": "Yo lo regalo",
+    "taken": "Reservado",
+    "claimTitle": "Reservar este regalo",
+    "claimSubtitle": "Avísale a la pareja que tú das este regalo para que nadie dé uno duplicado. Tus datos quedan privados.",
+    "claimName": "Tu nombre",
+    "claimEmail": "Tu correo electrónico",
+    "claimCancel": "Cancelar",
+    "claimConfirm": "Reservar regalo",
+    "claimSubmitting": "Reservando...",
+    "claimSuccess": "¡Gracias! Este regalo ahora está marcado como reservado.",
+    "claimError": "Ingresa tu nombre y un correo válido."
   },
   "thingsToDo": {
     "title": "Explorar",

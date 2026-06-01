@@ -118,7 +118,19 @@
     "thankYou": "Thank you for celebrating this special moment with us. Your love and support mean more than any gift could express.",
     "contribute": "Contribute",
     "comingSoon": "Coming Soon",
-    "viewWishlist": "View our wishlist"
+    "viewWishlist": "View our wishlist",
+    "viewItem": "View item",
+    "claim": "I'm giving this",
+    "taken": "Taken",
+    "claimTitle": "Claim this gift",
+    "claimSubtitle": "Let the couple know you're giving this so no one gives a duplicate. Your details stay private.",
+    "claimName": "Your name",
+    "claimEmail": "Your email",
+    "claimCancel": "Cancel",
+    "claimConfirm": "Claim gift",
+    "claimSubmitting": "Claiming...",
+    "claimSuccess": "Thank you! This gift is now marked as taken.",
+    "claimError": "Please enter your name and a valid email."
   },
   "thingsToDo": {
     "title": "Explore",

@@ -20,10 +20,36 @@ export default async function RegistryPage() {
 
   if (!settings.featureToggles.registry) notFound();
 
-  const registryItems = await db.registryItem.findMany({
+  const rows = await db.registryItem.findMany({
     where: { weddingId, isActive: true },
     orderBy: { displayOrder: "asc" },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      imageUrl: true,
+      emoji: true,
+      stripeUrl: true,
+      itemType: true,
+      productUrl: true,
+      priceCents: true,
+      claimedAt: true,
+    },
   });
+
+  // Never expose the claimant's identity to guests — only whether it's taken.
+  const registryItems = rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    imageUrl: r.imageUrl,
+    emoji: r.emoji,
+    stripeUrl: r.stripeUrl,
+    itemType: r.itemType,
+    productUrl: r.productUrl,
+    priceCents: r.priceCents,
+    isClaimed: r.claimedAt != null,
+  }));
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
