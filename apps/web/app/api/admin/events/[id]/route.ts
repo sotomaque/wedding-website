@@ -95,6 +95,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       name,
       description,
       eventDate,
+      endDate,
       startTime,
       endTime,
       locationName,
@@ -122,6 +123,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updateData.eventDate = eventDate
         ? new Date(`${eventDate}T00:00:00Z`)
         : null;
+    if (endDate !== undefined)
+      updateData.endDate = endDate ? new Date(`${endDate}T00:00:00Z`) : null;
     if (startTime !== undefined)
       updateData.startTime = startTime
         ? new Date(`1970-01-01T${startTime}:00Z`)

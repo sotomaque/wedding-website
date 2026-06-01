@@ -58,11 +58,18 @@ async function getEvents() {
         ? event.createdAt.toISOString()
         : String(event.createdAt);
 
+    const endDateStr = event.endDate
+      ? event.endDate instanceof Date
+        ? (event.endDate.toISOString().split("T")[0] ?? null)
+        : String(event.endDate)
+      : null;
+
     return {
       id: event.id,
       name: event.name,
       description: event.description,
       eventDate: eventDateStr,
+      endDate: endDateStr,
       startTime: event.startTime
         ? event.startTime instanceof Date
           ? event.startTime.toISOString()

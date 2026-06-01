@@ -19,6 +19,9 @@ export const createEventSchema = z.object({
   description: z.string().nullish(),
   // Date / time fields arrive as strings and are parsed in the route.
   eventDate: z.string().nullish(),
+  // Optional end date for multi-day events (YYYY-MM-DD). When set and after
+  // eventDate, the event spans the range; otherwise it's single-day.
+  endDate: z.string().nullish(),
   startTime: z.string().nullish(),
   endTime: z.string().nullish(),
   locationName: z.string().nullish(),
