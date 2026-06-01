@@ -130,7 +130,14 @@
     "claimConfirm": "Reservar regalo",
     "claimSubmitting": "Reservando...",
     "claimSuccess": "¡Gracias! Este regalo ahora está marcado como reservado.",
-    "claimError": "Ingresa tu nombre y un correo válido."
+    "claimError": "Ingresa tu nombre y un correo válido.",
+    "unclaimPrompt": "¿Lo reservaste por error?",
+    "unclaimTitle": "Liberar tu reserva",
+    "unclaimSubtitle": "Ingresa el correo que usaste para reservar este regalo y volverá a estar disponible.",
+    "unclaimConfirm": "Liberar reserva",
+    "unclaimSubmitting": "Liberando...",
+    "unclaimSuccess": "Listo — este regalo está disponible de nuevo.",
+    "unclaimError": "No encontramos una reserva con ese correo."
   },
   "thingsToDo": {
     "title": "Explorar",

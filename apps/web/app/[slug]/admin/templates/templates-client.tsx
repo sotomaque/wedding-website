@@ -22,6 +22,7 @@ const TYPE_LABELS: Record<string, string> = {
   admin_summary: "Admin Summary",
   rsvp_confirmation: "RSVP Confirmation",
   gift_thank_you: "Gift Thank You",
+  registry_claim_notification: "Registry Claim Notification",
 };
 
 const LANGUAGE_LABELS: Record<string, string> = {
