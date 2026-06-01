@@ -9,12 +9,11 @@ mock.module("next/server", () => ({
   after: (fn: () => unknown) => {
     afterTasks.push(Promise.resolve().then(fn));
   },
-  // Route imports NextResponse from next/server too — provide a minimal stand-in
-  // so the module is complete when this mock wins under the shared test run.
-  NextResponse: {
-    json: (body: unknown, init?: { status?: number }) =>
-      Response.json(body, init),
-  },
+  // Route imports NextResponse from next/server too. This mock is process-global
+  // under `bun test`, so it bleeds into sibling routes that do `new NextResponse(...)`
+  // (e.g. guest-photos-download). Extend the global Response so the stand-in is a
+  // real constructor AND still exposes the static `.json()` this route uses.
+  NextResponse: class extends Response {},
 }));
 
 async function flushAfter() {
