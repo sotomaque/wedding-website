@@ -130,7 +130,14 @@
     "claimConfirm": "Claim gift",
     "claimSubmitting": "Claiming...",
     "claimSuccess": "Thank you! This gift is now marked as taken.",
-    "claimError": "Please enter your name and a valid email."
+    "claimError": "Please enter your name and a valid email.",
+    "unclaimPrompt": "Claimed this by mistake?",
+    "unclaimTitle": "Release your claim",
+    "unclaimSubtitle": "Enter the email you used to claim this gift to make it available again.",
+    "unclaimConfirm": "Release claim",
+    "unclaimSubmitting": "Releasing...",
+    "unclaimSuccess": "Done — this gift is available again.",
+    "unclaimError": "We couldn't find a claim for that email."
   },
   "thingsToDo": {
     "title": "Explore",

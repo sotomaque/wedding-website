@@ -34,6 +34,7 @@ const TYPE_LABELS: Record<string, string> = {
   calendar_invite: "Calendar Invite",
   rsvp_confirmation: "RSVP Confirmation",
   gift_thank_you: "Gift Thank You",
+  registry_claim_notification: "Registry Claim Notification",
 };
 
 interface TemplateEditorProps {

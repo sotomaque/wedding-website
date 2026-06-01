@@ -407,6 +407,30 @@ export function getDefaultTemplates(
         { key: "COUPLE_NAMES", description: "Names of the couple" },
       ],
     },
+    {
+      type: "registry_claim_notification" as EmailTemplateType,
+      name: "Registry Claim Notification",
+      subjects: {
+        en: "Gift claimed: {{{ITEM_TITLE}}}",
+        es: "Regalo reservado: {{{ITEM_TITLE}}}",
+      },
+      htmlBodies: {
+        en: registryClaimNotificationHtml,
+        es: registryClaimNotificationHtmlEs,
+      },
+      variables: [
+        {
+          key: "CLAIMANT_NAME",
+          description: "Name of the guest who claimed the gift",
+        },
+        { key: "CLAIMANT_EMAIL", description: "Email of the claimant" },
+        {
+          key: "ITEM_TITLE",
+          description: "Title of the claimed registry item",
+        },
+        { key: "ADMIN_URL", description: "URL to the admin registry page" },
+      ],
+    },
   ];
 
   const templates: DefaultTemplate[] = [];
@@ -2606,3 +2630,7 @@ const rsvpConfirmationHtmlEs = `<div style="font-family: -apple-system, sans-ser
 const giftThankYouHtml = `<div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;"><h2 style="color:#667eea;">Thank you, {{{DONOR_NAME}}}!</h2><p>We are so grateful for your generous gift of <strong>{{{AMOUNT}}}</strong> toward our {{{GIFT_TYPE}}}.</p><p>Your kindness means the world to us as we begin this next chapter together. Thank you for being part of our celebration.</p><p style="color:#888;font-size:13px;margin-top:24px;">With love and gratitude,<br/>— {{{COUPLE_NAMES}}}</p></div>`;
 
 const giftThankYouHtmlEs = `<div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;"><h2 style="color:#667eea;">Gracias, {{{DONOR_NAME}}}!</h2><p>Estamos muy agradecidos por tu generoso regalo de <strong>{{{AMOUNT}}}</strong> para nuestro {{{GIFT_TYPE}}}.</p><p>Tu generosidad significa muchisimo para nosotros al comenzar este nuevo capitulo juntos. Gracias por ser parte de nuestra celebracion.</p><p style="color:#888;font-size:13px;margin-top:24px;">Con amor y gratitud,<br/>— {{{COUPLE_NAMES}}}</p></div>`;
+
+const registryClaimNotificationHtml = `<div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;"><h2 style="color:#667eea;">A gift was claimed</h2><p><strong>{{{CLAIMANT_NAME}}}</strong> ({{{CLAIMANT_EMAIL}}}) is giving:</p><div style="background:#f7f7f7;border-radius:8px;padding:16px;margin:16px 0;"><p style="margin:0;font-size:18px;font-weight:600;">{{{ITEM_TITLE}}}</p></div><p>It is now marked as taken on your registry, so no one else will give a duplicate.</p><a href="{{{ADMIN_URL}}}" style="display:inline-block;padding:12px 24px;background:#667eea;color:#fff;text-decoration:none;border-radius:6px;">View registry</a></div>`;
+
+const registryClaimNotificationHtmlEs = `<div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;"><h2 style="color:#667eea;">Se reservo un regalo</h2><p><strong>{{{CLAIMANT_NAME}}}</strong> ({{{CLAIMANT_EMAIL}}}) va a regalar:</p><div style="background:#f7f7f7;border-radius:8px;padding:16px;margin:16px 0;"><p style="margin:0;font-size:18px;font-weight:600;">{{{ITEM_TITLE}}}</p></div><p>Ahora aparece como reservado en tu lista, para que nadie de un regalo duplicado.</p><a href="{{{ADMIN_URL}}}" style="display:inline-block;padding:12px 24px;background:#667eea;color:#fff;text-decoration:none;border-radius:6px;">Ver lista de regalos</a></div>`;

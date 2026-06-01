@@ -37,8 +37,10 @@ export function RegistryCard({ gift, index }: RegistryCardProps) {
   const t = useTranslations("registry");
   const router = useRouter();
   const [claimOpen, setClaimOpen] = useState(false);
+  const [unclaimOpen, setUnclaimOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [unclaimEmail, setUnclaimEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isProduct = gift.itemType === "product";
@@ -74,6 +76,34 @@ export function RegistryCard({ gift, index }: RegistryCardProps) {
       }
     } catch {
       toast.error(t("claimError"));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleUnclaim() {
+    if (!unclaimEmail.trim()) {
+      toast.error(t("claimError"));
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/registry/claim", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: gift.id, email: unclaimEmail }),
+      });
+      if (res.ok) {
+        toast.success(t("unclaimSuccess"));
+        setUnclaimOpen(false);
+        setUnclaimEmail("");
+        router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? t("unclaimError"));
+      }
+    } catch {
+      toast.error(t("unclaimError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -116,9 +146,18 @@ export function RegistryCard({ gift, index }: RegistryCardProps) {
 
         {isProduct ? (
           gift.isClaimed ? (
-            <Button className="w-full font-semibold" size="lg" disabled>
-              {t("taken")}
-            </Button>
+            <div className="space-y-2">
+              <Button className="w-full font-semibold" size="lg" disabled>
+                {t("taken")}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setUnclaimOpen(true)}
+                className="w-full text-center text-xs text-muted-foreground underline hover:text-foreground"
+              >
+                {t("unclaimPrompt")}
+              </button>
+            </div>
           ) : (
             <div className="space-y-2">
               {gift.productUrl && (
@@ -197,6 +236,40 @@ export function RegistryCard({ gift, index }: RegistryCardProps) {
             </Button>
             <Button onClick={handleClaim} disabled={isSubmitting}>
               {isSubmitting ? t("claimSubmitting") : t("claimConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={unclaimOpen} onOpenChange={setUnclaimOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("unclaimTitle")}</DialogTitle>
+            <DialogDescription>{t("unclaimSubtitle")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor={`unclaim-email-${gift.id}`}>
+                {t("claimEmail")}
+              </Label>
+              <Input
+                id={`unclaim-email-${gift.id}`}
+                type="email"
+                value={unclaimEmail}
+                onChange={(e) => setUnclaimEmail(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setUnclaimOpen(false)}
+              disabled={isSubmitting}
+            >
+              {t("claimCancel")}
+            </Button>
+            <Button onClick={handleUnclaim} disabled={isSubmitting}>
+              {isSubmitting ? t("unclaimSubmitting") : t("unclaimConfirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

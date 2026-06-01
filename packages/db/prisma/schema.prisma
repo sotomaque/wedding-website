@@ -784,6 +784,7 @@ enum EmailTemplateType {
   welcome
   rsvp_confirmation
   gift_thank_you
+  registry_claim_notification
 
   @@map("email_template_type")
 }

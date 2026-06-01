@@ -1,6 +1,14 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import {
+  getEmailFromAddress,
+  getNotificationRecipients,
+} from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
+import { getResendClient, sendEmail } from "@/lib/email/resend-client";
+import { weddingUrl } from "@/lib/url";
 import {
   registryClaimSchema,
   registryUnclaimSchema,
@@ -54,6 +62,42 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     }
+
+    // Notify the couple in the background — best-effort, never blocks the claim.
+    after(async () => {
+      try {
+        if (!getResendClient()) return;
+        const item = await db.registryItem.findFirst({
+          where: { id: itemId, weddingId },
+          select: { title: true },
+        });
+        const settings = await getWeddingSettings();
+        const recipients = getNotificationRecipients(settings);
+        if (recipients.length === 0) return;
+
+        const rendered = await renderEmailTemplate(
+          weddingId,
+          "registry_claim_notification",
+          {
+            CLAIMANT_NAME: name,
+            CLAIMANT_EMAIL: email,
+            ITEM_TITLE: item?.title ?? "a registry item",
+            ADMIN_URL: weddingUrl(settings.slug, "/admin/registry"),
+          },
+          settings.defaultLanguage,
+        );
+        if (rendered) {
+          await sendEmail({
+            from: getEmailFromAddress(settings, "Wedding Registry"),
+            to: recipients,
+            subject: rendered.subject,
+            html: rendered.html,
+          });
+        }
+      } catch (emailError) {
+        console.error("Error sending registry claim notification:", emailError);
+      }
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
