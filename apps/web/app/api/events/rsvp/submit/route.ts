@@ -119,6 +119,11 @@ export async function POST(request: NextRequest) {
             to: adminEmails,
             subject: rendered.subject,
             html: rendered.html,
+            log: {
+              weddingId,
+              guestId: guest.id,
+              type: "event_rsvp_notification",
+            },
           });
         }
       }

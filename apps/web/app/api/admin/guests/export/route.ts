@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
       subject: `Guest list export — ${settings.coupleName} (${count} guests)`,
       html,
       attachments: [{ filename, content }],
+      log: { weddingId, type: "guest_export" },
     });
 
     if (error) {

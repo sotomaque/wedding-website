@@ -416,6 +416,7 @@ export function createWeddingTools(weddingId: string) {
             to: guest.email,
             subject: rendered.subject,
             html: rendered.html,
+            log: { weddingId, guestId: guest.id, type: "wedding_invitation" },
           });
 
           if (result.error) {
@@ -793,6 +794,11 @@ export function createWeddingTools(weddingId: string) {
                 to: guest.email,
                 subject: rendered.subject,
                 html: rendered.html,
+                log: {
+                  weddingId,
+                  guestId: guest.id,
+                  type: "wedding_invitation",
+                },
               });
 
               if (!result.error) {

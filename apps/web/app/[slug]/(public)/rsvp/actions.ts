@@ -371,6 +371,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
               to: recipients,
               subject: rsvpTemplate.subject,
               html: rsvpTemplate.html,
+              log: { weddingId, type: "rsvp_notification" },
             });
           }
 
@@ -458,6 +459,11 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                           content: Buffer.from(icsContent).toString("base64"),
                         },
                       ],
+                      log: {
+                        weddingId,
+                        guestId: guest.id,
+                        type: "calendar_invite",
+                      },
                     });
 
                     await db.guest.update({
@@ -829,6 +835,7 @@ export async function submitMultiGuestRSVP(
               to: recipientsMulti,
               subject: rsvpTemplateMulti.subject,
               html: rsvpTemplateMulti.html,
+              log: { weddingId, type: "rsvp_notification" },
             });
           }
 
@@ -865,6 +872,11 @@ export async function submitMultiGuestRSVP(
                   to: guest.email,
                   subject: confirmTemplate.subject,
                   html: confirmTemplate.html,
+                  log: {
+                    weddingId,
+                    guestId: guest.id,
+                    type: "rsvp_confirmation",
+                  },
                 });
               }
             } catch (confirmError) {
@@ -959,6 +971,11 @@ export async function submitMultiGuestRSVP(
                           content: Buffer.from(icsContent).toString("base64"),
                         },
                       ],
+                      log: {
+                        weddingId,
+                        guestId: guest.id,
+                        type: "calendar_invite",
+                      },
                     });
 
                     await db.guest.update({

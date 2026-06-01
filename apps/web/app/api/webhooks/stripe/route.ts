@@ -325,6 +325,15 @@ async function sendGiftNotificationEmail(params: {
       to: recipients,
       subject: rendered.subject,
       html: rendered.html,
+      // Only log when we resolved a wedding (the log is wedding-scoped).
+      ...(resolvedWeddingId
+        ? {
+            log: {
+              weddingId: resolvedWeddingId,
+              type: "gift_thank_you" as const,
+            },
+          }
+        : {}),
     });
 
     log("info", "Gift notification email sent", {

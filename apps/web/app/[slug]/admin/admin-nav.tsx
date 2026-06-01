@@ -40,6 +40,7 @@ function getNavItems(slug: string, isSuperAdmin: boolean): NavItem[] {
         { href: `${base}/admin/guests`, label: "Guest List" },
         { href: `${base}/admin/parties`, label: "Parties" },
         { href: `${base}/admin/seating`, label: "Seating" },
+        { href: `${base}/admin/communications`, label: "Communications" },
       ],
     },
     {
