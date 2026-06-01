@@ -179,6 +179,7 @@ export async function GET(request: NextRequest) {
           to: recipients,
           subject: rendered.subject,
           html: rendered.html,
+          log: { weddingId: wedding.id, type: "admin_summary" },
         });
 
         if (result.error) {

@@ -127,6 +127,11 @@ export async function POST(request: NextRequest) {
         to: recipients,
         subject: rendered.subject,
         html: rendered.html,
+        log: {
+          weddingId,
+          guestId: primaryGuest.id,
+          type: "hotel_interest_notification",
+        },
       });
 
       if (result.error) {

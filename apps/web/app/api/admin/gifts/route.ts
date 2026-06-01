@@ -183,6 +183,11 @@ export async function PATCH(request: NextRequest) {
             to: existing.donorEmail,
             subject: rendered.subject,
             html: rendered.html,
+            log: {
+              weddingId,
+              guestId: existing.guestId ?? undefined,
+              type: "gift_thank_you",
+            },
           });
         }
       } catch (emailError) {

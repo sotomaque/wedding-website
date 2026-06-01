@@ -232,6 +232,7 @@ export async function createWedding(data: {
         to: user.emailAddresses[0]?.emailAddress ?? "",
         subject: welcomeRendered.subject,
         html: welcomeRendered.html,
+        log: { weddingId: wedding.id, type: "welcome" },
       }).catch((err) => console.error("Failed to send welcome email:", err));
     }
 

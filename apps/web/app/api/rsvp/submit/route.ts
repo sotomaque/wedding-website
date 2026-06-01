@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
             to: recipients,
             subject: rsvpTemplate.subject,
             html: rsvpTemplate.html,
+            log: { weddingId, type: "rsvp_notification" },
           });
         }
       } catch (emailError) {

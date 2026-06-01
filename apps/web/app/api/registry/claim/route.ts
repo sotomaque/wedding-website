@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
             to: recipients,
             subject: rendered.subject,
             html: rendered.html,
+            log: { weddingId, type: "registry_claim_notification" },
           });
         }
       } catch (emailError) {
