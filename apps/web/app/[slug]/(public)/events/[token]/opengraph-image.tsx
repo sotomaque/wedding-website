@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "Wedding event RSVP";
+// Prisma + remote fetch need the Node.js runtime (not edge).
+export const runtime = "nodejs";
 
 interface ImageProps {
   params: { slug: string; token: string };
@@ -27,25 +29,41 @@ function formatDate(value: Date | string | null): string | null {
 }
 
 /**
- * Rich link-preview card (iMessage / social) for a public event RSVP link.
- * Renders the event name, date, and location over the wedding's brand image
- * with a scrim, falling back to a warm gradient when there's no image.
+ * Best-effort load of the hero image as a base64 data URI that Satori can embed
+ * directly (no fetch happens during image rendering). Returns null on any
+ * problem — a slow/redirecting host, a non-200, an oversized file, or a format
+ * Satori can't decode (it only handles PNG/JPEG) — so the card still renders.
  */
-export default async function OpengraphImage({ params }: ImageProps) {
-  const event = await db.event.findUnique({
-    where: { publicRsvpToken: params.token },
-    include: {
-      wedding: { select: { coupleName: true, brandImageUrl: true } },
-    },
-  });
+async function loadHeroDataUri(url: string | null): Promise<string | null> {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const type = res.headers.get("content-type") ?? "";
+    if (!/^image\/(png|jpe?g)$/i.test(type)) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.byteLength > 5_000_000) return null;
+    return `data:${type};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
 
-  const couple = event?.wedding.coupleName ?? "Our Wedding";
-  const name = event?.name ?? "You're Invited";
-  const dateStr = formatDate(event?.eventDate ?? null);
-  const location = event?.locationName ?? null;
-  const bgImage = event?.wedding.brandImageUrl ?? null;
+interface CardData {
+  name: string;
+  couple: string;
+  dateStr: string | null;
+  location: string | null;
+  hero: string | null;
+}
 
-  return new ImageResponse(
+/** The preview card. Self-contained: a gradient base, optional hero photo, a
+ * scrim for legibility, and the event text overlay. */
+function Card({ name, couple, dateStr, location, hero }: CardData) {
+  return (
     <div
       style={{
         width: "100%",
@@ -59,10 +77,10 @@ export default async function OpengraphImage({ params }: ImageProps) {
         fontFamily: "serif",
       }}
     >
-      {bgImage ? (
+      {hero ? (
         // biome-ignore lint/performance/noImgElement: next/og only supports <img>
         <img
-          src={bgImage}
+          src={hero}
           alt=""
           width={size.width}
           height={size.height}
@@ -77,7 +95,6 @@ export default async function OpengraphImage({ params }: ImageProps) {
         />
       ) : null}
 
-      {/* Scrim for legibility */}
       <div
         style={{
           position: "absolute",
@@ -124,7 +141,43 @@ export default async function OpengraphImage({ params }: ImageProps) {
           {couple}
         </div>
       </div>
-    </div>,
-    { ...size },
+    </div>
   );
+}
+
+/**
+ * Rich link-preview card (iMessage / social) for a public event RSVP link.
+ * Wrapped so it can never throw a 500 — a failed image means no preview at all
+ * in Messages, so we always fall back to a plain branded card.
+ */
+export default async function OpengraphImage({ params }: ImageProps) {
+  try {
+    const event = await db.event.findUnique({
+      where: { publicRsvpToken: params.token },
+      include: {
+        wedding: { select: { coupleName: true, brandImageUrl: true } },
+      },
+    });
+
+    const data: CardData = {
+      name: event?.name ?? "You're Invited",
+      couple: event?.wedding.coupleName ?? "Our Wedding",
+      dateStr: formatDate(event?.eventDate ?? null),
+      location: event?.locationName ?? null,
+      hero: await loadHeroDataUri(event?.wedding.brandImageUrl ?? null),
+    };
+
+    return new ImageResponse(<Card {...data} />, { ...size });
+  } catch {
+    return new ImageResponse(
+      <Card
+        name="You're Invited"
+        couple=""
+        dateStr={null}
+        location={null}
+        hero={null}
+      />,
+      { ...size },
+    );
+  }
 }

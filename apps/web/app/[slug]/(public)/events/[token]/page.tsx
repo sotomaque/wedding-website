@@ -67,18 +67,22 @@ export async function generateMetadata({
     event.locationName,
   ].filter(Boolean);
   const description = `${descriptionParts.join(" · ")} — RSVP for ${couple}'s wedding.`;
+  const siteName = `${couple}'s Wedding`;
 
   return {
     title,
     description,
     openGraph: {
-      title: `${event.name} · ${couple}`,
+      // Per Apple's rich-preview guidance, keep branding out of og:title and
+      // put the couple in og:site_name instead.
+      title: event.name,
       description,
+      siteName,
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${event.name} · ${couple}`,
+      title: event.name,
       description,
     },
   };
