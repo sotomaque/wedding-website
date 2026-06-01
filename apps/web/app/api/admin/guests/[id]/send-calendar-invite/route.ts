@@ -156,6 +156,7 @@ export async function POST(
           content: Buffer.from(icsContent).toString("base64"),
         },
       ],
+      log: { weddingId, guestId, type: "calendar_invite" },
     });
 
     if (result.error) {
