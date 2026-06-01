@@ -5,6 +5,8 @@ import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingContext, getWeddingId } from "@/lib/db/wedding-context";
 
+export type RegistryItemType = "fund" | "product";
+
 export type RegistryItem = {
   id: string;
   weddingId: string;
@@ -14,11 +16,29 @@ export type RegistryItem = {
   emoji: string | null;
   stripeUrl: string | null;
   stripeProductId: string | null;
+  itemType: RegistryItemType;
+  productUrl: string | null;
+  priceCents: number | null;
+  claimedByName: string | null;
+  claimedByEmail: string | null;
+  claimedAt: Date | null;
   displayOrder: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
+
+export interface RegistryItemInput {
+  title: string;
+  description?: string;
+  emoji?: string;
+  imageUrl?: string;
+  itemType?: RegistryItemType;
+  stripeUrl?: string;
+  productUrl?: string;
+  priceCents?: number | null;
+  isActive?: boolean;
+}
 
 export async function getRegistryItems(): Promise<RegistryItem[]> {
   try {
@@ -34,14 +54,9 @@ export async function getRegistryItems(): Promise<RegistryItem[]> {
   }
 }
 
-export async function createRegistryItem(data: {
-  title: string;
-  description?: string;
-  emoji?: string;
-  imageUrl?: string;
-  stripeUrl?: string;
-  isActive?: boolean;
-}): Promise<{ success: boolean; item?: RegistryItem; error?: string }> {
+export async function createRegistryItem(
+  data: RegistryItemInput,
+): Promise<{ success: boolean; item?: RegistryItem; error?: string }> {
   const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
   if (!auth.authorized)
@@ -51,6 +66,7 @@ export async function createRegistryItem(data: {
     const title = data.title.trim();
     if (!title) return { success: false, error: "Title is required" };
 
+    const itemType = data.itemType ?? "fund";
     const last = await db.registryItem.aggregate({
       where: { weddingId },
       _max: { displayOrder: true },
@@ -63,7 +79,12 @@ export async function createRegistryItem(data: {
         description: data.description?.trim() || null,
         emoji: data.emoji?.trim() || null,
         imageUrl: data.imageUrl?.trim() || null,
-        stripeUrl: data.stripeUrl?.trim() || null,
+        itemType,
+        // Only keep the link relevant to the chosen type.
+        stripeUrl: itemType === "fund" ? data.stripeUrl?.trim() || null : null,
+        productUrl:
+          itemType === "product" ? data.productUrl?.trim() || null : null,
+        priceCents: itemType === "product" ? (data.priceCents ?? null) : null,
         isActive: data.isActive ?? true,
         displayOrder: (last._max.displayOrder ?? 0) + 1,
       },
@@ -81,14 +102,7 @@ export async function createRegistryItem(data: {
 
 export async function updateRegistryItem(
   id: string,
-  data: {
-    title?: string;
-    description?: string;
-    emoji?: string;
-    imageUrl?: string;
-    stripeUrl?: string;
-    isActive?: boolean;
-  },
+  data: Partial<RegistryItemInput>,
 ): Promise<{ success: boolean; error?: string }> {
   const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
@@ -105,9 +119,29 @@ export async function updateRegistryItem(
     if (data.emoji !== undefined) updateData.emoji = data.emoji.trim() || null;
     if (data.imageUrl !== undefined)
       updateData.imageUrl = data.imageUrl.trim() || null;
-    if (data.stripeUrl !== undefined)
-      updateData.stripeUrl = data.stripeUrl.trim() || null;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    if (data.itemType !== undefined) {
+      // Switching type clears the now-irrelevant link so stale data isn't
+      // shown publicly.
+      updateData.itemType = data.itemType;
+      if (data.itemType === "fund") {
+        updateData.productUrl = null;
+        updateData.priceCents = null;
+        updateData.stripeUrl = data.stripeUrl?.trim() || null;
+      } else {
+        updateData.stripeUrl = null;
+        updateData.productUrl = data.productUrl?.trim() || null;
+        updateData.priceCents = data.priceCents ?? null;
+      }
+    } else {
+      if (data.stripeUrl !== undefined)
+        updateData.stripeUrl = data.stripeUrl.trim() || null;
+      if (data.productUrl !== undefined)
+        updateData.productUrl = data.productUrl.trim() || null;
+      if (data.priceCents !== undefined)
+        updateData.priceCents = data.priceCents ?? null;
+    }
 
     await db.registryItem.update({
       where: { id },
@@ -231,5 +265,38 @@ export async function updateRegistryWishlistUrl(
   } catch (error) {
     console.error("Error updating registry wishlist URL:", error);
     return { success: false, error: "Failed to update wishlist link" };
+  }
+}
+
+/**
+ * Admin override: release a claim on a product item (e.g. the claimant backed
+ * out), making it available again. Scoped to the wedding for tenant isolation.
+ */
+export async function releaseRegistryClaim(
+  id: string,
+): Promise<{ success: boolean; error?: string }> {
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
+  try {
+    await db.registryItem.updateMany({
+      where: { id, weddingId },
+      data: {
+        claimedByName: null,
+        claimedByEmail: null,
+        claimedAt: null,
+        updatedAt: new Date(),
+      },
+    });
+
+    revalidatePath(`/${slug}/admin/registry`);
+    revalidatePath(`/${slug}/registry`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error releasing registry claim:", error);
+    return { success: false, error: "Failed to release claim" };
   }
 }
