@@ -363,6 +363,50 @@ export function getDefaultTemplates(
         },
       ],
     },
+    {
+      type: "rsvp_confirmation" as EmailTemplateType,
+      name: "RSVP Confirmation",
+      subjects: {
+        en: "We received your RSVP — {{{COUPLE_NAMES}}}",
+        es: "Recibimos tu confirmacion — {{{COUPLE_NAMES}}}",
+      },
+      htmlBodies: {
+        en: rsvpConfirmationHtml,
+        es: rsvpConfirmationHtmlEs,
+      },
+      variables: [
+        { key: "GUEST_NAME", description: "The guest's first name" },
+        { key: "COUPLE_NAMES", description: "Names of the couple" },
+        {
+          key: "RSVP_STATUS",
+          description: "Attending / Not attending summary",
+        },
+        { key: "WEDDING_DATE", description: "Formatted wedding date" },
+        { key: "INVITE_CODE", description: "The guest's invite code" },
+        { key: "RSVP_URL", description: "Link to update the RSVP" },
+      ],
+    },
+    {
+      type: "gift_thank_you" as EmailTemplateType,
+      name: "Gift Thank You",
+      subjects: {
+        en: "Thank you for your generous gift — {{{COUPLE_NAMES}}}",
+        es: "Gracias por tu generoso regalo — {{{COUPLE_NAMES}}}",
+      },
+      htmlBodies: {
+        en: giftThankYouHtml,
+        es: giftThankYouHtmlEs,
+      },
+      variables: [
+        { key: "DONOR_NAME", description: "The donor's name" },
+        { key: "AMOUNT", description: "Formatted gift amount" },
+        {
+          key: "GIFT_TYPE",
+          description: "Type of gift (e.g. Honeymoon Fund)",
+        },
+        { key: "COUPLE_NAMES", description: "Names of the couple" },
+      ],
+    },
   ];
 
   const templates: DefaultTemplate[] = [];
@@ -2554,3 +2598,11 @@ const welcomeHtmlEs = `<!DOCTYPE html>
     </div>
   </body>
 </html>`;
+
+const rsvpConfirmationHtml = `<div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;"><h2 style="color:#48bb78;">Thank you, {{{GUEST_NAME}}}!</h2><p>We've received your RSVP for <strong>{{{COUPLE_NAMES}}}</strong>'s wedding.</p><div style="background:#f7f7f7;border-radius:8px;padding:16px;margin:16px 0;"><p style="margin:0;"><strong>Your response:</strong> {{{RSVP_STATUS}}}</p><p style="margin:8px 0 0;"><strong>Wedding date:</strong> {{{WEDDING_DATE}}}</p></div><p>Need to make a change? You can update your response anytime using your invite code <strong>{{{INVITE_CODE}}}</strong>:</p><a href="{{{RSVP_URL}}}" style="display:inline-block;padding:12px 24px;background:#48bb78;color:#fff;text-decoration:none;border-radius:6px;">Update my RSVP</a><p style="color:#888;font-size:13px;margin-top:24px;">We can't wait to celebrate with you!<br/>— {{{COUPLE_NAMES}}}</p></div>`;
+
+const rsvpConfirmationHtmlEs = `<div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;"><h2 style="color:#48bb78;">Gracias, {{{GUEST_NAME}}}!</h2><p>Hemos recibido tu confirmacion para la boda de <strong>{{{COUPLE_NAMES}}}</strong>.</p><div style="background:#f7f7f7;border-radius:8px;padding:16px;margin:16px 0;"><p style="margin:0;"><strong>Tu respuesta:</strong> {{{RSVP_STATUS}}}</p><p style="margin:8px 0 0;"><strong>Fecha de la boda:</strong> {{{WEDDING_DATE}}}</p></div><p>Necesitas hacer un cambio? Puedes actualizar tu respuesta en cualquier momento con tu codigo <strong>{{{INVITE_CODE}}}</strong>:</p><a href="{{{RSVP_URL}}}" style="display:inline-block;padding:12px 24px;background:#48bb78;color:#fff;text-decoration:none;border-radius:6px;">Actualizar mi RSVP</a><p style="color:#888;font-size:13px;margin-top:24px;">Nos encantaria celebrar contigo!<br/>— {{{COUPLE_NAMES}}}</p></div>`;
+
+const giftThankYouHtml = `<div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;"><h2 style="color:#667eea;">Thank you, {{{DONOR_NAME}}}!</h2><p>We are so grateful for your generous gift of <strong>{{{AMOUNT}}}</strong> toward our {{{GIFT_TYPE}}}.</p><p>Your kindness means the world to us as we begin this next chapter together. Thank you for being part of our celebration.</p><p style="color:#888;font-size:13px;margin-top:24px;">With love and gratitude,<br/>— {{{COUPLE_NAMES}}}</p></div>`;
+
+const giftThankYouHtmlEs = `<div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;"><h2 style="color:#667eea;">Gracias, {{{DONOR_NAME}}}!</h2><p>Estamos muy agradecidos por tu generoso regalo de <strong>{{{AMOUNT}}}</strong> para nuestro {{{GIFT_TYPE}}}.</p><p>Tu generosidad significa muchisimo para nosotros al comenzar este nuevo capitulo juntos. Gracias por ser parte de nuestra celebracion.</p><p style="color:#888;font-size:13px;margin-top:24px;">Con amor y gratitud,<br/>— {{{COUPLE_NAMES}}}</p></div>`;
