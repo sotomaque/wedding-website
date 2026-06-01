@@ -11,6 +11,9 @@ import { isEventFull } from "@/lib/utils/event-capacity";
 import { generateInviteCode } from "@/lib/utils/invite-code";
 import { publicEventRsvpSchema } from "@/lib/validations/event-rsvp";
 
+/** Sentinel thrown inside the capacity transaction to roll it back cleanly. */
+class CapacityFullError extends Error {}
+
 /**
  * Public per-event RSVP via a shareable link. Two paths:
  *   - "code": an existing guest enters their invite code.
@@ -50,6 +53,15 @@ export async function POST(request: NextRequest) {
     }
     const weddingId = event.weddingId;
     const rsvpStatus = input.attending ? "yes" : "no";
+
+    // The couple can close a link without deleting it. A decline is still
+    // allowed (so someone can bow out), but new acceptances are rejected.
+    if (!event.publicRsvpEnabled && input.attending) {
+      return NextResponse.json(
+        { error: "RSVPs for this event are closed." },
+        { status: 403 },
+      );
+    }
 
     // Resolve (or create) the guest.
     let guest: {
@@ -141,35 +153,48 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Capacity gate — only blocks *new* attendees. Count confirmed guests other
-    // than this one so a guest re-confirming an existing "yes" is never blocked.
-    if (input.attending && event.capacity != null) {
-      const confirmedOthers = await db.guestEventInvite.count({
-        where: {
-          eventId: event.id,
-          rsvpStatus: "yes",
-          guestId: { not: guest.id },
-        },
+    // Capacity gate + invite upsert run in one transaction that locks the event
+    // row first (SELECT … FOR UPDATE), so concurrent RSVPs to a capacity-limited
+    // event serialize on that row — two requests can't both read "not full" and
+    // both confirm. Only *new* attendees are gated; declines and guests
+    // re-confirming an existing "yes" are never blocked (the count excludes the
+    // current guest).
+    try {
+      await db.$transaction(async (tx) => {
+        if (input.attending && event.capacity != null) {
+          await tx.$queryRaw`SELECT id FROM events WHERE id = ${event.id}::uuid FOR UPDATE`;
+          const confirmedOthers = await tx.guestEventInvite.count({
+            where: {
+              eventId: event.id,
+              rsvpStatus: "yes",
+              guestId: { not: guest.id },
+            },
+          });
+          if (isEventFull(confirmedOthers, event.capacity)) {
+            throw new CapacityFullError();
+          }
+        }
+
+        await tx.guestEventInvite.upsert({
+          where: { guestId_eventId: { guestId: guest.id, eventId: event.id } },
+          create: {
+            guestId: guest.id,
+            eventId: event.id,
+            weddingId,
+            rsvpStatus,
+          },
+          update: { rsvpStatus },
+        });
       });
-      if (isEventFull(confirmedOthers, event.capacity)) {
+    } catch (txError) {
+      if (txError instanceof CapacityFullError) {
         return NextResponse.json(
           { error: "This event has reached capacity.", full: true },
           { status: 409 },
         );
       }
+      throw txError;
     }
-
-    // Upsert the per-event invite with the new status.
-    await db.guestEventInvite.upsert({
-      where: { guestId_eventId: { guestId: guest.id, eventId: event.id } },
-      create: {
-        guestId: guest.id,
-        eventId: event.id,
-        weddingId,
-        rsvpStatus,
-      },
-      update: { rsvpStatus },
-    });
 
     // Notify the couple in the background — best-effort, never blocks the RSVP.
     after(async () => {

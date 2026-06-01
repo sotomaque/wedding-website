@@ -16,6 +16,7 @@ interface PublicEventRsvpProps {
     locationAddress: string | null;
   };
   isFull: boolean;
+  closed: boolean;
 }
 
 function formatTime(time: string) {
@@ -40,6 +41,7 @@ export function PublicEventRsvp({
   coupleName,
   event,
   isFull: initialFull,
+  closed,
 }: PublicEventRsvpProps) {
   const [mode, setMode] = useState<"code" | "name">("name");
   const [code, setCode] = useState("");
@@ -96,6 +98,22 @@ export function PublicEventRsvp({
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (closed && !submitted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            {event.name}
+          </h1>
+          <p className="text-gray-600">
+            RSVPs for this event are closed. Please reach out to {coupleName} if
+            you have any questions.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (submitted) {
