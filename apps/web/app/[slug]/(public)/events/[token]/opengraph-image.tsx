@@ -155,7 +155,7 @@ export default async function OpengraphImage({ params }: ImageProps) {
     const event = await db.event.findUnique({
       where: { publicRsvpToken: params.token },
       include: {
-        wedding: { select: { coupleName: true, brandImageUrl: true } },
+        wedding: { select: { coupleName: true } },
       },
     });
 
@@ -164,7 +164,8 @@ export default async function OpengraphImage({ params }: ImageProps) {
       couple: event?.wedding.coupleName ?? "Our Wedding",
       dateStr: formatDate(event?.eventDate ?? null),
       location: event?.locationName ?? null,
-      hero: await loadHeroDataUri(event?.wedding.brandImageUrl ?? null),
+      // Per-event photo only — the brand logo isn't used as a backdrop.
+      hero: await loadHeroDataUri(event?.imageUrl ?? null),
     };
 
     return new ImageResponse(<Card {...data} />, { ...size });

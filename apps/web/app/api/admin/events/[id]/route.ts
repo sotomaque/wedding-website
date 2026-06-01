@@ -106,6 +106,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       displayOrder,
       capacity,
       publicRsvpEnabled,
+      imageUrl,
     } = body;
 
     // Get current event to check if isDefault changed
@@ -147,6 +148,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         capacity === null || capacity === "" ? null : Number(capacity);
     if (publicRsvpEnabled !== undefined)
       updateData.publicRsvpEnabled = Boolean(publicRsvpEnabled);
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl || null;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(

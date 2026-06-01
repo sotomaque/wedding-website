@@ -31,6 +31,8 @@ export const createEventSchema = z.object({
   isDefault: z.boolean().optional(),
   // Optional cap on confirmed attendees (null/omitted = unlimited).
   capacity: z.number().int().positive().nullish(),
+  // Optional share-preview image URL (uploaded or chosen from the gallery).
+  imageUrl: z.string().url().nullish().or(z.literal("")),
 });
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 

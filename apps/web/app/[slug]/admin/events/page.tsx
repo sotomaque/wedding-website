@@ -86,6 +86,7 @@ async function getEvents() {
       longitude: event.longitude ? Number(event.longitude) : null,
       isDefault: event.isDefault ?? false,
       capacity: event.capacity ?? null,
+      imageUrl: event.imageUrl ?? null,
       publicRsvpToken: event.publicRsvpToken ?? null,
       publicRsvpEnabled: event.publicRsvpEnabled ?? true,
       displayOrder: event.displayOrder ?? 0,

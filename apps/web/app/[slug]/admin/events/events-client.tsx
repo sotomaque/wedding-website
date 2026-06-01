@@ -38,6 +38,7 @@ import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import { formatEventDateRange } from "@/lib/utils/event-format";
+import { EventImagePicker } from "./event-image-picker";
 import { ShareEventDialog } from "./share-event-dialog";
 
 interface Event {
@@ -54,6 +55,7 @@ interface Event {
   longitude: number | null;
   isDefault: boolean;
   capacity: number | null;
+  imageUrl: string | null;
   publicRsvpToken: string | null;
   publicRsvpEnabled: boolean;
   displayOrder: number;
@@ -81,6 +83,7 @@ interface EventFormData {
   longitude: string;
   isDefault: boolean;
   capacity: string;
+  imageUrl: string;
 }
 
 const defaultFormData: EventFormData = {
@@ -96,6 +99,7 @@ const defaultFormData: EventFormData = {
   longitude: "",
   isDefault: false,
   capacity: "",
+  imageUrl: "",
 };
 
 // Hoisted helpers — avoid recreating on every render
@@ -157,6 +161,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
       longitude: event.longitude?.toString() || "",
       isDefault: event.isDefault,
       capacity: event.capacity != null ? String(event.capacity) : "",
+      imageUrl: event.imageUrl ?? "",
     });
     setIsDialogOpen(true);
   };
@@ -185,6 +190,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
         capacity: formData.capacity
           ? Number.parseInt(formData.capacity, 10)
           : null,
+        imageUrl: formData.imageUrl || null,
       };
 
       if (editingEvent) {
@@ -732,6 +738,13 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                 link stops accepting new attendees.
               </p>
             </div>
+
+            <EventImagePicker
+              value={formData.imageUrl || null}
+              onChange={(url) =>
+                setFormData((prev) => ({ ...prev, imageUrl: url ?? "" }))
+              }
+            />
 
             <DialogFooter>
               <Button
