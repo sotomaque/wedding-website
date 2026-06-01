@@ -22,6 +22,7 @@ import { Textarea } from "@workspace/ui/components/textarea";
 import { cn } from "@workspace/ui/lib/utils";
 import { format } from "date-fns";
 import {
+  BarChart3,
   Calendar,
   CalendarIcon,
   Clock,
@@ -372,6 +373,12 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`/${slug}/admin/events/${event.id}`}>
+                      <BarChart3 className="h-4 w-4 mr-1" />
+                      RSVPs
+                    </a>
+                  </Button>
                   {!event.isDefault && (
                     <Button variant="outline" size="sm" asChild>
                       <a href={`/${slug}/admin/events/${event.id}/invites`}>
