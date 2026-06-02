@@ -24,6 +24,9 @@ mock.module("@/env", () => ({
 // Mock wedding context
 mock.module("@/lib/db/wedding-context", () => ({
   getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({ weddingId: "test-wedding-id", slug: "test-wedding" }),
+  ),
 }));
 
 // Track findMany calls
