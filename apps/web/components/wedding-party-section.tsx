@@ -2,7 +2,7 @@ import { User } from "lucide-react";
 import type { WeddingPartyContent } from "@/lib/validations/wedding-content";
 
 /**
- * Wedding Party — Lovebird-style 3-column grid of circular member avatars
+ * Wedding Party — Elegant-style 3-column grid of circular member avatars
  * with name + role beneath. WYSIWYG: renders exactly the wedding's
  * `wedding-party` content (what the admin sees in the editor). Returns
  * `null` when there is no content or the members list is empty, so the

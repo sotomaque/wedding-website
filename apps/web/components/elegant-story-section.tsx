@@ -1,13 +1,13 @@
 import type { StoryContent } from "@/lib/validations/wedding-content";
 
-interface LovebirdStorySectionProps {
+interface ElegantStorySectionProps {
   content?: StoryContent;
 }
 
 /**
- * Our Story, Lovebird-style. Prose-only — narrow centered column on the
+ * Our Story, Elegant-style. Prose-only — narrow centered column on the
  * dark forest-green background, Sacramento script heading, then the story
- * body in Quicksand at text-lg. No photo grid (Lovebird's template uses
+ * body in Quicksand at text-lg. No photo grid (Elegant's template uses
  * the hero/gallery sections to surface imagery, leaving Our Story as a
  * focused reading block).
  *
@@ -15,7 +15,7 @@ interface LovebirdStorySectionProps {
  * falls back to the legacy `paragraphs` array — same dual path the
  * photo-grid variant uses, so admin-side content authoring is unchanged.
  */
-export function LovebirdStorySection({ content }: LovebirdStorySectionProps) {
+export function ElegantStorySection({ content }: ElegantStorySectionProps) {
   const hasText = Boolean(
     content?.bodyHtml || (content?.paragraphs ?? []).length > 0,
   );

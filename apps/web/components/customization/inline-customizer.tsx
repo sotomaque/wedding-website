@@ -43,6 +43,14 @@ import {
 } from "./content-editors";
 
 type TopTab = "design" | "content";
+type DesignTab = "template" | "theme" | "font" | "logo";
+
+const DESIGN_TABS: { key: DesignTab; label: string }[] = [
+  { key: "template", label: "Template" },
+  { key: "theme", label: "Color theme" },
+  { key: "font", label: "Typography" },
+  { key: "logo", label: "Logo" },
+];
 
 /**
  * Per-section behavior in the Content tab. `editor` renders the matching
@@ -159,6 +167,7 @@ export function InlineCustomizer({
 
   const [open, setOpen] = useState(false);
   const [topTab, setTopTab] = useState<TopTab>("design");
+  const [designTab, setDesignTab] = useState<DesignTab>("template");
   const [contentTab, setContentTab] = useState<SectionKey>(
     sectionTabs[0]?.key ?? "hero",
   );
@@ -204,19 +213,30 @@ export function InlineCustomizer({
         </div>
 
         {topTab === "design" && (
-          <div className="mt-6 space-y-10 pb-10">
-            <CustomizerSection title="Template">
-              <TemplatePicker wedding={wedding} />
-            </CustomizerSection>
-            <CustomizerSection title="Color theme">
-              <ThemePicker wedding={wedding} />
-            </CustomizerSection>
-            <CustomizerSection title="Typography">
-              <FontPicker wedding={wedding} />
-            </CustomizerSection>
-            <CustomizerSection title="Logo">
-              <BrandingPicker wedding={wedding} />
-            </CustomizerSection>
+          <div className="mt-6 pb-10 flex gap-4">
+            <nav className="w-32 shrink-0 flex flex-col gap-0.5 border-r border-border pr-2">
+              {DESIGN_TABS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setDesignTab(key)}
+                  className={`text-left px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    designTab === key
+                      ? "bg-accent/10 text-accent"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+
+            <div className="flex-1 min-w-0">
+              {designTab === "template" && <TemplatePicker wedding={wedding} />}
+              {designTab === "theme" && <ThemePicker wedding={wedding} />}
+              {designTab === "font" && <FontPicker wedding={wedding} />}
+              {designTab === "logo" && <BrandingPicker wedding={wedding} />}
+            </div>
           </div>
         )}
 
@@ -250,7 +270,7 @@ export function InlineCustomizer({
                 }
                 content={content}
                 template={template}
-                slug={wedding.slug}
+                wedding={wedding}
               />
             </div>
           </div>
@@ -265,22 +285,23 @@ function ContentTabBody({
   config,
   content,
   template,
-  slug,
+  wedding,
 }: {
   sectionKey: SectionKey;
   config: Exclude<SectionTabConfig, { kind: "hidden" }>;
   content: Record<string, unknown>;
   template: TemplatePreset;
-  slug: string;
+  wedding: Wedding;
 }) {
   if (config.kind === "crossLink") {
-    return <SectionLink slug={slug} {...config} />;
+    return <SectionLink slug={wedding.slug} {...config} />;
   }
   switch (sectionKey) {
     case "hero":
       return (
         <HeroEditor
           initial={content.hero as HeroContent | undefined}
+          initialCoupleName={wedding.coupleName}
           currentDisplay={template.heroDisplay}
         />
       );
@@ -336,28 +357,18 @@ function SectionLink({
     <div className="space-y-4 max-w-lg">
       <p className="text-sm text-muted-foreground">{note}</p>
       <Button asChild variant="outline">
-        <Link href={`/${slug}/${adminPath}`} className="gap-2">
+        {/* Open the dedicated admin page in a new tab so the customizer (and
+            its in-progress state) stays put — the ExternalLink icon signals it. */}
+        <Link
+          href={`/${slug}/${adminPath}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="gap-2"
+        >
           Open {label} editor
           <ExternalLink className="size-3.5" />
         </Link>
       </Button>
     </div>
-  );
-}
-
-function CustomizerSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <h3 className="text-base font-medium mb-4 pb-2 border-b border-border">
-        {title}
-      </h3>
-      {children}
-    </section>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  generateReactHelpers,
   generateUploadButton,
   generateUploadDropzone,
 } from "@uploadthing/react";
@@ -14,3 +15,8 @@ export const UploadDropzone: ReturnType<
 export const UploadButton: ReturnType<
   typeof generateUploadButton<OurFileRouter>
 > = generateUploadButton<OurFileRouter>();
+
+// Lower-level hooks for building a custom uploader (used by PhotoUploader so
+// the drop area and the file-picker button can be separate click targets).
+export const { useUploadThing } = generateReactHelpers<OurFileRouter>();
+export { useDropzone } from "@uploadthing/react";

@@ -16,7 +16,7 @@ describe("getThemePreset", () => {
     expect(getThemePreset("coastal-blue").id).toBe("coastal-blue");
     expect(getThemePreset("burgundy-wine").id).toBe("burgundy-wine");
     expect(getThemePreset("emerald-forest").id).toBe("emerald-forest");
-    expect(getThemePreset("lovebird-elegant").id).toBe("lovebird-elegant");
+    expect(getThemePreset("elegant").id).toBe("elegant");
   });
 });
 

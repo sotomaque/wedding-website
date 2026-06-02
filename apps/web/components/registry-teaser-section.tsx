@@ -14,9 +14,9 @@ interface RegistryTeaserSectionProps {
 }
 
 /**
- * Registry section, Lovebird-style. Flat vertical list of registry items —
+ * Registry section, Elegant-style. Flat vertical list of registry items —
  * no card wrapper, no grid — each block is a bold-serif title + description
- * + outlined "Website" CTA. Matches the way Lovebird inlines the entire
+ * + outlined "Website" CTA. Matches the way Elegant inlines the entire
  * registry on the home page rather than teasing to a sub-route.
  */
 export function RegistryTeaserSection({ items }: RegistryTeaserSectionProps) {

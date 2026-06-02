@@ -47,9 +47,9 @@ describe("generateFontCss", () => {
     expect(css).not.toContain("--font-body");
   });
 
-  it("emits all four font slot overrides when a pairing defines them (lovebird-elegant)", () => {
-    const css = generateFontCss(getFontPairing("lovebird-elegant"));
-    // Lovebird-elegant uses the trio: Sacramento display, Quicksand body
+  it("emits all four font slot overrides when a pairing defines them (elegant-script)", () => {
+    const css = generateFontCss(getFontPairing("elegant-script"));
+    // The elegant-script trio: Sacramento display, Quicksand body
     // (also reused as heading at smaller sizes), Inter UI chrome.
     expect(css).toContain("--font-heading: var(--font-quicksand)");
     expect(css).toContain("--font-body: var(--font-quicksand)");

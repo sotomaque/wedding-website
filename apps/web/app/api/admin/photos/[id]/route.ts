@@ -1,7 +1,8 @@
+import { revalidatePath } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
-import { getWeddingId } from "@/lib/db/wedding-context";
+import { getWeddingContext } from "@/lib/db/wedding-context";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -17,7 +18,7 @@ type RouteContext = { params: Promise<{ id: string }> };
  */
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
-    const weddingId = await getWeddingId();
+    const { weddingId, slug } = await getWeddingContext();
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
@@ -50,6 +51,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       data: updateData,
     });
 
+    // alt/description (gallery captions), isActive (hides everywhere), and
+    // order all surface on the public page — bust its cache.
+    revalidatePath(`/${slug}`, "layout");
+
     return NextResponse.json({ photo });
   } catch (error) {
     console.error("Error in PATCH /api/admin/photos/[id]:", error);
@@ -71,7 +76,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
  */
 export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
-    const weddingId = await getWeddingId();
+    const { weddingId, slug } = await getWeddingContext();
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
@@ -82,7 +87,11 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
 
+    // Deleting the photo cascades to its placements (FK on delete cascade),
+    // so it disappears from every section it was placed in.
     await db.photo.delete({ where: { id } });
+
+    revalidatePath(`/${slug}`, "layout");
 
     return NextResponse.json({ success: true });
   } catch (error) {

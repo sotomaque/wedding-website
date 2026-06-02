@@ -6,7 +6,7 @@
  * Lives in a separate "use client" module from motifs.tsx because Phosphor's
  * `IconContext` calls `createContext` at module load and can't be evaluated in
  * a React Server Component context. Section components that consume icons
- * (e.g. LovebirdScheduleSection) must themselves opt into "use client".
+ * (e.g. ElegantScheduleSection) must themselves opt into "use client".
  *
  * The motif SVG dividers in motifs.tsx stay server-renderable — only the
  * Phosphor-backed icon plumbing crosses the client boundary.

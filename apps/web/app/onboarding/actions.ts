@@ -185,7 +185,7 @@ export async function createWedding(data: {
           section: "rsvp",
           content: { title: "RSVP" },
         },
-        // Lovebird-style sections seeded empty. Welcome falls back to a
+        // Elegant-style sections seeded empty. Welcome falls back to a
         // sensible default heading + message via the section component;
         // wedding-party and faqs return `null` when seeded with empty arrays
         // so newly onboarded weddings start with a blank slate rather than

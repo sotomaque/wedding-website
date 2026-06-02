@@ -91,6 +91,35 @@ export async function updateTemplate(templateId: string) {
   }
 }
 
+/**
+ * Update just the wedding's couple name. Carved out from updateGeneralSettings
+ * so the inline customizer's Cover editor can edit the headline on
+ * couple-names templates (Elegant-style) without dragging the whole
+ * General-settings form along. Wedding.coupleName is also used in nav, footer,
+ * and email templates, so revalidating the slug layout cascades the change.
+ */
+export async function updateCoupleName(coupleName: string) {
+  const { weddingId, slug } = await getWeddingContext();
+  const auth = await isAdmin(weddingId);
+  if (!auth.authorized)
+    return { success: false, error: auth.error ?? "Unauthorized" };
+
+  const trimmed = coupleName.trim();
+  if (!trimmed) return { success: false, error: "Couple name is required" };
+
+  try {
+    await db.wedding.update({
+      where: { id: weddingId },
+      data: { coupleName: trimmed },
+    });
+    revalidatePath(`/${slug}`, "layout");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating couple name:", error);
+    return { success: false, error: "Failed to update couple name" };
+  }
+}
+
 export async function updateGeneralSettings(data: {
   coupleName: string;
   person1Name: string;

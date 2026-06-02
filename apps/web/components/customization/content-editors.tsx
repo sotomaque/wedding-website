@@ -25,6 +25,7 @@ import Link from "next/link";
 import { useCallback, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { updateWeddingContent } from "@/app/[slug]/admin/content/actions";
+import { updateCoupleName } from "@/app/[slug]/admin/settings/actions";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import { UploadButton } from "@/lib/uploadthing-components";
@@ -41,57 +42,99 @@ import type {
 
 export function HeroEditor({
   initial,
+  initialCoupleName,
   currentDisplay,
 }: {
   initial?: HeroContent;
   /**
-   * Which field the current template actually renders. Used to tag the
-   * relevant input with a helpful note. Both fields are always saved so
-   * switching templates never loses the other field.
+   * Wedding.coupleName as currently stored. On couple-names templates
+   * (Elegant-style) the hero headline IS this field, not `initial.title`,
+   * so the Cover editor exposes it directly here instead of forcing the
+   * user to bounce to /admin/settings → General.
+   */
+  initialCoupleName?: string;
+  /**
+   * Which field the current template actually renders as the headline.
+   * `"title"` (Classic) → edits `content.hero.title`.
+   * `"couple-names"` (Elegant) → edits `Wedding.coupleName`. We hide the
+   * unused field on each variant so the editor matches what's on screen.
    */
   currentDisplay?: "title" | "couple-names";
 }) {
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(initial?.title ?? "");
+  const [coupleName, setCoupleName] = useState(initialCoupleName ?? "");
   const [location, setLocation] = useState(initial?.location ?? "");
+
+  const isCoupleNamesMode = currentDisplay === "couple-names";
 
   function handleSave() {
     startTransition(async () => {
-      const result = await updateWeddingContent("hero", {
+      // Couple-names templates: save the headline via Wedding.coupleName.
+      // Title-templates: save the headline via content.hero.title.
+      // Location is always content.hero.location.
+      const heroContent = {
         title,
         ...(location.trim() ? { location: location.trim() } : {}),
-      });
-      if (result.success) {
-        toast.success("Hero content saved");
-      } else {
-        toast.error(result.error ?? "Failed to save");
+      };
+      try {
+        if (
+          isCoupleNamesMode &&
+          coupleName.trim() !== (initialCoupleName ?? "")
+        ) {
+          const r = await updateCoupleName(coupleName);
+          if (!r.success) {
+            toast.error(r.error ?? "Failed to save couple name");
+            return;
+          }
+        }
+        const r = await updateWeddingContent("hero", heroContent);
+        if (r.success) {
+          toast.success("Cover saved");
+        } else {
+          toast.error(r.error ?? "Failed to save");
+        }
+      } catch (err) {
+        console.error("Error saving cover:", err);
+        toast.error("Failed to save");
       }
     });
   }
 
   return (
     <div className="space-y-4 max-w-lg">
-      <div>
-        <Label htmlFor="hero-title">Title</Label>
-        <Input
-          id="hero-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="We're Getting Married!"
-          className="mt-1"
-        />
-        {currentDisplay === "couple-names" && (
+      {isCoupleNamesMode ? (
+        <div>
+          <Label htmlFor="hero-couple-name">Couple name (headline)</Label>
+          <Input
+            id="hero-couple-name"
+            value={coupleName}
+            onChange={(e) => setCoupleName(e.target.value)}
+            placeholder="Harper & James"
+            className="mt-1"
+          />
           <p className="text-xs text-muted-foreground mt-1.5">
-            Not shown by your current template — it displays your couple name
-            from Settings instead. Saved for if you switch templates.
+            Shown as the dominant headline on your current template. Also
+            appears in the site navigation and footer.
           </p>
-        )}
-        {currentDisplay === "title" && (
-          <p className="text-xs text-muted-foreground mt-1.5">
-            Shown as the dominant headline on your current template.
-          </p>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div>
+          <Label htmlFor="hero-title">Title</Label>
+          <Input
+            id="hero-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="We're Getting Married!"
+            className="mt-1"
+          />
+          {currentDisplay === "title" && (
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Shown as the dominant headline on your current template.
+            </p>
+          )}
+        </div>
+      )}
       <div>
         <Label htmlFor="hero-location">Location</Label>
         <Input
@@ -101,7 +144,7 @@ export function HeroEditor({
           placeholder="Seattle, Washington"
           className="mt-1"
         />
-        {currentDisplay === "couple-names" && (
+        {isCoupleNamesMode && (
           <p className="text-xs text-muted-foreground mt-1.5">
             Shown in uppercase under the couple name on your current template.
           </p>

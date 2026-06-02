@@ -3,7 +3,7 @@ import Image from "next/image";
 import { CountdownTimer } from "./countdown-timer";
 import type { HeroPhoto } from "./hero-section";
 
-interface LovebirdHeroSectionProps {
+interface ElegantHeroSectionProps {
   photos: HeroPhoto[];
   coupleNamesDisplay: string;
   /** ISO date string (serializable from server component). */
@@ -15,19 +15,19 @@ interface LovebirdHeroSectionProps {
 }
 
 /**
- * Lovebird-style hero — single contained photo on top, then a dark "card"
+ * Elegant-style hero — single contained photo on top, then a dark "card"
  * with floral corners, couple names in script, M | D | YYYY date, location,
  * and a live countdown. Used by templates whose `heroDisplay` is
  * "couple-names" (currently only Elegant). When the wedding has no photos
  * the photo block is omitted and the card stands alone.
  */
-export function LovebirdHeroSection({
+export function ElegantHeroSection({
   photos,
   coupleNamesDisplay,
   weddingDateIso,
   weddingDateFormatted,
   location,
-}: LovebirdHeroSectionProps) {
+}: ElegantHeroSectionProps) {
   const heroPhoto = photos[0];
 
   return (

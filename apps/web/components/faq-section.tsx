@@ -1,9 +1,9 @@
 import type { FaqsContent } from "@/lib/validations/wedding-content";
 
 /**
- * Home-section FAQs, Lovebird-style. Flat list of question/answer pairs —
+ * Home-section FAQs, Elegant-style. Flat list of question/answer pairs —
  * not collapsible — with the question in bold serif and the answer in cream
- * prose. Lovebird's design keeps everything visible so guests skim the
+ * prose. Elegant's design keeps everything visible so guests skim the
  * whole FAQ at once rather than expanding items.
  *
  * WYSIWYG: renders exactly the wedding's `faqs` content (what the admin

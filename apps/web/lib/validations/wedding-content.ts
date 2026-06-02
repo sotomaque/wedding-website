@@ -5,7 +5,7 @@ export const heroContentSchema = z.object({
   title: z.string(),
   /**
    * Optional uppercase location for hero cards that surface it
-   * (Lovebird-style "SEATTLE, WASHINGTON" line beneath couple names + date).
+   * (Elegant-style "SEATTLE, WASHINGTON" line beneath couple names + date).
    * Templates that render only a hero title ignore this field.
    */
   location: z.string().optional(),

@@ -93,11 +93,11 @@ export const FONT_PAIRINGS: FontPairing[] = [
     preview: { heading: "'Lora', serif", body: "system-ui, sans-serif" },
   },
   {
-    id: "lovebird-elegant",
-    name: "Lovebird Elegant",
+    id: "elegant-script",
+    name: "Elegant Script",
     description:
-      "Sacramento script display, Quicksand body, Inter UI — Lovebird's trio",
-    // Ground truth from the actual Lovebird capture (computed style on <p>):
+      "Sacramento script display, Quicksand body, Inter UI — the Elegant template's trio",
+    // Ground truth from the actual Elegant capture (computed style on <p>):
     //   font-family: "Quicksand", sans-serif;
     // Body prose AND subsection headings use Quicksand — a rounded, friendly
     // sans that carries well at small sizes where Sacramento becomes

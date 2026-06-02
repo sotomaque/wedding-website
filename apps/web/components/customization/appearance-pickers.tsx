@@ -1,6 +1,16 @@
 "use client";
 
 import type { Wedding } from "@prisma/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
@@ -13,9 +23,28 @@ import {
   updateTheme,
 } from "@/app/[slug]/admin/settings/actions";
 import { FONT_PAIRINGS } from "@/lib/fonts";
-import { TEMPLATE_PRESETS } from "@/lib/templates";
+import {
+  getPhotoSections,
+  getTemplatePreset,
+  type PhotoSectionKey,
+  TEMPLATE_PRESETS,
+} from "@/lib/templates";
 import { getThemePreset, THEME_PRESETS } from "@/lib/themes";
 import { designConfigSchema } from "@/lib/validations/wedding-content";
+
+/** Human labels for photo-consuming sections, used in the switch warning. */
+const PHOTO_SECTION_LABELS: Record<PhotoSectionKey, string> = {
+  hero: "Hero",
+  story: "Our Story",
+  gallery: "Gallery",
+};
+
+function listSections(sections: PhotoSectionKey[]): string {
+  const labels = sections.map((s) => PHOTO_SECTION_LABELS[s]);
+  if (labels.length <= 1) return labels.join("");
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
 
 export function BrandingPicker({ wedding }: { wedding: Wedding }) {
   const [isPending, startTransition] = useTransition();
@@ -216,8 +245,14 @@ export function FontPicker({ wedding }: { wedding: Wedding }) {
 export function TemplatePicker({ wedding }: { wedding: Wedding }) {
   const [isPending, startTransition] = useTransition();
   const currentTemplateId = wedding.templateId ?? "classic";
+  // When switching changes which sections display photos, hold the pick here
+  // and confirm with the user before applying (placements are never deleted —
+  // only which ones render changes).
+  const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(
+    null,
+  );
 
-  function handleSelect(templateId: string) {
+  function applyTemplate(templateId: string) {
     startTransition(async () => {
       const result = await updateTemplate(templateId);
       if (result.success) {
@@ -228,6 +263,37 @@ export function TemplatePicker({ wedding }: { wedding: Wedding }) {
     });
   }
 
+  function handleSelect(templateId: string) {
+    if (templateId === currentTemplateId) return;
+
+    const currentSections = getPhotoSections(
+      getTemplatePreset(currentTemplateId),
+    );
+    const nextSections = getPhotoSections(getTemplatePreset(templateId));
+    const removed = currentSections.filter((s) => !nextSections.includes(s));
+    const added = nextSections.filter((s) => !currentSections.includes(s));
+
+    // Only interrupt when the photo-bearing sections actually change.
+    if (removed.length === 0 && added.length === 0) {
+      applyTemplate(templateId);
+      return;
+    }
+    setPendingTemplateId(templateId);
+  }
+
+  const pendingDiff = (() => {
+    if (!pendingTemplateId) return null;
+    const currentSections = getPhotoSections(
+      getTemplatePreset(currentTemplateId),
+    );
+    const nextSections = getPhotoSections(getTemplatePreset(pendingTemplateId));
+    return {
+      name: getTemplatePreset(pendingTemplateId).name,
+      removed: currentSections.filter((s) => !nextSections.includes(s)),
+      added: nextSections.filter((s) => !currentSections.includes(s)),
+    };
+  })();
+
   return (
     <div className="space-y-6 max-w-2xl">
       <p className="text-sm text-muted-foreground">
@@ -236,6 +302,49 @@ export function TemplatePicker({ wedding }: { wedding: Wedding }) {
         picking a template you can fine-tune the color theme and typography
         below; your customizations are preserved if you switch templates later.
       </p>
+      <AlertDialog
+        open={pendingTemplateId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingTemplateId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Switching to {pendingDiff?.name} changes where your photos appear
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDiff && pendingDiff.removed.length > 0 && (
+                <>
+                  Photos in your {listSections(pendingDiff.removed)} section
+                  {pendingDiff.removed.length > 1 ? "s" : ""} will no longer be
+                  shown.{" "}
+                </>
+              )}
+              {pendingDiff && pendingDiff.added.length > 0 && (
+                <>
+                  You'll be able to add photos to the{" "}
+                  {listSections(pendingDiff.added)} section
+                  {pendingDiff.added.length > 1 ? "s" : ""}.{" "}
+                </>
+              )}
+              Your photo assignments are saved either way and return if you
+              switch back.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingTemplateId) applyTemplate(pendingTemplateId);
+                setPendingTemplateId(null);
+              }}
+            >
+              Switch template
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {TEMPLATE_PRESETS.map((template) => {
           const defaultTheme = getThemePreset(template.defaultThemeId);

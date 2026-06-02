@@ -2,7 +2,7 @@
 
 import { getIconSet } from "@workspace/ui/components/motif-icons";
 
-interface LovebirdScheduleEvent {
+interface ElegantScheduleEvent {
   id: string;
   name: string;
   description: string | null;
@@ -13,8 +13,8 @@ interface LovebirdScheduleEvent {
   locationAddress: string | null;
 }
 
-interface LovebirdScheduleSectionProps {
-  events: LovebirdScheduleEvent[];
+interface ElegantScheduleSectionProps {
+  events: ElegantScheduleEvent[];
   /** BCP-47 locale (e.g. "en-US", "es-ES"). Passed in so the section
    * formats dates in the guest's language instead of hardcoded English. */
   locale: string;
@@ -56,7 +56,7 @@ function formatLongDate(d: Date, locale: string): string {
 }
 
 /**
- * Schedule section, Lovebird-style. Each event is a row with a stacked
+ * Schedule section, Elegant-style. Each event is a row with a stacked
  * date on the left (MMM / DD / YYYY) and an event panel on the right:
  *   - uppercase event name (tracked-out)
  *   - calendar line: long date + start—end time
@@ -66,11 +66,11 @@ function formatLongDate(d: Date, locale: string): string {
  * Data comes from the `events` table (already used to surface
  * Ceremony / Reception elsewhere). Renders nothing if no events.
  */
-export function LovebirdScheduleSection({
+export function ElegantScheduleSection({
   events,
   locale,
   motifId,
-}: LovebirdScheduleSectionProps) {
+}: ElegantScheduleSectionProps) {
   if (events.length === 0) return null;
 
   const iconSet = getIconSet(motifId);

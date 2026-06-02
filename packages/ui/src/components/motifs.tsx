@@ -84,7 +84,7 @@ function BotanicalDivider({ className }: MotifSvgProps) {
  * https://openclipart.org/detail/315389/elegant-divider-line-art),
  * optimized via SVGO and re-rooted with `fill="currentColor"` so the entire
  * ornament tints to the surrounding text color (the theme accent on
- * Lovebird).
+ * Elegant).
  */
 function FloralRosesDivider({ className }: MotifSvgProps) {
   return (
@@ -104,7 +104,7 @@ function FloralRosesDivider({ className }: MotifSvgProps) {
 }
 
 /**
- * Corner spray for the Lovebird hero card. Sourced from Openclipart
+ * Corner spray for the Elegant hero card. Sourced from Openclipart
  * "Corner Flourish" (CC0 / public domain:
  * https://openclipart.org/detail/191158/corner-flourish). True
  * corner-shaped asymmetric semi-freehand flourish — full viewBox used as-is.
