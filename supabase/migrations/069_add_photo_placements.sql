@@ -1,4 +1,4 @@
--- Migration 056: WordPress-style photo placements.
+-- Migration 069: WordPress-style photo placements.
 --
 -- Photos (the `photos` table) become a media LIBRARY. A new join table
 -- `photo_placements` records which library photo renders in which home-page

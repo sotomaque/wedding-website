@@ -1,4 +1,4 @@
--- Migration 057: The second template was renamed from "lovebird-elegant" to
+-- Migration 070: The second template was renamed from "lovebird-elegant" to
 -- "elegant" in app code (dropping a third-party brand name). Update any stored
 -- template_id so existing weddings keep resolving to the same preset instead of
 -- falling back to "classic".

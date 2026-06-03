@@ -140,7 +140,7 @@ export function isValidTemplateId(id: string): boolean {
  * gallery}, minus story when the template's Our Story variant is prose-only.
  *
  * Drives the template-aware admin assignment UI and is the canonical rule the
- * migration 056 backfill mirrors — keep the two in sync if presets change.
+ * migration 069 backfill mirrors — keep the two in sync if presets change.
  *   - classic          → ["hero", "story"]
  *   - elegant → ["hero", "gallery"]
  */
