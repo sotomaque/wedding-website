@@ -2,7 +2,11 @@ import { describe, expect, it } from "bun:test";
 import { FONT_PAIRINGS } from "@/lib/fonts";
 import { LAYOUT_PRESETS } from "@/lib/layouts";
 import { MOTIF_PACKS } from "@/lib/motifs";
-import { getTemplatePreset, TEMPLATE_PRESETS } from "@/lib/templates";
+import {
+  getPhotoSections,
+  getTemplatePreset,
+  TEMPLATE_PRESETS,
+} from "@/lib/templates";
 import { THEME_PRESETS } from "@/lib/themes";
 
 describe("getTemplatePreset", () => {
@@ -16,7 +20,7 @@ describe("getTemplatePreset", () => {
   });
 
   it("returns the matching preset by id", () => {
-    expect(getTemplatePreset("lovebird-elegant").id).toBe("lovebird-elegant");
+    expect(getTemplatePreset("elegant").id).toBe("elegant");
   });
 
   it("uses 'classic' as the first preset (so null falls back to production look)", () => {
@@ -68,13 +72,46 @@ describe("TEMPLATE_PRESETS", () => {
     expect(classic.storyStyle).toBe("photo-grid");
   });
 
-  it("lovebird-elegant preset is wired to its matching layout/theme/font entries", () => {
-    const lovebird = getTemplatePreset("lovebird-elegant");
-    expect(lovebird.layoutId).toBe("lovebird-elegant");
-    expect(lovebird.defaultThemeId).toBe("lovebird-elegant");
-    expect(lovebird.defaultFontId).toBe("lovebird-elegant");
-    expect(lovebird.heroDisplay).toBe("couple-names");
-    expect(lovebird.scheduleStyle).toBe("events-card");
-    expect(lovebird.storyStyle).toBe("prose-only");
+  it("elegant preset is wired to its matching layout/theme/font entries", () => {
+    const elegant = getTemplatePreset("elegant");
+    expect(elegant.layoutId).toBe("elegant");
+    expect(elegant.defaultThemeId).toBe("elegant");
+    expect(elegant.defaultFontId).toBe("elegant-script");
+    expect(elegant.heroDisplay).toBe("couple-names");
+    expect(elegant.scheduleStyle).toBe("events-card");
+    expect(elegant.storyStyle).toBe("prose-only");
+  });
+});
+
+describe("getPhotoSections", () => {
+  it("classic renders hero + story (its layout has no gallery)", () => {
+    expect(getPhotoSections(getTemplatePreset("classic"))).toEqual([
+      "hero",
+      "story",
+    ]);
+  });
+
+  it("elegant renders hero + gallery (story is prose-only)", () => {
+    expect(getPhotoSections(getTemplatePreset("elegant"))).toEqual([
+      "hero",
+      "gallery",
+    ]);
+  });
+
+  it("excludes story when the template's story variant is prose-only", () => {
+    for (const template of TEMPLATE_PRESETS) {
+      const sections = getPhotoSections(template);
+      if (template.storyStyle === "prose-only") {
+        expect(sections).not.toContain("story");
+      }
+    }
+  });
+
+  it("only ever returns photo-capable sections", () => {
+    for (const template of TEMPLATE_PRESETS) {
+      for (const section of getPhotoSections(template)) {
+        expect(["hero", "story", "gallery"]).toContain(section);
+      }
+    }
   });
 });

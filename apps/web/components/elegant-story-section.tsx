@@ -1,13 +1,14 @@
+import { sanitizeRichText } from "@/lib/sanitize-html";
 import type { StoryContent } from "@/lib/validations/wedding-content";
 
-interface LovebirdStorySectionProps {
+interface ElegantStorySectionProps {
   content?: StoryContent;
 }
 
 /**
- * Our Story, Lovebird-style. Prose-only — narrow centered column on the
+ * Our Story, Elegant-style. Prose-only — narrow centered column on the
  * dark forest-green background, Sacramento script heading, then the story
- * body in Quicksand at text-lg. No photo grid (Lovebird's template uses
+ * body in Quicksand at text-lg. No photo grid (Elegant's template uses
  * the hero/gallery sections to surface imagery, leaving Our Story as a
  * focused reading block).
  *
@@ -15,7 +16,7 @@ interface LovebirdStorySectionProps {
  * falls back to the legacy `paragraphs` array — same dual path the
  * photo-grid variant uses, so admin-side content authoring is unchanged.
  */
-export function LovebirdStorySection({ content }: LovebirdStorySectionProps) {
+export function ElegantStorySection({ content }: ElegantStorySectionProps) {
   const hasText = Boolean(
     content?.bodyHtml || (content?.paragraphs ?? []).length > 0,
   );
@@ -32,8 +33,10 @@ export function LovebirdStorySection({ content }: LovebirdStorySectionProps) {
         {content?.bodyHtml ? (
           <div
             className="text-foreground/85 text-lg leading-relaxed text-left [&_p]:my-4 [&_p]:text-lg [&_p]:leading-relaxed [&_h2]:text-2xl [&_h2]:font-display [&_h2]:text-center [&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:text-foreground [&_h3]:text-xl [&_h3]:font-serif [&_h3]:font-semibold [&_h3]:mt-6 [&_h3]:mb-2 [&_a]:underline"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side by admin via Tiptap editor
-            dangerouslySetInnerHTML={{ __html: content.bodyHtml }}
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: admin rich text, sanitized via sanitizeRichText
+            dangerouslySetInnerHTML={{
+              __html: sanitizeRichText(content.bodyHtml),
+            }}
           />
         ) : (
           <div className="text-left space-y-4">

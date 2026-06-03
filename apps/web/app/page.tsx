@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import {
   Calendar,
   Camera,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 const FEATURES = [
   {
@@ -51,7 +53,13 @@ const FEATURES = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // Signed-in visitors don't need the marketing page — send them to their
+  // dashboard, which lists their weddings and leads into the admin (where the
+  // "Main Site" nav link reaches the public site).
+  const { userId } = await auth();
+  if (userId) redirect("/dashboard");
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Nav */}

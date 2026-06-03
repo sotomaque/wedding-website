@@ -169,6 +169,17 @@
     @apply bg-background text-foreground;
   }
 
+  /* Restore the pre-Tailwind-v4 default: clickable elements get a pointer
+     cursor instead of the OS arrow. Skipped when disabled. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="option"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
+  }
+
   @keyframes shimmer {
     0% {
       transform: translateX(-100%);

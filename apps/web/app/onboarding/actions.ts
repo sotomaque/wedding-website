@@ -157,7 +157,7 @@ export async function createWedding(data: {
           section: "story",
           content: {
             title: "Our Story",
-            paragraphs: ["Tell your story here..."],
+            paragraphs: [],
           },
         },
         {
@@ -184,6 +184,26 @@ export async function createWedding(data: {
           weddingId: wedding.id,
           section: "rsvp",
           content: { title: "RSVP" },
+        },
+        // Elegant-style sections seeded empty. Welcome falls back to a
+        // sensible default heading + message via the section component;
+        // wedding-party and faqs return `null` when seeded with empty arrays
+        // so newly onboarded weddings start with a blank slate rather than
+        // showing demo names.
+        {
+          weddingId: wedding.id,
+          section: "welcome",
+          content: { title: "Welcome!", message: "" },
+        },
+        {
+          weddingId: wedding.id,
+          section: "wedding-party",
+          content: { title: "Wedding Party", members: [] },
+        },
+        {
+          weddingId: wedding.id,
+          section: "faqs",
+          content: { title: "FAQs", items: [] },
         },
       ],
     });

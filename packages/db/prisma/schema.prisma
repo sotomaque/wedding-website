@@ -351,18 +351,40 @@ model Party {
 }
 
 model Photo {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   url          String
   alt          String
   description  String?
-  displayOrder Int      @default(0) @map("display_order")
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  weddingId    String  @map("wedding_id") @db.Uuid
-  wedding      Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  displayOrder Int              @default(0) @map("display_order")
+  isActive     Boolean          @default(true) @map("is_active")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  weddingId    String           @map("wedding_id") @db.Uuid
+  wedding      Wedding          @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  placements   PhotoPlacement[]
 
   @@index([weddingId], map: "idx_photos_wedding_id")
   @@map("photos")
+}
+
+/// Maps a library Photo to a home-page section with a per-section order.
+/// A photo can be placed in multiple sections (hero/story/gallery), once each.
+/// The public page reads each section's placements in displayOrder. Placement
+/// is the sole visibility gate — a photo renders in a section iff it has a
+/// placement there. To hide a photo, remove its placement(s). See
+/// apps/web/lib/photos.ts (Photo.isActive is not consulted on this read path).
+model PhotoPlacement {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  photoId      String       @map("photo_id") @db.Uuid
+  weddingId    String       @map("wedding_id") @db.Uuid
+  section      PhotoSection
+  displayOrder Int          @default(0) @map("display_order")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  photo        Photo        @relation(fields: [photoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding      Wedding      @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([photoId, section])
+  @@index([weddingId, section], map: "idx_photo_placements_wedding_section")
+  @@map("photo_placements")
 }
 
 model SeatingChart {
@@ -444,6 +466,7 @@ model Wedding {
   rsvpDeadline          String?                @map("rsvp_deadline")
   timezone              String                 @default("America/New_York")
   status                WeddingStatus           @default(published)
+  onboardingDismissed   Boolean                @default(false) @map("onboarding_dismissed")
   createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
 
@@ -513,6 +536,7 @@ model Wedding {
   hotels                Hotel[]
   parties               Party[]
   photos                Photo[]
+  photoPlacements       PhotoPlacement[]
   registryItems         RegistryItem[]
   seatingCharts         SeatingChart[]
   seatingTables         SeatingTable[]
@@ -802,6 +826,14 @@ enum VenueType {
   reception
 
   @@map("venue_type")
+}
+
+enum PhotoSection {
+  hero
+  story
+  gallery
+
+  @@map("photo_section")
 }
 
 enum WeddingStatus {

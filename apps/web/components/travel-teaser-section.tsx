@@ -15,12 +15,12 @@ interface TravelTeaserSectionProps {
 }
 
 /**
- * Travel section, Lovebird-style. Flat vertical list of hotels — no card
+ * Travel section, Elegant-style. Flat vertical list of hotels — no card
  * wrappers — with an uppercase "HOTEL" label, the venue name as a bold
  * serif heading, description prose, then a small icon-led metadata line
  * (address / distance / phone) and an outlined Website button.
  *
- * Matches the source-of-truth layout from the Lovebird Elegant template
+ * Matches the source-of-truth layout from the Elegant template
  * (one block per accommodation, separated by generous whitespace, dividers
  * between blocks). Each block is rendered without a box because the page
  * already provides a dark forest-green background; cards on cards would

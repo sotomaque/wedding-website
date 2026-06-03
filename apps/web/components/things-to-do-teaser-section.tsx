@@ -13,11 +13,11 @@ interface ThingsToDoTeaserSectionProps {
 }
 
 /**
- * Things to Do section, Lovebird-style. Flat vertical list of activities —
+ * Things to Do section, Elegant-style. Flat vertical list of activities —
  * no card wrapper, no grid — matching the Travel + Registry pattern. Each
  * activity is an emoji + name (serif heading) + description prose.
  *
- * Matches Lovebird's "consistent inline list" approach across all
+ * Matches Elegant's "consistent inline list" approach across all
  * recommendation-type sections: guests see everything at a glance, no
  * card-on-card visual clutter against the dark forest-green background.
  */

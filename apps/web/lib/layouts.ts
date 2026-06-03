@@ -16,7 +16,7 @@ export type SectionKey =
   | "details"
   | "schedule"
   | "rsvp"
-  // Lovebird-style sections — wired into the home-page section map as
+  // Elegant-style sections — wired into the home-page section map as
   // placeholders/teasers in Phase 1; their backing components / data models
   // ship in Phase 2 (teasers) and Phase 3 (new feature CRUD).
   | "welcome"
@@ -63,10 +63,9 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
     navVariant: "minimal",
   },
   {
-    id: "lovebird-elegant",
-    name: "Lovebird Elegant",
-    description:
-      "Full ten-section flow inspired by Lovebird's Elegant template",
+    id: "elegant",
+    name: "Elegant",
+    description: "Full ten-section flow for the Elegant template",
     sections: [
       "hero",
       "welcome",

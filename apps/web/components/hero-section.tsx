@@ -25,7 +25,7 @@ interface HeroSectionProps {
    * renders centered over the hero in the heading font — without the
    * uppercase / wide-tracking treatment used for `title` — so script display
    * fonts (Sacramento, etc.) read naturally. Used by template layouts that
-   * want a Lovebird-style hero. When unset, the hero falls back to the
+   * want a Elegant-style hero. When unset, the hero falls back to the
    * existing uppercase `title` rendering.
    */
   coupleNamesDisplay?: string;
@@ -113,7 +113,7 @@ export function HeroSection({
             <CarouselPrevious className="left-4 bg-background/80 hover:bg-background border-accent/30" />
             <CarouselNext className="right-4 bg-background/80 hover:bg-background border-accent/30" />
           </Carousel>
-          {/* Overlay with title (or script couple names for Lovebird-style templates) */}
+          {/* Overlay with title (or script couple names for Elegant-style templates) */}
           <div className="absolute inset-0 flex flex-col items-center text-center justify-center bg-black/30 pointer-events-none">
             {coupleNamesDisplay ? (
               <h1 className="text-7xl sm:text-8xl md:text-9xl lg:text-[10rem] font-display text-white drop-shadow-lg leading-tight">

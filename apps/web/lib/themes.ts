@@ -233,11 +233,11 @@ export const THEME_PRESETS: ThemePreset[] = [
     },
   },
   {
-    id: "lovebird-elegant",
-    name: "Lovebird Elegant",
+    id: "elegant",
+    name: "Elegant",
     description:
-      "Dark forest green with cream — Lovebird's signature romantic look",
-    // Ground-truth values from the Lovebird site capture (.lovebird-analysis):
+      "Dark forest green with cream — the Elegant template's romantic look",
+    // Ground-truth values from the Elegant site capture (.elegant-analysis):
     //   --background  = rgb(58, 68, 62)   "#3A443E" forest green (page-wide)
     //   --foreground  = rgb(246, 246, 250) "#F6F6FA" warm cream/white
     // Everything below derives from those two; OKLch keeps the green hue stable
@@ -245,7 +245,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     // border, card surfaces, etc.
     preview: { primary: "#3A443E", accent: "#E5E2D5", background: "#3A443E" },
     cssVariables: {
-      // Ground-truth values from the Lovebird capture:
+      // Ground-truth values from the Elegant capture:
       //   background: rgb(58, 68, 62)   = #3A443E forest green
       //   foreground: rgb(229, 226, 213) = #E5E2D5 warm cream (NOT lavender)
       "--background": "oklch(0.27 0.013 155)",
@@ -256,7 +256,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       "--card-foreground": "oklch(0.90 0.018 85)",
       "--popover": "oklch(0.31 0.013 155)",
       "--popover-foreground": "oklch(0.90 0.018 85)",
-      // Primary = cream — used by buttons. Lovebird's CTA buttons are cream
+      // Primary = cream — used by buttons. Elegant's CTA buttons are cream
       // outlined-on-dark; using cream as primary keeps tailwind utilities
       // (bg-primary / border-primary / text-primary) doing the right thing
       // for both filled and outlined variants.

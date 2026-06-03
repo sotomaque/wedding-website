@@ -134,7 +134,7 @@ export function RichTextEditor({
       <div className="relative">
         <EditorContent editor={editor} />
         {editor.isEmpty && placeholder && (
-          <p className="absolute top-3 left-4 text-sm text-muted-foreground pointer-events-none">
+          <p className="absolute top-3 left-4 right-4 text-sm text-muted-foreground pointer-events-none">
             {placeholder}
           </p>
         )}

@@ -1,13 +1,24 @@
 import { SignOutButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 import { Button } from "@workspace/ui/components/button";
-import { Calendar, Clock, Code, Heart, Mail, Users } from "lucide-react";
+import {
+  Calendar,
+  Camera,
+  Clock,
+  ExternalLink,
+  FileText,
+  Gift,
+  Heart,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getDashboardStats } from "@/lib/db/admin/dashboard-stats";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { buildHeadcountWhere, describeHeadcount } from "@/lib/headcount";
+import { getOnboardingChecklistState } from "@/lib/onboarding-checklist";
 import type { HeadcountConfig } from "@/lib/validations/wedding-content";
+import { OnboardingChecklist } from "./onboarding-checklist";
 import { RsvpInsightsCard } from "./rsvp-insights-card";
 import { RsvpStatsPanel } from "./rsvp-stats-panel";
 
@@ -36,9 +47,10 @@ async function getHeadcount(weddingId: string, config: HeadcountConfig) {
 }
 
 export default async function AdminPage() {
-  const [user, settings] = await Promise.all([
+  const [user, settings, checklist] = await Promise.all([
     currentUser(),
     getWeddingSettings(),
+    getOnboardingChecklistState(),
   ]);
 
   const weddingCountdown = getCountdown(settings.weddingDate);
@@ -78,6 +90,41 @@ export default async function AdminPage() {
     getDashboardStats(settings.id),
   ]);
 
+  // Curated couple-facing shortcuts — the few things done most often. The full
+  // surface lives in the top nav; this is intentionally a short list.
+  const quickActions = [
+    {
+      href: `/${settings.slug}/admin/guests`,
+      icon: Users,
+      title: "Guests & RSVPs",
+      description: "Manage your guest list and track responses",
+    },
+    {
+      href: `/${settings.slug}/admin/photos`,
+      icon: Camera,
+      title: "Photos",
+      description: "Upload photos and choose where they appear",
+    },
+    {
+      href: `/${settings.slug}/admin/content`,
+      icon: FileText,
+      title: "Page content",
+      description: "Edit your site's text and sections",
+    },
+    {
+      href: `/${settings.slug}/admin/events`,
+      icon: Calendar,
+      title: "Schedule",
+      description: "Manage events, times, and details",
+    },
+    {
+      href: `/${settings.slug}/admin/registry`,
+      icon: Gift,
+      title: "Registry",
+      description: "Add gifts and track contributions",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
@@ -97,6 +144,9 @@ export default async function AdminPage() {
           </div>
 
           <div className="space-y-6">
+            {/* Onboarding readiness checklist — auto-detected, dismissible */}
+            {!checklist.dismissed && <OnboardingChecklist state={checklist} />}
+
             {/* Summary Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Headcount — criteria configurable via Settings → Headcount */}
@@ -178,54 +228,47 @@ export default async function AdminPage() {
               <h2 className="text-xl font-semibold text-foreground mb-4">
                 Quick Actions
               </h2>
+
+              {/* Featured: view the live public site (new tab so admin stays open) */}
+              <Link
+                href={`/${settings.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-between gap-4 p-6 mb-4 bg-primary/5 border border-primary/20 rounded-lg hover:border-primary transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <ExternalLink className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-0.5">
+                      View your site
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Open your live wedding site in a new tab — /
+                      {settings.slug}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-sm font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline">
+                  Open ↗
+                </span>
+              </Link>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href={`/${settings.slug}/admin/guests`}>
-                  <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
-                    <Users className="w-8 h-8 text-primary mb-3" />
-                    <h3 className="font-semibold text-foreground mb-1">
-                      Guest Management
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Manage guest list and send invitations
-                    </p>
-                  </div>
-                </Link>
-
-                <Link href={`/${settings.slug}/admin/events`}>
-                  <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
-                    <Calendar className="w-8 h-8 text-primary mb-3" />
-                    <h3 className="font-semibold text-foreground mb-1">
-                      Events
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Manage wedding events and invitations
-                    </p>
-                  </div>
-                </Link>
-
-                <Link href={`/${settings.slug}/admin/templates`}>
-                  <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
-                    <Mail className="w-8 h-8 text-primary mb-3" />
-                    <h3 className="font-semibold text-foreground mb-1">
-                      Email Templates
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Create and manage email templates
-                    </p>
-                  </div>
-                </Link>
-
-                <Link href={`/${settings.slug}/admin/api-docs`}>
-                  <div className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
-                    <Code className="w-8 h-8 text-primary mb-3" />
-                    <h3 className="font-semibold text-foreground mb-1">
-                      API Docs
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Interactive API reference and testing
-                    </p>
-                  </div>
-                </Link>
+                {quickActions.map((action) => (
+                  <Link key={action.href} href={action.href}>
+                    <div className="h-full p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors cursor-pointer">
+                      <action.icon className="w-8 h-8 text-primary mb-3" />
+                      <h3 className="font-semibold text-foreground mb-1">
+                        {action.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {action.description}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
               </div>
             </div>
           </div>

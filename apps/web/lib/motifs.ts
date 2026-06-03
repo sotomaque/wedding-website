@@ -38,7 +38,19 @@ export const MOTIF_PACKS: MotifPack[] = [
     id: "floral-roses",
     name: "Floral Roses",
     description:
-      "Center-clustered rose-and-leaves divider — pairs with the Lovebird-style dark template",
+      "Center-clustered rose-and-leaves divider — pairs with the Elegant-style dark template",
+  },
+  {
+    id: "eucalyptus",
+    name: "Eucalyptus",
+    description:
+      "Pendulous eucalyptus / olive sprig dividers — pairs with warm, boho-leaning templates",
+  },
+  {
+    id: "peony-sprig",
+    name: "Peony Sprig",
+    description:
+      "Single peony bloom flanked by leaves on extending hairlines — soft and floral",
   },
 ];
 

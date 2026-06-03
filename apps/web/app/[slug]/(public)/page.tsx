@@ -2,16 +2,15 @@ import { Footer } from "@workspace/ui/components/footer";
 import { MotifDivider } from "@workspace/ui/components/motifs";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Fragment, type ReactNode } from "react";
-import { pickRandomItems, shuffleArray } from "@/app/utils";
 import { DetailsSection } from "@/components/details-section";
+import { ElegantHeroSection } from "@/components/elegant-hero-section";
+import { ElegantScheduleSection } from "@/components/elegant-schedule-section";
+import { ElegantStorySection } from "@/components/elegant-story-section";
 import { FaqSection } from "@/components/faq-section";
 import { GallerySection } from "@/components/gallery-section";
 import { HeroSection } from "@/components/hero-section";
 import { HeroSectionEmpty } from "@/components/hero-section-empty";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { LovebirdHeroSection } from "@/components/lovebird-hero-section";
-import { LovebirdScheduleSection } from "@/components/lovebird-schedule-section";
-import { LovebirdStorySection } from "@/components/lovebird-story-section";
 import { RegistryTeaserSection } from "@/components/registry-teaser-section";
 import { RSVPSection } from "@/components/rsvp-section";
 import { ScheduleSection } from "@/components/schedule-section";
@@ -32,29 +31,46 @@ import {
   getWeddingSettings,
 } from "@/lib/db/wedding-content-data";
 import { getLayoutPreset, type SectionKey } from "@/lib/layouts";
-import { getAllPhotos } from "@/lib/photos";
+import { getPhotosBySection } from "@/lib/photos";
 import { getTemplatePreset } from "@/lib/templates";
 import type {
   DetailsContent,
+  FaqsContent,
   HeroContent,
   RsvpContent,
   ScheduleContent,
   StoryContent,
+  WeddingPartyContent,
+  WelcomeContent,
 } from "@/lib/validations/wedding-content";
 
 export default async function Page() {
   // Top-level fetches — settings is needed to decide whether to fetch
   // registry items, so it kicks off in this first wave with everything
   // else that doesn't depend on it.
-  const [photos, content, settings, venueDerived, t, locale] =
-    await Promise.all([
-      getAllPhotos(),
-      getWeddingContentSections(),
-      getWeddingSettings(),
-      getCeremonyAndReception(),
-      getTranslations("footer"),
-      getLocale(),
-    ]);
+  // Photos are read per section from explicit placements (no random shuffle).
+  // Each list is already ordered by the admin's per-section displayOrder; the
+  // first hero photo is the priority cover, the first story photo is the main
+  // image. Empty lists let the section map's null-gate hide the slot.
+  const [
+    heroPhotos,
+    storyPhotos,
+    galleryPhotos,
+    content,
+    settings,
+    venueDerived,
+    t,
+    locale,
+  ] = await Promise.all([
+    getPhotosBySection("hero"),
+    getPhotosBySection("story"),
+    getPhotosBySection("gallery"),
+    getWeddingContentSections(),
+    getWeddingSettings(),
+    getCeremonyAndReception(),
+    getTranslations("footer"),
+    getLocale(),
+  ]);
 
   // Teaser data — each accessor is React.cache-wrapped in
   // wedding-content-data.ts so any sibling component that needs the same
@@ -67,17 +83,13 @@ export default async function Page() {
       settings.featureToggles.registry
         ? getActiveRegistryItems()
         : Promise.resolve([]),
-      // Events feed the Lovebird-style schedule (richer than ScheduleContent's
+      // Events feed the Elegant-style schedule (richer than ScheduleContent's
       // flat {time, event, description}). Classic uses ScheduleContent and
       // ignores this — but getCeremonyAndReception above also reads events,
       // and both calls share a single DB roundtrip via React.cache.
       getEvents(),
     ],
   );
-
-  // Shuffle photos on the server to avoid hydration mismatch
-  const heroPhotos = shuffleArray([...photos]);
-  const storyPhotos = pickRandomItems([...photos], 3);
 
   const detailsContent = content.details as DetailsContent | undefined;
   const weddingDateFormatted =
@@ -107,27 +119,25 @@ export default async function Page() {
   const layout = getLayoutPreset(template.layoutId);
   const motifId = template.motifId;
 
-  // Hashtag derivation: prefer the alphanumeric-stripped couple name + year
-  // (e.g. "helenandenrique2026"), but fall back to the slug for couple names
-  // that strip to empty (any non-Latin script like "山田 & 佐藤"). The slug is
-  // ASCII-safe by construction.
-  const nameStripped = settings.coupleName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "");
-  const hashtagBase = nameStripped || settings.slug.replace(/-/g, "");
-  const hashtag = `${hashtagBase}${settings.weddingDate.getFullYear()}`;
-
   // Section registry — each key maps to its rendered component with the same
   // props as before. The layout template decides which sections appear and
   // in what order; each component keeps its own anchor id for nav links.
-  // Lovebird-style section keys (wedding-party, gallery, things-to-do,
+  // Elegant-style section keys (wedding-party, gallery, things-to-do,
   // travel-teaser, registry-teaser, faqs) render `null` for now — their
   // backing components and data models ship in Phase 2 (teasers) and
   // Phase 3 (new CRUD features). Until then they leave a quiet empty slot
-  // in the Lovebird layout rather than break the page.
+  // in the Elegant layout rather than break the page.
+  // Gate the content-driven Elegant sections on having actual content so
+  // the layout's null-filter skips both the section AND its motif divider
+  // when empty (same pattern as gallery/teasers below).
+  const weddingPartyContent = content["wedding-party"] as
+    | WeddingPartyContent
+    | undefined;
+  const faqsContent = content.faqs as FaqsContent | undefined;
+
   const sectionMap: Record<SectionKey, ReactNode> = {
     // Two hero variants:
-    //   - "couple-names" (Lovebird-style): contained photo + dark card with
+    //   - "couple-names" (Elegant-style): contained photo + dark card with
     //     script names, M | D | YYYY date, location, live countdown.
     //   - "title" (Classic): full-bleed carousel + uppercase title overlay,
     //     or a gradient-backed title for weddings with no photos yet —
@@ -135,7 +145,7 @@ export default async function Page() {
     //     a Server Component (no carousel JS).
     hero:
       template.heroDisplay === "couple-names" ? (
-        <LovebirdHeroSection
+        <ElegantHeroSection
           photos={heroPhotos}
           coupleNamesDisplay={settings.coupleName}
           weddingDateIso={settings.weddingDate.toISOString()}
@@ -159,7 +169,7 @@ export default async function Page() {
     // Server Components - static content
     story:
       template.storyStyle === "prose-only" ? (
-        <LovebirdStorySection content={content.story as StoryContent} />
+        <ElegantStorySection content={content.story as StoryContent} />
       ) : (
         <StorySection
           photos={storyPhotos}
@@ -169,7 +179,11 @@ export default async function Page() {
     details: <DetailsSection content={detailsContentWithEvents} />,
     schedule:
       template.scheduleStyle === "events-card" ? (
-        <LovebirdScheduleSection events={scheduleEvents} locale={locale} />
+        <ElegantScheduleSection
+          events={scheduleEvents}
+          locale={locale}
+          motifId={motifId}
+        />
       ) : (
         <ScheduleSection
           content={content.schedule as ScheduleContent}
@@ -183,14 +197,22 @@ export default async function Page() {
         rsvpDeadline={settings.rsvpDeadline ?? undefined}
       />
     ),
-    // Lovebird-style sections — data-driven where backing tables exist
+    // Elegant-style sections — data-driven where backing tables exist
     // (hotels, activities, registry, photos), hardcoded placeholders where
     // they don't (welcome + wedding-party + faqs ship Phase 3). null = "no
     // data, skip this slot entirely" — the layout iteration filters them
     // out so we don't leave stray motif dividers between empty rows.
-    welcome: <WelcomeSection hashtag={hashtag} />,
-    "wedding-party": <WeddingPartySection />,
-    gallery: photos.length > 0 ? <GallerySection photos={photos} /> : null,
+    welcome: (
+      <WelcomeSection content={content.welcome as WelcomeContent | undefined} />
+    ),
+    "wedding-party":
+      weddingPartyContent && weddingPartyContent.members.length > 0 ? (
+        <WeddingPartySection content={weddingPartyContent} />
+      ) : null,
+    gallery:
+      galleryPhotos.length > 0 ? (
+        <GallerySection photos={galleryPhotos} />
+      ) : null,
     "things-to-do":
       activities.length > 0 ? (
         <ThingsToDoTeaserSection activities={activities} />
@@ -201,7 +223,10 @@ export default async function Page() {
       registryItems.length > 0 ? (
         <RegistryTeaserSection items={registryItems} />
       ) : null,
-    faqs: <FaqSection />,
+    faqs:
+      faqsContent && faqsContent.items.length > 0 ? (
+        <FaqSection content={faqsContent} />
+      ) : null,
   };
 
   return (
@@ -211,7 +236,7 @@ export default async function Page() {
       <main className="grow">
         {/* Filter out placeholder (null) sections so we don't render stray
             motif dividers around empty slots — Phase 1 ships several
-            Lovebird-only sections that aren't built yet. */}
+            Elegant-only sections that aren't built yet. */}
         {layout.sections
           .filter((key) => sectionMap[key] !== null)
           .map((key, index) => (

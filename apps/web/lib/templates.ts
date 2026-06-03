@@ -21,6 +21,26 @@
  * without a backfill migration.
  */
 
+import { getLayoutPreset, type SectionKey } from "./layouts";
+
+/** Sections that can render photos, in the order the gallery/render path uses. */
+export type PhotoSectionKey = Extract<SectionKey, "hero" | "story" | "gallery">;
+
+/**
+ * Maximum photos a section will accept, where a cap makes sense. The hero is a
+ * carousel, which reads best with a handful of standout shots; gallery and
+ * story are uncapped. Enforced both client-side (drop guard) and server-side
+ * (POST /placements). Shared so the two stay in sync.
+ */
+export const SECTION_PHOTO_CAPS: Partial<Record<PhotoSectionKey, number>> = {
+  hero: 8,
+};
+
+/** The cap for a section, or null if it accepts unlimited photos. */
+export function getSectionPhotoCap(section: string): number | null {
+  return SECTION_PHOTO_CAPS[section as PhotoSectionKey] ?? null;
+}
+
 export interface TemplatePreset {
   id: string;
   name: string;
@@ -35,27 +55,27 @@ export interface TemplatePreset {
   defaultFontId: string;
   /**
    * Identifier used by future seeders (Phase 4) to select per-template demo
-   * content (e.g. "lovebird-elegant" → Harper & James / Seattle demo data).
+   * content (e.g. "elegant" → Harper & James / Seattle demo data).
    */
   seedFlavor: string;
   /**
    * How the hero renders its dominant headline. "title" uses the uppercase
    * tracked serif treatment driven by `content.hero.title`. "couple-names"
    * renders the wedding's couple name in the heading font without uppercase
-   * tracking — the Lovebird-style script look.
+   * tracking — the Elegant-style script look.
    */
   heroDisplay: "title" | "couple-names";
   /**
    * Which Schedule component renders for this template. "timeline" is the
    * existing flat time/event/description list (Classic). "events-card" is
-   * the Lovebird-style rich event row (stacked date + uppercase label +
+   * the Elegant-style rich event row (stacked date + uppercase label +
    * venue + description + address) driven by the events table.
    */
   scheduleStyle: "timeline" | "events-card";
   /**
    * Which Our Story variant renders. "photo-grid" is the existing
    * main-photo + 3-secondary-photo layout (Classic). "prose-only" is the
-   * Lovebird-style centered narrow column without any imagery.
+   * Elegant-style centered narrow column without any imagery.
    */
   storyStyle: "photo-grid" | "prose-only";
 }
@@ -79,15 +99,15 @@ export const TEMPLATE_PRESETS: TemplatePreset[] = [
     storyStyle: "photo-grid",
   },
   {
-    id: "lovebird-elegant",
+    id: "elegant",
     name: "Elegant",
     description:
-      "Dark forest green with cream and script headings — Lovebird-style",
-    layoutId: "lovebird-elegant",
+      "Dark forest green with cream and script headings — Elegant-style",
+    layoutId: "elegant",
     motifId: "floral-roses",
-    defaultThemeId: "lovebird-elegant",
-    defaultFontId: "lovebird-elegant",
-    seedFlavor: "lovebird-elegant",
+    defaultThemeId: "elegant",
+    defaultFontId: "elegant-script",
+    seedFlavor: "elegant",
     heroDisplay: "couple-names",
     scheduleStyle: "events-card",
     storyStyle: "prose-only",
@@ -111,4 +131,24 @@ export function getTemplatePreset(
  *  user-supplied IDs at the server-action boundary before writing. */
 export function isValidTemplateId(id: string): boolean {
   return TEMPLATE_PRESETS.some((t) => t.id === id);
+}
+
+/**
+ * The home-page sections that render photos for a given template, in render
+ * order. Derived from the template's resolved layout (only sections the layout
+ * actually renders) intersected with the photo-capable set {hero, story,
+ * gallery}, minus story when the template's Our Story variant is prose-only.
+ *
+ * Drives the template-aware admin assignment UI and is the canonical rule the
+ * migration 069 backfill mirrors — keep the two in sync if presets change.
+ *   - classic          → ["hero", "story"]
+ *   - elegant → ["hero", "gallery"]
+ */
+export function getPhotoSections(template: TemplatePreset): PhotoSectionKey[] {
+  const rendered = getLayoutPreset(template.layoutId).sections;
+  return rendered.filter((section): section is PhotoSectionKey => {
+    if (section === "hero" || section === "gallery") return true;
+    if (section === "story") return template.storyStyle !== "prose-only";
+    return false;
+  });
 }

@@ -48,9 +48,9 @@ describe("LAYOUT_PRESETS", () => {
     expect(classic.navVariant).toBe("centered");
   });
 
-  it("lovebird-elegant lists the full ten-section flow in order", () => {
-    const lovebird = getLayoutPreset("lovebird-elegant");
-    expect(lovebird.sections).toEqual([
+  it("elegant lists the full ten-section flow in order", () => {
+    const elegant = getLayoutPreset("elegant");
+    expect(elegant.sections).toEqual([
       "hero",
       "welcome",
       "story",

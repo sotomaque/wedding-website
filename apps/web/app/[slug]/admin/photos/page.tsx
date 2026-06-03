@@ -1,6 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { getAdminPhotos } from "@/lib/photos";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
+import { getAdminPhotos, getPlacementsForAdmin } from "@/lib/photos";
+import { getPhotoSections, getTemplatePreset } from "@/lib/templates";
 import { AdminPhotosClient } from "./photos-client";
 
 export default async function AdminPhotosPage() {
@@ -10,7 +12,22 @@ export default async function AdminPhotosPage() {
     redirect("/sign-in");
   }
 
-  const photos = await getAdminPhotos();
+  const [photos, settings, placements] = await Promise.all([
+    getAdminPhotos(),
+    getWeddingSettings(),
+    getPlacementsForAdmin(),
+  ]);
 
-  return <AdminPhotosClient initialPhotos={photos} />;
+  // Only offer assignment for sections the active template actually renders
+  // photos in (e.g. the Elegant template's story is prose-only).
+  const template = getTemplatePreset(settings.templateId);
+  const photoSections = getPhotoSections(template);
+
+  return (
+    <AdminPhotosClient
+      initialPhotos={photos}
+      photoSections={photoSections}
+      initialPlacements={placements}
+    />
+  );
 }

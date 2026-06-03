@@ -6,16 +6,15 @@ interface GallerySectionProps {
 }
 
 /**
- * Gallery section, Lovebird-style. Vertical stack of large landscape photos,
- * each with a caption underneath. Reads from the existing photo pool (same
- * source the hero uses) so the section has content the moment a wedding
- * uploads any photos. A dedicated `GalleryPhoto` model with separate
- * captions is planned for Phase 3; until then we use each photo's `alt` or
- * `description` as the caption.
+ * Gallery section, Elegant-style. Vertical stack of large landscape photos,
+ * each with a caption underneath. Renders exactly the photos the admin has
+ * placed in the gallery section (no cap), in their per-section order — see
+ * getPhotosBySection in lib/photos.ts. Each photo's `description` (falling
+ * back to `alt`) is used as the caption.
  */
 export function GallerySection({ photos }: GallerySectionProps) {
-  const galleryPhotos = photos.slice(0, 6);
-  if (galleryPhotos.length === 0) return null;
+  if (photos.length === 0) return null;
+  const galleryPhotos = photos;
 
   return (
     <section id="gallery" className="py-24 px-6 bg-background scroll-mt-24">
