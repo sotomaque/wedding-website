@@ -51,8 +51,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       data: updateData,
     });
 
-    // alt/description (gallery captions), isActive (hides everywhere), and
-    // order all surface on the public page — bust its cache.
+    // alt/description (gallery captions) and order surface on the public page —
+    // bust its cache. (Public visibility is governed by section placements, not
+    // isActive; see PhotoPlacement / lib/photos.ts.)
     revalidatePath(`/${slug}`, "layout");
 
     return NextResponse.json({ photo });

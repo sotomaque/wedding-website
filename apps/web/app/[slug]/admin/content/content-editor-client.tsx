@@ -45,9 +45,15 @@ const TABS: { key: Tab; label: string }[] = [
 
 interface ContentEditorClientProps {
   content: Record<string, unknown>;
+  coupleName: string;
+  heroDisplay: "title" | "couple-names";
 }
 
-export function ContentEditorClient({ content }: ContentEditorClientProps) {
+export function ContentEditorClient({
+  content,
+  coupleName,
+  heroDisplay,
+}: ContentEditorClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("hero");
 
   return (
@@ -72,7 +78,11 @@ export function ContentEditorClient({ content }: ContentEditorClientProps) {
       </div>
 
       {activeTab === "hero" && (
-        <HeroEditor initial={content.hero as HeroContent | undefined} />
+        <HeroEditor
+          initial={content.hero as HeroContent | undefined}
+          initialCoupleName={coupleName}
+          currentDisplay={heroDisplay}
+        />
       )}
       {activeTab === "welcome" && (
         <WelcomeEditor

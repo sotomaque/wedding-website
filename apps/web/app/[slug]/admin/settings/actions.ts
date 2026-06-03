@@ -107,6 +107,8 @@ export async function updateCoupleName(coupleName: string) {
 
   const trimmed = coupleName.trim();
   if (!trimmed) return { success: false, error: "Couple name is required" };
+  if (trimmed.length > 200)
+    return { success: false, error: "Couple name is too long" };
 
   try {
     await db.wedding.update({
