@@ -234,9 +234,9 @@ export const THEME_PRESETS: ThemePreset[] = [
   },
   {
     id: "elegant",
-    name: "Elegant Elegant",
+    name: "Elegant",
     description:
-      "Dark forest green with cream — Elegant's signature romantic look",
+      "Dark forest green with cream — the Elegant template's romantic look",
     // Ground-truth values from the Elegant site capture (.elegant-analysis):
     //   --background  = rgb(58, 68, 62)   "#3A443E" forest green (page-wide)
     //   --foreground  = rgb(246, 246, 250) "#F6F6FA" warm cream/white

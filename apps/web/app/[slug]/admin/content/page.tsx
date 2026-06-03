@@ -1,7 +1,9 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { getTemplatePreset } from "@/lib/templates";
 import { ContentEditorClient } from "./content-editor-client";
 
 export const dynamic = "force-dynamic";
@@ -11,17 +13,25 @@ export default async function ContentEditorPage() {
   if (!user) redirect("/sign-in");
 
   const weddingId = await getWeddingId();
-  const contentRows = await db.weddingContent.findMany({
-    where: { weddingId },
-  });
+  const [settings, contentRows] = await Promise.all([
+    getWeddingSettings(),
+    db.weddingContent.findMany({ where: { weddingId } }),
+  ]);
   const contentMap = Object.fromEntries(
     contentRows.map((r) => [r.section, r.content]),
   );
+  // The hero headline is edited as the couple name for couple-names templates
+  // (Elegant) — the same data the inline customizer threads into HeroEditor.
+  const heroDisplay = getTemplatePreset(settings.templateId).heroDisplay;
 
   return (
     <div className="min-h-screen bg-background px-2 py-4 sm:px-4 md:px-8 md:py-8">
       <div className="max-w-4xl mx-auto">
-        <ContentEditorClient content={contentMap} />
+        <ContentEditorClient
+          content={contentMap}
+          coupleName={settings.coupleName}
+          heroDisplay={heroDisplay}
+        />
       </div>
     </div>
   );

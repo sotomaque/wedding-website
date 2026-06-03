@@ -1,3 +1,4 @@
+import { sanitizeRichText } from "@/lib/sanitize-html";
 import type { StoryContent } from "@/lib/validations/wedding-content";
 
 interface ElegantStorySectionProps {
@@ -32,8 +33,10 @@ export function ElegantStorySection({ content }: ElegantStorySectionProps) {
         {content?.bodyHtml ? (
           <div
             className="text-foreground/85 text-lg leading-relaxed text-left [&_p]:my-4 [&_p]:text-lg [&_p]:leading-relaxed [&_h2]:text-2xl [&_h2]:font-display [&_h2]:text-center [&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:text-foreground [&_h3]:text-xl [&_h3]:font-serif [&_h3]:font-semibold [&_h3]:mt-6 [&_h3]:mb-2 [&_a]:underline"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is generated server-side by admin via Tiptap editor
-            dangerouslySetInnerHTML={{ __html: content.bodyHtml }}
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: admin rich text, sanitized via sanitizeRichText
+            dangerouslySetInnerHTML={{
+              __html: sanitizeRichText(content.bodyHtml),
+            }}
           />
         ) : (
           <div className="text-left space-y-4">

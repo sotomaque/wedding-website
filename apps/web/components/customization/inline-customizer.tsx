@@ -57,8 +57,8 @@ const DESIGN_TABS: { key: DesignTab; label: string }[] = [
  * editor component; `crossLink` renders a stub panel with a link to a
  * dedicated admin route (used for sections backed by their own admin
  * surface — events, photos, registry); `hidden` removes the tab entirely
- * (for sections that aren't editable anywhere — welcome / wedding-party /
- * faqs are still hardcoded; hotels / activities have no admin route yet).
+ * (for sections that aren't editable here — e.g. hotels / activities, which
+ * have their own admin routes but no inline editor yet).
  */
 type SectionTabConfig =
   | { kind: "editor"; label: string }

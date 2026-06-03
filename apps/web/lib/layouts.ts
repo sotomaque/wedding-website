@@ -64,8 +64,8 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
   },
   {
     id: "elegant",
-    name: "Elegant Elegant",
-    description: "Full ten-section flow inspired by Elegant's Elegant template",
+    name: "Elegant",
+    description: "Full ten-section flow for the Elegant template",
     sections: [
       "hero",
       "welcome",

@@ -368,9 +368,10 @@ model Photo {
 
 /// Maps a library Photo to a home-page section with a per-section order.
 /// A photo can be placed in multiple sections (hero/story/gallery), once each.
-/// The public page reads each section's placements in displayOrder; an
-/// inactive parent photo (isActive=false) is filtered out at read time, so
-/// placements persist but stop rendering. See apps/web/lib/photos.ts.
+/// The public page reads each section's placements in displayOrder. Placement
+/// is the sole visibility gate — a photo renders in a section iff it has a
+/// placement there. To hide a photo, remove its placement(s). See
+/// apps/web/lib/photos.ts (Photo.isActive is not consulted on this read path).
 model PhotoPlacement {
   id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   photoId      String       @map("photo_id") @db.Uuid

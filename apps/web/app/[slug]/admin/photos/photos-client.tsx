@@ -217,7 +217,12 @@ export function AdminPhotosClient({
 
   const reorder = async (section: PhotoSection, ordered: AdminPlacement[]) => {
     const previous = placements[section];
-    setPlacements((prev) => ({ ...prev, [section]: ordered }));
+    // Keep each placement's displayOrder in sync with its new array index so
+    // optimistic state isn't internally inconsistent (the server persists order
+    // from orderedPlacementIds, but any local reader of displayOrder would
+    // otherwise be stale until router.refresh()).
+    const reindexed = ordered.map((p, i) => ({ ...p, displayOrder: i }));
+    setPlacements((prev) => ({ ...prev, [section]: reindexed }));
     try {
       const response = await fetch("/api/admin/photos/placements/reorder", {
         method: "PUT",
