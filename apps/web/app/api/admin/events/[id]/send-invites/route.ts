@@ -148,6 +148,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
           to: invite.guest.email as string,
           subject: rendered.subject,
           html: rendered.html,
+          log: {
+            weddingId,
+            guestId: invite.guest.id,
+            type: "event_invitation",
+          },
         });
 
         if (result.error) {

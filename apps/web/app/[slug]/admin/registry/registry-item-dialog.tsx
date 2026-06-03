@@ -18,7 +18,11 @@ export interface ItemForm {
   description: string;
   emoji: string;
   imageUrl: string;
+  itemType: "fund" | "product";
   stripeUrl: string;
+  productUrl: string;
+  /** Display price in dollars, as entered (e.g. "49.99"); "" = none. */
+  price: string;
   isActive: boolean;
 }
 
@@ -27,7 +31,10 @@ export const emptyForm: ItemForm = {
   description: "",
   emoji: "",
   imageUrl: "",
+  itemType: "fund",
   stripeUrl: "",
+  productUrl: "",
+  price: "",
   isActive: true,
 };
 
@@ -105,16 +112,76 @@ export function RegistryItemDialog({
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="stripeUrl">Stripe Payment Link</Label>
-            <Input
-              id="stripeUrl"
-              value={form.stripeUrl}
-              onChange={(e) =>
-                onFormChange({ ...form, stripeUrl: e.target.value })
-              }
-              placeholder="https://buy.stripe.com/..."
-            />
+            <Label htmlFor="itemType">Type</Label>
+            <div className="flex gap-2">
+              {(
+                [
+                  { value: "fund", label: "Cash fund" },
+                  { value: "product", label: "Gift (claimable)" },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => onFormChange({ ...form, itemType: opt.value })}
+                  className={`flex-1 rounded-md border p-2 text-sm transition-colors ${
+                    form.itemType === opt.value
+                      ? "border-accent text-accent"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {form.itemType === "fund"
+                ? "Guests contribute any amount via your Stripe payment link."
+                : "Guests claim this gift so no one else gives a duplicate. Becomes “Taken” once claimed."}
+            </p>
           </div>
+
+          {form.itemType === "fund" ? (
+            <div className="space-y-2">
+              <Label htmlFor="stripeUrl">Stripe Payment Link</Label>
+              <Input
+                id="stripeUrl"
+                value={form.stripeUrl}
+                onChange={(e) =>
+                  onFormChange({ ...form, stripeUrl: e.target.value })
+                }
+                placeholder="https://buy.stripe.com/..."
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="productUrl">Product link</Label>
+                <Input
+                  id="productUrl"
+                  value={form.productUrl}
+                  onChange={(e) =>
+                    onFormChange({ ...form, productUrl: e.target.value })
+                  }
+                  placeholder="https://amazon.com/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">Price (optional)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.price}
+                  onChange={(e) =>
+                    onFormChange({ ...form, price: e.target.value })
+                  }
+                  placeholder="49.99"
+                />
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <Label htmlFor="isActive">Visible on public page</Label>
             <Switch

@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
         to: recipientEmail,
         subject: rendered.subject,
         html: rendered.html,
+        log: { weddingId, guestId, type: "activities_invitation" },
       });
 
       if (result.error) {

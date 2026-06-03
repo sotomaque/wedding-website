@@ -9,6 +9,7 @@ import {
 import { Filter, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { RSVP_STATUS_LABELS as RSVP_LABELS } from "@/lib/constants/labels";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 
 interface InvitesFiltersProps {
@@ -29,12 +30,6 @@ const BRIDAL_PARTY_LABELS: Record<BridalPartyValue, string> = {
   groomsman: "Groomsman",
   maid_of_honor: "Maid of Honor",
   bridesmaid: "Bridesmaid",
-};
-
-const RSVP_LABELS: Record<RsvpValue, string> = {
-  yes: "Confirmed",
-  pending: "Pending",
-  no: "Declined",
 };
 
 export function InvitesFilters({ eventId }: InvitesFiltersProps) {

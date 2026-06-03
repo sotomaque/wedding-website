@@ -2,6 +2,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import {
+  createReminderSchema,
+  deleteReminderSchema,
+  updateRemindersSchema,
+} from "@/lib/validations/admin-api";
 
 /**
  * GET /api/admin/reminders
@@ -39,19 +44,19 @@ export async function POST(request: NextRequest) {
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
-    const body = await request.json();
-    const { daysBeforeDeadline, isEnabled } = body;
-
-    if (
-      typeof daysBeforeDeadline !== "number" ||
-      daysBeforeDeadline < 1 ||
-      !Number.isInteger(daysBeforeDeadline)
-    ) {
+    const body = await request.json().catch(() => null);
+    const parsed = createReminderSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "daysBeforeDeadline must be a positive integer" },
+        {
+          error:
+            parsed.error.issues[0]?.message ??
+            "daysBeforeDeadline must be a positive integer",
+        },
         { status: 400 },
       );
     }
+    const { daysBeforeDeadline, isEnabled } = parsed.data;
 
     const schedule = await db.reminderSchedule.create({
       data: {
@@ -90,15 +95,18 @@ export async function PUT(request: NextRequest) {
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
-    const body = await request.json();
-    const { schedules } = body;
-
-    if (!Array.isArray(schedules)) {
+    const body = await request.json().catch(() => null);
+    const parsed = updateRemindersSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "schedules must be an array" },
+        {
+          error:
+            parsed.error.issues[0]?.message ?? "schedules must be an array",
+        },
         { status: 400 },
       );
     }
+    const { schedules } = parsed.data;
 
     const updated = [];
     for (const s of schedules) {
@@ -143,12 +151,15 @@ export async function DELETE(request: NextRequest) {
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
-    const body = await request.json();
-    const { id } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "id is required" }, { status: 400 });
+    const body = await request.json().catch(() => null);
+    const parsed = deleteReminderSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "id is required" },
+        { status: 400 },
+      );
     }
+    const { id } = parsed.data;
 
     await db.reminderSchedule.delete({
       where: { id, weddingId },

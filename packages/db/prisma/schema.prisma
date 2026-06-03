@@ -56,6 +56,7 @@ model Event {
   name             String
   description      String?
   eventDate        DateTime?          @map("event_date") @db.Date
+  endDate          DateTime?          @map("end_date") @db.Date
   startTime        DateTime?          @map("start_time") @db.Time(6)
   endTime          DateTime?          @map("end_time") @db.Time(6)
   locationName     String?            @map("location_name")
@@ -64,6 +65,19 @@ model Event {
   longitude        Decimal?           @db.Decimal(10, 7)
   isDefault        Boolean?           @default(false) @map("is_default")
   displayOrder     Int?               @default(0) @map("display_order")
+  // Optional image for this event's public share-link preview (iMessage /
+  // social). Uploaded or chosen from the gallery; falls back to a styled card.
+  imageUrl         String?            @map("image_url")
+  // Optional cap on confirmed ("yes") attendees. Null = unlimited. Enforced on
+  // the public per-event RSVP flow so a capacity-limited event (e.g. a reception
+  // with a head-count limit) stops accepting new attendees once full.
+  capacity         Int?
+  // Unguessable token for the public shareable RSVP link
+  // (/{slug}/events/{token}). Minted lazily the first time the event is shared.
+  publicRsvpToken  String?            @unique @map("public_rsvp_token")
+  // Whether the public share link currently accepts RSVPs. Lets the couple
+  // close a link (e.g. once an event is finalized) without deleting the token.
+  publicRsvpEnabled Boolean           @default(true) @map("public_rsvp_enabled")
   createdAt        DateTime?          @default(now()) @map("created_at") @db.Timestamptz(6)
   weddingId        String            @map("wedding_id") @db.Uuid
   wedding          Wedding           @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -147,6 +161,7 @@ model GuestEventInvite {
 
   @@unique([guestId, eventId])
   @@index([eventId, emailSent], map: "idx_guest_event_invites_email_sent")
+  @@index([eventId, rsvpStatus], map: "idx_guest_event_invites_event_rsvp")
   @@index([eventId], map: "idx_guest_event_invites_event_id")
   @@index([guestId], map: "idx_guest_event_invites_guest_id")
   @@index([weddingId], map: "idx_guest_event_invites_wid")
@@ -236,6 +251,10 @@ model Guest {
   family                              Boolean                 @default(false)
   notes                               String?
   under21                             Boolean                 @default(false) @map("under_21")
+  // True when the guest added themselves via a public per-event RSVP link
+  // (by typing their name rather than using an invite code). Flagged so the
+  // couple can review / merge these in the admin guest list.
+  selfRegistered                      Boolean                 @default(false) @map("self_registered")
   clerkUserId                         String?                 @map("clerk_user_id")
   activitiesEmailSent                 Boolean?                @default(false) @map("activities_email_sent")
   activitiesEmailSentAt               DateTime?               @map("activities_email_sent_at") @db.Timestamptz(6)
@@ -258,6 +277,7 @@ model Guest {
   calendarInviteResendCount           Int                     @default(0) @map("calendar_invite_resend_count")
   lastReminderSentAt                  DateTime?               @map("last_reminder_sent_at") @db.Timestamptz(6)
   reminderCount                       Int                     @default(0) @map("reminder_count")
+  emailLogs                           EmailLog[]
   gifts                               Gift[]
   guestActivityInterests              GuestActivityInterest[]
   guestEventInvites                   GuestEventInvite[]
@@ -278,6 +298,8 @@ model Guest {
   @@index([side], map: "idx_guests_side")
   @@index([threeAndUnder], map: "idx_guests_three_and_under")
   @@index([under21], map: "idx_guests_under_21")
+  @@index([weddingId, numberOfResends], map: "idx_guests_wedding_resends")
+  @@index([weddingId, rsvpStatus], map: "idx_guests_wedding_rsvp_status")
   @@index([weddingId], map: "idx_guests_wedding_id")
   @@map("guests")
 }
@@ -483,10 +505,24 @@ model Wedding {
   // by a follow-up migration if desired.
   designConfig          Json                   @default("{}") @map("design_config") @db.JsonB
 
+  // Headcount config — admin-defined criteria for which guests count toward the
+  // dashboard's RSVP headcount stat (e.g. exclude 3-and-under, narrow to
+  // specific lists). Defaulting to '{}' + NOT NULL lets missing keys resolve to
+  // the historical "every accepted guest counts" behavior without a backfill.
+  // See apps/web/lib/headcount.ts and the headcountConfigSchema validation.
+  headcountConfig       Json                   @default("{}") @map("headcount_config") @db.JsonB
+
+  // Optional external registry wishlist link (e.g. an Amazon wishlist) shown
+  // at the top of the public registry page. Items there are tracked by the
+  // external provider, not by us — only individual product items added in the
+  // admin support our "claimed / taken" state.
+  registryWishlistUrl   String?                @map("registry_wishlist_url")
+
   // Relations
   activities            Activity[]
   chatMessages          ChatMessage[]
   documents             Document[]
+  emailLogs             EmailLog[]
   emailTemplates        EmailTemplate[]
   events                Event[]
   gifts                 Gift[]
@@ -533,6 +569,29 @@ model EmailTemplate {
   @@map("email_templates")
 }
 
+/// Append-only audit trail of every outbound email, so the admin can see who
+/// has been contacted and when. `type` is free text (mirrors EmailTemplateType
+/// values where applicable, plus "custom") so ad-hoc sends fit too. guestId is
+/// optional — couple/admin notifications aren't tied to a single guest.
+model EmailLog {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId         String   @map("wedding_id") @db.Uuid
+  guestId           String?  @map("guest_id") @db.Uuid
+  recipientEmail    String   @map("recipient_email")
+  type              String
+  subject           String?
+  status            String   @default("sent")
+  providerMessageId String?  @map("provider_message_id")
+  errorMessage      String?  @map("error_message")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  wedding           Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  guest             Guest?   @relation(fields: [guestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([guestId, createdAt(sort: Desc)], map: "idx_email_logs_guest_created")
+  @@index([weddingId, createdAt(sort: Desc)], map: "idx_email_logs_wedding_created")
+  @@map("email_logs")
+}
+
 model WeddingContent {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   weddingId String   @map("wedding_id") @db.Uuid
@@ -558,6 +617,18 @@ model RegistryItem {
   stripeProductId String?  @map("stripe_product_id")
   displayOrder    Int      @default(0) @map("display_order")
   isActive        Boolean  @default(true) @map("is_active")
+  // "fund" = cash contribution via Stripe (never "taken"); "product" = a
+  // specific gift a guest can claim (becomes "taken"). Defaults to fund so
+  // existing items keep their current behavior.
+  itemType        RegistryItemType @default(fund) @map("item_type")
+  // Product-only: external link (e.g. Amazon) + optional display price.
+  productUrl      String?  @map("product_url")
+  priceCents      Int?     @map("price_cents")
+  // A claim is recorded by setting these (a product is "taken" when claimedAt
+  // is non-null). claimedByName/Email identify the claimant to admins only.
+  claimedByName   String?  @map("claimed_by_name")
+  claimedByEmail  String?  @map("claimed_by_email")
+  claimedAt       DateTime? @map("claimed_at") @db.Timestamptz(6)
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
   wedding         Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
@@ -565,6 +636,13 @@ model RegistryItem {
 
   @@index([weddingId, displayOrder], map: "idx_registry_items_wedding_order")
   @@map("registry_items")
+}
+
+enum RegistryItemType {
+  fund
+  product
+
+  @@map("registry_item_type")
 }
 
 model ReminderSchedule {
@@ -777,6 +855,9 @@ enum EmailTemplateType {
   rsvp_reminder
   admin_summary
   welcome
+  rsvp_confirmation
+  gift_thank_you
+  registry_claim_notification
 
   @@map("email_template_type")
 }

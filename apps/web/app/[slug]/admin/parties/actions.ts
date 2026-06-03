@@ -65,8 +65,7 @@ export async function getParties(
       guestCount: party.guests.length,
     }));
 
-    // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    return partiesWithGuests as any;
+    return partiesWithGuests;
   } catch (error) {
     console.error("Error fetching parties:", error);
     throw error;
@@ -96,8 +95,7 @@ export async function getPartyById(
     return {
       ...party,
       guestCount: party.guests.length,
-      // biome-ignore lint/suspicious/noExplicitAny: Date objects are serialized to strings in server actions
-    } as any;
+    };
   } catch (error) {
     console.error("Error fetching party:", error);
     return null;

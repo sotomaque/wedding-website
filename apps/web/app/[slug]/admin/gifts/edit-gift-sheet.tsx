@@ -24,6 +24,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import {
+  GIFT_TYPE_COLORS as giftTypeColors,
+  GIFT_TYPE_LABELS as giftTypeLabels,
+  GIFT_STATUS_COLORS as statusColors,
+} from "@/lib/constants/labels";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import { type EditGiftFormData, editGiftSchema } from "@/lib/validations/gift";
 
@@ -79,29 +84,6 @@ function formatDate(dateString: string): string {
     minute: "2-digit",
   });
 }
-
-const giftTypeLabels: Record<string, string> = {
-  baby_fund: "Baby Fund",
-  honeymoon: "Honeymoon",
-  student_loans: "Student Loans",
-};
-
-const giftTypeColors: Record<string, string> = {
-  baby_fund: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
-  honeymoon: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  student_loans:
-    "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-};
-
-const statusColors: Record<string, string> = {
-  pending:
-    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  completed:
-    "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  refunded:
-    "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  failed: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-};
 
 export function EditGiftSheet({ gift, guestOptions }: EditGiftSheetProps) {
   const [guestSearchQuery, setGuestSearchQuery] = useState("");

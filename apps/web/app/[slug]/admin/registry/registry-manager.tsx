@@ -2,12 +2,14 @@
 
 import { Button } from "@workspace/ui/components/button";
 import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   createRegistryItem,
   deleteRegistryItem,
   type RegistryItem,
+  releaseRegistryClaim,
   reorderRegistryItems,
   toggleRegistryItemActive,
   updateRegistryItem,
@@ -30,6 +32,7 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
   const [form, setForm] = useState<ItemForm>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   function openAdd() {
     setEditId(null);
@@ -44,10 +47,34 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
       description: item.description || "",
       emoji: item.emoji || "",
       imageUrl: item.imageUrl || "",
+      itemType: item.itemType,
       stripeUrl: item.stripeUrl || "",
+      productUrl: item.productUrl || "",
+      price: item.priceCents != null ? (item.priceCents / 100).toString() : "",
       isActive: item.isActive,
     });
     setShowDialog(true);
+  }
+
+  // Map the dialog form (price as a dollar string) to the server action input
+  // (priceCents). Returns undefined cents for blank/invalid prices.
+  function formToInput() {
+    const dollars = Number.parseFloat(form.price);
+    const priceCents =
+      form.itemType === "product" && form.price.trim() && !Number.isNaN(dollars)
+        ? Math.round(dollars * 100)
+        : null;
+    return {
+      title: form.title,
+      description: form.description,
+      emoji: form.emoji,
+      imageUrl: form.imageUrl,
+      itemType: form.itemType,
+      stripeUrl: form.stripeUrl,
+      productUrl: form.productUrl,
+      priceCents,
+      isActive: form.isActive,
+    };
   }
 
   async function handleSave() {
@@ -59,19 +86,43 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
     setIsSaving(true);
     try {
       if (editId) {
-        const result = await updateRegistryItem(editId, form);
+        const input = formToInput();
+        const result = await updateRegistryItem(editId, input);
         if (result.success) {
+          // Optimistically reflect the edit immediately, then refresh from the
+          // server to reconcile derived fields (cleared links on type switch).
           setItems((prev) =>
             prev.map((item) =>
-              item.id === editId ? { ...item, ...form } : item,
+              item.id === editId
+                ? {
+                    ...item,
+                    title: input.title.trim(),
+                    description: input.description.trim() || null,
+                    emoji: input.emoji.trim() || null,
+                    imageUrl: input.imageUrl.trim() || null,
+                    itemType: input.itemType,
+                    stripeUrl:
+                      input.itemType === "fund"
+                        ? input.stripeUrl.trim() || null
+                        : null,
+                    productUrl:
+                      input.itemType === "product"
+                        ? input.productUrl.trim() || null
+                        : null,
+                    priceCents:
+                      input.itemType === "product" ? input.priceCents : null,
+                    isActive: input.isActive,
+                  }
+                : item,
             ),
           );
+          router.refresh();
           toast.success("Registry item updated");
         } else {
           toast.error(result.error ?? "Failed to update");
         }
       } else {
-        const result = await createRegistryItem(form);
+        const result = await createRegistryItem(formToInput());
         if (result.success && result.item) {
           const newItem = result.item;
           setItems((prev) => [...prev, newItem]);
@@ -112,6 +163,36 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
       );
     } else {
       toast.error(result.error ?? "Failed to toggle");
+    }
+  }
+
+  async function handleReleaseClaim(id: string) {
+    const item = items.find((i) => i.id === id);
+    if (
+      item &&
+      !window.confirm(
+        `Release the claim on "${item.title}"? It will become available again.`,
+      )
+    )
+      return;
+
+    const result = await releaseRegistryClaim(id);
+    if (result.success) {
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                claimedByName: null,
+                claimedByEmail: null,
+                claimedAt: null,
+              }
+            : i,
+        ),
+      );
+      toast.success("Claim released");
+    } else {
+      toast.error(result.error ?? "Failed to release claim");
     }
   }
 
@@ -172,6 +253,7 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
               onDelete={handleDelete}
               onToggleActive={handleToggleActive}
               onMove={handleMove}
+              onReleaseClaim={handleReleaseClaim}
             />
           ))}
         </div>

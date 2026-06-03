@@ -9,6 +9,7 @@ import { type ChatStats, systemPrompt } from "@/lib/ai/prompts/chat";
 import { createWeddingTools } from "@/lib/ai/tools/wedding-tools";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getRsvpStats } from "@/lib/db/admin/rsvp-stats";
 import { getWeddingContext } from "@/lib/db/wedding-context";
 
 const requestSchema = z.object({
@@ -117,31 +118,22 @@ export async function POST(request: Request) {
     );
     const tools = createWeddingTools(ctx.weddingId);
 
-    // Fetch stats snapshot in parallel (cheap queries, avoids tool call for basic questions)
-    const [totalGuests, attending, declined, pending, giftAgg] =
-      await Promise.all([
-        db.guest.count({ where: { weddingId: ctx.weddingId } }),
-        db.guest.count({
-          where: { weddingId: ctx.weddingId, rsvpStatus: "yes" },
-        }),
-        db.guest.count({
-          where: { weddingId: ctx.weddingId, rsvpStatus: "no" },
-        }),
-        db.guest.count({
-          where: { weddingId: ctx.weddingId, rsvpStatus: "pending" },
-        }),
-        db.gift.aggregate({
-          where: { weddingId: ctx.weddingId },
-          _sum: { amountCents: true },
-          _count: true,
-        }),
-      ]);
+    // Fetch stats snapshot in parallel (cheap queries, avoids tool call for
+    // basic questions). RSVP counts come from the shared one-query aggregator.
+    const [rsvp, giftAgg] = await Promise.all([
+      getRsvpStats(ctx.weddingId),
+      db.gift.aggregate({
+        where: { weddingId: ctx.weddingId },
+        _sum: { amountCents: true },
+        _count: true,
+      }),
+    ]);
 
     const stats: ChatStats = {
-      totalGuests,
-      attending,
-      declined,
-      pending,
+      totalGuests: rsvp.totalGuests,
+      attending: rsvp.attending,
+      declined: rsvp.declined,
+      pending: rsvp.pending,
       totalGifts: giftAgg._count,
       totalGiftAmountCents: giftAgg._sum.amountCents ?? 0,
     };

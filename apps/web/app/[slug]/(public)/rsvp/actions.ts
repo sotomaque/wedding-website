@@ -13,6 +13,7 @@ import {
 } from "@/lib/email/helpers";
 import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
+import { weddingUrl } from "@/lib/url";
 import { multiGuestRsvpSchema } from "@/lib/validations/rsvp";
 
 // ---------------------------------------------------------------------------
@@ -370,6 +371,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
               to: recipients,
               subject: rsvpTemplate.subject,
               html: rsvpTemplate.html,
+              log: { weddingId, type: "rsvp_notification" },
             });
           }
 
@@ -457,6 +459,11 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                           content: Buffer.from(icsContent).toString("base64"),
                         },
                       ],
+                      log: {
+                        weddingId,
+                        guestId: guest.id,
+                        type: "calendar_invite",
+                      },
                     });
 
                     await db.guest.update({
@@ -750,9 +757,18 @@ export async function submitMultiGuestRSVP(
         "Wedding RSVP",
       );
       const capturedCalendarFromAddress = getEmailFromAddress(settingsMulti);
+      const capturedConfirmFromAddress = getEmailFromAddress(
+        settingsMulti,
+        settingsMulti.coupleName,
+      );
       const capturedCoupleName = settingsMulti.coupleName;
       const capturedSlug = settingsMulti.slug;
       const capturedDefaultLanguage = settingsMulti.defaultLanguage;
+      const capturedWeddingDateLabel = settingsMulti.weddingDate
+        ? new Date(settingsMulti.weddingDate).toLocaleDateString("en-US", {
+            dateStyle: "full",
+          })
+        : "";
       after(async () => {
         try {
           const updatedGuests = await db.guest.findMany({
@@ -819,7 +835,56 @@ export async function submitMultiGuestRSVP(
               to: recipientsMulti,
               subject: rsvpTemplateMulti.subject,
               html: rsvpTemplateMulti.html,
+              log: { weddingId, type: "rsvp_notification" },
             });
+          }
+
+          // Send a confirmation to each party guest who has an email address.
+          // Best-effort: a failure for one guest must not block the others or
+          // the admin notification / calendar invites.
+          const confirmUrl = `${weddingUrl(capturedSlug, "/rsvp")}?code=${capturedInviteCode.toUpperCase()}`;
+          for (const guest of updatedGuests) {
+            if (!guest.email?.includes("@")) continue;
+            try {
+              const statusLabel =
+                guest.rsvpStatus === "yes"
+                  ? "Attending"
+                  : guest.rsvpStatus === "no"
+                    ? "Not attending"
+                    : "Pending";
+              const confirmTemplate = await renderEmailTemplate(
+                weddingId,
+                "rsvp_confirmation",
+                {
+                  GUEST_NAME: guest.firstName,
+                  COUPLE_NAMES: capturedCoupleName,
+                  RSVP_STATUS: statusLabel,
+                  WEDDING_DATE: capturedWeddingDateLabel,
+                  INVITE_CODE: capturedInviteCode.toUpperCase(),
+                  RSVP_URL: confirmUrl,
+                },
+                guest.preferredLanguage ?? capturedDefaultLanguage,
+              );
+
+              if (confirmTemplate) {
+                await sendEmail({
+                  from: capturedConfirmFromAddress,
+                  to: guest.email,
+                  subject: confirmTemplate.subject,
+                  html: confirmTemplate.html,
+                  log: {
+                    weddingId,
+                    guestId: guest.id,
+                    type: "rsvp_confirmation",
+                  },
+                });
+              }
+            } catch (confirmError) {
+              console.error(
+                `Error sending RSVP confirmation to guest ${guest.id}:`,
+                confirmError,
+              );
+            }
           }
 
           // Send calendar invites to attending guests with an email address
@@ -906,6 +971,11 @@ export async function submitMultiGuestRSVP(
                           content: Buffer.from(icsContent).toString("base64"),
                         },
                       ],
+                      log: {
+                        weddingId,
+                        guestId: guest.id,
+                        type: "calendar_invite",
+                      },
                     });
 
                     await db.guest.update({

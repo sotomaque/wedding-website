@@ -173,6 +173,7 @@ export async function POST(request: NextRequest) {
           to: guest.email as string,
           subject: rendered.subject,
           html: rendered.html,
+          log: { weddingId, guestId: guest.id, type: "wedding_invitation" },
         });
 
         if (result.error) {

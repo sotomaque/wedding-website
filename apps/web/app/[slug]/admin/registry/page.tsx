@@ -1,14 +1,24 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getRegistryItems } from "./actions";
 import { RegistryManager } from "./registry-manager";
+import { RegistrySettings } from "./registry-settings";
 
 export const dynamic = "force-dynamic";
 
 async function RegistryContent() {
-  const items = await getRegistryItems();
-  return <RegistryManager initialItems={items} />;
+  const [items, settings] = await Promise.all([
+    getRegistryItems(),
+    getWeddingSettings(),
+  ]);
+  return (
+    <>
+      <RegistrySettings initialWishlistUrl={settings.registryWishlistUrl} />
+      <RegistryManager initialItems={items} />
+    </>
+  );
 }
 
 function RegistrySkeleton() {

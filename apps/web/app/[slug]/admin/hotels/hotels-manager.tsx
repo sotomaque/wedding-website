@@ -1,6 +1,6 @@
 "use client";
 
-import type { HotelType } from "@prisma/client";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import {
   Dialog,
@@ -19,11 +19,30 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select";
 import { Textarea } from "@workspace/ui/components/textarea";
-import { Pencil, Plus, Trash2, Upload } from "lucide-react";
-import { useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ExternalLink,
+  MapPin,
+  Pencil,
+  Phone,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { UploadButton } from "@/lib/uploadthing-components";
-import { createHotel, deleteHotel, type Hotel, updateHotel } from "./actions";
+import {
+  createHotel,
+  deleteHotel,
+  type Hotel,
+  type HotelInput,
+  type HotelType,
+  reorderHotels,
+  updateHotel,
+} from "./actions";
+import { HOTEL_TYPE_COLORS, HOTEL_TYPE_LABELS, HOTEL_TYPES } from "./constants";
+
+const NO_TYPE = "none";
 
 interface HotelForm {
   name: string;
@@ -32,8 +51,10 @@ interface HotelForm {
   websiteUrl: string;
   phone: string;
   imageUrl: string;
+  hotelType: HotelType | null;
   distanceToVenue: string;
-  hotelType: HotelType | "";
+  parkingInfo: string;
+  amenities: string;
 }
 
 const emptyForm: HotelForm = {
@@ -43,16 +64,23 @@ const emptyForm: HotelForm = {
   websiteUrl: "",
   phone: "",
   imageUrl: "",
+  hotelType: null,
   distanceToVenue: "",
-  hotelType: "",
+  parkingInfo: "",
+  amenities: "",
 };
 
-export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
-  const [items, setItems] = useState(initialItems);
+function toInput(form: HotelForm): HotelInput {
+  return { ...form };
+}
+
+export function HotelsManager({ initialHotels }: { initialHotels: Hotel[] }) {
+  const [hotels, setHotels] = useState(initialHotels);
   const [showDialog, setShowDialog] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<HotelForm>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   function openAdd() {
     setEditId(null);
@@ -60,17 +88,19 @@ export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
     setShowDialog(true);
   }
 
-  function openEdit(item: Hotel) {
-    setEditId(item.id);
+  function openEdit(hotel: Hotel) {
+    setEditId(hotel.id);
     setForm({
-      name: item.name,
-      description: item.description ?? "",
-      address: item.address ?? "",
-      websiteUrl: item.websiteUrl ?? "",
-      phone: item.phone ?? "",
-      imageUrl: item.imageUrl ?? "",
-      distanceToVenue: item.distanceToVenue ?? "",
-      hotelType: item.hotelType ?? "",
+      name: hotel.name,
+      description: hotel.description || "",
+      address: hotel.address || "",
+      websiteUrl: hotel.websiteUrl || "",
+      phone: hotel.phone || "",
+      imageUrl: hotel.imageUrl || "",
+      hotelType: hotel.hotelType,
+      distanceToVenue: hotel.distanceToVenue || "",
+      parkingInfo: hotel.parkingInfo || "",
+      amenities: hotel.amenities || "",
     });
     setShowDialog(true);
   }
@@ -80,27 +110,14 @@ export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
       toast.error("Name is required");
       return;
     }
+
     setIsSaving(true);
     try {
       if (editId) {
-        const result = await updateHotel(editId, form);
+        const result = await updateHotel(editId, toInput(form));
         if (result.success) {
-          setItems((prev) =>
-            prev.map((h) =>
-              h.id === editId
-                ? {
-                    ...h,
-                    name: form.name,
-                    description: form.description || null,
-                    address: form.address || null,
-                    websiteUrl: form.websiteUrl || null,
-                    phone: form.phone || null,
-                    imageUrl: form.imageUrl || null,
-                    distanceToVenue: form.distanceToVenue || null,
-                    hotelType: form.hotelType || null,
-                  }
-                : h,
-            ),
+          setHotels((prev) =>
+            prev.map((h) => (h.id === editId ? { ...h, ...toInput(form) } : h)),
           );
           toast.success("Hotel updated");
           setShowDialog(false);
@@ -108,30 +125,57 @@ export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
           toast.error(result.error ?? "Failed to update");
         }
       } else {
-        const result = await createHotel(form);
-        if (result.success && result.item) {
-          setItems((prev) => [...prev, result.item as Hotel]);
+        const result = await createHotel(toInput(form));
+        if (result.success && result.hotel) {
+          const newHotel = result.hotel;
+          setHotels((prev) => [...prev, newHotel]);
           toast.success("Hotel added");
           setShowDialog(false);
         } else {
           toast.error(result.error ?? "Failed to create");
         }
       }
+    } catch {
+      toast.error("An error occurred");
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function handleDelete(item: Hotel) {
-    if (!window.confirm(`Delete "${item.name}"? This cannot be undone.`))
+  async function handleDelete(id: string) {
+    const hotel = hotels.find((h) => h.id === id);
+    if (!hotel) return;
+    if (!window.confirm(`Delete "${hotel.name}"? This cannot be undone.`))
       return;
-    const result = await deleteHotel(item.id);
+
+    const result = await deleteHotel(id);
     if (result.success) {
-      setItems((prev) => prev.filter((h) => h.id !== item.id));
+      setHotels((prev) => prev.filter((h) => h.id !== id));
       toast.success("Hotel deleted");
     } else {
       toast.error(result.error ?? "Failed to delete");
     }
+  }
+
+  function handleMove(index: number, direction: "up" | "down") {
+    const next = [...hotels];
+    const swap = direction === "up" ? index - 1 : index + 1;
+    if (swap < 0 || swap >= next.length) return;
+    const a = next[index];
+    const b = next[swap];
+    if (!a || !b) return;
+    next[index] = b;
+    next[swap] = a;
+    const previous = hotels;
+    setHotels(next);
+
+    startTransition(async () => {
+      const result = await reorderHotels(next.map((h) => h.id));
+      if (!result.success) {
+        setHotels(previous);
+        toast.error("Failed to reorder");
+      }
+    });
   }
 
   return (
@@ -140,8 +184,7 @@ export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
         <div>
           <h1 className="text-2xl font-serif font-medium">Hotels</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage hotel recommendations shown on your wedding site for guest
-            travel.
+            Recommend places to stay. Hotels appear on your public hotels page.
           </p>
         </div>
         <Button onClick={openAdd} className="gap-2">
@@ -150,59 +193,101 @@ export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
         </Button>
       </div>
 
-      {items.length === 0 ? (
+      {hotels.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <p className="text-lg font-medium">No hotels yet</p>
           <p className="text-sm mt-1">
-            Add your first hotel recommendation to get started.
+            Add your first recommendation to get started.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((item) => (
+          {hotels.map((hotel, index) => (
             <div
-              key={item.id}
-              className="border border-border rounded-lg overflow-hidden bg-card flex flex-col"
+              key={hotel.id}
+              className="relative border rounded-lg p-4 space-y-3 bg-card"
             >
-              {item.imageUrl && (
-                // biome-ignore lint/performance/noImgElement: dynamic CDN URL
-                <img
-                  src={item.imageUrl}
-                  alt={item.name}
-                  className="w-full h-32 object-cover"
-                />
-              )}
-              <div className="p-4 flex-1 flex flex-col gap-2">
-                <h3 className="font-medium">{item.name}</h3>
-                {item.distanceToVenue && (
-                  <p className="text-xs text-muted-foreground">
-                    {item.distanceToVenue}
-                  </p>
-                )}
-                {item.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {item.description}
-                  </p>
-                )}
-                <div className="flex gap-2 mt-auto pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openEdit(item)}
-                    className="gap-1"
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-medium truncate">{hotel.name}</h3>
+                {hotel.hotelType && (
+                  <Badge
+                    variant="secondary"
+                    className={HOTEL_TYPE_COLORS[hotel.hotelType]}
                   >
-                    <Pencil className="h-3 w-3" />
-                    Edit
+                    {HOTEL_TYPE_LABELS[hotel.hotelType]}
+                  </Badge>
+                )}
+              </div>
+
+              {hotel.description && (
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {hotel.description}
+                </p>
+              )}
+
+              <div className="space-y-1 text-xs text-muted-foreground">
+                {hotel.distanceToVenue && (
+                  <p className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    {hotel.distanceToVenue}
+                  </p>
+                )}
+                {hotel.phone && (
+                  <p className="flex items-center gap-1">
+                    <Phone className="h-3 w-3 shrink-0" />
+                    {hotel.phone}
+                  </p>
+                )}
+                {hotel.websiteUrl && (
+                  <a
+                    href={hotel.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 hover:text-foreground truncate"
+                  >
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                    Website
+                  </a>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleMove(index, "up")}
+                    disabled={index === 0 || isPending}
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" />
                   </Button>
                   <Button
-                    type="button"
                     variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(item)}
-                    className="text-destructive hover:text-destructive/80"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleMove(index, "down")}
+                    disabled={index === hotels.length - 1 || isPending}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openEdit(hotel)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(hotel.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
@@ -212,22 +297,21 @@ export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
       )}
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editId ? "Edit Hotel" : "Add Hotel"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
               <Label htmlFor="hotel-name">Name *</Label>
               <Input
                 id="hotel-name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="The Fairmont Olympic"
-                className="mt-1"
+                placeholder="e.g. The Grand Hotel"
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="hotel-description">Description</Label>
               <Textarea
                 id="hotel-description"
@@ -235,12 +319,36 @@ export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
                 onChange={(e) =>
                   setForm({ ...form, description: e.target.value })
                 }
-                placeholder="Walking distance to the venue. Group block available with the code BRIDE2026."
-                className="mt-1 min-h-20"
+                placeholder="A brief description..."
+                rows={2}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="hotel-type">Tier</Label>
+                <Select
+                  value={form.hotelType ?? NO_TYPE}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      hotelType: v === NO_TYPE ? null : (v as HotelType),
+                    })
+                  }
+                >
+                  <SelectTrigger id="hotel-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_TYPE}>Unspecified</SelectItem>
+                    {HOTEL_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="hotel-distance">Distance to venue</Label>
                 <Input
                   id="hotel-distance"
@@ -248,46 +356,22 @@ export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
                   onChange={(e) =>
                     setForm({ ...form, distanceToVenue: e.target.value })
                   }
-                  placeholder="0.5 mi"
-                  className="mt-1"
+                  placeholder="e.g. 5 min drive"
                 />
               </div>
-              <div>
-                <Label htmlFor="hotel-type">Tier</Label>
-                <Select
-                  value={form.hotelType || "_none"}
-                  onValueChange={(v) =>
-                    setForm({
-                      ...form,
-                      hotelType: v === "_none" ? "" : (v as HotelType),
-                    })
-                  }
-                >
-                  <SelectTrigger id="hotel-type" className="mt-1">
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">No tier</SelectItem>
-                    <SelectItem value="luxury">Luxury</SelectItem>
-                    <SelectItem value="moderate">Moderate</SelectItem>
-                    <SelectItem value="budget">Budget</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="hotel-address">Address</Label>
               <Input
                 id="hotel-address"
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
-                placeholder="411 University St, Seattle, WA"
-                className="mt-1"
+                placeholder="123 Main St, City"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="hotel-website">Website</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="hotel-website">Website URL</Label>
                 <Input
                   id="hotel-website"
                   value={form.websiteUrl}
@@ -295,69 +379,49 @@ export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
                     setForm({ ...form, websiteUrl: e.target.value })
                   }
                   placeholder="https://..."
-                  className="mt-1"
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="hotel-phone">Phone</Label>
                 <Input
                   id="hotel-phone"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="(206) 555-0123"
-                  className="mt-1"
+                  placeholder="+1 555 123 4567"
                 />
               </div>
             </div>
-            <div>
-              <Label>Image</Label>
-              <div className="mt-1 flex items-start gap-3">
-                {form.imageUrl && (
-                  // biome-ignore lint/performance/noImgElement: dynamic CDN URL
-                  <img
-                    src={form.imageUrl}
-                    alt="Hotel"
-                    className="w-24 h-24 rounded-md object-cover border border-border"
-                  />
-                )}
-                <div className="flex flex-col gap-1">
-                  <UploadButton
-                    endpoint="photoUploader"
-                    onClientUploadComplete={(res) => {
-                      const url = res?.[0]?.ufsUrl ?? res?.[0]?.url;
-                      if (url) {
-                        setForm((f) => ({ ...f, imageUrl: url }));
-                        toast.success("Image uploaded");
-                      }
-                    }}
-                    onUploadError={(err: Error) => {
-                      toast.error(`Upload failed: ${err.message}`);
-                    }}
-                    appearance={{
-                      button:
-                        "ut-ready:bg-muted ut-ready:text-foreground ut-uploading:bg-muted text-xs h-8 px-3 rounded-md border border-border",
-                      allowedContent: "hidden",
-                    }}
-                    content={{
-                      button: (
-                        <span className="flex items-center gap-1">
-                          <Upload className="h-3 w-3" />
-                          {form.imageUrl ? "Replace" : "Upload"}
-                        </span>
-                      ),
-                    }}
-                  />
-                  {form.imageUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, imageUrl: "" })}
-                      className="text-xs text-muted-foreground hover:text-destructive text-left"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="hotel-image">Image URL</Label>
+              <Input
+                id="hotel-image"
+                value={form.imageUrl}
+                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hotel-parking">Parking info</Label>
+              <Input
+                id="hotel-parking"
+                value={form.parkingInfo}
+                onChange={(e) =>
+                  setForm({ ...form, parkingInfo: e.target.value })
+                }
+                placeholder="e.g. Free self-parking"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hotel-amenities">Amenities</Label>
+              <Textarea
+                id="hotel-amenities"
+                value={form.amenities}
+                onChange={(e) =>
+                  setForm({ ...form, amenities: e.target.value })
+                }
+                placeholder="Pool, gym, free breakfast..."
+                rows={2}
+              />
             </div>
           </div>
           <DialogFooter>
@@ -369,7 +433,7 @@ export function HotelsManager({ initialItems }: { initialItems: Hotel[] }) {
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Saving..." : editId ? "Save changes" : "Add hotel"}
+              {isSaving ? "Saving..." : editId ? "Update" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>

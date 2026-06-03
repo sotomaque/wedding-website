@@ -1,7 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { getEmailFromAddress } from "@/lib/email/helpers";
+import { renderEmailTemplate } from "@/lib/email/render-template";
+import { sendEmail } from "@/lib/email/resend-client";
+import { updateGiftSchema } from "@/lib/validations/admin-api";
+
+const GIFT_TYPE_LABELS: Record<string, string> = {
+  baby_fund: "Baby Fund",
+  honeymoon: "Honeymoon Fund",
+  student_loans: "Student Loans Fund",
+};
 
 /**
  * List all gifts
@@ -98,15 +109,15 @@ export async function PATCH(request: NextRequest) {
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
-    const body = await request.json();
-    const { id, thankYouEmailSent, guestId, notes } = body;
-
-    if (!id) {
+    const body = await request.json().catch(() => null);
+    const parsed = updateGiftSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Gift ID is required" },
+        { error: parsed.error.issues[0]?.message ?? "Gift ID is required" },
         { status: 400 },
       );
     }
+    const { id, thankYouEmailSent, guestId, notes } = parsed.data;
 
     // Build update object
     const updates: Record<string, unknown> = {
@@ -138,6 +149,51 @@ export async function PATCH(request: NextRequest) {
       where: { id },
       data: updates,
     });
+
+    // Send the donor thank-you when an admin flips the flag false -> true and
+    // the donor has an email. Best-effort: a send failure doesn't fail the
+    // request (the flag reflects the admin's intent and is editable).
+    if (
+      thankYouEmailSent === true &&
+      !existing.thankYouEmailSent &&
+      existing.donorEmail?.includes("@")
+    ) {
+      try {
+        const settings = await getWeddingSettings();
+        const amount = new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: (existing.currency || "usd").toUpperCase(),
+        }).format(existing.amountCents / 100);
+        const rendered = await renderEmailTemplate(
+          weddingId,
+          "gift_thank_you",
+          {
+            DONOR_NAME: existing.donorName || "there",
+            AMOUNT: amount,
+            GIFT_TYPE: existing.giftType
+              ? (GIFT_TYPE_LABELS[existing.giftType] ?? "gift")
+              : "gift",
+            COUPLE_NAMES: settings.coupleName,
+          },
+          settings.defaultLanguage,
+        );
+        if (rendered) {
+          await sendEmail({
+            from: getEmailFromAddress(settings, settings.coupleName),
+            to: existing.donorEmail,
+            subject: rendered.subject,
+            html: rendered.html,
+            log: {
+              weddingId,
+              guestId: existing.guestId ?? undefined,
+              type: "gift_thank_you",
+            },
+          });
+        }
+      } catch (emailError) {
+        console.error("Error sending gift thank-you email:", emailError);
+      }
+    }
 
     return NextResponse.json({ gift: updatedGift });
   } catch (error) {

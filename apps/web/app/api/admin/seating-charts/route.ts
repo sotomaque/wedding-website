@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { createSeatingChartSchema } from "@/lib/validations/admin-api";
 
 /**
  * List seating charts
@@ -47,15 +48,15 @@ export async function POST(request: NextRequest) {
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
-    const body = await request.json();
-    const { name, defaultSeatsPerTable, notes } = body;
-
-    if (!name) {
+    const body = await request.json().catch(() => null);
+    const parsed = createSeatingChartSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Chart name is required" },
+        { error: parsed.error.issues[0]?.message ?? "Chart name is required" },
         { status: 400 },
       );
     }
+    const { name, defaultSeatsPerTable, notes } = parsed.data;
 
     const chart = await db.seatingChart.create({
       data: {

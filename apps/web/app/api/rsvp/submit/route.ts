@@ -8,6 +8,7 @@ import {
 } from "@/lib/email/helpers";
 import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
+import { rsvpSubmitSchema } from "@/lib/validations/rsvp";
 
 /**
  * Submit RSVP
@@ -19,15 +20,15 @@ import { getResendClient, sendEmail } from "@/lib/email/resend-client";
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { inviteCode, attending, dietaryRestrictions } = body;
-
-    if (!inviteCode) {
+    const body = await request.json().catch(() => null);
+    const parsed = rsvpSubmitSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invite code is required" },
+        { error: parsed.error.issues[0]?.message ?? "Invalid request" },
         { status: 400 },
       );
     }
+    const { inviteCode, attending, dietaryRestrictions } = parsed.data;
 
     const normalizedCode = inviteCode.toUpperCase();
     const weddingId = await getWeddingId();
@@ -103,6 +104,7 @@ export async function POST(request: NextRequest) {
             to: recipients,
             subject: rsvpTemplate.subject,
             html: rsvpTemplate.html,
+            log: { weddingId, type: "rsvp_notification" },
           });
         }
       } catch (emailError) {

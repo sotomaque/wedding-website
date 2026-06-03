@@ -6,18 +6,10 @@ import { Button } from "@workspace/ui/components/button";
 import { CalendarCheck, Check, Link, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-// Hoisted constants — avoid recreating on every render
-const RSVP_LABELS: Record<string, string> = {
-  pending: "Pending",
-  yes: "Confirmed",
-  no: "Declined",
-};
-const RSVP_COLORS: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  yes: "bg-green-100 text-green-800",
-  no: "bg-red-100 text-red-800",
-};
+import {
+  RSVP_STATUS_COLORS as RSVP_COLORS,
+  RSVP_STATUS_LABELS as RSVP_LABELS,
+} from "@/lib/constants/labels";
 
 type SortableColumn =
   | "firstName"
@@ -536,6 +528,14 @@ export function createColumns({
           {row.original.isPlusOne && (
             <span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 px-2 py-0.5 rounded">
               +1
+            </span>
+          )}
+          {row.original.selfRegistered && (
+            <span
+              className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 px-2 py-0.5 rounded"
+              title="Added themselves via a public event RSVP link"
+            >
+              Self-registered
             </span>
           )}
         </div>

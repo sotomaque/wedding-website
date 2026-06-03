@@ -10,6 +10,7 @@ import {
 import { Filter, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { RSVP_STATUS_LABELS } from "@/lib/constants/labels";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
 import type { EventOption } from "./actions";
 
@@ -30,6 +31,10 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
   const currentFamily = searchParams.get("family") as "true" | "false" | null;
   const currentUnder21 = searchParams.get("under21") as "true" | "false" | null;
   const currentThreeAndUnder = searchParams.get("threeAndUnder") as
+    | "true"
+    | "false"
+    | null;
+  const currentSelfRegistered = searchParams.get("selfRegistered") as
     | "true"
     | "false"
     | null;
@@ -114,6 +119,7 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
     currentIsPlusOne ||
     currentEmailStatus ||
     currentBridalParty ||
+    currentSelfRegistered ||
     currentEvents.length > 0;
   const filterCount =
     [
@@ -125,6 +131,7 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
       currentIsPlusOne,
       currentEmailStatus,
       currentBridalParty,
+      currentSelfRegistered,
     ].filter(Boolean).length +
     (currentStatuses.length > 0 ? 1 : 0) +
     (currentEvents.length > 0 ? 1 : 0);
@@ -198,9 +205,9 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
               <span className="text-sm font-medium">RSVP Status</span>
               <div className="space-y-1.5">
                 {[
-                  { value: "pending", label: "Pending" },
-                  { value: "yes", label: "Confirmed" },
-                  { value: "no", label: "Declined" },
+                  { value: "pending", label: RSVP_STATUS_LABELS.pending },
+                  { value: "yes", label: RSVP_STATUS_LABELS.yes },
+                  { value: "no", label: RSVP_STATUS_LABELS.no },
                 ].map((option) => (
                   // biome-ignore lint/a11y/noLabelWithoutControl: Radix Checkbox handles focus internally
                   <label
@@ -282,6 +289,43 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
                   variant={currentFamily === "false" ? "default" : "outline"}
                   size="sm"
                   onClick={() => updateFilter("family", "false")}
+                  className="w-full"
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+
+            {/* Self-Registered Filter */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Self-Registered</span>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={
+                    currentSelfRegistered === null ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("selfRegistered", null)}
+                  className="w-full"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={
+                    currentSelfRegistered === "true" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("selfRegistered", "true")}
+                  className="w-full"
+                >
+                  Yes
+                </Button>
+                <Button
+                  variant={
+                    currentSelfRegistered === "false" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("selfRegistered", "false")}
                   className="w-full"
                 >
                   No
@@ -556,13 +600,7 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
             <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
               RSVP:{" "}
               {currentStatuses
-                .map((s) =>
-                  s === "pending"
-                    ? "Pending"
-                    : s === "yes"
-                      ? "Confirmed"
-                      : "Declined",
-                )
+                .map((s) => RSVP_STATUS_LABELS[s] ?? s)
                 .join(", ")}
               <button
                 type="button"
@@ -615,6 +653,18 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
               <button
                 type="button"
                 onClick={() => updateFilter("threeAndUnder", null)}
+                className="hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {currentSelfRegistered && (
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+              Self-Registered: {currentSelfRegistered === "true" ? "Yes" : "No"}
+              <button
+                type="button"
+                onClick={() => updateFilter("selfRegistered", null)}
                 className="hover:text-foreground"
               >
                 <X className="h-3 w-3" />

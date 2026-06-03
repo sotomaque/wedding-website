@@ -1,14 +1,14 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { getHotels } from "./actions";
+import { getHotelsForAdmin } from "./actions";
 import { HotelsManager } from "./hotels-manager";
 
 export const dynamic = "force-dynamic";
 
 async function HotelsContent() {
-  const items = await getHotels();
-  return <HotelsManager initialItems={items} />;
+  const hotels = await getHotelsForAdmin();
+  return <HotelsManager initialHotels={hotels} />;
 }
 
 function HotelsSkeleton() {

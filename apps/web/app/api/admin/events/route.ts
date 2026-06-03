@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { createEventSchema } from "@/lib/validations/admin-api";
 
 /**
  * List all events
@@ -84,11 +85,19 @@ export async function POST(request: NextRequest) {
     const auth = await requireAdmin(weddingId);
     if ("status" in auth) return auth;
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    const parsed = createEventSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid request" },
+        { status: 400 },
+      );
+    }
     const {
       name,
       description,
       eventDate,
+      endDate,
       startTime,
       endTime,
       locationName,
@@ -96,11 +105,9 @@ export async function POST(request: NextRequest) {
       latitude,
       longitude,
       isDefault,
-    } = body;
-
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
+      capacity,
+      imageUrl,
+    } = parsed.data;
 
     // Get the highest display_order
     const maxOrder = await db.event.aggregate({
@@ -115,6 +122,7 @@ export async function POST(request: NextRequest) {
         name,
         description: description || null,
         eventDate: eventDate ? new Date(`${eventDate}T00:00:00Z`) : null,
+        endDate: endDate ? new Date(`${endDate}T00:00:00Z`) : null,
         startTime: startTime ? new Date(`1970-01-01T${startTime}:00Z`) : null,
         endTime: endTime ? new Date(`1970-01-01T${endTime}:00Z`) : null,
         locationName: locationName || null,
@@ -122,6 +130,8 @@ export async function POST(request: NextRequest) {
         latitude: latitude || null,
         longitude: longitude || null,
         isDefault: isDefault || false,
+        capacity: capacity ?? null,
+        imageUrl: imageUrl || null,
         displayOrder: newOrder,
         weddingId,
       },

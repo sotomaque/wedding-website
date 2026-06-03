@@ -55,14 +55,8 @@ test.describe("Registry Item Management", () => {
       timeout: 5000,
     });
 
-    // Find the card by heading and click the pencil (edit) button
-    // The edit button is in the actions row — it's the button right after the switch
-    const card = page.locator(".border.rounded-lg").filter({
-      has: page.getByRole("heading", { name: title }),
-    });
-    // The pencil button is the second-to-last button in the card
-    const editButton = card.getByRole("switch").locator("~ button").first();
-    await editButton.click();
+    // Click the edit button via its stable accessible name.
+    await page.getByRole("button", { name: `Edit ${title}` }).click();
 
     await expect(
       page.getByRole("heading", { name: /edit registry item/i }),
@@ -131,12 +125,8 @@ test.describe("Registry Item Management", () => {
     // Accept the window.confirm dialog
     page.on("dialog", (dialog) => dialog.accept());
 
-    // Find the card and click the last button (trash/delete icon)
-    const card = page.locator(".border.rounded-lg").filter({
-      has: page.getByRole("heading", { name: title }),
-    });
-    // The delete button is the last button in the card
-    await card.getByRole("button").last().click();
+    // Click the delete button via its stable accessible name.
+    await page.getByRole("button", { name: `Delete ${title}` }).click();
 
     // Item should be gone
     await expect(page.getByRole("heading", { name: title })).not.toBeVisible({

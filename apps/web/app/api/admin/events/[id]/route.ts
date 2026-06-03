@@ -95,6 +95,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       name,
       description,
       eventDate,
+      endDate,
       startTime,
       endTime,
       locationName,
@@ -103,6 +104,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       longitude,
       isDefault,
       displayOrder,
+      capacity,
+      publicRsvpEnabled,
+      imageUrl,
     } = body;
 
     // Get current event to check if isDefault changed
@@ -122,6 +126,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updateData.eventDate = eventDate
         ? new Date(`${eventDate}T00:00:00Z`)
         : null;
+    if (endDate !== undefined)
+      updateData.endDate = endDate ? new Date(`${endDate}T00:00:00Z`) : null;
     if (startTime !== undefined)
       updateData.startTime = startTime
         ? new Date(`1970-01-01T${startTime}:00Z`)
@@ -137,6 +143,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (longitude !== undefined) updateData.longitude = longitude || null;
     if (isDefault !== undefined) updateData.isDefault = isDefault;
     if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
+    if (capacity !== undefined)
+      updateData.capacity =
+        capacity === null || capacity === "" ? null : Number(capacity);
+    if (publicRsvpEnabled !== undefined)
+      updateData.publicRsvpEnabled = Boolean(publicRsvpEnabled);
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl || null;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(

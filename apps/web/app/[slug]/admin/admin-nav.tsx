@@ -40,6 +40,7 @@ function getNavItems(slug: string, isSuperAdmin: boolean): NavItem[] {
         { href: `${base}/admin/guests`, label: "Guest List" },
         { href: `${base}/admin/parties`, label: "Parties" },
         { href: `${base}/admin/seating`, label: "Seating" },
+        { href: `${base}/admin/communications`, label: "Communications" },
       ],
     },
     {
@@ -62,10 +63,10 @@ function getNavItems(slug: string, isSuperAdmin: boolean): NavItem[] {
     },
     {
       type: "group",
-      label: "Guest experience",
+      label: "Travel",
       links: [
         { href: `${base}/admin/hotels`, label: "Hotels" },
-        { href: `${base}/admin/things-to-do`, label: "Things to Do" },
+        { href: `${base}/admin/activities`, label: "Things to Do" },
       ],
     },
     {
