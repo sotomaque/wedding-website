@@ -122,8 +122,8 @@ function getSectionConfig(
       return {
         kind: "crossLink",
         label: "Things to do",
-        adminPath: "admin/things-to-do",
-        note: "Add and edit activity recommendations on the Things to Do page.",
+        adminPath: "admin/activities",
+        note: "Add and edit activity recommendations on the Activities page.",
       };
   }
 }
