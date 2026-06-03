@@ -12,6 +12,11 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@workspace/ui"],
+  // isomorphic-dompurify pulls in jsdom (used only server-side to sanitize the
+  // story rich text). jsdom does dynamic requires + optional native deps that
+  // the Next bundler can't statically include, which breaks the build. Mark it
+  // external so it's loaded from node_modules at runtime instead of bundled.
+  serverExternalPackages: ["isomorphic-dompurify"],
   // Server Action body limit. Must live under `experimental.serverActions`
   // (the top-level `serverActions` key is silently ignored — Next.js logs
   // "Unrecognized key(s) in object: 'serverActions'" and falls back to the
