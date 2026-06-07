@@ -48,7 +48,7 @@ describe("LAYOUT_PRESETS", () => {
     expect(classic.navVariant).toBe("centered");
   });
 
-  it("elegant lists the full ten-section flow in order", () => {
+  it("elegant lists the full eleven-section flow in order", () => {
     const elegant = getLayoutPreset("elegant");
     expect(elegant.sections).toEqual([
       "hero",
@@ -61,6 +61,7 @@ describe("LAYOUT_PRESETS", () => {
       "gallery",
       "registry-teaser",
       "faqs",
+      "rsvp",
     ]);
   });
 
@@ -81,5 +82,13 @@ describe("LAYOUT_PRESETS", () => {
     for (const layout of LAYOUT_PRESETS) {
       expect(new Set(layout.sections).size).toBe(layout.sections.length);
     }
+  });
+});
+
+describe("elegant layout", () => {
+  it("includes rsvp as the closing section", () => {
+    const sections = getLayoutPreset("elegant").sections;
+    expect(sections).toContain("rsvp");
+    expect(sections[sections.length - 1]).toBe("rsvp");
   });
 });
