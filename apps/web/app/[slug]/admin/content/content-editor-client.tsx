@@ -11,6 +11,7 @@ import {
   WeddingPartyEditor,
   WelcomeEditor,
 } from "@/components/customization/content-editors";
+import type { TemplateContentDefaults } from "@/lib/template-content-defaults";
 import type {
   DetailsContent,
   FaqsContent,
@@ -47,12 +48,14 @@ interface ContentEditorClientProps {
   content: Record<string, unknown>;
   coupleName: string;
   heroDisplay: "title" | "couple-names";
+  defaults: TemplateContentDefaults;
 }
 
 export function ContentEditorClient({
   content,
   coupleName,
   heroDisplay,
+  defaults,
 }: ContentEditorClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("hero");
 
@@ -82,15 +85,20 @@ export function ContentEditorClient({
           initial={content.hero as HeroContent | undefined}
           initialCoupleName={coupleName}
           currentDisplay={heroDisplay}
+          locationPlaceholder={defaults.hero?.location}
         />
       )}
       {activeTab === "welcome" && (
         <WelcomeEditor
           initial={content.welcome as WelcomeContent | undefined}
+          messagePlaceholder={defaults.welcome?.message}
         />
       )}
       {activeTab === "story" && (
-        <StoryEditor initial={content.story as StoryContent | undefined} />
+        <StoryEditor
+          initial={content.story as StoryContent | undefined}
+          bodyPlaceholder={defaults.story?.paragraphs?.join("\n\n")}
+        />
       )}
       {activeTab === "details" && (
         <DetailsEditor

@@ -44,6 +44,7 @@ export function HeroEditor({
   initial,
   initialCoupleName,
   currentDisplay,
+  locationPlaceholder,
 }: {
   initial?: HeroContent;
   /**
@@ -60,6 +61,7 @@ export function HeroEditor({
    * unused field on each variant so the editor matches what's on screen.
    */
   currentDisplay?: "title" | "couple-names";
+  locationPlaceholder?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -141,7 +143,7 @@ export function HeroEditor({
           id="hero-location"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          placeholder="Seattle, Washington"
+          placeholder={locationPlaceholder ?? "Seattle, Washington"}
           className="mt-1"
         />
         {isCoupleNamesMode && (
@@ -163,7 +165,13 @@ export function HeroEditor({
   );
 }
 
-export function StoryEditor({ initial }: { initial?: StoryContent }) {
+export function StoryEditor({
+  initial,
+  bodyPlaceholder,
+}: {
+  initial?: StoryContent;
+  bodyPlaceholder?: string;
+}) {
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(initial?.title ?? "");
 
@@ -340,7 +348,10 @@ export function StoryEditor({ initial }: { initial?: StoryContent }) {
           <RichTextEditor
             content={bodyHtml}
             onChange={setBodyHtml}
-            placeholder="We met at a coffee shop in Brooklyn back in 2019, both ducking in from the rain. Three years and one rescue dog later, Alex proposed on a hike in the Catskills with terrible cell service and perfect timing. We can't wait to celebrate with the people who made our story possible."
+            placeholder={
+              bodyPlaceholder ??
+              "We met at a coffee shop in Brooklyn back in 2019, both ducking in from the rain. Three years and one rescue dog later, Alex proposed on a hike in the Catskills with terrible cell service and perfect timing. We can't wait to celebrate with the people who made our story possible."
+            }
           />
         </div>
         <p className="text-xs text-muted-foreground mt-1.5">
@@ -689,7 +700,13 @@ export function RsvpEditor({ initial }: { initial?: RsvpContent }) {
   );
 }
 
-export function WelcomeEditor({ initial }: { initial?: WelcomeContent }) {
+export function WelcomeEditor({
+  initial,
+  messagePlaceholder,
+}: {
+  initial?: WelcomeContent;
+  messagePlaceholder?: string;
+}) {
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [message, setMessage] = useState(initial?.message ?? "");
@@ -726,7 +743,10 @@ export function WelcomeEditor({ initial }: { initial?: WelcomeContent }) {
           id="welcome-message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="To our friends and family: we're so excited to celebrate our wedding with you..."
+          placeholder={
+            messagePlaceholder ??
+            "To our friends and family: we're so excited to celebrate our wedding with you..."
+          }
           className="mt-1 min-h-32"
         />
       </div>
