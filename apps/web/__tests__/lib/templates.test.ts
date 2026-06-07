@@ -3,6 +3,8 @@ import { FONT_PAIRINGS } from "@/lib/fonts";
 import { LAYOUT_PRESETS } from "@/lib/layouts";
 import { MOTIF_PACKS } from "@/lib/motifs";
 import {
+  getEffectiveFontId,
+  getEffectiveThemeId,
   getPhotoSections,
   getTemplatePreset,
   TEMPLATE_PRESETS,
@@ -80,6 +82,35 @@ describe("TEMPLATE_PRESETS", () => {
     expect(elegant.heroDisplay).toBe("couple-names");
     expect(elegant.scheduleStyle).toBe("events-card");
     expect(elegant.storyStyle).toBe("prose-only");
+  });
+});
+
+describe("getEffectiveFontId / getEffectiveThemeId (resolve-on-read)", () => {
+  const elegant = getTemplatePreset("elegant");
+  const classic = getTemplatePreset("classic");
+
+  it("inherits the template default font when the user has no override", () => {
+    // The reported bug: an Elegant wedding with no font override rendered
+    // elegant-script but the picker highlighted classic. Null must resolve
+    // to the *template* default, never a hardcoded classic.
+    expect(getEffectiveFontId(elegant, null)).toBe("elegant-script");
+    expect(getEffectiveFontId(elegant, undefined)).toBe("elegant-script");
+    expect(getEffectiveFontId(classic, null)).toBe("classic");
+  });
+
+  it("lets a user font override win over the template default", () => {
+    expect(getEffectiveFontId(elegant, "modern")).toBe("modern");
+    expect(getEffectiveFontId(classic, "elegant")).toBe("elegant");
+  });
+
+  it("inherits the template default theme when the user has no override", () => {
+    expect(getEffectiveThemeId(elegant, null)).toBe("elegant");
+    expect(getEffectiveThemeId(elegant, undefined)).toBe("elegant");
+    expect(getEffectiveThemeId(classic, null)).toBe("warm-gold");
+  });
+
+  it("lets a user theme override win over the template default", () => {
+    expect(getEffectiveThemeId(elegant, "warm-gold")).toBe("warm-gold");
   });
 });
 

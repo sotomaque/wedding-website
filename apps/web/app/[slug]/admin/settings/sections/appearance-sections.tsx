@@ -7,7 +7,12 @@ import { Label } from "@workspace/ui/components/label";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { FONT_PAIRINGS } from "@/lib/fonts";
-import { TEMPLATE_PRESETS } from "@/lib/templates";
+import {
+  getEffectiveFontId,
+  getEffectiveThemeId,
+  getTemplatePreset,
+  TEMPLATE_PRESETS,
+} from "@/lib/templates";
 import { getThemePreset, THEME_PRESETS } from "@/lib/themes";
 import { designConfigSchema } from "@/lib/validations/wedding-content";
 import {
@@ -98,7 +103,10 @@ export function TemplateSection({ wedding }: { wedding: Wedding }) {
 
 export function ThemeSection({ wedding }: { wedding: Wedding }) {
   const [isPending, startTransition] = useTransition();
-  const currentThemeId = (wedding.themeId as string) ?? "warm-gold";
+  const currentThemeId = getEffectiveThemeId(
+    getTemplatePreset(wedding.templateId),
+    wedding.themeId as string | null,
+  );
 
   function handleSelect(themeId: string) {
     startTransition(async () => {
@@ -163,7 +171,10 @@ export function ThemeSection({ wedding }: { wedding: Wedding }) {
 export function TypographySection({ wedding }: { wedding: Wedding }) {
   const [isPending, startTransition] = useTransition();
   const design = designConfigSchema.parse(wedding.designConfig ?? {});
-  const currentFontId = design.fontId ?? "classic";
+  const currentFontId = getEffectiveFontId(
+    getTemplatePreset(wedding.templateId),
+    design.fontId,
+  );
 
   function handleSelect(fontId: string) {
     startTransition(async () => {
@@ -213,7 +224,12 @@ export function TypographySection({ wedding }: { wedding: Wedding }) {
             >
               The quick brown fox
             </p>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p
+              className="text-xs text-muted-foreground mt-2"
+              // Pin to this option's own body font so the description always
+              // previews its own pairing, never the currently-selected one.
+              style={{ fontFamily: font.preview.body }}
+            >
               {font.description}
             </p>
           </button>

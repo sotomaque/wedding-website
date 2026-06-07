@@ -24,6 +24,8 @@ import {
 } from "@/app/[slug]/admin/settings/actions";
 import { FONT_PAIRINGS } from "@/lib/fonts";
 import {
+  getEffectiveFontId,
+  getEffectiveThemeId,
   getPhotoSections,
   getTemplatePreset,
   type PhotoSectionKey,
@@ -111,7 +113,10 @@ export function BrandingPicker({ wedding }: { wedding: Wedding }) {
 
 export function ThemePicker({ wedding }: { wedding: Wedding }) {
   const [isPending, startTransition] = useTransition();
-  const currentThemeId = (wedding.themeId as string) ?? "warm-gold";
+  const currentThemeId = getEffectiveThemeId(
+    getTemplatePreset(wedding.templateId),
+    wedding.themeId as string | null,
+  );
 
   function handleSelect(themeId: string) {
     startTransition(async () => {
@@ -176,7 +181,10 @@ export function ThemePicker({ wedding }: { wedding: Wedding }) {
 export function FontPicker({ wedding }: { wedding: Wedding }) {
   const [isPending, startTransition] = useTransition();
   const design = designConfigSchema.parse(wedding.designConfig ?? {});
-  const currentFontId = design.fontId ?? "classic";
+  const currentFontId = getEffectiveFontId(
+    getTemplatePreset(wedding.templateId),
+    design.fontId,
+  );
 
   function handleSelect(fontId: string) {
     startTransition(async () => {
@@ -226,7 +234,14 @@ export function FontPicker({ wedding }: { wedding: Wedding }) {
             >
               The quick brown fox
             </p>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p
+              className="text-xs text-muted-foreground mt-2"
+              // Pin to this option's own body font. Without it the description
+              // inherits the live --font-body override (the customizer renders
+              // inside the public font-styled scope), so every card's text
+              // would re-render in whichever font is currently selected.
+              style={{ fontFamily: font.preview.body }}
+            >
               {font.description}
             </p>
           </button>

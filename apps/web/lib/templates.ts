@@ -134,6 +134,34 @@ export function isValidTemplateId(id: string): boolean {
 }
 
 /**
+ * Resolve-on-read: the font pairing that actually renders for a wedding.
+ * A non-null user override wins; otherwise the wedding inherits the
+ * template's default font. This is the single source of truth for the rule
+ * — the public layout's font CSS and the admin Typography picker's "Active"
+ * highlight both call this, so the picker can never claim a different font
+ * than the site renders (the original bug: a null override on the Elegant
+ * template was hardcoded to "classic" in the picker while the site rendered
+ * elegant-script).
+ */
+export function getEffectiveFontId(
+  template: TemplatePreset,
+  fontId: string | null | undefined,
+): string {
+  return fontId ?? template.defaultFontId;
+}
+
+/**
+ * Resolve-on-read counterpart for the color theme. Same contract as
+ * {@link getEffectiveFontId}: user override wins, else the template default.
+ */
+export function getEffectiveThemeId(
+  template: TemplatePreset,
+  themeId: string | null | undefined,
+): string {
+  return themeId ?? template.defaultThemeId;
+}
+
+/**
  * The home-page sections that render photos for a given template, in render
  * order. Derived from the template's resolved layout (only sections the layout
  * actually renders) intersected with the photo-capable set {hero, story,
