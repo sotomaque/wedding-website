@@ -13,6 +13,12 @@
  * existing next-intl / component fallbacks.
  */
 
+import type {
+  HeroContent,
+  StoryContent,
+  WelcomeContent,
+} from "@/lib/validations/wedding-content";
+
 export interface TemplateContentDefaults {
   hero?: { location?: string };
   welcome?: { title?: string; message?: string };
@@ -72,4 +78,65 @@ export function getTemplateContentDefaults(
     TEMPLATE_CONTENT_DEFAULTS[seedFlavor] ??
     (TEMPLATE_CONTENT_DEFAULTS[DEFAULT_FLAVOR] as TemplateContentDefaults)
   );
+}
+
+/** True when the story has author-provided body content. */
+function storyHasBody(content: StoryContent | undefined): boolean {
+  return !!content?.bodyHtml || (content?.paragraphs?.length ?? 0) > 0;
+}
+
+/**
+ * Effective story content for rendering. The user's content wins; an empty
+ * story falls back to the template default body only on draft sites. Published
+ * + empty returns the content untouched, so the Story section hides itself.
+ */
+export function resolveStoryContent(
+  content: StoryContent | undefined,
+  defaults: TemplateContentDefaults,
+  isDraft: boolean,
+): StoryContent | undefined {
+  if (storyHasBody(content)) return content;
+  if (isDraft && (defaults.story?.paragraphs?.length ?? 0) > 0) {
+    return {
+      ...content,
+      title: content?.title ?? defaults.story?.title ?? "Our Story",
+      paragraphs: defaults.story?.paragraphs ?? [],
+    };
+  }
+  return content;
+}
+
+/** Effective welcome content — default message on draft only. */
+export function resolveWelcomeContent(
+  content: WelcomeContent | undefined,
+  defaults: TemplateContentDefaults,
+  isDraft: boolean,
+): WelcomeContent | undefined {
+  if (content?.message?.trim()) return content;
+  if (isDraft && defaults.welcome?.message) {
+    return {
+      ...content,
+      title: content?.title ?? defaults.welcome.title,
+      message: defaults.welcome.message,
+    };
+  }
+  return content;
+}
+
+/** Effective hero content — default location on draft only. */
+export function resolveHeroContent(
+  content: HeroContent | undefined,
+  defaults: TemplateContentDefaults,
+  isDraft: boolean,
+): HeroContent | undefined {
+  if (content?.location?.trim()) return content;
+  if (isDraft && defaults.hero?.location) {
+    return {
+      ...content,
+      // HeroContent.title has no default in TemplateContentDefaults
+      title: content?.title ?? "",
+      location: defaults.hero.location,
+    };
+  }
+  return content;
 }
