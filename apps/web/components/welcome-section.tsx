@@ -4,22 +4,17 @@ interface WelcomeSectionProps {
   content?: WelcomeContent;
 }
 
-const DEFAULT_TITLE = "Welcome!";
-const DEFAULT_MESSAGE =
-  "To our friends and family: We're so excited to celebrate our wedding with you. Find all the details you need to know about our big day here.";
-
 /**
- * Welcome section — short greeting paragraph under the hero. Distinct from
- * "Our Story": this is the first under-hero block, kept brief so guests
- * immediately see the tone of voice.
- *
- * Falls back to the default heading + paragraph when no content row exists
- * so brand-new weddings still render something inviting before the user
- * edits.
+ * Welcome section — short greeting paragraph under the hero. Hidden when there
+ * is no message: the public page injects the template default message on draft
+ * sites (so the couple previews a populated section) and leaves it empty on
+ * published sites (so guests never see sample copy). See
+ * `resolveWelcomeContent` in lib/template-content-defaults.ts.
  */
 export function WelcomeSection({ content }: WelcomeSectionProps) {
-  const title = content?.title?.trim() || DEFAULT_TITLE;
-  const message = content?.message?.trim() || DEFAULT_MESSAGE;
+  const message = content?.message?.trim();
+  if (!message) return null;
+  const title = content?.title?.trim() || "Welcome";
 
   return (
     <section id="welcome" className="py-24 px-6 bg-background scroll-mt-24">

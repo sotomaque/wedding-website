@@ -20,7 +20,7 @@ export function ElegantStorySection({ content }: ElegantStorySectionProps) {
   const hasText = Boolean(
     content?.bodyHtml || (content?.paragraphs ?? []).length > 0,
   );
-  if (!hasText && !content?.title) return null;
+  if (!hasText) return null;
 
   return (
     <section id="story" className="py-24 px-6 bg-background scroll-mt-24">
