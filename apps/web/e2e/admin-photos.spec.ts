@@ -14,7 +14,9 @@ test.describe("Photos Management Page", () => {
     await page.goto("/admin/photos");
     await waitForHydration(page);
 
-    await expect(page.getByRole("heading", { name: /photos/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Photos", exact: true }),
+    ).toBeVisible();
   });
 
   test("shows upload dropzone", async ({ page }) => {

@@ -16,6 +16,8 @@ export interface GuestListFilterParams {
   emailStatus?: "not_sent" | "sent" | "resent";
   under21?: "true" | "false";
   threeAndUnder?: "true" | "false";
+  /** Whether a physical (paper) invite has been mailed. */
+  physicalInviteSent?: "true" | "false";
   /** Guests who added themselves via a public per-event RSVP link. */
   selfRegistered?: "true" | "false";
   bridalParty?:
@@ -66,6 +68,8 @@ export function buildGuestListWhere(
   if (params.under21 !== undefined) where.under21 = params.under21 === "true";
   if (params.threeAndUnder !== undefined)
     where.threeAndUnder = params.threeAndUnder === "true";
+  if (params.physicalInviteSent !== undefined)
+    where.physicalInviteSent = params.physicalInviteSent === "true";
   if (params.selfRegistered !== undefined)
     where.selfRegistered = params.selfRegistered === "true";
 

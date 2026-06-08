@@ -38,6 +38,10 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
     | "true"
     | "false"
     | null;
+  const currentPhysicalInviteSent = searchParams.get("physicalInviteSent") as
+    | "true"
+    | "false"
+    | null;
   const currentIsPlusOne = searchParams.get("isPlusOne") as
     | "true"
     | "false"
@@ -120,6 +124,7 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
     currentEmailStatus ||
     currentBridalParty ||
     currentSelfRegistered ||
+    currentPhysicalInviteSent ||
     currentEvents.length > 0;
   const filterCount =
     [
@@ -132,6 +137,7 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
       currentEmailStatus,
       currentBridalParty,
       currentSelfRegistered,
+      currentPhysicalInviteSent,
     ].filter(Boolean).length +
     (currentStatuses.length > 0 ? 1 : 0) +
     (currentEvents.length > 0 ? 1 : 0);
@@ -289,6 +295,45 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
                   variant={currentFamily === "false" ? "default" : "outline"}
                   size="sm"
                   onClick={() => updateFilter("family", "false")}
+                  className="w-full"
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+
+            {/* Physical Invite Sent Filter */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Physical Invite Sent</span>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={
+                    currentPhysicalInviteSent === null ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("physicalInviteSent", null)}
+                  className="w-full"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={
+                    currentPhysicalInviteSent === "true" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("physicalInviteSent", "true")}
+                  className="w-full"
+                >
+                  Yes
+                </Button>
+                <Button
+                  variant={
+                    currentPhysicalInviteSent === "false"
+                      ? "default"
+                      : "outline"
+                  }
+                  size="sm"
+                  onClick={() => updateFilter("physicalInviteSent", "false")}
                   className="w-full"
                 >
                   No
@@ -653,6 +698,19 @@ export function GuestsFilters({ events = [] }: GuestsFiltersProps) {
               <button
                 type="button"
                 onClick={() => updateFilter("threeAndUnder", null)}
+                className="hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {currentPhysicalInviteSent && (
+            <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium">
+              Physical Invite:{" "}
+              {currentPhysicalInviteSent === "true" ? "Sent" : "Not sent"}
+              <button
+                type="button"
+                onClick={() => updateFilter("physicalInviteSent", null)}
                 className="hover:text-foreground"
               >
                 <X className="h-3 w-3" />

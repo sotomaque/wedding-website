@@ -42,6 +42,15 @@ describe("buildGuestListWhere", () => {
       buildGuestListWhere(WID, { selfRegistered: "false" }).selfRegistered,
     ).toBe(false);
     expect(buildGuestListWhere(WID, {}).selfRegistered).toBeUndefined();
+    expect(
+      buildGuestListWhere(WID, { physicalInviteSent: "true" })
+        .physicalInviteSent,
+    ).toBe(true);
+    expect(
+      buildGuestListWhere(WID, { physicalInviteSent: "false" })
+        .physicalInviteSent,
+    ).toBe(false);
+    expect(buildGuestListWhere(WID, {}).physicalInviteSent).toBeUndefined();
   });
 
   it("maps emailStatus to numberOfResends", () => {
