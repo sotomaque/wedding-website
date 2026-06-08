@@ -40,7 +40,7 @@ import { Textarea } from "@workspace/ui/components/textarea";
 import { cn } from "@workspace/ui/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -58,6 +58,7 @@ import {
   EventInvitationsSection,
   PlusOneSection,
 } from "./guest-form-sections";
+import { buildGuestsUrl } from "./guests-url";
 import { MergeGuestDialog } from "./merge-guest-dialog";
 
 // PostgreSQL date columns are returned as Date objects by the pg driver.
@@ -97,7 +98,6 @@ export function EditGuestSheet({
   const [selectedEventIds, setSelectedEventIds] =
     useState<string[]>(guestEventIds);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const slug = useWeddingSlug();
 
   // Memoize initial values from DB to compare against current form values
@@ -209,9 +209,9 @@ export function EditGuestSheet({
   }, [formValues, initialValues, selectedEventIds, guestEventIds]);
 
   function closeSheet() {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("edit");
-    router.push(`/${slug}/admin/guests?${params.toString()}`, {
+    // Preserve all active filters/sort/pagination — only drop `edit`. Reads the
+    // live URL via buildGuestsUrl so it stays in sync with any future filter.
+    router.push(buildGuestsUrl(slug, { edit: null }), {
       scroll: false,
     });
   }
