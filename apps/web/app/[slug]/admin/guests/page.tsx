@@ -20,6 +20,7 @@ interface PageProps {
     family?: "true" | "false";
     isPlusOne?: "true" | "false";
     emailStatus?: "not_sent" | "sent" | "resent";
+    physicalInviteSent?: "true" | "false";
     selfRegistered?: "true" | "false";
     bridalParty?:
       | "groomsman"
