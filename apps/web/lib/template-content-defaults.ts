@@ -25,25 +25,28 @@ export interface TemplateContentDefaults {
   story?: { title?: string; paragraphs?: string[] };
 }
 
+/** Default copy for the classic flavor — also the fallback for any flavor. */
+const CLASSIC_CONTENT_DEFAULTS: TemplateContentDefaults = {
+  hero: { location: "Seattle, Washington" },
+  welcome: {
+    title: "Welcome!",
+    message:
+      "To our friends and family: we're so excited to celebrate our wedding with you. Find all the details you'll need for our big day right here.",
+  },
+  story: {
+    title: "Our Story",
+    paragraphs: [
+      "This is where your love story comes to life. Tell your guests how you met, the moment you knew, and the journey that led to your wedding day.",
+      "Edit this section any time from the Content editor to make it your own.",
+    ],
+  },
+};
+
 export const TEMPLATE_CONTENT_DEFAULTS: Record<
   string,
   TemplateContentDefaults
 > = {
-  classic: {
-    hero: { location: "Seattle, Washington" },
-    welcome: {
-      title: "Welcome!",
-      message:
-        "To our friends and family: we're so excited to celebrate our wedding with you. Find all the details you'll need for our big day right here.",
-    },
-    story: {
-      title: "Our Story",
-      paragraphs: [
-        "This is where your love story comes to life. Tell your guests how you met, the moment you knew, and the journey that led to your wedding day.",
-        "Edit this section any time from the Content editor to make it your own.",
-      ],
-    },
-  },
+  classic: CLASSIC_CONTENT_DEFAULTS,
   elegant: {
     hero: { location: "Seattle, Washington" },
     welcome: {
@@ -61,8 +64,6 @@ export const TEMPLATE_CONTENT_DEFAULTS: Record<
   },
 };
 
-const DEFAULT_FLAVOR = "classic";
-
 /**
  * Defaults for a seedFlavor. Falls back to the classic defaults for unknown,
  * null, or undefined flavors so a new template without curated copy still
@@ -71,13 +72,8 @@ const DEFAULT_FLAVOR = "classic";
 export function getTemplateContentDefaults(
   seedFlavor: string | null | undefined,
 ): TemplateContentDefaults {
-  if (!seedFlavor) {
-    return TEMPLATE_CONTENT_DEFAULTS[DEFAULT_FLAVOR] as TemplateContentDefaults;
-  }
-  return (
-    TEMPLATE_CONTENT_DEFAULTS[seedFlavor] ??
-    (TEMPLATE_CONTENT_DEFAULTS[DEFAULT_FLAVOR] as TemplateContentDefaults)
-  );
+  if (!seedFlavor) return CLASSIC_CONTENT_DEFAULTS;
+  return TEMPLATE_CONTENT_DEFAULTS[seedFlavor] ?? CLASSIC_CONTENT_DEFAULTS;
 }
 
 /** True when the story has author-provided body content. */
