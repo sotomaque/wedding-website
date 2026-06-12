@@ -24,7 +24,7 @@ test.describe("Content Editor Page", () => {
     await waitForHydration(page);
 
     await expect(
-      page.getByRole("button", { name: "Hero", exact: true }),
+      page.getByRole("button", { name: "Cover", exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Story", exact: true }),
@@ -40,17 +40,17 @@ test.describe("Content Editor Page", () => {
     ).toBeVisible();
   });
 
-  test("Hero tab shows title input and save button", async ({ page }) => {
+  test("Cover tab shows title input and save button", async ({ page }) => {
     await page.goto("/admin/content");
     await waitForHydration(page);
 
-    // Hero tab should be active by default or click it
-    await page.getByRole("button", { name: "Hero", exact: true }).click();
+    // Cover tab should be active by default or click it
+    await page.getByRole("button", { name: "Cover", exact: true }).click();
     await page.waitForTimeout(300);
 
     await expect(page.locator("#hero-title")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /save hero/i }),
+      page.getByRole("button", { name: /save cover/i }),
     ).toBeVisible();
   });
 
