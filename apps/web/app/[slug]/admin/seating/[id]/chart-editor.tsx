@@ -55,6 +55,7 @@ import type {
   GuestListFilter,
   GuestRsvpFilter,
   SeatingChartWithTables,
+  SeatingTableWithGuests,
 } from "@/lib/types/seating";
 import {
   GUEST_LIST_FILTER_OPTIONS,
@@ -94,6 +95,12 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [newTableCapacity, setNewTableCapacity] = useState<number | null>(null);
+  const [editingTable, setEditingTable] =
+    useState<SeatingTableWithGuests | null>(null);
+  const [editTableName, setEditTableName] = useState("");
+  const [editTableCapacity, setEditTableCapacity] = useState<number | null>(
+    null,
+  );
   const [pendingDeleteTableId, setPendingDeleteTableId] = useState<
     string | null
   >(null);
@@ -153,6 +160,42 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
     } catch (error) {
       console.error("Error adding table:", error);
       toast.error("Failed to add table");
+    }
+  };
+
+  const handleEditTable = (table: SeatingTableWithGuests) => {
+    setEditingTable(table);
+    setEditTableName(table.tableName ?? "");
+    // Prefill with the explicit per-table override (null = inheriting the
+    // chart default), not the resolved capacity.
+    setEditTableCapacity(table.capacityOverride ?? null);
+  };
+
+  const handleUpdateTable = async () => {
+    if (!editingTable) return;
+    try {
+      const response = await fetch(
+        `/api/admin/seating-charts/${chart.id}/tables/${editingTable.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tableName: editTableName.trim() || null,
+            capacityOverride: editTableCapacity,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update table");
+      }
+
+      setEditingTable(null);
+      toast.success("Table updated");
+      refreshData();
+    } catch (error) {
+      console.error("Error updating table:", error);
+      toast.error("Failed to update table");
     }
   };
 
@@ -650,6 +693,7 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
           onAssignGuest={handleAssignGuest}
           onUnassignGuest={handleUnassignGuest}
           onMoveGuest={handleMoveGuest}
+          onEditTable={handleEditTable}
           onDeleteTable={handleDeleteTable}
         />
       ) : (
@@ -657,6 +701,7 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
           chart={chart}
           onAssignGuest={handleAssignGuest}
           onUnassignGuest={handleUnassignGuest}
+          onEditTable={handleEditTable}
           onDeleteTable={handleDeleteTable}
         />
       )}
@@ -713,6 +758,66 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
               Cancel
             </Button>
             <Button onClick={handleAddTable}>Add Table</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Table Dialog */}
+      <Dialog
+        open={editingTable !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingTable(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Table</DialogTitle>
+            <DialogDescription>
+              Update this table's name or seat count.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-table-name">Table Name (optional)</Label>
+              <Input
+                id="edit-table-name"
+                placeholder="e.g., Head Table, Family Table"
+                value={editTableName}
+                onChange={(e) => setEditTableName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-table-capacity">Seat Count (optional)</Label>
+              <Input
+                id="edit-table-capacity"
+                type="number"
+                min={1}
+                max={20}
+                placeholder={`Default: ${chart.defaultSeatsPerTable}`}
+                value={editTableCapacity ?? ""}
+                onChange={(e) =>
+                  setEditTableCapacity(
+                    e.target.value ? Number(e.target.value) : null,
+                  )
+                }
+              />
+              {editingTable && editingTable.assignedCount > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {editingTable.assignedCount} seat
+                  {editingTable.assignedCount === 1 ? "" : "s"} currently
+                  assigned.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTable(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateTable}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
