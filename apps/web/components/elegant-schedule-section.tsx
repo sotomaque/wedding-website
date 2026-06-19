@@ -1,6 +1,7 @@
 "use client";
 
 import { getIconSet } from "@workspace/ui/components/motif-icons";
+import { getScheduleDateParts } from "@/lib/format-schedule-date";
 
 interface ElegantScheduleEvent {
   id: string;
@@ -21,21 +22,6 @@ interface ElegantScheduleSectionProps {
   motifId?: string | null;
 }
 
-const MONTH_SHORT = [
-  "JAN",
-  "FEB",
-  "MAR",
-  "APR",
-  "MAY",
-  "JUN",
-  "JUL",
-  "AUG",
-  "SEP",
-  "OCT",
-  "NOV",
-  "DEC",
-];
-
 function formatTimeOfDay(t: Date | null): string | null {
   if (!t) return null;
   // Prisma maps PG `time` to a Date with the time-of-day in UTC; pull the
@@ -45,14 +31,6 @@ function formatTimeOfDay(t: Date | null): string | null {
   const m = iso.slice(14, 16);
   const ampm = h >= 12 ? "PM" : "AM";
   return `${h % 12 || 12}:${m} ${ampm}`;
-}
-
-function formatLongDate(d: Date, locale: string): string {
-  return d.toLocaleDateString(locale, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
 }
 
 /**
@@ -87,13 +65,15 @@ export function ElegantScheduleSection({
 
         <div className="space-y-16">
           {events.map((ev) => {
-            const d = ev.eventDate ?? null;
-            const month = d ? MONTH_SHORT[d.getMonth()] : null;
-            const day = d ? d.getDate() : null;
-            const year = d ? d.getFullYear() : null;
+            // eventDate is a `@db.Date` anchored at UTC midnight; format it in
+            // UTC so guests behind UTC don't see the previous day. See
+            // getScheduleDateParts.
+            const { month, day, year, longDate } = getScheduleDateParts(
+              ev.eventDate,
+              locale,
+            );
             const start = formatTimeOfDay(ev.startTime);
             const end = formatTimeOfDay(ev.endTime);
-            const longDate = d ? formatLongDate(d, locale) : null;
 
             return (
               <article
