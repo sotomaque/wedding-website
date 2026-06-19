@@ -2,14 +2,6 @@
 
 import { Button } from "@workspace/ui/components/button";
 import { Calendar as CalendarPicker } from "@workspace/ui/components/calendar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@workspace/ui/components/dialog";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import {
@@ -17,6 +9,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@workspace/ui/components/popover";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@workspace/ui/components/sheet";
 import { Switch } from "@workspace/ui/components/switch";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { cn } from "@workspace/ui/lib/utils";
@@ -278,14 +278,14 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
 
   return (
     <div className="max-w-screen-2xl mx-auto px-4 md:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold">Events</h1>
           <p className="text-muted-foreground">
             Manage wedding events and guest invitations
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
+        <Button onClick={openCreateDialog} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Add Event
         </Button>
@@ -388,7 +388,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button variant="outline" size="sm" asChild>
                     <a href={`/${slug}/admin/events/${event.id}`}>
                       <BarChart3 className="h-4 w-4 mr-1" />
@@ -472,19 +472,22 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
         </div>
       )}
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
+      {/* Create/Edit Sheet — full-screen on mobile, side panel on desktop */}
+      <Sheet open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-lg overflow-y-auto"
+        >
+          <SheetHeader>
+            <SheetTitle>
               {editingEvent ? "Edit Event" : "Create Event"}
-            </DialogTitle>
-            <DialogDescription>
+            </SheetTitle>
+            <SheetDescription>
               {editingEvent
                 ? "Update the event details below."
                 : "Fill in the details to create a new event."}
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -773,7 +776,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
               }
             />
 
-            <DialogFooter>
+            <SheetFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -788,10 +791,10 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                     ? "Update Event"
                     : "Create Event"}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

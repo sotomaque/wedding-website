@@ -387,15 +387,15 @@ export function GuestsTable({
       </div>
 
       {/* Filters */}
-      <div className="flex justify-between items-center gap-4 mb-4">
-        <div className="flex gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 w-full sm:w-auto">
           <Input
             placeholder="Filter by name..."
             value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
             onChange={(e) =>
               table.getColumn("name")?.setFilterValue(e.target.value)
             }
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
           <Input
             placeholder="Filter by email..."
@@ -403,7 +403,7 @@ export function GuestsTable({
             onChange={(e) =>
               table.getColumn("email")?.setFilterValue(e.target.value)
             }
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
           <Input
             placeholder="Filter by notes..."
@@ -411,7 +411,7 @@ export function GuestsTable({
             onChange={(e) =>
               table.getColumn("notes")?.setFilterValue(e.target.value)
             }
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
         </div>
 

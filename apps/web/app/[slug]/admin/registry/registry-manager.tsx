@@ -220,7 +220,7 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-serif font-medium">Registry Items</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -228,7 +228,7 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
             page.
           </p>
         </div>
-        <Button onClick={openAdd} className="gap-2">
+        <Button onClick={openAdd} className="gap-2 w-full sm:w-auto">
           <Plus className="h-4 w-4" />
           Add Item
         </Button>

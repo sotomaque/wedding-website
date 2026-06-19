@@ -216,7 +216,11 @@ export function AdminNav({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border">
+          // Cap to the viewport below the 4rem (h-16) header and scroll
+          // internally — the full nav (7 groups) is taller than most phones,
+          // and without this the lower items (Settings, Main Site) are
+          // unreachable since the header is sticky.
+          <div className="md:hidden py-4 border-t border-border max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain">
             <div className="flex flex-col gap-4">
               {navItems.map((item) =>
                 item.type === "group" ? (

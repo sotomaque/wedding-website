@@ -284,8 +284,8 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
       </div>
 
       {/* Filters */}
-      <div className="flex justify-between items-center gap-4 mb-4">
-        <div className="flex gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-4">
+        <div className="flex gap-4 w-full sm:w-auto">
           <Input
             placeholder="Filter by donor name..."
             value={
@@ -294,7 +294,7 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
             onChange={(e) =>
               table.getColumn("donorName")?.setFilterValue(e.target.value)
             }
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
         </div>
 
