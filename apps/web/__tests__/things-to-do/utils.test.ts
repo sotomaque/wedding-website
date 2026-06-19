@@ -1,8 +1,21 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import {
   formatDate,
   getSummaryText,
 } from "@/app/[slug]/(public)/things-to-do/utils";
+
+// Force US Pacific (behind UTC) so the date tests actually catch the off-by-one
+// regression — plannedDate is a UTC-midnight `@db.Date`, and local formatting
+// would render the previous day. CI runs in UTC and wouldn't catch it.
+// Restore to a VALID zone afterwards (assigning undefined writes "undefined",
+// which never resets and leaks into other files in bun's shared process).
+const originalTz = process.env.TZ;
+beforeAll(() => {
+  process.env.TZ = "America/Los_Angeles";
+});
+afterAll(() => {
+  process.env.TZ = originalTz ?? "UTC";
+});
 
 describe("formatDate", () => {
   it("should format a date string to short format", () => {
