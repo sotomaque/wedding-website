@@ -228,7 +228,7 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-serif text-foreground mb-1">
             Vendors & Links
@@ -237,7 +237,11 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
             Manage vendor links shown on the public vendors page
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)} disabled={showAddForm}>
+        <Button
+          onClick={() => setShowAddForm(true)}
+          disabled={showAddForm}
+          className="w-full sm:w-auto"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Link
         </Button>
