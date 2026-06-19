@@ -31,7 +31,7 @@ export function GuestPool({ guests }: GuestPoolProps) {
   return (
     <div
       ref={setNodeRef}
-      className={`w-64 shrink-0 border rounded-lg p-3 overflow-auto transition-colors ${
+      className={`w-full lg:w-64 lg:shrink-0 max-h-72 lg:max-h-none border rounded-lg p-3 overflow-auto transition-colors ${
         isOver ? "border-accent bg-accent/10" : "bg-background"
       }`}
     >

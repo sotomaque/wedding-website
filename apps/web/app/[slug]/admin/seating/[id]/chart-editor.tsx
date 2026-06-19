@@ -46,7 +46,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
@@ -77,6 +77,19 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
   const slug = useWeddingSlug();
   const [isPending, startTransition] = useTransition();
   const [viewMode, setViewMode] = useState<ViewMode>("visual");
+
+  // Default to the touch-friendly list view on small screens — the visual
+  // drag-and-drop board is impractical on a phone. Runs once after mount (not
+  // in the initializer) to avoid an SSR/client hydration mismatch; the user can
+  // still toggle back to the visual board.
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 1023px)").matches
+    ) {
+      setViewMode("table");
+    }
+  }, []);
   const [isAddTableDialogOpen, setIsAddTableDialogOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [newTableName, setNewTableName] = useState("");
