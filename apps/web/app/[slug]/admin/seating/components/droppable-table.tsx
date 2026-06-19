@@ -3,16 +3,21 @@
 import { useDroppable } from "@dnd-kit/core";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { SeatingTableWithGuests } from "@/lib/types/seating";
 import { GuestChip } from "./guest-chip";
 
 interface DroppableTableProps {
   table: SeatingTableWithGuests;
+  onEditTable: (table: SeatingTableWithGuests) => void;
   onDeleteTable: (tableId: string) => Promise<void>;
 }
 
-export function DroppableTable({ table, onDeleteTable }: DroppableTableProps) {
+export function DroppableTable({
+  table,
+  onEditTable,
+  onDeleteTable,
+}: DroppableTableProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `table-${table.id}`,
   });
@@ -48,14 +53,26 @@ export function DroppableTable({ table, onDeleteTable }: DroppableTableProps) {
             </Badge>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => onDeleteTable(table.id)}
-        >
-          <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-        </Button>
+        <div className="flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => onEditTable(table)}
+            title="Edit table"
+          >
+            <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => onDeleteTable(table.id)}
+            title="Delete table"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+          </Button>
+        </div>
       </div>
 
       {/* Capacity bar */}
