@@ -29,6 +29,9 @@ export const createEventSchema = z.object({
   latitude: z.number().nullish(),
   longitude: z.number().nullish(),
   isDefault: z.boolean().optional(),
+  // Whether the event shows on the public site (false = private). Defaults to
+  // true in the route when omitted.
+  isPublic: z.boolean().optional(),
   // Optional cap on confirmed attendees (null/omitted = unlimited).
   capacity: z.number().int().positive().nullish(),
   // Optional share-preview image URL (uploaded or chosen from the gallery).

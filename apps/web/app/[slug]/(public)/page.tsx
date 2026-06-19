@@ -30,6 +30,7 @@ import {
   getWeddingContentSections,
   getWeddingSettings,
 } from "@/lib/db/wedding-content-data";
+import { selectPublicEvents } from "@/lib/events-visibility";
 import { getLayoutPreset, type SectionKey } from "@/lib/layouts";
 import { getPhotosBySection } from "@/lib/photos";
 import { getTemplatePreset } from "@/lib/templates";
@@ -180,7 +181,8 @@ export default async function Page() {
     schedule:
       template.scheduleStyle === "events-card" ? (
         <ElegantScheduleSection
-          events={scheduleEvents}
+          // Hide private events (e.g. a bachelor party) from the public schedule.
+          events={selectPublicEvents(scheduleEvents)}
           locale={locale}
           motifId={motifId}
         />

@@ -54,6 +54,7 @@ interface Event {
   latitude: number | null;
   longitude: number | null;
   isDefault: boolean;
+  isPublic: boolean;
   capacity: number | null;
   imageUrl: string | null;
   publicRsvpToken: string | null;
@@ -82,6 +83,7 @@ interface EventFormData {
   latitude: string;
   longitude: string;
   isDefault: boolean;
+  isPublic: boolean;
   capacity: string;
   imageUrl: string;
 }
@@ -98,6 +100,7 @@ const defaultFormData: EventFormData = {
   latitude: "",
   longitude: "",
   isDefault: false,
+  isPublic: true,
   capacity: "",
   imageUrl: "",
 };
@@ -160,6 +163,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
       latitude: event.latitude?.toString() || "",
       longitude: event.longitude?.toString() || "",
       isDefault: event.isDefault,
+      isPublic: event.isPublic,
       capacity: event.capacity != null ? String(event.capacity) : "",
       imageUrl: event.imageUrl ?? "",
     });
@@ -187,6 +191,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
           ? Number.parseFloat(formData.longitude)
           : null,
         isDefault: formData.isDefault,
+        isPublic: formData.isPublic,
         capacity: formData.capacity
           ? Number.parseInt(formData.capacity, 10)
           : null,
@@ -308,6 +313,11 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                     {event.isDefault && (
                       <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                         All Guests Invited
+                      </span>
+                    )}
+                    {!event.isPublic && (
+                      <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                        Private
                       </span>
                     )}
                   </div>
@@ -717,6 +727,23 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
                 checked={formData.isDefault}
                 onCheckedChange={(checked) =>
                   setFormData((prev) => ({ ...prev, isDefault: checked }))
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <div className="space-y-0.5">
+                <Label htmlFor="isPublic">Show on public site</Label>
+                <p className="text-xs text-muted-foreground">
+                  Turn off to keep this a private event — it's hidden from the
+                  public schedule but stays here and on its RSVP link.
+                </p>
+              </div>
+              <Switch
+                id="isPublic"
+                checked={formData.isPublic}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, isPublic: checked }))
                 }
               />
             </div>

@@ -89,6 +89,7 @@ async function getEvents() {
       imageUrl: event.imageUrl ?? null,
       publicRsvpToken: event.publicRsvpToken ?? null,
       publicRsvpEnabled: event.publicRsvpEnabled ?? true,
+      isPublic: event.isPublic ?? true,
       displayOrder: event.displayOrder ?? 0,
       createdAt: createdAtStr,
       inviteCount: total,
