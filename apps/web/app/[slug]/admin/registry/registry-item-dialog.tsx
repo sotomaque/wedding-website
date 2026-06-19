@@ -59,7 +59,7 @@ export function RegistryItemDialog({
 }: RegistryItemDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEdit ? "Edit Registry Item" : "Add Registry Item"}

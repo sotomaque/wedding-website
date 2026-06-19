@@ -653,7 +653,7 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
         open={isAddTableDialogOpen}
         onOpenChange={setIsAddTableDialogOpen}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Table</DialogTitle>
             <DialogDescription>
