@@ -155,6 +155,9 @@ export interface WeddingEvent {
   endTime: Date | null;
   locationName: string | null;
   locationAddress: string | null;
+  /** Whether the event is shown on the public site. Private events are filtered
+   * out before rendering the schedule — see selectPublicEvents. */
+  isPublic: boolean;
 }
 
 /**
@@ -176,6 +179,7 @@ export const getEvents = cache(async (): Promise<WeddingEvent[]> => {
       endTime: true,
       locationName: true,
       locationAddress: true,
+      isPublic: true,
     },
   });
 });
