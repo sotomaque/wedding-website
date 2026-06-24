@@ -96,8 +96,9 @@ export async function updateDocument(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db.document.update({
-      where: { id },
+    // Scope by weddingId so an admin of one wedding can't edit another's doc.
+    const updated = await db.document.updateMany({
+      where: { id, weddingId },
       data: {
         ...(data.title !== undefined && { title: data.title.trim() }),
         ...(data.description !== undefined && {
@@ -106,6 +107,10 @@ export async function updateDocument(
         ...(data.category !== undefined && { category: data.category }),
       },
     });
+
+    if (updated.count === 0) {
+      return { success: false, error: "Document not found" };
+    }
 
     revalidatePath(`/${slug}/admin/documents`);
     return { success: true };
@@ -124,7 +129,10 @@ export async function deleteDocument(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db.document.delete({ where: { id } });
+    const deleted = await db.document.deleteMany({ where: { id, weddingId } });
+    if (deleted.count === 0) {
+      return { success: false, error: "Document not found" };
+    }
     revalidatePath(`/${slug}/admin/documents`);
     return { success: true };
   } catch (error) {
