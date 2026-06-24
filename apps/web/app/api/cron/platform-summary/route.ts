@@ -54,7 +54,9 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Total gift revenue
+    // Only count completed gifts (exclude failed/refunded/pending).
     const giftAgg = await db.gift.aggregate({
+      where: { status: "completed" },
       _sum: { amountCents: true },
     });
     const totalRevenue = giftAgg._sum?.amountCents ?? 0;
