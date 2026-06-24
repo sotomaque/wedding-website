@@ -228,7 +228,7 @@ export function createWeddingTools(weddingId: string) {
       execute: async () => {
         const [aggregate, recentGifts] = await Promise.all([
           db.gift.aggregate({
-            where: { weddingId },
+            where: { weddingId, status: "completed" },
             _sum: { amountCents: true },
             _count: true,
           }),
@@ -294,7 +294,7 @@ export function createWeddingTools(weddingId: string) {
           ]);
 
         const giftAggregate = await db.gift.aggregate({
-          where: { weddingId },
+          where: { weddingId, status: "completed" },
           _sum: { amountCents: true },
           _count: true,
         });

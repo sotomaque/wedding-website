@@ -38,6 +38,7 @@ export default async function PlatformAdminPage() {
         where: { createdAt: { gte: oneWeekAgo } },
       }),
       db.gift.aggregate({
+        where: { status: "completed" },
         _sum: { amountCents: true },
       }),
       db.wedding.count({
