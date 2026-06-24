@@ -3,6 +3,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { UTApi } from "uploadthing/server";
 import { env } from "@/env";
+import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getDefaultTemplates } from "@/lib/email/default-templates";
 import { renderEmailTemplate } from "@/lib/email/render-template";
@@ -274,6 +275,13 @@ export async function uploadOnboardingPhotos(
   try {
     const user = await currentUser();
     if (!user) return { success: false, error: "Not authenticated" };
+
+    // weddingId is a client-supplied argument, so authorize the caller against
+    // it — otherwise any logged-in user could write photos to any wedding.
+    const auth = await isAdmin(weddingId);
+    if (!auth.authorized) {
+      return { success: false, error: auth.error ?? "Forbidden" };
+    }
 
     const files = formData.getAll("photos") as File[];
     if (files.length === 0) return { success: true };
