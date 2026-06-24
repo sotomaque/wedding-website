@@ -213,7 +213,7 @@ export function EventsClient({ initialEvents }: EventsClientProps) {
             e.id === editingEvent.id
               ? {
                   ...data.event,
-                  eventDate: data.event.eventDate.split("T")[0],
+                  eventDate: data.event.eventDate?.split("T")[0] ?? null,
                   inviteCount: e.inviteCount,
                   confirmedCount: e.confirmedCount,
                   declinedCount: e.declinedCount,
