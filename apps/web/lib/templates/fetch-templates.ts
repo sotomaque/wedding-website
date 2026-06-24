@@ -67,12 +67,16 @@ export async function fetchTemplates(weddingId: string): Promise<Template[]> {
 }
 
 /**
- * Fetch a single template by ID (server-side only)
+ * Fetch a single template by ID, scoped to a wedding (server-side only).
+ * weddingId is required so a template can never be read across tenants.
  */
-export async function fetchTemplate(id: string): Promise<Template | null> {
+export async function fetchTemplate(
+  id: string,
+  weddingId: string,
+): Promise<Template | null> {
   try {
-    const row = await db.emailTemplate.findUnique({
-      where: { id },
+    const row = await db.emailTemplate.findFirst({
+      where: { id, weddingId },
     });
 
     if (!row) return null;
