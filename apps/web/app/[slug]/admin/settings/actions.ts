@@ -382,6 +382,9 @@ export async function inviteAdmin(data: { email: string; role: string }) {
   }
 }
 
+/** Thrown inside the removeAdmin transaction when the target is the last owner. */
+class LastOwnerError extends Error {}
+
 export async function removeAdmin(adminId: string) {
   const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
@@ -410,20 +413,32 @@ export async function removeAdmin(adminId: string) {
     }
 
     // Never remove the last owner — that would leave the wedding with no one
-    // who can manage admins.
-    if (adminToRemove.role === "owner") {
-      const ownerCount = await db.weddingAdmin.count({
-        where: { weddingId, role: "owner" },
+    // who can manage admins. Do the count + delete atomically: lock this
+    // wedding's owner rows so two concurrent removeAdmin calls can't both see
+    // count > 1 and both delete, leaving zero owners.
+    try {
+      await db.$transaction(async (tx) => {
+        if (adminToRemove.role === "owner") {
+          await tx.$queryRaw`
+            SELECT id FROM wedding_admins
+            WHERE wedding_id = ${weddingId}::uuid AND role = 'owner'
+            FOR UPDATE
+          `;
+          const ownerCount = await tx.weddingAdmin.count({
+            where: { weddingId, role: "owner" },
+          });
+          if (ownerCount <= 1) {
+            throw new LastOwnerError();
+          }
+        }
+        await tx.weddingAdmin.delete({ where: { id: adminId } });
       });
-      if (ownerCount <= 1) {
-        return {
-          success: false,
-          error: "Cannot remove the last owner",
-        };
+    } catch (txError) {
+      if (txError instanceof LastOwnerError) {
+        return { success: false, error: "Cannot remove the last owner" };
       }
+      throw txError;
     }
-
-    await db.weddingAdmin.delete({ where: { id: adminId } });
 
     revalidatePath(`/${slug}`, "layout");
     return { success: true };
