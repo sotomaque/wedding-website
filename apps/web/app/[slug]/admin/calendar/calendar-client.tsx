@@ -162,6 +162,23 @@ function StayOverview({
   );
 }
 
+/**
+ * Format a serialized event time (an ISO string like 1970-01-01T18:00:00.000Z
+ * for a @db.Time column) as a 12-hour clock time. Formatted in UTC because the
+ * time was stored/serialized as a UTC wall-clock value.
+ */
+function formatTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  });
+}
+
 export function CalendarClient({
   events,
   guests,
@@ -476,8 +493,8 @@ export function CalendarClient({
                             <p className="font-medium">{e.name}</p>
                             {(e.startTime || e.endTime) && (
                               <p className="text-muted-foreground text-xs mt-0.5">
-                                {e.startTime}
-                                {e.endTime ? ` – ${e.endTime}` : ""}
+                                {formatTime(e.startTime)}
+                                {e.endTime ? ` – ${formatTime(e.endTime)}` : ""}
                               </p>
                             )}
                             {e.locationName && (
