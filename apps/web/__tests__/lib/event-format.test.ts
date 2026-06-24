@@ -57,4 +57,37 @@ describe("formatEventTime", () => {
   it("ignores end time when start is null", () => {
     expect(formatEventTime(null, "17:00")).toBe("");
   });
+
+  // Prisma returns @db.Time columns as Date objects (anchored to 1970-01-01).
+  // The previous implementation split the full ISO timestamp and parsed
+  // "1970-01-01T18" as the hour, producing garbage in invite emails.
+  it("formats a Date start time (Prisma @db.Time value)", () => {
+    expect(formatEventTime(new Date("1970-01-01T18:00:00.000Z"))).toBe(
+      "6:00 PM",
+    );
+  });
+
+  it("formats a Date morning time", () => {
+    expect(formatEventTime(new Date("1970-01-01T09:30:00.000Z"))).toBe(
+      "9:30 AM",
+    );
+  });
+
+  it("formats a Date noon and midnight", () => {
+    expect(formatEventTime(new Date("1970-01-01T12:00:00.000Z"))).toBe(
+      "12:00 PM",
+    );
+    expect(formatEventTime(new Date("1970-01-01T00:00:00.000Z"))).toBe(
+      "12:00 AM",
+    );
+  });
+
+  it("formats a Date time range", () => {
+    expect(
+      formatEventTime(
+        new Date("1970-01-01T18:00:00.000Z"),
+        new Date("1970-01-01T20:30:00.000Z"),
+      ),
+    ).toBe("6:00 PM - 8:30 PM");
+  });
 });
