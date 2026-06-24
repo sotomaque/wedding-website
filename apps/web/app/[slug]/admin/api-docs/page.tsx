@@ -24,7 +24,7 @@ export default function ApiDocsPage() {
           full OpenAPI specification.
         </p>
       </div>
-      <SwaggerUIClient specUrl="/openapi.json" />
+      <SwaggerUIClient specUrl="/api/admin/openapi" />
     </div>
   );
 }
