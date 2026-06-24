@@ -79,7 +79,14 @@ mock.module("@clerk/nextjs/server", () => ({
 
 const adminUser = {
   id: "admin-1",
-  emailAddresses: [{ emailAddress: "admin@example.com" }],
+  primaryEmailAddressId: "email-primary",
+  emailAddresses: [
+    {
+      id: "email-primary",
+      emailAddress: "admin@example.com",
+      verification: { status: "verified" },
+    },
+  ],
 };
 
 describe("POST /api/admin/photos/placements", () => {
@@ -118,7 +125,14 @@ describe("POST /api/admin/photos/placements", () => {
   it("returns 403 when user is not an admin", async () => {
     mockCurrentUser.mockResolvedValue({
       id: "user-1",
-      emailAddresses: [{ emailAddress: "user@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "user@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     });
     const { POST } = await import("@/app/api/admin/photos/placements/route");
 

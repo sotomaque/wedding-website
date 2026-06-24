@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { env } from "@/env";
+import { getVerifiedPrimaryEmail } from "@/lib/auth/clerk-user";
 import { PlatformAdminNav } from "./platform-admin-nav";
 
 export default async function PlatformAdminLayout({
@@ -11,7 +12,8 @@ export default async function PlatformAdminLayout({
   const user = await currentUser();
   if (!user) redirect("/sign-in");
 
-  const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
+  // Verified primary email only (auth bypass: emailAddresses[0] may be unverified).
+  const userEmail = getVerifiedPrimaryEmail(user);
   const superAdmins =
     env.ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ?? [];
 

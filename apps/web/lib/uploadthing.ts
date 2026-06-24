@@ -3,6 +3,7 @@ import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 
 import { isAdmin } from "@/lib/auth/admin";
+import { getVerifiedPrimaryEmail } from "@/lib/auth/clerk-user";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
 const f = createUploadthing();
@@ -21,7 +22,7 @@ async function checkAdmin() {
     throw new UploadThingError("Forbidden");
   }
 
-  const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
+  const userEmail = getVerifiedPrimaryEmail(user);
   return { userId: user.id, email: userEmail };
 }
 

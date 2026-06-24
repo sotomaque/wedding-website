@@ -6,6 +6,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/auth/admin";
+import { getVerifiedPrimaryEmail } from "@/lib/auth/clerk-user";
 import { db } from "@/lib/db";
 import { getWeddingContext } from "@/lib/db/wedding-context";
 import { isValidFontId } from "@/lib/fonts";
@@ -404,7 +405,7 @@ export async function removeAdmin(adminId: string) {
 
     // Prevent removing yourself
     const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress?.toLowerCase();
+    const userEmail = user ? getVerifiedPrimaryEmail(user) : null;
     if (adminToRemove.email === userEmail) {
       return { success: false, error: "You cannot remove yourself" };
     }

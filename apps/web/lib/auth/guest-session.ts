@@ -1,5 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { isAdmin as checkIsAdmin } from "@/lib/auth/admin";
+import { getVerifiedPrimaryEmail } from "@/lib/auth/clerk-user";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
 
@@ -56,7 +57,9 @@ export async function getGuestParty(
     }
 
     // If no clerk_user_id link, try to find guest by email and auto-link
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
+    // Verified primary email only — an unverified address must not auto-link
+    // this Clerk user to a guest record (identity-takeover vector).
+    const userEmail = getVerifiedPrimaryEmail(user);
     if (userEmail) {
       const guestByEmail = await db.guest.findFirst({
         where: {
@@ -171,7 +174,9 @@ export async function linkClerkUserToGuest(
     }
 
     // Try to match by email
-    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
+    // Verified primary email only — an unverified address must not auto-link
+    // this Clerk user to a guest record (identity-takeover vector).
+    const userEmail = getVerifiedPrimaryEmail(user);
     let matchingGuest = guests.find(
       (g) => g.email?.toLowerCase() === userEmail,
     );

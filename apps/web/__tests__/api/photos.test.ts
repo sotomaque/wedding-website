@@ -142,7 +142,14 @@ describe("Admin Photos API", () => {
     it("should return 403 when user is not admin", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "user-1",
-        emailAddresses: [{ emailAddress: "user@example.com" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "user@example.com",
+            verification: { status: "verified" },
+          },
+        ],
       });
 
       const { GET: getAdminPhotos } = await import(
@@ -159,7 +166,14 @@ describe("Admin Photos API", () => {
     it("should return photos when user is admin", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "admin-1",
-        emailAddresses: [{ emailAddress: "admin@example.com" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "admin@example.com",
+            verification: { status: "verified" },
+          },
+        ],
       });
 
       const { GET: getAdminPhotos } = await import(
@@ -200,7 +214,14 @@ describe("Admin Photos API", () => {
     it("should return 403 when user is not admin", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "user-1",
-        emailAddresses: [{ emailAddress: "user@example.com" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "user@example.com",
+            verification: { status: "verified" },
+          },
+        ],
       });
 
       const { POST: createPhoto } = await import(
@@ -225,7 +246,14 @@ describe("Admin Photos API", () => {
     it("should return 400 when url is missing", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "admin-1",
-        emailAddresses: [{ emailAddress: "admin@example.com" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "admin@example.com",
+            verification: { status: "verified" },
+          },
+        ],
       });
 
       const { POST: createPhoto } = await import(
@@ -247,7 +275,14 @@ describe("Admin Photos API", () => {
     it("should return 400 when alt is missing", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "admin-1",
-        emailAddresses: [{ emailAddress: "admin@example.com" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "admin@example.com",
+            verification: { status: "verified" },
+          },
+        ],
       });
 
       const { POST: createPhoto } = await import(
@@ -269,7 +304,14 @@ describe("Admin Photos API", () => {
     it("should create photo when valid data is provided by admin", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "admin-1",
-        emailAddresses: [{ emailAddress: "admin@example.com" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "admin@example.com",
+            verification: { status: "verified" },
+          },
+        ],
       });
 
       const { POST: createPhoto } = await import(

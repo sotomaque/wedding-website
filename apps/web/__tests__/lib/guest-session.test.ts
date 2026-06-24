@@ -106,7 +106,14 @@ describe("Guest Session - getGuestParty", () => {
   it("should find guest by clerkUserId when logged in", async () => {
     const mockUser = {
       id: "clerk-user-123",
-      emailAddresses: [{ emailAddress: "john@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "john@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
 
@@ -133,7 +140,14 @@ describe("Guest Session - getGuestParty", () => {
   it("should auto-link guest by email when logged in but no clerkUserId link", async () => {
     const mockUser = {
       id: "clerk-user-new",
-      emailAddresses: [{ emailAddress: "john@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "john@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
 
@@ -160,7 +174,14 @@ describe("Guest Session - getGuestParty", () => {
   it("should not auto-link plus-one guests by email", async () => {
     const mockUser = {
       id: "clerk-user-new",
-      emailAddresses: [{ emailAddress: "plusone@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "plusone@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
 
@@ -181,7 +202,14 @@ describe("Guest Session - getGuestParty", () => {
   it("should identify admin users", async () => {
     const mockAdmin = {
       id: "clerk-admin",
-      emailAddresses: [{ emailAddress: "admin@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "admin@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     };
     mockCurrentUser.mockResolvedValue(mockAdmin);
 
@@ -226,7 +254,14 @@ describe("Guest Session - linkClerkUserToGuest", () => {
   it("should link user to guest by matching email", async () => {
     const mockUser = {
       id: "clerk-user-123",
-      emailAddresses: [{ emailAddress: "john@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "john@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
     mockGuestFindMany.mockResolvedValue([mockPrimaryGuest, mockPlusOne]);
@@ -241,7 +276,14 @@ describe("Guest Session - linkClerkUserToGuest", () => {
   it("should link to primary guest when no email match", async () => {
     const mockUser = {
       id: "clerk-user-123",
-      emailAddresses: [{ emailAddress: "different@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "different@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
     mockGuestFindMany.mockResolvedValue([mockPrimaryGuest, mockPlusOne]);
@@ -256,7 +298,14 @@ describe("Guest Session - linkClerkUserToGuest", () => {
   it("should fail when guest already linked to another user", async () => {
     const mockUser = {
       id: "clerk-user-new",
-      emailAddresses: [{ emailAddress: "john@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "john@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
     mockGuestFindMany.mockResolvedValue([
@@ -273,7 +322,14 @@ describe("Guest Session - linkClerkUserToGuest", () => {
   it("should fail for invalid invite code", async () => {
     const mockUser = {
       id: "clerk-user-123",
-      emailAddresses: [{ emailAddress: "john@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "john@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     };
     mockCurrentUser.mockResolvedValue(mockUser);
     mockGuestFindMany.mockResolvedValue([]);

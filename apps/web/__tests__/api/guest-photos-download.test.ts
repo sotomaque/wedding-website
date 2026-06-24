@@ -65,11 +65,25 @@ afterEach(() => {
 // ----- helpers -----
 const ADMIN = {
   id: "u1",
-  emailAddresses: [{ emailAddress: "admin@example.com" }],
+  primaryEmailAddressId: "email-primary",
+  emailAddresses: [
+    {
+      id: "email-primary",
+      emailAddress: "admin@example.com",
+      verification: { status: "verified" },
+    },
+  ],
 };
 const GUEST = {
   id: "u2",
-  emailAddresses: [{ emailAddress: "guest@example.com" }],
+  primaryEmailAddressId: "email-primary",
+  emailAddresses: [
+    {
+      id: "email-primary",
+      emailAddress: "guest@example.com",
+      verification: { status: "verified" },
+    },
+  ],
 };
 
 const MOCK_PHOTOS = [

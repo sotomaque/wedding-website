@@ -4,6 +4,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { UTApi } from "uploadthing/server";
 import { env } from "@/env";
 import { isAdmin } from "@/lib/auth/admin";
+import { getVerifiedPrimaryEmail } from "@/lib/auth/clerk-user";
 import { db } from "@/lib/db";
 import { getDefaultTemplates } from "@/lib/email/default-templates";
 import { renderEmailTemplate } from "@/lib/email/render-template";
@@ -73,8 +74,11 @@ export async function createWedding(data: {
     const user = await currentUser();
     if (!user) return { success: false, error: "Not authenticated" };
 
-    const userEmail = user.emailAddresses[0]?.emailAddress;
-    if (!userEmail) return { success: false, error: "No email address found" };
+    // The owner record is keyed on this email, so it must be the verified
+    // primary — otherwise a wedding could be owned by an unverified address.
+    const userEmail = getVerifiedPrimaryEmail(user);
+    if (!userEmail)
+      return { success: false, error: "A verified email address is required" };
 
     const slugCheck = await validateSlug(data.slug);
     if (!slugCheck.valid) return { success: false, error: slugCheck.error };
@@ -227,7 +231,7 @@ export async function createWedding(data: {
       <ul>
         <li>Slug: <code>${wedding.slug}</code></li>
         <li>Date: ${data.weddingDate}</li>
-        <li>Creator: ${user.emailAddresses[0]?.emailAddress}</li>
+        <li>Creator: ${userEmail}</li>
       </ul>
       <a href="${appUrl}/platform-admin" style="display:inline-block;padding:12px 24px;background:#667eea;color:#fff;text-decoration:none;border-radius:6px;">View in Platform Admin</a>
     </div>`,
@@ -250,7 +254,7 @@ export async function createWedding(data: {
     if (welcomeRendered) {
       await sendEmail({
         from: `The Ceremony <noreply@theceremony.app>`,
-        to: user.emailAddresses[0]?.emailAddress ?? "",
+        to: userEmail,
         subject: welcomeRendered.subject,
         html: welcomeRendered.html,
         log: { weddingId: wedding.id, type: "welcome" },
