@@ -138,18 +138,47 @@ export async function updateGeneralSettings(data: {
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
+    const newWeddingDate = new Date(data.weddingDate);
+
+    // Read the prior date before updating so we can keep the default
+    // Ceremony/Reception events in sync. They're seeded with the wedding date
+    // at onboarding and are the source of truth for the public schedule AND
+    // the calendar (.ics) invite — if we only moved Wedding.weddingDate, the
+    // invite would keep emitting the old date.
+    const existing = await db.wedding.findUnique({
+      where: { id: weddingId },
+      select: { weddingDate: true },
+    });
+
     await db.wedding.update({
       where: { id: weddingId },
       data: {
         coupleName: data.coupleName.trim(),
         person1Name: data.person1Name.trim() || null,
         person2Name: data.person2Name.trim() || null,
-        weddingDate: new Date(data.weddingDate),
+        weddingDate: newWeddingDate,
         timezone: data.timezone.trim(),
         rsvpDeadline: data.rsvpDeadline?.trim() || null,
         status: data.status as "draft" | "published" | "archived",
       },
     });
+
+    // Move default events that still sit on the OLD wedding date onto the new
+    // one. Events the couple deliberately gave a different date (multi-day,
+    // welcome dinner the night before, etc.) won't match and are left alone.
+    if (
+      existing &&
+      existing.weddingDate.getTime() !== newWeddingDate.getTime()
+    ) {
+      await db.event.updateMany({
+        where: {
+          weddingId,
+          isDefault: true,
+          eventDate: existing.weddingDate,
+        },
+        data: { eventDate: newWeddingDate },
+      });
+    }
 
     revalidatePath(`/${slug}`, "layout");
     return { success: true };
