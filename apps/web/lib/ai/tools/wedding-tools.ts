@@ -640,7 +640,9 @@ export function createWeddingTools(weddingId: string) {
             return { success: false, error: "Guest not found" };
           }
 
-          await db.guest.delete({ where: { id: guestId } });
+          // Scope the delete by weddingId too (defense-in-depth, consistent
+          // with updateGuest) so it can never act outside this wedding.
+          await db.guest.deleteMany({ where: { id: guestId, weddingId } });
 
           return {
             success: true,
