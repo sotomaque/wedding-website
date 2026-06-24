@@ -83,7 +83,14 @@ describe("Admin API Authentication", () => {
     it("should return 403 when user is not an admin", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "user-123",
-        emailAddresses: [{ emailAddress: "notadmin@example.com" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "notadmin@example.com",
+            verification: { status: "verified" },
+          },
+        ],
       });
 
       const { GET } = await import("@/app/api/admin/guests/route");
@@ -100,7 +107,14 @@ describe("Admin API Authentication", () => {
     it("should allow access when user is an admin", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "admin-123",
-        emailAddresses: [{ emailAddress: "admin@example.com" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "admin@example.com",
+            verification: { status: "verified" },
+          },
+        ],
       });
 
       const { GET } = await import("@/app/api/admin/guests/route");
@@ -113,7 +127,14 @@ describe("Admin API Authentication", () => {
     it("should be case-insensitive for admin email check", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "admin-123",
-        emailAddresses: [{ emailAddress: "ADMIN@EXAMPLE.COM" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "ADMIN@EXAMPLE.COM",
+            verification: { status: "verified" },
+          },
+        ],
       });
 
       const { GET } = await import("@/app/api/admin/guests/route");
@@ -121,6 +142,56 @@ describe("Admin API Authentication", () => {
       const response = await GET();
 
       expect(response.status).toBe(200);
+    });
+
+    it("should DENY an admin email that is not verified", async () => {
+      // An attacker can add a victim's email to their Clerk account, but it
+      // stays unverified — it must not authorize.
+      mockCurrentUser.mockResolvedValue({
+        id: "attacker-1",
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "admin@example.com",
+            verification: { status: "unverified" },
+          },
+        ],
+      });
+
+      const { GET } = await import("@/app/api/admin/guests/route");
+
+      const response = await GET();
+
+      expect(response.status).toBe(401);
+    });
+
+    // The secondary verified "admin@example.com" must NOT grant access; only the
+    // primary (attacker@example.com, a non-admin) is used → Forbidden.
+    it("should DENY an admin email that is not the primary address", async () => {
+      // A verified-but-non-primary address must not be used for authorization.
+      mockCurrentUser.mockResolvedValue({
+        id: "attacker-2",
+        primaryEmailAddressId: "email-other",
+        emailAddresses: [
+          {
+            id: "email-secondary",
+            emailAddress: "admin@example.com",
+            verification: { status: "verified" },
+          },
+          {
+            id: "email-other",
+            emailAddress: "attacker@example.com",
+            verification: { status: "verified" },
+          },
+        ],
+      });
+
+      const { GET } = await import("@/app/api/admin/guests/route");
+
+      const response = await GET();
+
+      expect(response.status).toBe(403);
     });
   });
 });
@@ -134,7 +205,14 @@ describe("Admin Email Whitelist", () => {
     // First admin
     mockCurrentUser.mockResolvedValue({
       id: "admin-1",
-      emailAddresses: [{ emailAddress: "admin@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "admin@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     });
 
     const { GET: GET1 } = await import("@/app/api/admin/guests/route");
@@ -144,7 +222,14 @@ describe("Admin Email Whitelist", () => {
     // Second admin
     mockCurrentUser.mockResolvedValue({
       id: "admin-2",
-      emailAddresses: [{ emailAddress: "admin2@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "admin2@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     });
 
     const { GET: GET2 } = await import("@/app/api/admin/guests/route");

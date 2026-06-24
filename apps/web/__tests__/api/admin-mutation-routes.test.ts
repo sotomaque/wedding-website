@@ -14,7 +14,14 @@ mock.module("@/env", () => ({
 const mockCurrentUser = mock(() =>
   Promise.resolve({
     id: "admin-123",
-    emailAddresses: [{ emailAddress: "admin@example.com" }],
+    primaryEmailAddressId: "email-primary",
+    emailAddresses: [
+      {
+        id: "email-primary",
+        emailAddress: "admin@example.com",
+        verification: { status: "verified" },
+      },
+    ],
   }),
 );
 mock.module("@clerk/nextjs/server", () => ({
@@ -117,7 +124,14 @@ function patchRequest(url: string, body: unknown): Request {
 function resetAuth() {
   mockCurrentUser.mockResolvedValue({
     id: "admin-123",
-    emailAddresses: [{ emailAddress: "admin@example.com" }],
+    primaryEmailAddressId: "email-primary",
+    emailAddresses: [
+      {
+        id: "email-primary",
+        emailAddress: "admin@example.com",
+        verification: { status: "verified" },
+      },
+    ],
   });
 }
 

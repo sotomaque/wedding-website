@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { env } from "@/env";
+import { getVerifiedPrimaryEmail } from "@/lib/auth/clerk-user";
 import { db } from "@/lib/db";
 
 export interface AdminAuthResult {
@@ -25,7 +26,9 @@ export async function isAdmin(weddingId: string): Promise<AdminAuthResult> {
   const user = await currentUser();
   if (!user) return { authorized: false, error: "Unauthorized", role: null };
 
-  const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
+  // Use the verified PRIMARY email only — never emailAddresses[0], which may be
+  // an unverified address the user added (auth-bypass vector).
+  const userEmail = getVerifiedPrimaryEmail(user);
   if (!userEmail)
     return { authorized: false, error: "Unauthorized", role: null };
 
