@@ -47,11 +47,12 @@ export function EventRSVPForm({ guest, event, invite }: EventRSVPFormProps) {
 
   // Format time for display
   const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(":");
+    const [hours, minutes = "00"] = time.split(":");
     const hour = Number.parseInt(hours || "0", 10);
+    if (Number.isNaN(hour)) return time;
     const ampm = hour >= 12 ? "PM" : "AM";
     const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
+    return `${hour12}:${minutes.slice(0, 2).padStart(2, "0")} ${ampm}`;
   };
 
   // Format date for display
