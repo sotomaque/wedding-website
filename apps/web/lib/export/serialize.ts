@@ -15,12 +15,24 @@ export const EXPORT_CONTENT_TYPES: Record<ExportFormat, string> = {
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
+/**
+ * Neutralize spreadsheet formula injection. A cell beginning with `=`, `+`,
+ * `-`, `@`, TAB, or CR is executed as a formula by Excel/Sheets/LibreOffice, so
+ * a guest-supplied value like `=HYPERLINK(...)` would run when the couple opens
+ * the export. Prefix such values with a single quote so they render as literal
+ * text. Exported for reuse by both the CSV and XLSX serializers.
+ */
+export function neutralizeFormula(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
 /** Quote a single CSV field if it contains a comma, quote, or newline. */
 function escapeCsvField(value: string): string {
-  if (/[",\r\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const safe = neutralizeFormula(value);
+  if (/[",\r\n]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
   }
-  return value;
+  return safe;
 }
 
 /** Serialize to a CSV string (UTF-8 BOM prefixed for Excel compatibility). */
@@ -40,12 +52,13 @@ export async function toXlsx(
   // Sheet names are capped at 31 chars and can't contain certain characters.
   const sheet = workbook.addWorksheet(sheetName.slice(0, 31));
 
-  const headerRow = sheet.addRow(matrix.header);
+  const headerRow = sheet.addRow(matrix.header.map(neutralizeFormula));
   headerRow.font = { bold: true };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
 
   for (const row of matrix.rows) {
-    sheet.addRow(row);
+    // Neutralize formula injection before ExcelJS interprets a leading `=`.
+    sheet.addRow(row.map(neutralizeFormula));
   }
 
   // Size each column to the widest cell in it (capped) for a readable file.

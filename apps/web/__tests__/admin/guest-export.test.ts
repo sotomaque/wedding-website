@@ -143,6 +143,26 @@ describe("toCsv", () => {
     expect(csv).toContain('"has ""quotes"""');
     expect(csv).toContain('"line\nbreak"');
   });
+
+  it("neutralizes formula-injection cells with a leading quote", () => {
+    const csv = toCsv({
+      header: ["Name"],
+      rows: [
+        ['=HYPERLINK("http://evil","x")'],
+        ["+1+2"],
+        ["-cmd"],
+        ["@SUM(A1)"],
+        ["normal"],
+      ],
+    });
+    // Leading =,+,-,@ get a ' prefix; the = row also has a comma so it's quoted.
+    expect(csv).toContain(`"'=HYPERLINK(""http://evil"",""x"")"`);
+    expect(csv).toContain("'+1+2");
+    expect(csv).toContain("'-cmd");
+    expect(csv).toContain("'@SUM(A1)");
+    // A safe value is untouched.
+    expect(csv).toContain("\r\nnormal");
+  });
 });
 
 describe("toXlsx", () => {
