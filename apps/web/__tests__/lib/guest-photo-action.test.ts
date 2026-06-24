@@ -44,6 +44,19 @@ describe("saveGuestPhoto server action", () => {
     expect(result.error).toBeUndefined();
   });
 
+  it("rejects a non-UploadThing URL without inserting (SSRF guard)", async () => {
+    const { saveGuestPhoto } = await import(
+      "@/app/[slug]/(public)/photos/actions"
+    );
+    const result = await saveGuestPhoto(
+      "http://169.254.169.254/latest/meta-data/",
+      "attacker",
+    );
+
+    expect(result.success).toBe(false);
+    expect(mockGuestPhotoCreate).not.toHaveBeenCalled();
+  });
+
   it("inserts with correct url and uploaderName", async () => {
     const { saveGuestPhoto } = await import(
       "@/app/[slug]/(public)/photos/actions"
