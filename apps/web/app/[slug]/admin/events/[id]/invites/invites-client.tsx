@@ -285,6 +285,9 @@ export function InvitesClient({
   const table = useReactTable({
     data: guests,
     columns,
+    // Key row selection by guest id (not row index) so a re-fetch can't make
+    // bulk actions target the wrong guests.
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
