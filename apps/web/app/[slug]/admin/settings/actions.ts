@@ -409,6 +409,20 @@ export async function removeAdmin(adminId: string) {
       return { success: false, error: "You cannot remove yourself" };
     }
 
+    // Never remove the last owner — that would leave the wedding with no one
+    // who can manage admins.
+    if (adminToRemove.role === "owner") {
+      const ownerCount = await db.weddingAdmin.count({
+        where: { weddingId, role: "owner" },
+      });
+      if (ownerCount <= 1) {
+        return {
+          success: false,
+          error: "Cannot remove the last owner",
+        };
+      }
+    }
+
     await db.weddingAdmin.delete({ where: { id: adminId } });
 
     revalidatePath(`/${slug}`, "layout");
