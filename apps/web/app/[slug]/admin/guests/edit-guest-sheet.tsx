@@ -41,7 +41,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useWeddingSlug } from "@/lib/hooks/use-wedding-slug";
@@ -66,7 +66,14 @@ import { MergeGuestDialog } from "./merge-guest-dialog";
 function toDateInput(val: unknown): string {
   if (!val) return "";
   try {
-    return new Date(val as string | Date).toISOString().slice(0, 10);
+    // Build from local components (matching how the date picker writes values)
+    // so a US-timezone admin doesn't see travel dates shifted a day earlier.
+    const d = new Date(val as string | Date);
+    if (Number.isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
   } catch {
     return "";
   }
@@ -98,6 +105,14 @@ export function EditGuestSheet({
   const [selectedEventIds, setSelectedEventIds] =
     useState<string[]>(guestEventIds);
   const router = useRouter();
+
+  // The sheet is reused across guests (the `guest` prop changes after a
+  // router.refresh or when opening a different guest), so resync the locally
+  // held RSVP status instead of showing the previously-opened guest's value.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: also resync when the guest identity changes, not just its status
+  useEffect(() => {
+    setLocalRsvpStatus(guest.rsvpStatus);
+  }, [guest.id, guest.rsvpStatus]);
   const slug = useWeddingSlug();
 
   // Memoize initial values from DB to compare against current form values
