@@ -92,9 +92,21 @@ describe("buildExportMatrix", () => {
     ]);
   });
 
-  it("falls back to the full catalog when no valid column is selected", () => {
+  it("falls back to the default set (no Invite Code) when no valid column is selected", () => {
     const matrix = buildExportMatrix([guest()], ["bogus"]);
-    expect(matrix.header).toHaveLength(GUEST_EXPORT_COLUMNS.length);
+    expect(matrix.header).toHaveLength(DEFAULT_EXPORT_COLUMN_KEYS.length);
+    expect(matrix.header).not.toContain("Invite Code");
+  });
+
+  it("excludes inviteCode from the default columns but allows opting in", () => {
+    // Not in the default selection.
+    expect(DEFAULT_EXPORT_COLUMN_KEYS).not.toContain("inviteCode");
+    const def = buildExportMatrix([guest()], DEFAULT_EXPORT_COLUMN_KEYS);
+    expect(def.header).not.toContain("Invite Code");
+    // Still available when explicitly requested.
+    const optIn = buildExportMatrix([guest()], ["name", "inviteCode"]);
+    expect(optIn.header).toEqual(["Name", "Invite Code"]);
+    expect(optIn.rows[0]).toEqual(["Ada Lovelace", "ABC123"]);
   });
 
   it("renders empty strings for null values", () => {
