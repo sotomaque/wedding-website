@@ -81,6 +81,13 @@ mock.module("@/lib/db", () => ({
       delete: mock(() => Promise.resolve({})),
       deleteMany: mockGuestTableAssignmentDeleteMany,
     },
+    guest: {
+      // Echo the requested ids back as "owned by this wedding" so assignment
+      // tests exercise the happy path; the route filters guests by weddingId.
+      findMany: mock((args?: { where?: { id?: { in?: string[] } } }) =>
+        Promise.resolve((args?.where?.id?.in ?? []).map((id) => ({ id }))),
+      ),
+    },
     weddingAdmin: {
       findFirst: mock(() => Promise.resolve(null)),
     },
