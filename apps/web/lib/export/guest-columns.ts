@@ -162,10 +162,17 @@ export const GUEST_EXPORT_COLUMNS: GuestExportColumn[] = [
   },
 ];
 
-/** Every column key, in catalog order — the wizard's default selection. */
-export const DEFAULT_EXPORT_COLUMN_KEYS: string[] = GUEST_EXPORT_COLUMNS.map(
-  (c) => c.key,
-);
+/**
+ * Columns excluded from the default selection — they must be opted into
+ * explicitly. `inviteCode` is the guest's RSVP credential, so it must never
+ * land in a default (or emailed) export.
+ */
+const NON_DEFAULT_COLUMN_KEYS = new Set<string>(["inviteCode"]);
+
+/** Default selection for the wizard — every column except the opt-in ones. */
+export const DEFAULT_EXPORT_COLUMN_KEYS: string[] = GUEST_EXPORT_COLUMNS.filter(
+  (c) => !NON_DEFAULT_COLUMN_KEYS.has(c.key),
+).map((c) => c.key);
 
 const COLUMN_BY_KEY = new Map(GUEST_EXPORT_COLUMNS.map((c) => [c.key, c]));
 
@@ -179,7 +186,8 @@ export interface ExportMatrix {
  *
  * Selection order is ignored — columns always come out in catalog order so the
  * file layout is stable. Unknown keys are skipped. If no valid column is
- * selected we fall back to the full default set so the export is never empty.
+ * selected we fall back to the default set (which excludes opt-in columns like
+ * inviteCode) so the export is never empty and never silently leaks a token.
  */
 export function buildExportMatrix(
   guests: ExportGuest[],
@@ -188,7 +196,9 @@ export function buildExportMatrix(
   const selected = new Set(selectedKeys);
   let columns = GUEST_EXPORT_COLUMNS.filter((c) => selected.has(c.key));
   if (columns.length === 0) {
-    columns = GUEST_EXPORT_COLUMNS;
+    columns = GUEST_EXPORT_COLUMNS.filter(
+      (c) => !NON_DEFAULT_COLUMN_KEYS.has(c.key),
+    );
   }
 
   return {
