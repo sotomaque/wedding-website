@@ -240,6 +240,9 @@ export function GuestsTable({
   const table = useReactTable({
     data: initialGuests,
     columns,
+    // Key row selection by guest id (not row index) so a sort/filter/page
+    // re-fetch can't make bulk actions target the wrong guests.
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
