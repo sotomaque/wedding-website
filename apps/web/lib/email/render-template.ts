@@ -41,23 +41,47 @@ export async function renderEmailTemplate(
     return null;
   }
 
-  const subject = replaceVariables(template.subject, variables);
-  const html = replaceVariables(template.htmlBody, variables);
+  // The subject is plain text, so values pass through literally. The HTML body
+  // is escaped so guest-supplied values (names, dietary notes, registry
+  // claimant info, hotel notes) can't inject markup/script into the email.
+  const subject = replaceVariables(template.subject, variables, false);
+  const html = replaceVariables(template.htmlBody, variables, true);
 
   return { subject, html };
 }
 
 /**
+ * Variable keys whose values are intentionally pre-built, trusted HTML
+ * (assembled server-side, e.g. the admin-summary table rows). These are NOT
+ * escaped; everything else in the HTML body is.
+ */
+const RAW_HTML_KEYS = new Set<string>(["UNINVITED_GUESTS"]);
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Replace {{{KEY}}} placeholders with values from the variables map.
- * Unmatched placeholders are left as-is (graceful degradation).
+ * Unmatched placeholders are left as-is (graceful degradation). When
+ * `escape` is true, values are HTML-escaped unless the key is a trusted
+ * raw-HTML key.
  */
 function replaceVariables(
   text: string,
   variables: Record<string, string>,
+  escapeValues: boolean,
 ): string {
   return text.replace(/\{\{\{(\w+)\}\}\}/g, (match, key: string) => {
     if (key in variables) {
-      return variables[key] ?? match;
+      const value = variables[key] ?? match;
+      if (!escapeValues || RAW_HTML_KEYS.has(key)) return value;
+      return escapeHtml(value);
     }
     return match;
   });
