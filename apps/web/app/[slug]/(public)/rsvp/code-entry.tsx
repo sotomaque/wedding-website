@@ -18,6 +18,9 @@ export function CodeEntry({ initialCode = "", onSuccess }: CodeEntryProps) {
   const t = useTranslations("rsvpPage");
 
   async function handleVerify() {
+    // Guard re-entry: the button is disabled while loading, but the Enter key
+    // can still fire this, so bail if a verification is already in flight.
+    if (loading) return;
     if (inviteCode.length < 8) {
       toast.error(t("invalidCode"), {
         description: t("enterValidCode"),
