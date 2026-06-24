@@ -118,6 +118,9 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
           );
           router.refresh();
           toast.success("Registry item updated");
+          // Only close on success so a failure keeps the dialog (and the
+          // entered values) open.
+          setShowDialog(false);
         } else {
           toast.error(result.error ?? "Failed to update");
         }
@@ -127,11 +130,11 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
           const newItem = result.item;
           setItems((prev) => [...prev, newItem]);
           toast.success("Registry item created");
+          setShowDialog(false);
         } else {
           toast.error(result.error ?? "Failed to create");
         }
       }
-      setShowDialog(false);
     } catch {
       toast.error("An error occurred");
     } finally {
