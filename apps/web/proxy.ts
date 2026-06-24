@@ -126,14 +126,16 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   }
 
   // --- Set wedding slug header for downstream resolution ---
+  // The slug must be forwarded on the REQUEST headers (via NextResponse.next's
+  // `request.headers` option) so getWeddingContext() — which reads it through
+  // next/headers in route handlers and server components — actually sees it.
+  // Setting it on the *response* (as this previously did) never reaches the
+  // destination, so resolution silently fell back to DEFAULT_WEDDING_SLUG (the
+  // owner's wedding) for every per-wedding request.
   if (slug) {
-    const response = NextResponse.next({
-      request: {
-        headers: new Headers(req.headers),
-      },
-    });
-    response.headers.set("x-wedding-slug", slug);
-    return response;
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-wedding-slug", slug);
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   return NextResponse.next();
