@@ -78,6 +78,7 @@ const mockGiftFindUnique = mock(() => Promise.resolve(null as unknown));
 const mockGiftUpdate = mock((args: { data: Record<string, unknown> }) =>
   Promise.resolve({ id: "gift-1", ...args.data }),
 );
+const mockGiftUpdateMany = mock(() => Promise.resolve({ count: 1 }));
 
 mock.module("@/lib/db", () => ({
   db: {
@@ -93,7 +94,11 @@ mock.module("@/lib/db", () => ({
       create: mockTemplateCreate,
       findUnique: mockTemplateFindUnique,
     },
-    gift: { findUnique: mockGiftFindUnique, update: mockGiftUpdate },
+    gift: {
+      findUnique: mockGiftFindUnique,
+      update: mockGiftUpdate,
+      updateMany: mockGiftUpdateMany,
+    },
     weddingAdmin: { findFirst: mock(() => Promise.resolve(null)) },
   },
 }));
@@ -236,6 +241,8 @@ describe("PATCH /api/admin/gifts", () => {
   beforeEach(() => {
     resetAuth();
     mockGiftUpdate.mockClear();
+    mockGiftUpdateMany.mockClear();
+    mockGiftUpdateMany.mockResolvedValue({ count: 1 });
     mockResendSend.mockClear();
     mockGiftFindUnique.mockResolvedValue(null);
   });
@@ -284,10 +291,20 @@ describe("PATCH /api/admin/gifts", () => {
       }),
     );
     expect(res.status).toBe(200);
-    const data = mockGiftUpdate.mock.calls[0][0].data;
-    expect(data.thankYouEmailSent).toBe(true);
-    expect(data.thankYouEmailSentAt).toBeDefined();
-    expect(data.notes).toBe("thanked");
+    // The flag flip + timestamp go through the atomic claim (updateMany),
+    // gated on the prior value being false.
+    const claim = mockGiftUpdateMany.mock.calls[0][0] as {
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    };
+    expect(claim.where).toMatchObject({
+      id: "gift-1",
+      thankYouEmailSent: false,
+    });
+    expect(claim.data.thankYouEmailSent).toBe(true);
+    expect(claim.data.thankYouEmailSentAt).toBeDefined();
+    // Other fields still flow through the general update.
+    expect(mockGiftUpdate.mock.calls[0][0].data.notes).toBe("thanked");
   });
 
   const donorGift = {
@@ -321,6 +338,22 @@ describe("PATCH /api/admin/gifts", () => {
     // rendered through the real template engine + amount/type formatting
     expect(sent.subject).toBe("Thank you, Pat Donor!");
     expect(sent.html).toContain("$150.00 toward Honeymoon Fund");
+  });
+
+  it("does not email when the atomic claim is lost (concurrent send)", async () => {
+    // Snapshot says not-yet-thanked, but the atomic updateMany matched 0 rows
+    // because a concurrent request already flipped the flag → must not send.
+    mockGiftFindUnique.mockResolvedValue(donorGift as unknown);
+    mockGiftUpdateMany.mockResolvedValue({ count: 0 });
+    const { PATCH } = await import("@/app/api/admin/gifts/route");
+    const res = await PATCH(
+      patchRequest("http://localhost/api/admin/gifts", {
+        id: "gift-1",
+        thankYouEmailSent: true,
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(mockResendSend).not.toHaveBeenCalled();
   });
 
   it("does not email if the gift was already thanked", async () => {

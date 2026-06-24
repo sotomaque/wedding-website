@@ -124,11 +124,12 @@ export async function PATCH(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
-    if (thankYouEmailSent !== undefined) {
-      updates.thankYouEmailSent = thankYouEmailSent;
-      if (thankYouEmailSent) {
-        updates.thankYouEmailSentAt = new Date().toISOString();
-      }
+    // Setting the flag true is handled atomically below (claim-to-send) so a
+    // concurrent/duplicate PATCH can't send the donor two thank-yous. Only the
+    // explicit "clear" case flows through the general update.
+    if (thankYouEmailSent === false) {
+      updates.thankYouEmailSent = false;
+      updates.thankYouEmailSentAt = null;
     }
 
     if (guestId !== undefined) {
@@ -145,19 +146,30 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Gift not found" }, { status: 404 });
     }
 
+    // Atomically claim the donor thank-you send: only the request that flips
+    // false -> true matches (count === 1) and sends, so concurrent/duplicate
+    // PATCHes can't each email the donor.
+    let claimedThankYou = false;
+    if (thankYouEmailSent === true && !existing.thankYouEmailSent) {
+      const claim = await db.gift.updateMany({
+        where: { id, weddingId, thankYouEmailSent: false },
+        data: {
+          thankYouEmailSent: true,
+          thankYouEmailSentAt: new Date().toISOString(),
+        },
+      });
+      claimedThankYou = claim.count === 1;
+    }
+
     const updatedGift = await db.gift.update({
       where: { id },
       data: updates,
     });
 
-    // Send the donor thank-you when an admin flips the flag false -> true and
-    // the donor has an email. Best-effort: a send failure doesn't fail the
+    // Send the donor thank-you only if THIS request won the atomic claim above
+    // and the donor has an email. Best-effort: a send failure doesn't fail the
     // request (the flag reflects the admin's intent and is editable).
-    if (
-      thankYouEmailSent === true &&
-      !existing.thankYouEmailSent &&
-      existing.donorEmail?.includes("@")
-    ) {
+    if (claimedThankYou && existing.donorEmail?.includes("@")) {
       try {
         const settings = await getWeddingSettings();
         const amount = new Intl.NumberFormat("en-US", {
