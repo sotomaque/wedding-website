@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import type { Activity, ActivityWithInterest } from "./actions";
 import { setActivityInterest } from "./actions";
 import { InterestCalendarModal } from "./interest-calendar-modal";
@@ -51,11 +52,14 @@ export function ActivityCard({
     // If clicking the same status, remove it (no modal needed)
     if (currentStatus === status) {
       startTransition(async () => {
-        await setActivityInterest({
+        const result = await setActivityInterest({
           activityId: activity.id,
           inviteCode,
           status: null,
         });
+        if (!result.success) {
+          toast.error(result.error ?? "Failed to update");
+        }
       });
       return;
     }
@@ -79,6 +83,8 @@ export function ActivityCard({
       if (result.success) {
         setModalOpen(false);
         setPendingStatus(null);
+      } else {
+        toast.error(result.error ?? "Failed to save");
       }
     });
   };
