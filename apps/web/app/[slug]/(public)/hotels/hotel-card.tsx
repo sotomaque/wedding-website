@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useTransition } from "react";
+import { toast } from "sonner";
 import type { Hotel, HotelWithInterest } from "./actions";
 import { setHotelInterest } from "./actions";
 import { WhosInterestedPopover } from "./whos-interested-popover";
@@ -34,21 +35,27 @@ export function HotelCard({ hotel, inviteCode, index = 0 }: HotelCardProps) {
 
     if (currentStatus === status) {
       startTransition(async () => {
-        await setHotelInterest({
+        const result = await setHotelInterest({
           hotelId: hotel.id,
           inviteCode,
           status: null,
         });
+        if (!result.success) {
+          toast.error(result.error ?? "Failed to update");
+        }
       });
       return;
     }
 
     startTransition(async () => {
-      await setHotelInterest({
+      const result = await setHotelInterest({
         hotelId: hotel.id,
         inviteCode,
         status,
       });
+      if (!result.success) {
+        toast.error(result.error ?? "Failed to update");
+      }
     });
   };
 
