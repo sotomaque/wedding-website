@@ -8,6 +8,10 @@ import {
 } from "@/lib/email/helpers";
 import { renderEmailTemplate } from "@/lib/email/render-template";
 import { getResendClient, sendEmail } from "@/lib/email/resend-client";
+import { canAccommodate } from "@/lib/utils/event-capacity";
+
+/** Thrown inside the RSVP transaction when the event is at capacity. */
+class CapacityFullError extends Error {}
 
 /**
  * Submit event RSVP
@@ -74,12 +78,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update the RSVP status
+    // Update the RSVP status. When confirming a capacity-limited event, gate
+    // on capacity inside a transaction with a row lock — mirroring the public
+    // RSVP path so this invite-code path can't oversell the event.
     const rsvpStatus = attending ? "yes" : "no";
-    await db.guestEventInvite.update({
-      where: { id: invite.id },
-      data: { rsvpStatus },
-    });
+    const alreadyConfirmed = invite.rsvpStatus === "yes";
+    try {
+      await db.$transaction(async (tx) => {
+        if (attending && event.capacity != null && !alreadyConfirmed) {
+          await tx.$queryRaw`SELECT id FROM events WHERE id = ${event.id}::uuid FOR UPDATE`;
+          const confirmedOthers = await tx.guestEventInvite.count({
+            where: {
+              eventId: event.id,
+              rsvpStatus: "yes",
+              guestId: { not: guest.id },
+            },
+          });
+          if (!canAccommodate(confirmedOthers, 1, event.capacity)) {
+            throw new CapacityFullError();
+          }
+        }
+        await tx.guestEventInvite.update({
+          where: { id: invite.id },
+          data: { rsvpStatus },
+        });
+      });
+    } catch (txError) {
+      if (txError instanceof CapacityFullError) {
+        return NextResponse.json(
+          { error: "This event has reached capacity.", full: true },
+          { status: 409 },
+        );
+      }
+      throw txError;
+    }
 
     // Send notification email to admins
     try {
