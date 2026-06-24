@@ -1,9 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import {
-  buildCalendarEmailHtml,
-  type CalendarEvent,
-  generateIcs,
-} from "@/lib/calendar/generate-ics";
+import { type CalendarEvent, generateIcs } from "@/lib/calendar/generate-ics";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -152,139 +148,26 @@ describe("generateIcs", () => {
     expect(ics).toContain("END:VCALENDAR");
     expect(ics).not.toContain("BEGIN:VEVENT");
   });
-});
 
-// ---------------------------------------------------------------------------
-// buildCalendarEmailHtml
-// ---------------------------------------------------------------------------
-
-describe("buildCalendarEmailHtml", () => {
-  it("includes the guest's first name", () => {
-    const html = buildCalendarEmailHtml([makeEvent()], "Helen");
-    expect(html).toContain("Hi Helen");
-  });
-
-  it("includes the event name", () => {
-    const html = buildCalendarEmailHtml(
-      [makeEvent({ name: "Ceremony" })],
+  it("emits DTSTART/DTEND with the provided timezone", () => {
+    const ics = generateIcs(
+      [makeEvent({ start_time: "16:00", end_time: "18:00" })],
       "Helen",
+      "Alice & Bob",
+      "America/Los_Angeles",
     );
-    expect(html).toContain("Ceremony");
+    expect(ics).toContain("DTSTART;TZID=America/Los_Angeles:20260730T160000");
+    expect(ics).toContain("DTEND;TZID=America/Los_Angeles:20260730T180000");
   });
 
-  it("formats the date as a human-readable string, not an ISO string", () => {
-    const html = buildCalendarEmailHtml([makeEvent()], "Helen");
-    // Must NOT contain the raw ISO format
-    expect(html).not.toContain("2026-07-30T");
-    // Must NOT contain "Invalid Date"
-    expect(html).not.toContain("Invalid Date");
-    // Should contain the year
-    expect(html).toContain("2026");
+  it("does not leak a hardcoded couple name into PRODID", () => {
+    const ics = generateIcs([makeEvent()], "Helen", "Alice & Bob");
+    expect(ics).toContain("PRODID:-//The Ceremony//Wedding//EN");
+    expect(ics).not.toContain("Helen & Enrique");
   });
 
-  it("formats start_time as 12-hour time (not raw HH:MM:SS)", () => {
-    const html = buildCalendarEmailHtml(
-      [makeEvent({ start_time: "15:00" })],
-      "Helen",
-    );
-    expect(html).toContain("3:00 PM");
-    expect(html).not.toContain("15:00:00");
-    expect(html).not.toContain("15:00 PM");
-  });
-
-  it("formats end_time as 12-hour time", () => {
-    const html = buildCalendarEmailHtml(
-      [makeEvent({ start_time: "09:30", end_time: "11:00" })],
-      "Helen",
-    );
-    expect(html).toContain("9:30 AM");
-    expect(html).toContain("11:00 AM");
-  });
-
-  it("handles times with seconds component (HH:MM:SS from DB)", () => {
-    const html = buildCalendarEmailHtml(
-      [makeEvent({ start_time: "15:00:00", end_time: "17:00:00" })],
-      "Helen",
-    );
-    expect(html).toContain("3:00 PM");
-    expect(html).toContain("5:00 PM");
-    expect(html).not.toContain(":00:00");
-  });
-
-  it("shows time range with em dash separator when both times present", () => {
-    const html = buildCalendarEmailHtml(
-      [makeEvent({ start_time: "15:00", end_time: "17:00" })],
-      "Helen",
-    );
-    expect(html).toContain("3:00 PM – 5:00 PM");
-  });
-
-  it("shows no time when start_time is null", () => {
-    const html = buildCalendarEmailHtml(
-      [makeEvent({ start_time: null, end_time: null })],
-      "Helen",
-    );
-    expect(html).not.toContain(" at ");
-  });
-
-  it("includes location_name when present", () => {
-    const html = buildCalendarEmailHtml([makeEvent()], "Helen");
-    expect(html).toContain("The Venue");
-  });
-
-  it("includes location_address when present", () => {
-    const html = buildCalendarEmailHtml([makeEvent()], "Helen");
-    expect(html).toContain("123 Main St, San Diego, CA");
-  });
-
-  it("omits location section when location_name is null", () => {
-    const html = buildCalendarEmailHtml(
-      [makeEvent({ location_name: null, location_address: null })],
-      "Helen",
-    );
-    expect(html).not.toContain("<small>");
-  });
-
-  it("renders one list item per event", () => {
-    const events = [
-      makeEvent({ id: "e1", name: "Ceremony" }),
-      makeEvent({ id: "e2", name: "Reception" }),
-    ];
-    const html = buildCalendarEmailHtml(events, "Helen");
-    const liCount = (html.match(/<li>/g) ?? []).length;
-    expect(liCount).toBe(2);
-  });
-
-  it("handles a Date object for event_date without showing Invalid Date", () => {
-    const dateObj = new Date("2026-07-30T00:00:00.000Z");
-    const html = buildCalendarEmailHtml(
-      [makeEvent({ event_date: dateObj })],
-      "Helen",
-    );
-    expect(html).not.toContain("Invalid Date");
-    expect(html).toContain("2026");
-  });
-
-  it("returns an empty list when passed no events", () => {
-    const html = buildCalendarEmailHtml([], "Helen");
-    expect(html).toContain("Hi Helen");
-    // <ul> tag should exist but no <li> items
-    expect(html).not.toContain("<li>");
-  });
-
-  it("midnight edge: formats 00:00 as 12:00 AM", () => {
-    const html = buildCalendarEmailHtml(
-      [makeEvent({ start_time: "00:00" })],
-      "Helen",
-    );
-    expect(html).toContain("12:00 AM");
-  });
-
-  it("noon edge: formats 12:00 as 12:00 PM", () => {
-    const html = buildCalendarEmailHtml(
-      [makeEvent({ start_time: "12:00" })],
-      "Helen",
-    );
-    expect(html).toContain("12:00 PM");
+  it("emits a UTC DTSTAMP (trailing Z)", () => {
+    const ics = generateIcs([makeEvent()], "Helen");
+    expect(ics).toMatch(/DTSTAMP:\d{8}T\d{6}Z/);
   });
 });

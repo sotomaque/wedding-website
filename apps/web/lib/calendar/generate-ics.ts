@@ -35,6 +35,17 @@ function formatIcsDateTime(date: Date, time: string | null): string {
   return `${year}${month}${day}T${hh}${mm}00`;
 }
 
+/** UTC timestamp for DTSTAMP, formatted as YYYYMMDDTHHMMSSZ. */
+function formatIcsUtcStamp(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hh = String(date.getUTCHours()).padStart(2, "0");
+  const mm = String(date.getUTCMinutes()).padStart(2, "0");
+  const ss = String(date.getUTCSeconds()).padStart(2, "0");
+  return `${year}${month}${day}T${hh}${mm}${ss}Z`;
+}
+
 /**
  * Adds two hours to a "HH:MM" time string.
  */
@@ -58,80 +69,24 @@ function escapeIcsText(text: string): string {
 }
 
 /**
- * Converts a "HH:MM" or "HH:MM:SS" string to "H:MM AM/PM".
- */
-function formatTime(time: string): string {
-  const [h, m] = time.split(":").map(Number);
-  const hours = h ?? 0;
-  const minutes = m ?? 0;
-  const period = hours >= 12 ? "PM" : "AM";
-  const display = hours % 12 || 12;
-  return `${display}:${String(minutes).padStart(2, "0")} ${period}`;
-}
-
-/**
- * Safely converts an event_date value (Date object or date string) to a Date.
- */
-function toDate(value: Date | string | null | undefined): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  const d = new Date(`${value}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-/**
- * Builds the HTML body for a calendar invite email.
- */
-export function buildCalendarEmailHtml(
-  events: CalendarEvent[],
-  guestFirstName: string,
-): string {
-  const eventLines = events
-    .map((e) => {
-      const date = toDate(e.event_date as Date | string | null);
-      const dateStr = date
-        ? date.toLocaleDateString("en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })
-        : "";
-      const timeStr = e.start_time
-        ? ` at ${formatTime(e.start_time)}${e.end_time ? ` – ${formatTime(e.end_time)}` : ""}`
-        : "";
-      const locationStr = e.location_name
-        ? `<br/><small>${e.location_name}${e.location_address ? `, ${e.location_address}` : ""}</small>`
-        : "";
-      return `<li><strong>${e.name}</strong> — ${dateStr}${timeStr}${locationStr}</li>`;
-    })
-    .join("");
-
-  return `
-    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; color: #2d2d2d;">
-      <h2 style="font-weight: normal; color: #7c6a5e;">Your Calendar Invite 💕</h2>
-      <p>Hi ${guestFirstName},</p>
-      <p>We're so excited to celebrate with you! Please find attached a calendar invite for our wedding events.</p>
-      <ul style="line-height: 2;">${eventLines}</ul>
-      <p>Open the attached <strong>.ics file</strong> to add these events to your calendar.</p>
-      <p>With love,<br/>Helen &amp; Enrique</p>
-    </div>
-  `.trim();
-}
-
-/**
  * Generates an iCalendar (.ics) string for the given events.
  * Produces one VEVENT per event, wrapped in a VCALENDAR.
+ *
+ * `timezone` is the wedding's IANA zone (e.g. "America/Los_Angeles"); timed
+ * events are emitted with that TZID so guests see the correct local time
+ * regardless of where the platform runs. Defaults to America/New_York for
+ * backward compatibility.
  */
 export function generateIcs(
   events: CalendarEvent[],
   guestName: string,
   coupleName?: string,
+  timezone = "America/New_York",
 ): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Helen & Enrique//Wedding//EN",
+    "PRODID:-//The Ceremony//Wedding//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
   ];
@@ -162,19 +117,15 @@ export function generateIcs(
       process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, "") ??
       "wedding-platform.com";
     const uid = `${event.id}@${domain}`;
-    const now = new Date();
-    const dtstamp = formatIcsDateTime(
-      now,
-      `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}`,
-    );
+    const dtstamp = formatIcsUtcStamp(new Date());
 
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:${uid}`);
     lines.push(`DTSTAMP:${dtstamp}`);
 
     if (startTime) {
-      lines.push(`DTSTART;TZID=America/New_York:${dtStart}`);
-      lines.push(`DTEND;TZID=America/New_York:${dtEnd}`);
+      lines.push(`DTSTART;TZID=${timezone}:${dtStart}`);
+      lines.push(`DTEND;TZID=${timezone}:${dtEnd}`);
     } else {
       // All-day event. iCal DTEND is exclusive: for a multi-day span it's the
       // day after the last day; single-day keeps its prior same-day value.
