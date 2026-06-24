@@ -10,6 +10,7 @@ import {
   SheetTitle,
 } from "@workspace/ui/components/sheet";
 import { useState } from "react";
+import { toDateKey } from "@/app/[slug]/admin/calendar/utils";
 import type { ActivityWithInterest } from "./actions";
 
 interface InterestCalendarModalProps {
@@ -54,10 +55,10 @@ export function InterestCalendarModal({
     (d) => new Date(d),
   );
 
-  // Get parties for selected date
-  const selectedDateStr = selectedDate
-    ? (selectedDate.toISOString().split("T")[0] ?? null)
-    : null;
+  // Get parties for selected date. Use a local date key (not toISOString,
+  // which would shift a Pacific-time guest's pick to the previous UTC day) so
+  // the saved date and the cross-guest matching are correct.
+  const selectedDateStr = selectedDate ? toDateKey(selectedDate) : null;
   const partiesOnSelectedDate = selectedDateStr
     ? (partiesByDate.get(selectedDateStr) ?? [])
     : [];
