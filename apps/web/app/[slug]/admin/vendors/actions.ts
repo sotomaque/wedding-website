@@ -113,8 +113,9 @@ export async function updateServiceLink(
         return { success: false, error: "Please enter a valid URL" };
       }
     }
-    const link = await db.serviceLink.update({
-      where: { id },
+    // Scope by weddingId so an admin of one wedding can't edit another's link.
+    const updated = await db.serviceLink.updateMany({
+      where: { id, weddingId },
       data: {
         ...(data.title !== undefined && { title: data.title.trim() }),
         ...(data.url !== undefined && { url: data.url.trim() }),
@@ -124,6 +125,12 @@ export async function updateServiceLink(
         ...(data.category !== undefined && { category: data.category }),
       },
     });
+
+    if (updated.count === 0) {
+      return { success: false, error: "Link not found" };
+    }
+
+    const link = await db.serviceLink.findFirst({ where: { id, weddingId } });
 
     revalidatePath(`/${slug}/admin/vendors`);
     revalidatePath(`/${slug}/vendors`);
@@ -143,7 +150,12 @@ export async function deleteServiceLink(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db.serviceLink.delete({ where: { id } });
+    const deleted = await db.serviceLink.deleteMany({
+      where: { id, weddingId },
+    });
+    if (deleted.count === 0) {
+      return { success: false, error: "Link not found" };
+    }
     revalidatePath(`/${slug}/admin/vendors`);
     revalidatePath(`/${slug}/vendors`);
     return { success: true };
@@ -162,10 +174,11 @@ export async function reorderServiceLinks(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await Promise.all(
+    // Atomic + wedding-scoped: each update only touches this wedding's links.
+    await db.$transaction(
       orderedIds.map((id, index) =>
-        db.serviceLink.update({
-          where: { id },
+        db.serviceLink.updateMany({
+          where: { id, weddingId },
           data: { sortOrder: index + 1 },
         }),
       ),
