@@ -55,9 +55,22 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
-    // Fetch updated guests
+    // Fetch updated guests. Use an explicit public-safe select — this route is
+    // unauthenticated (invite-code only), so it must NOT return internal fields
+    // like clerkUserId, private admin notes, or email-tracking flags.
     const updatedGuests = await db.guest.findMany({
       where: { inviteCode: normalizedCode, weddingId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        rsvpStatus: true,
+        isPlusOne: true,
+        mailingAddress: true,
+        phoneNumber: true,
+        whatsapp: true,
+        preferredContactMethod: true,
+      },
     });
 
     return NextResponse.json({ guests: updatedGuests });
