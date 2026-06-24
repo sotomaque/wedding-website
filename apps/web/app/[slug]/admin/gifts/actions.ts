@@ -1,7 +1,23 @@
 "use server";
 
+import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+
+/**
+ * Resolve the current wedding and assert the caller is an admin for it.
+ *
+ * Server Actions are independently-invocable POST endpoints, so they must
+ * authorize on their own — the admin layout/middleware does not protect them.
+ */
+async function authorizeWedding(): Promise<
+  { weddingId: string } | { error: string }
+> {
+  const weddingId = await getWeddingId();
+  const auth = await isAdmin(weddingId);
+  if (!auth.authorized) return { error: auth.error ?? "Unauthorized" };
+  return { weddingId };
+}
 
 // Prisma returns Date objects for timestamp columns; serialize them to the
 // ISO strings the client table consumes. Tolerant of values that are already
@@ -54,7 +70,9 @@ const sortByMap: Record<string, string> = {
 
 export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
   try {
-    const weddingId = await getWeddingId();
+    const authz = await authorizeWedding();
+    if ("error" in authz) throw new Error(authz.error);
+    const { weddingId } = authz;
     // Build where clause
     // biome-ignore lint/suspicious/noExplicitAny: dynamic filter building
     const where: any = { weddingId };
@@ -118,8 +136,12 @@ export async function getGifts(params: GetGiftsParams = {}): Promise<Gift[]> {
 
 export async function getGiftWithGuest(giftId: string) {
   try {
-    const gift = await db.gift.findUnique({
-      where: { id: giftId },
+    const authz = await authorizeWedding();
+    if ("error" in authz) return null;
+    const { weddingId } = authz;
+
+    const gift = await db.gift.findFirst({
+      where: { id: giftId, weddingId },
       include: {
         guest: {
           select: {
@@ -163,7 +185,9 @@ interface GuestOption {
 
 export async function getGuestOptions(): Promise<GuestOption[]> {
   try {
-    const weddingId = await getWeddingId();
+    const authz = await authorizeWedding();
+    if ("error" in authz) return [];
+    const { weddingId } = authz;
     const guests = await db.guest.findMany({
       where: { isPlusOne: false, weddingId },
       select: { id: true, firstName: true, lastName: true, email: true },
@@ -179,7 +203,9 @@ export async function getGuestOptions(): Promise<GuestOption[]> {
 
 export async function getGiftStats() {
   try {
-    const weddingId = await getWeddingId();
+    const authz = await authorizeWedding();
+    if ("error" in authz) throw new Error(authz.error);
+    const { weddingId } = authz;
     const gifts = await db.gift.groupBy({
       by: ["giftType", "status"],
       where: { status: "completed", weddingId },
