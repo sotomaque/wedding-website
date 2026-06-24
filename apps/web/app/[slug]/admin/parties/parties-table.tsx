@@ -82,7 +82,8 @@ export function PartiesTable({ initialParties, error }: PartiesTableProps) {
   const [bulkMergeDialog, setBulkMergeDialog] = useState(false);
   const [bulkMergeTargetId, setBulkMergeTargetId] = useState("");
 
-  const currentPage = Number.parseInt(searchParams.get("page") || "0", 10);
+  const parsedPage = Number.parseInt(searchParams.get("page") || "0", 10);
+  const currentPage = Number.isNaN(parsedPage) ? 0 : Math.max(0, parsedPage);
 
   // Edit sheet from URL
   const editPartyId = searchParams.get("edit");
