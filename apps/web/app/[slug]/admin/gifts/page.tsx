@@ -47,6 +47,8 @@ async function GiftsContent({
       unknown: { total: 0, count: 0 },
       grand_total: 0,
       total_count: 0,
+      currency: null,
+      currencies: [],
     };
   }
 

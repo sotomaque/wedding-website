@@ -206,8 +206,11 @@ export async function getGiftStats() {
     const authz = await authorizeWedding();
     if ("error" in authz) throw new Error(authz.error);
     const { weddingId } = authz;
+    // Group by currency as well so amounts aren't silently summed across
+    // currencies. There can now be multiple rows per gift type (one per
+    // currency), so totals accumulate with += rather than =.
     const gifts = await db.gift.groupBy({
-      by: ["giftType", "status"],
+      by: ["giftType", "status", "currency"],
       where: { status: "completed", weddingId },
       _sum: { amountCents: true },
       _count: { id: true },
@@ -220,19 +223,32 @@ export async function getGiftStats() {
       unknown: { total: 0, count: 0 },
       grand_total: 0,
       total_count: 0,
+      // The currency to format totals in: the single currency present, or null
+      // when gifts span multiple currencies (in which case the cents totals are
+      // not directly comparable and the UI flags it).
+      currency: null as string | null,
+      currencies: [] as string[],
     };
 
+    const currencySet = new Set<string>();
     for (const gift of gifts) {
       const type = gift.giftType || "unknown";
       const key = type as keyof typeof stats;
+      const amount = gift._sum.amountCents || 0;
+      const count = gift._count.id || 0;
+      if (count > 0) currencySet.add((gift.currency || "usd").toUpperCase());
       if (key in stats && typeof stats[key] === "object") {
         const statEntry = stats[key] as { total: number; count: number };
-        statEntry.total = gift._sum.amountCents || 0;
-        statEntry.count = gift._count.id || 0;
-        stats.grand_total += statEntry.total;
-        stats.total_count += statEntry.count;
+        statEntry.total += amount;
+        statEntry.count += count;
+        stats.grand_total += amount;
+        stats.total_count += count;
       }
     }
+
+    stats.currencies = [...currencySet];
+    stats.currency =
+      stats.currencies.length === 1 ? (stats.currencies[0] ?? null) : null;
 
     return stats;
   } catch (error) {
