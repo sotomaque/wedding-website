@@ -92,6 +92,7 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
     }
   }, []);
   const [isAddTableDialogOpen, setIsAddTableDialogOpen] = useState(false);
+  const [isAddingTable, setIsAddingTable] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [newTableCapacity, setNewTableCapacity] = useState<number | null>(null);
@@ -135,6 +136,9 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
   };
 
   const handleAddTable = async () => {
+    // Guard against double-submit creating duplicate tables.
+    if (isAddingTable) return;
+    setIsAddingTable(true);
     try {
       const response = await fetch(
         `/api/admin/seating-charts/${chart.id}/tables`,
@@ -160,6 +164,8 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
     } catch (error) {
       console.error("Error adding table:", error);
       toast.error("Failed to add table");
+    } finally {
+      setIsAddingTable(false);
     }
   };
 
@@ -757,7 +763,9 @@ export function ChartEditor({ chart, filter, events }: ChartEditorProps) {
             >
               Cancel
             </Button>
-            <Button onClick={handleAddTable}>Add Table</Button>
+            <Button onClick={handleAddTable} disabled={isAddingTable}>
+              {isAddingTable ? "Adding..." : "Add Table"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
