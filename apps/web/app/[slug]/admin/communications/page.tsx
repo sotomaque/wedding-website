@@ -61,6 +61,14 @@ export default async function CommunicationsPage({
     where: { weddingId, rsvpStatus: "yes", email: { not: null } },
   });
 
+  // Events for the reminder audience toggle (e.g. Ceremony vs Reception). The
+  // card resolves per-event confirmed counts on demand as the scope changes.
+  const events = await db.event.findMany({
+    where: { weddingId },
+    orderBy: { displayOrder: "asc" },
+    select: { id: true, name: true },
+  });
+
   return (
     <div className="max-w-screen-xl mx-auto px-4 md:px-6 lg:px-8 py-8">
       <div className="mb-6">
@@ -70,7 +78,7 @@ export default async function CommunicationsPage({
         </p>
       </div>
 
-      <TwoWeekReminderCard confirmedCount={confirmedCount} />
+      <TwoWeekReminderCard confirmedCount={confirmedCount} events={events} />
 
       {/* Type filter chips */}
       <div className="flex flex-wrap gap-2 mb-6">

@@ -2,6 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
+import {
+  type ReminderScope,
+  resolveReminderAudience,
+} from "@/lib/db/admin/reminder-audience";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import {
@@ -21,9 +25,66 @@ import {
 
 const bodySchema = z.object({
   // "preview" sends only to the wedding's notification (admin) email so the
-  // couple can review it; "send" emails every confirmed guest.
+  // couple can review it; "send" emails the confirmed-guest audience.
   mode: z.enum(["preview", "send"]),
+  // Audience scope for "send": omit/null = all confirmed guests; an event id =
+  // guests confirmed for that event. An unknown id resolves to 404. Ignored for
+  // "preview".
+  eventId: z.string().min(1).nullish(),
+  // Optional manual subset of the resolved audience. When present, only guests
+  // whose id is in this list AND still in the confirmed audience are emailed —
+  // the intersection is the safety net, so no strict id format is required.
+  guestIds: z.array(z.string().min(1)).optional(),
 });
+
+/** Build the audience scope from an optional event id. */
+function scopeFromEventId(eventId: string | null | undefined): ReminderScope {
+  return eventId ? { type: "event", eventId } : { type: "all" };
+}
+
+/**
+ * List the two-week reminder audience (for the manual guest picker)
+ * @description Return the confirmed guests (with email) who would receive the reminder for a given audience scope (admin only)
+ * @response 200:ReminderAudienceResponse
+ * @auth bearer
+ * @tag Admin - Guests
+ * @openapi
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const weddingId = await getWeddingId();
+    const auth = await requireAdmin(weddingId);
+    if ("status" in auth) return auth;
+
+    const eventId = request.nextUrl.searchParams.get("eventId");
+    const audience = await resolveReminderAudience(
+      weddingId,
+      scopeFromEventId(eventId),
+    );
+    if (audience === null) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      count: audience.length,
+      guests: audience.map((g) => ({
+        id: g.id,
+        name: `${g.firstName} ${g.lastName ?? ""}`.trim(),
+        email: g.email,
+      })),
+    });
+  } catch (error) {
+    console.error(
+      "Error in GET /api/admin/guests/send-two-week-reminder:",
+      error,
+    );
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
 
 /**
  * Send the two-week reminder email
@@ -47,7 +108,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const { mode } = parsed.data;
+    const { mode, eventId, guestIds } = parsed.data;
 
     const settings = await getWeddingSettings();
     const notificationRecipients = getNotificationRecipients(settings);
@@ -139,11 +200,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // --- Send: email every confirmed guest that has an email address ---
-    const guests = await db.guest.findMany({
-      where: { weddingId, rsvpStatus: "yes", email: { not: null } },
-      select: { id: true, firstName: true, email: true },
-    });
+    // --- Send: email the confirmed-guest audience for the chosen scope ---
+    const audience = await resolveReminderAudience(
+      weddingId,
+      scopeFromEventId(eventId),
+    );
+    if (audience === null) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    // A manual selection narrows the audience; ids outside it are ignored so we
+    // can never email a guest who isn't in the confirmed audience.
+    const selected = guestIds ? new Set(guestIds) : null;
+    const guests = selected
+      ? audience.filter((g) => selected.has(g.id))
+      : audience;
 
     let sent = 0;
     let failed = 0;
