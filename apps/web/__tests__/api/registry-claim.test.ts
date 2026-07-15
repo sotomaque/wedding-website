@@ -21,8 +21,15 @@ async function flushAfter() {
   afterTasks.length = 0;
 }
 
+// Include getWeddingContext even though this route only uses getWeddingId:
+// `mock.module` is process-global under `bun test`, so a partial stub here wins
+// for sibling files whose routes call getWeddingContext() (e.g. photo
+// placements) and would otherwise see `undefined` and throw a 500 on load-order.
 mock.module("@/lib/db/wedding-context", () => ({
   getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({ weddingId: "test-wedding-id", slug: "test-wedding" }),
+  ),
 }));
 
 mock.module("@/lib/db/wedding-content-data", () => ({
