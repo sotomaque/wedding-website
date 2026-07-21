@@ -21,6 +21,15 @@ export interface GameAnswerLike {
 export interface PlayerLike {
   id: string;
   name: string;
+  /** When the player locked in their final answers; earlier wins ties. */
+  submittedAt?: Date | string | null;
+}
+
+/** Milliseconds since epoch, or +Infinity when unknown (sorts last). */
+function submittedMs(value: Date | string | null | undefined): number {
+  if (!value) return Number.POSITIVE_INFINITY;
+  const t = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
 }
 
 export interface RankedPlayer {
@@ -65,9 +74,11 @@ export function revealedCount(questions: GameQuestionLike[]): number {
 }
 
 /**
- * Rank players by correct guesses (desc), ties broken by name for stable order
- * but sharing a competition rank. Winners are the top scorers once anything is
- * revealed and someone has at least one correct guess.
+ * Rank players by correct guesses (desc), breaking ties by who submitted their
+ * answers first (earlier wins) — so speed decides between equally-correct
+ * guesses — then by name for a fully stable order. Players tied on BOTH correct
+ * count and submission time share a rank (and can co-win); in practice
+ * timestamps differ, so the top scorer who submitted first wins outright.
  */
 export function rankPlayers(
   players: PlayerLike[],
@@ -94,22 +105,34 @@ export function rankPlayers(
         name: p.name,
         correct: s.correct,
         answered: s.answered,
+        submittedMs: submittedMs(p.submittedAt),
       };
     })
-    .sort((a, b) => b.correct - a.correct || a.name.localeCompare(b.name));
+    .sort(
+      (a, b) =>
+        b.correct - a.correct ||
+        a.submittedMs - b.submittedMs ||
+        a.name.localeCompare(b.name),
+    );
 
   const maxCorrect = rows.length > 0 ? (rows[0]?.correct ?? 0) : 0;
 
-  let prevCorrect: number | null = null;
+  // Two players share a rank only when tied on correct count AND submission
+  // time — otherwise the earlier submitter is strictly ahead.
+  let prevKey: string | null = null;
   let prevRank = 0;
   return rows.map((row, index) => {
-    const rank = row.correct === prevCorrect ? prevRank : index + 1;
-    prevCorrect = row.correct;
+    const key = `${row.correct}|${row.submittedMs}`;
+    const rank = key === prevKey ? prevRank : index + 1;
+    prevKey = key;
     prevRank = rank;
     return {
-      ...row,
+      id: row.id,
+      name: row.name,
+      correct: row.correct,
+      answered: row.answered,
       rank,
-      isWinner: anyRevealed && maxCorrect > 0 && row.correct === maxCorrect,
+      isWinner: anyRevealed && maxCorrect > 0 && rank === 1,
     };
   });
 }
