@@ -1,25 +1,54 @@
 import { ImageResponse } from "next/og";
+import sharp from "sharp";
 import { db } from "@/lib/db";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "Wedding game";
-// Prisma needs the Node.js runtime (not edge).
+// Prisma + remote image fetch need the Node.js runtime (not edge).
 export const runtime = "nodejs";
 
 interface ImageProps {
   params: Promise<{ slug: string; token: string }>;
 }
 
+/**
+ * Best-effort load of an image URL as a base64 data URI Satori can embed. The
+ * fetched image is transcoded with sharp to a baseline JPEG sized for the card
+ * (Satori only decodes PNG/JPEG) and auto-oriented. Returns null on any problem
+ * so the card still renders on its gradient. (Same approach as the event card.)
+ */
+async function loadImageDataUri(url: string | null): Promise<string | null> {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const input = Buffer.from(await res.arrayBuffer());
+    if (input.byteLength > 20_000_000) return null;
+    const jpeg = await sharp(input, { failOn: "none" })
+      .rotate()
+      .resize(size.width, size.height, { fit: "cover" })
+      .jpeg({ quality: 82 })
+      .toBuffer();
+    return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 interface CardData {
   title: string;
   tagline: string;
   couple: string;
+  hero: string | null;
 }
 
-/** Preview card — same warm gradient + scrim + bottom text as the event card,
- * minus the hero photo (a game has none), so shared links look consistent. */
-function Card({ title, tagline, couple }: CardData) {
+/** Preview card — same warm gradient + hero photo + scrim + bottom text as the
+ * event card, so a shared game link looks consistent with a shared event link. */
+function Card({ title, tagline, couple, hero }: CardData) {
   return (
     <div
       style={{
@@ -34,6 +63,24 @@ function Card({ title, tagline, couple }: CardData) {
         fontFamily: "serif",
       }}
     >
+      {hero ? (
+        // biome-ignore lint/performance/noImgElement: next/og only supports <img>
+        <img
+          src={hero}
+          alt=""
+          width={size.width}
+          height={size.height}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
+      ) : null}
+
       <div
         style={{
           position: "absolute",
@@ -93,9 +140,10 @@ function toTagline(description: string | null): string {
 }
 
 /**
- * Rich link-preview card (iMessage / social) for the public game link. Wrapped
- * so it can never throw a 500 — a failed image means no preview at all, so we
- * always fall back to a plain branded card.
+ * Rich link-preview card (iMessage / social) for the public game link. Reuses
+ * the wedding's hero cover photo (the same image atop the site + shared event
+ * links) as the backdrop. Wrapped so it can never throw a 500 — a failed image
+ * means no preview at all, so we always fall back to a branded card.
  */
 export default async function OpengraphImage({ params }: ImageProps) {
   try {
@@ -105,15 +153,28 @@ export default async function OpengraphImage({ params }: ImageProps) {
       select: {
         title: true,
         description: true,
-        wedding: { select: { coupleName: true } },
+        weddingId: true,
+        wedding: { select: { coupleName: true, brandImageUrl: true } },
       },
     });
+
+    // Wedding cover image: first hero-section placement, else the brand image.
+    let heroUrl: string | null = game?.wedding.brandImageUrl ?? null;
+    if (game) {
+      const heroPlacement = await db.photoPlacement.findFirst({
+        where: { weddingId: game.weddingId, section: "hero" },
+        orderBy: { displayOrder: "asc" },
+        select: { photo: { select: { url: true } } },
+      });
+      if (heroPlacement?.photo.url) heroUrl = heroPlacement.photo.url;
+    }
 
     return new ImageResponse(
       <Card
         title={game?.title ?? "Wedding Game"}
         tagline={toTagline(game?.description ?? null)}
         couple={game?.wedding.coupleName ?? "Our Wedding"}
+        hero={await loadImageDataUri(heroUrl)}
       />,
       { ...size },
     );
@@ -123,6 +184,7 @@ export default async function OpengraphImage({ params }: ImageProps) {
         title="Wedding Game"
         tagline="Guess who's most likely to…"
         couple=""
+        hero={null}
       />,
       { ...size },
     );
