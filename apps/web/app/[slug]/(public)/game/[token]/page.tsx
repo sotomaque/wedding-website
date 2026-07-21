@@ -230,9 +230,12 @@ async function GameResults({
       {/* Leaderboard */}
       {ranked.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-1">
             Leaderboard
           </h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Most correct wins — ties go to whoever submitted first.
+          </p>
           <div className="border rounded-xl bg-card divide-y">
             {ranked.map((r) => (
               <div

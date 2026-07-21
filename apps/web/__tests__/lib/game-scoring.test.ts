@@ -52,19 +52,39 @@ describe("rankPlayers", () => {
     ]);
   });
 
-  it("shares a rank on ties and crowns co-winners", () => {
+  it("breaks a tie by earliest submission — first to submit wins", () => {
+    // Both guessed q1 correctly (1 each), but Grace submitted before Ada.
     const tiedAnswers: GameAnswerLike[] = [
       { playerId: "p1", questionId: "q1", optionId: "q1oA" }, // Ada 1
       { playerId: "p2", questionId: "q1", optionId: "q1oA" }, // Grace 1
-      { playerId: "p3", questionId: "q1", optionId: "q1oB" }, // Zoe 0
     ];
-    const ranked = rankPlayers(players, questions, tiedAnswers);
-    // Ada & Grace tie at 1 → both rank 1; Zoe rank 3.
-    expect(ranked.map((r) => [r.name, r.rank])).toEqual([
-      ["Ada", 1],
-      ["Grace", 1],
-      ["Zoe", 3],
+    const timed = [
+      { id: "p1", name: "Ada", submittedAt: new Date("2026-07-30T12:05:00Z") },
+      {
+        id: "p2",
+        name: "Grace",
+        submittedAt: new Date("2026-07-30T12:01:00Z"),
+      },
+    ];
+    const ranked = rankPlayers(timed, questions, tiedAnswers);
+    expect(ranked.map((r) => [r.name, r.rank, r.isWinner])).toEqual([
+      ["Grace", 1, true],
+      ["Ada", 2, false],
     ]);
+  });
+
+  it("co-wins only when correct count AND submission time are identical", () => {
+    const t = new Date("2026-07-30T12:00:00Z");
+    const tiedAnswers: GameAnswerLike[] = [
+      { playerId: "p1", questionId: "q1", optionId: "q1oA" },
+      { playerId: "p2", questionId: "q1", optionId: "q1oA" },
+    ];
+    const timed = [
+      { id: "p1", name: "Ada", submittedAt: t },
+      { id: "p2", name: "Grace", submittedAt: t },
+    ];
+    const ranked = rankPlayers(timed, questions, tiedAnswers);
+    expect(ranked.every((r) => r.rank === 1)).toBe(true);
     expect(ranked.filter((r) => r.isWinner).map((r) => r.name)).toEqual([
       "Ada",
       "Grace",

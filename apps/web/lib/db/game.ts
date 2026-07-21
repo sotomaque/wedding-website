@@ -61,6 +61,8 @@ export async function getGameByToken(
 export interface GamePlayerResult {
   id: string;
   name: string;
+  /** When the guest locked in their (final) answers — the speed tiebreaker. */
+  submittedAt: Date | null;
 }
 
 /** All players + their answers for a game (for tally + leaderboard). */
@@ -71,8 +73,8 @@ export async function getGameResponses(gameId: string): Promise<{
   const [players, answers] = await Promise.all([
     db.gamePlayer.findMany({
       where: { gameId, submittedAt: { not: null } },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
+      select: { id: true, name: true, submittedAt: true },
+      orderBy: { submittedAt: "asc" },
     }),
     db.gameAnswer.findMany({
       where: { player: { gameId, submittedAt: { not: null } } },

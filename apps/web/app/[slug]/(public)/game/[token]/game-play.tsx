@@ -135,6 +135,12 @@ export function GamePlay({
         ))}
       </div>
 
+      <p className="text-xs text-muted-foreground mt-4 text-center">
+        Tip: if two people get the same number right, whoever{" "}
+        <span className="font-medium">submitted first</span> wins — so lock in
+        your guesses early!
+      </p>
+
       {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
 
       <div className="sticky bottom-0 mt-6 py-4 bg-background/90 backdrop-blur border-t">
