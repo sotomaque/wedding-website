@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { isAllowedUploadUrl } from "@/lib/uploadthing-url";
 
 /**
  * Download all guest photos as a ZIP archive
@@ -36,6 +37,9 @@ export async function GET(_request: NextRequest) {
     await Promise.all(
       photos.map(async (photo, i) => {
         try {
+          // Defense-in-depth: never fetch a non-UploadThing URL server-side
+          // (SSRF guard for any legacy/unvalidated rows).
+          if (!isAllowedUploadUrl(photo.url)) return;
           const res = await fetch(photo.url);
           if (!res.ok) return;
 

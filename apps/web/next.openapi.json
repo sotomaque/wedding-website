@@ -16,7 +16,7 @@
   "schemaDir": "lib/openapi-schemas",
   "schemaType": "zod",
   "outputFile": "openapi.json",
-  "outputDir": "./public",
+  "outputDir": "./lib/openapi",
   "docsUrl": "/admin/api-docs",
   "includeOpenApiRoutes": true,
   "ignoreRoutes": ["/api/uploadthing", "/api/webhooks/**", "/api/e2e/**"],

@@ -26,6 +26,7 @@ export async function WeddingNavigation({ variant }: { variant?: NavVariant }) {
       details: t("details"),
       schedule: t("schedule"),
       planning: t("planning"),
+      itinerary: t("itinerary"),
       thingsToDo: t("thingsToDo"),
       hotels: t("hotels"),
       tripPlanner: t("tripPlanner"),

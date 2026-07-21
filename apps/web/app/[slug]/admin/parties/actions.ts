@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { generateInviteCode } from "@/lib/utils/invite-code";
 
 // Infer types from Prisma client without importing @prisma/client directly
 type PartyModel = Awaited<ReturnType<typeof db.party.findFirstOrThrow>>;
@@ -27,13 +29,33 @@ const sortByMap: Record<string, string> = {
 };
 
 /**
+ * Resolve the current wedding and assert the caller is an admin for it.
+ *
+ * Server Actions are independently-invocable POST endpoints dispatched by
+ * action id, so each one must authorize on its own — the admin layout and the
+ * `auth.protect()` middleware do NOT reliably protect them. Every action below
+ * also scopes its query by `weddingId` so a valid admin of one wedding can't
+ * reach another wedding's rows by id (IDOR).
+ */
+async function authorizeWedding(): Promise<
+  { weddingId: string } | { error: string }
+> {
+  const weddingId = await getWeddingId();
+  const auth = await isAdmin(weddingId);
+  if (!auth.authorized) return { error: auth.error ?? "Unauthorized" };
+  return { weddingId };
+}
+
+/**
  * Get all parties with their guest counts
  */
 export async function getParties(
   params: GetPartiesParams = {},
 ): Promise<PartyWithGuests[]> {
   try {
-    const weddingId = await getWeddingId();
+    const authz = await authorizeWedding();
+    if ("error" in authz) throw new Error(authz.error);
+    const { weddingId } = authz;
     // Build where clause
     // biome-ignore lint/suspicious/noExplicitAny: dynamic filter building
     const where: any = { weddingId };
@@ -79,8 +101,12 @@ export async function getPartyById(
   partyId: string,
 ): Promise<PartyWithGuests | null> {
   try {
-    const party = await db.party.findUnique({
-      where: { id: partyId },
+    const authz = await authorizeWedding();
+    if ("error" in authz) return null;
+    const { weddingId } = authz;
+
+    const party = await db.party.findFirst({
+      where: { id: partyId, weddingId },
       include: {
         guests: {
           orderBy: [{ isPlusOne: "asc" }, { firstName: "asc" }],
@@ -114,14 +140,22 @@ export async function updateParty(
     notes?: string | null;
   },
 ): Promise<{ success: boolean; error?: string }> {
+  const authz = await authorizeWedding();
+  if ("error" in authz) return { success: false, error: authz.error };
+  const { weddingId } = authz;
+
   try {
-    await db.party.update({
-      where: { id: partyId },
+    const result = await db.party.updateMany({
+      where: { id: partyId, weddingId },
       data: {
         ...data,
         updatedAt: new Date(),
       },
     });
+
+    if (result.count === 0) {
+      return { success: false, error: "Party not found" };
+    }
 
     revalidatePath("/admin/parties");
     revalidatePath(`/admin/parties/${partyId}`);
@@ -139,18 +173,26 @@ export async function moveGuestToParty(
   guestId: string,
   targetPartyId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const authz = await authorizeWedding();
+  if ("error" in authz) return { success: false, error: authz.error };
+  const { weddingId } = authz;
+
   try {
-    // Get the guest's current party before moving
-    const guest = await db.guest.findUnique({
-      where: { id: guestId },
+    // Get the guest's current party before moving (scoped to this wedding)
+    const guest = await db.guest.findFirst({
+      where: { id: guestId, weddingId },
       select: { partyId: true },
     });
 
-    const sourcePartyId = guest?.partyId;
+    if (!guest) {
+      return { success: false, error: "Guest not found" };
+    }
 
-    // Get the target party to update the guest's inviteCode as well
-    const targetParty = await db.party.findUnique({
-      where: { id: targetPartyId },
+    const sourcePartyId = guest.partyId;
+
+    // Get the target party (scoped) to update the guest's inviteCode as well
+    const targetParty = await db.party.findFirst({
+      where: { id: targetPartyId, weddingId },
       select: { id: true, inviteCode: true },
     });
 
@@ -158,7 +200,7 @@ export async function moveGuestToParty(
       return { success: false, error: "Target party not found" };
     }
 
-    // Update the guest
+    // Update the guest (ownership already verified above)
     await db.guest.update({
       where: { id: guestId },
       data: {
@@ -169,7 +211,7 @@ export async function moveGuestToParty(
 
     // Clean up the source party if it's now empty
     if (sourcePartyId && sourcePartyId !== targetPartyId) {
-      await deleteEmptyParty(sourcePartyId);
+      await deleteEmptyParty(sourcePartyId, weddingId);
     }
 
     revalidatePath("/admin/parties");
@@ -188,10 +230,14 @@ export async function mergeParties(
   sourcePartyId: string,
   targetPartyId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const authz = await authorizeWedding();
+  if ("error" in authz) return { success: false, error: authz.error };
+  const { weddingId } = authz;
+
   try {
-    // Get the target party
-    const targetParty = await db.party.findUnique({
-      where: { id: targetPartyId },
+    // Get the target party (scoped to this wedding)
+    const targetParty = await db.party.findFirst({
+      where: { id: targetPartyId, weddingId },
       select: { id: true, inviteCode: true },
     });
 
@@ -199,16 +245,26 @@ export async function mergeParties(
       return { success: false, error: "Target party not found" };
     }
 
+    // Verify the source party belongs to this wedding before touching it
+    const sourceParty = await db.party.findFirst({
+      where: { id: sourcePartyId, weddingId },
+      select: { id: true },
+    });
+
+    if (!sourceParty) {
+      return { success: false, error: "Source party not found" };
+    }
+
     // Move all guests from source to target
     await db.guest.updateMany({
-      where: { partyId: sourcePartyId },
+      where: { partyId: sourcePartyId, weddingId },
       data: {
         partyId: targetPartyId,
         inviteCode: targetParty.inviteCode,
       },
     });
 
-    // Delete the source party
+    // Delete the source party (ownership verified above)
     await db.party.delete({
       where: { id: sourcePartyId },
     });
@@ -229,14 +285,17 @@ export async function createPartyFromGuests(
   guestIds: string[],
   partyName?: string,
 ): Promise<{ success: boolean; partyId?: string; error?: string }> {
+  const authz = await authorizeWedding();
+  if ("error" in authz) return { success: false, error: authz.error };
+  const { weddingId } = authz;
+
   try {
     if (guestIds.length === 0) {
       return { success: false, error: "No guests selected" };
     }
 
-    const weddingId = await getWeddingId();
-
-    // Get the first guest to use their data for the new party, and track source parties
+    // Get the first guest to use their data for the new party, and track source
+    // parties. Scoped to this wedding so foreign guest ids are ignored.
     const guests = await db.guest.findMany({
       where: { id: { in: guestIds }, weddingId },
       select: { id: true, partyId: true, side: true, list: true },
@@ -246,6 +305,8 @@ export async function createPartyFromGuests(
     if (!firstGuest) {
       return { success: false, error: "Guest not found" };
     }
+    // Only operate on guests that actually belong to this wedding
+    const validGuestIds = guests.map((g) => g.id);
     // Collect unique source party IDs for cleanup
     const sourcePartyIds = [
       ...new Set(guests.map((g) => g.partyId).filter(Boolean)),
@@ -268,7 +329,7 @@ export async function createPartyFromGuests(
 
     // Move all selected guests to the new party
     await db.guest.updateMany({
-      where: { id: { in: guestIds } },
+      where: { id: { in: validGuestIds }, weddingId },
       data: {
         partyId: newParty.id,
         inviteCode: newInviteCode,
@@ -278,7 +339,7 @@ export async function createPartyFromGuests(
     // Clean up any source parties that are now empty
     for (const sourcePartyId of sourcePartyIds) {
       if (sourcePartyId !== newParty.id) {
-        await deleteEmptyParty(sourcePartyId);
+        await deleteEmptyParty(sourcePartyId, weddingId);
       }
     }
 
@@ -297,8 +358,11 @@ export async function createPartyFromGuests(
 export async function deleteParty(
   partyId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const authz = await authorizeWedding();
+  if ("error" in authz) return { success: false, error: authz.error };
+  const { weddingId } = authz;
+
   try {
-    const weddingId = await getWeddingId();
     // Check if party has any guests
     const guestCount = await db.guest.count({
       where: { partyId, weddingId },
@@ -312,9 +376,13 @@ export async function deleteParty(
       };
     }
 
-    await db.party.delete({
-      where: { id: partyId },
+    const result = await db.party.deleteMany({
+      where: { id: partyId, weddingId },
     });
+
+    if (result.count === 0) {
+      return { success: false, error: "Party not found" };
+    }
 
     revalidatePath("/admin/parties");
     return { success: true };
@@ -333,10 +401,20 @@ export async function bulkDeleteParties(partyIds: string[]): Promise<{
   skippedCount: number;
   error?: string;
 }> {
+  const authz = await authorizeWedding();
+  if ("error" in authz)
+    return {
+      success: false,
+      deletedCount: 0,
+      skippedCount: 0,
+      error: authz.error,
+    };
+
   try {
     let deletedCount = 0;
     let skippedCount = 0;
 
+    // deleteParty re-authorizes and scopes by weddingId per item.
     for (const partyId of partyIds) {
       const result = await deleteParty(partyId);
       if (result.success) {
@@ -366,9 +444,14 @@ export async function bulkMergeParties(
   sourcePartyIds: string[],
   targetPartyId: string,
 ): Promise<{ success: boolean; mergedCount: number; error?: string }> {
+  const authz = await authorizeWedding();
+  if ("error" in authz)
+    return { success: false, mergedCount: 0, error: authz.error };
+
   try {
     let mergedCount = 0;
 
+    // mergeParties re-authorizes and scopes by weddingId per item.
     for (const sourceId of sourcePartyIds) {
       if (sourceId === targetPartyId) continue;
       const result = await mergeParties(sourceId, targetPartyId);
@@ -385,34 +468,21 @@ export async function bulkMergeParties(
 }
 
 /**
- * Generate a unique invite code
+ * Helper function to delete a party if it has no guests remaining.
+ * Always scoped to the wedding so it can never remove another tenant's party.
  */
-function generateInviteCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  code += "-";
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
-
-/**
- * Helper function to delete a party if it has no guests remaining
- */
-async function deleteEmptyParty(partyId: string): Promise<void> {
+async function deleteEmptyParty(
+  partyId: string,
+  weddingId: string,
+): Promise<void> {
   try {
-    const weddingId = await getWeddingId();
     const guestCount = await db.guest.count({
       where: { partyId, weddingId },
     });
 
     if (guestCount === 0) {
-      await db.party.delete({
-        where: { id: partyId },
+      await db.party.deleteMany({
+        where: { id: partyId, weddingId },
       });
     }
   } catch (error) {

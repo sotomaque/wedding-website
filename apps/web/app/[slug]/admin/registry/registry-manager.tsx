@@ -118,6 +118,9 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
           );
           router.refresh();
           toast.success("Registry item updated");
+          // Only close on success so a failure keeps the dialog (and the
+          // entered values) open.
+          setShowDialog(false);
         } else {
           toast.error(result.error ?? "Failed to update");
         }
@@ -127,11 +130,11 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
           const newItem = result.item;
           setItems((prev) => [...prev, newItem]);
           toast.success("Registry item created");
+          setShowDialog(false);
         } else {
           toast.error(result.error ?? "Failed to create");
         }
       }
-      setShowDialog(false);
     } catch {
       toast.error("An error occurred");
     } finally {
@@ -220,7 +223,7 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-serif font-medium">Registry Items</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -228,7 +231,7 @@ export function RegistryManager({ initialItems }: RegistryManagerProps) {
             page.
           </p>
         </div>
-        <Button onClick={openAdd} className="gap-2">
+        <Button onClick={openAdd} className="gap-2 w-full sm:w-auto">
           <Plus className="h-4 w-4" />
           Add Item
         </Button>

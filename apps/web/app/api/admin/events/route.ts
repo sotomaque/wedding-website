@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
       latitude,
       longitude,
       isDefault,
+      isPublic,
       capacity,
       imageUrl,
     } = parsed.data;
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
         latitude: latitude || null,
         longitude: longitude || null,
         isDefault: isDefault || false,
+        isPublic: isPublic ?? true,
         capacity: capacity ?? null,
         imageUrl: imageUrl || null,
         displayOrder: newOrder,

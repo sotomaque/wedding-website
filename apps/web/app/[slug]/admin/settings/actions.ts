@@ -6,6 +6,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/auth/admin";
+import { getVerifiedPrimaryEmail } from "@/lib/auth/clerk-user";
 import { db } from "@/lib/db";
 import { getWeddingContext } from "@/lib/db/wedding-context";
 import { isValidFontId } from "@/lib/fonts";
@@ -138,18 +139,47 @@ export async function updateGeneralSettings(data: {
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
+    const newWeddingDate = new Date(data.weddingDate);
+
+    // Read the prior date before updating so we can keep the default
+    // Ceremony/Reception events in sync. They're seeded with the wedding date
+    // at onboarding and are the source of truth for the public schedule AND
+    // the calendar (.ics) invite — if we only moved Wedding.weddingDate, the
+    // invite would keep emitting the old date.
+    const existing = await db.wedding.findUnique({
+      where: { id: weddingId },
+      select: { weddingDate: true },
+    });
+
     await db.wedding.update({
       where: { id: weddingId },
       data: {
         coupleName: data.coupleName.trim(),
         person1Name: data.person1Name.trim() || null,
         person2Name: data.person2Name.trim() || null,
-        weddingDate: new Date(data.weddingDate),
+        weddingDate: newWeddingDate,
         timezone: data.timezone.trim(),
         rsvpDeadline: data.rsvpDeadline?.trim() || null,
         status: data.status as "draft" | "published" | "archived",
       },
     });
+
+    // Move default events that still sit on the OLD wedding date onto the new
+    // one. Events the couple deliberately gave a different date (multi-day,
+    // welcome dinner the night before, etc.) won't match and are left alone.
+    if (
+      existing &&
+      existing.weddingDate.getTime() !== newWeddingDate.getTime()
+    ) {
+      await db.event.updateMany({
+        where: {
+          weddingId,
+          isDefault: true,
+          eventDate: existing.weddingDate,
+        },
+        data: { eventDate: newWeddingDate },
+      });
+    }
 
     revalidatePath(`/${slug}`, "layout");
     return { success: true };
@@ -353,6 +383,9 @@ export async function inviteAdmin(data: { email: string; role: string }) {
   }
 }
 
+/** Thrown inside the removeAdmin transaction when the target is the last owner. */
+class LastOwnerError extends Error {}
+
 export async function removeAdmin(adminId: string) {
   const { weddingId, slug } = await getWeddingContext();
   const auth = await isAdmin(weddingId);
@@ -375,12 +408,38 @@ export async function removeAdmin(adminId: string) {
 
     // Prevent removing yourself
     const user = await currentUser();
-    const userEmail = user?.emailAddresses[0]?.emailAddress?.toLowerCase();
+    const userEmail = user ? getVerifiedPrimaryEmail(user) : null;
     if (adminToRemove.email === userEmail) {
       return { success: false, error: "You cannot remove yourself" };
     }
 
-    await db.weddingAdmin.delete({ where: { id: adminId } });
+    // Never remove the last owner — that would leave the wedding with no one
+    // who can manage admins. Do the count + delete atomically: lock this
+    // wedding's owner rows so two concurrent removeAdmin calls can't both see
+    // count > 1 and both delete, leaving zero owners.
+    try {
+      await db.$transaction(async (tx) => {
+        if (adminToRemove.role === "owner") {
+          await tx.$queryRaw`
+            SELECT id FROM wedding_admins
+            WHERE wedding_id = ${weddingId}::uuid AND role = 'owner'
+            FOR UPDATE
+          `;
+          const ownerCount = await tx.weddingAdmin.count({
+            where: { weddingId, role: "owner" },
+          });
+          if (ownerCount <= 1) {
+            throw new LastOwnerError();
+          }
+        }
+        await tx.weddingAdmin.delete({ where: { id: adminId } });
+      });
+    } catch (txError) {
+      if (txError instanceof LastOwnerError) {
+        return { success: false, error: "Cannot remove the last owner" };
+      }
+      throw txError;
+    }
 
     revalidatePath(`/${slug}`, "layout");
     return { success: true };

@@ -326,11 +326,14 @@ async function sendGiftNotificationEmail(params: {
       subject: rendered.subject,
       html: rendered.html,
       // Only log when we resolved a wedding (the log is wedding-scoped).
+      // This is the admin gift NOTIFICATION (not the donor thank-you) — log it
+      // as such so the audit trail isn't corrupted / a real thank-you isn't
+      // mistaken as already sent.
       ...(resolvedWeddingId
         ? {
             log: {
               weddingId: resolvedWeddingId,
-              type: "gift_thank_you" as const,
+              type: "gift_notification" as const,
             },
           }
         : {}),

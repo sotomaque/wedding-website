@@ -125,18 +125,22 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     await auth.protect();
   }
 
-  // --- Set wedding slug header for downstream resolution ---
+  // --- Set wedding headers for downstream resolution ---
+  // Always strip any inbound x-wedding-* headers before forwarding: a client
+  // could otherwise send x-wedding-id/x-wedding-slug to spoof the tenant that
+  // getWeddingContext() resolves (it reads x-wedding-id first). Downstream code
+  // must only ever trust wedding headers that middleware itself set here.
+  //
+  // The slug is forwarded on the REQUEST headers (via NextResponse.next's
+  // `request.headers` option) so getWeddingContext() — which reads it through
+  // next/headers in route handlers and server components — actually sees it.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.delete("x-wedding-id");
+  requestHeaders.delete("x-wedding-slug");
   if (slug) {
-    const response = NextResponse.next({
-      request: {
-        headers: new Headers(req.headers),
-      },
-    });
-    response.headers.set("x-wedding-slug", slug);
-    return response;
+    requestHeaders.set("x-wedding-slug", slug);
   }
-
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: requestHeaders } });
 });
 
 export const config = {

@@ -228,7 +228,7 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-serif text-foreground mb-1">
             Vendors & Links
@@ -237,7 +237,11 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
             Manage vendor links shown on the public vendors page
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)} disabled={showAddForm}>
+        <Button
+          onClick={() => setShowAddForm(true)}
+          disabled={showAddForm}
+          className="w-full sm:w-auto"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Link
         </Button>
@@ -369,7 +373,11 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
                     <button
                       type="button"
                       onClick={() => moveLink(link.id, "up")}
-                      disabled={idx === 0 || isReordering}
+                      // Reordering swaps within the full list, so only allow it
+                      // in the unfiltered view where the rendered index matches.
+                      disabled={
+                        idx === 0 || isReordering || categoryFilter !== "all"
+                      }
                       className="p-1 rounded hover:bg-secondary/80 disabled:opacity-30 transition-opacity"
                       title="Move up"
                     >
@@ -378,7 +386,11 @@ export function VendorsManager({ initialLinks }: VendorsManagerProps) {
                     <button
                       type="button"
                       onClick={() => moveLink(link.id, "down")}
-                      disabled={idx === filtered.length - 1 || isReordering}
+                      disabled={
+                        idx === filtered.length - 1 ||
+                        isReordering ||
+                        categoryFilter !== "all"
+                      }
                       className="p-1 rounded hover:bg-secondary/80 disabled:opacity-30 transition-opacity"
                       title="Move down"
                     >

@@ -31,7 +31,8 @@ export default async function TripPlannerPage() {
   // Fetch events, guests with travel dates, and activity plans in parallel
   const [eventsRaw, guestsRaw, activityPlansRaw] = await Promise.all([
     db.event.findMany({
-      where: { weddingId },
+      // Public surface: exclude private events (e.g. a bachelor party).
+      where: { weddingId, isPublic: true },
       select: {
         id: true,
         name: true,

@@ -69,6 +69,9 @@ interface GiftStats {
   unknown: { total: number; count: number };
   grand_total: number;
   total_count: number;
+  /** Single currency present, or null when gifts span multiple currencies. */
+  currency: string | null;
+  currencies: string[];
 }
 
 type SortableColumn =
@@ -84,10 +87,10 @@ interface GiftsTableProps {
   error?: string | null;
 }
 
-function formatCurrency(cents: number): string {
+function formatCurrency(cents: number, currency?: string | null): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: (currency ?? "USD").toUpperCase(),
   }).format(cents / 100);
 }
 
@@ -242,7 +245,7 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
             Baby Fund
           </p>
           <p className="text-2xl font-bold text-pink-700 dark:text-pink-300">
-            {formatCurrency(stats.baby_fund.total)}
+            {formatCurrency(stats.baby_fund.total, stats.currency)}
           </p>
           <p className="text-xs text-pink-500 dark:text-pink-400">
             {stats.baby_fund.count} gift(s)
@@ -253,7 +256,7 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
             Honeymoon
           </p>
           <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-            {formatCurrency(stats.honeymoon.total)}
+            {formatCurrency(stats.honeymoon.total, stats.currency)}
           </p>
           <p className="text-xs text-blue-500 dark:text-blue-400">
             {stats.honeymoon.count} gift(s)
@@ -264,7 +267,7 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
             Student Loans
           </p>
           <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
-            {formatCurrency(stats.student_loans.total)}
+            {formatCurrency(stats.student_loans.total, stats.currency)}
           </p>
           <p className="text-xs text-purple-500 dark:text-purple-400">
             {stats.student_loans.count} gift(s)
@@ -275,17 +278,20 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
             Total Raised
           </p>
           <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-            {formatCurrency(stats.grand_total)}
+            {formatCurrency(stats.grand_total, stats.currency)}
           </p>
           <p className="text-xs text-green-500 dark:text-green-400">
             {stats.total_count} gift(s)
+            {stats.currency === null && stats.currencies.length > 1
+              ? ` · mixed currencies (${stats.currencies.join(", ")})`
+              : ""}
           </p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex justify-between items-center gap-4 mb-4">
-        <div className="flex gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-4">
+        <div className="flex gap-4 w-full sm:w-auto">
           <Input
             placeholder="Filter by donor name..."
             value={
@@ -294,7 +300,7 @@ export function GiftsTable({ initialGifts, stats, error }: GiftsTableProps) {
             onChange={(e) =>
               table.getColumn("donorName")?.setFilterValue(e.target.value)
             }
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
         </div>
 

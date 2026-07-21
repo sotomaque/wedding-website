@@ -6,6 +6,9 @@ export function formatDate(dateStr: string): string {
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    // plannedDate is a date-only (`@db.Date`) value -> UTC midnight. Format in
+    // UTC so guests behind UTC don't see the previous day (Jul 30 -> Jul 29).
+    timeZone: "UTC",
   });
 }
 

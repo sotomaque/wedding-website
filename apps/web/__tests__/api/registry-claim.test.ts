@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import * as nextServer from "next/server";
 
 mock.module("@/env", () => ({ env: { RESEND_API_KEY: "test-key" } }));
 
 // Mock next/server's after() to run + await the callback so the notification
 // send completes before assertions. (Matches submit.test.ts — only `after`.)
 const afterTasks: Promise<unknown>[] = [];
+// Spread the real module so NextRequest/NextResponse stay exported. `mock.module`
+// is process-global under `bun test`; a partial stub bleeds into sibling files
+// that import NextRequest and breaks them on load with a missing-export error.
 mock.module("next/server", () => ({
+  ...nextServer,
   after: (fn: () => unknown) => {
     afterTasks.push(Promise.resolve().then(fn));
   },
-  // Route imports NextResponse from next/server too. This mock is process-global
-  // under `bun test`, so it bleeds into sibling routes that do `new NextResponse(...)`
-  // (e.g. guest-photos-download). Extend the global Response so the stand-in is a
-  // real constructor AND still exposes the static `.json()` this route uses.
-  NextResponse: class extends Response {},
 }));
 
 async function flushAfter() {
@@ -21,8 +21,15 @@ async function flushAfter() {
   afterTasks.length = 0;
 }
 
+// Include getWeddingContext even though this route only uses getWeddingId:
+// `mock.module` is process-global under `bun test`, so a partial stub here wins
+// for sibling files whose routes call getWeddingContext() (e.g. photo
+// placements) and would otherwise see `undefined` and throw a 500 on load-order.
 mock.module("@/lib/db/wedding-context", () => ({
   getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
+  getWeddingContext: mock(() =>
+    Promise.resolve({ weddingId: "test-wedding-id", slug: "test-wedding" }),
+  ),
 }));
 
 mock.module("@/lib/db/wedding-content-data", () => ({

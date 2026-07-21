@@ -94,8 +94,10 @@ export async function POST(request: NextRequest) {
 
     // If partyId is provided, add guest to existing party
     if (partyId) {
-      const existingParty = await db.party.findUnique({
-        where: { id: partyId },
+      // Scope to this wedding so a foreign party id can't be adopted (and its
+      // invite code leaked) into another tenant.
+      const existingParty = await db.party.findFirst({
+        where: { id: partyId, weddingId },
         select: { id: true, inviteCode: true },
       });
 
@@ -219,7 +221,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Create event invites for selected events
-    const selectedEventIds = Array.isArray(eventIds) ? eventIds : [];
+    const requestedEventIds = Array.isArray(eventIds) ? eventIds : [];
+    // Only keep event ids that actually belong to this wedding, so a foreign
+    // eventId can't be written into this wedding's invite rows.
+    const validEvents = requestedEventIds.length
+      ? await db.event.findMany({
+          where: { id: { in: requestedEventIds }, weddingId },
+          select: { id: true },
+        })
+      : [];
+    const selectedEventIds = validEvents.map((e) => e.id);
     if (selectedEventIds.length > 0) {
       const guestIdsToInvite = [guest.id];
       if (plusOneGuest) guestIdsToInvite.push(plusOneGuest.id);

@@ -15,7 +15,14 @@ mock.module("@/env", () => ({
 const mockCurrentUser = mock(() =>
   Promise.resolve({
     id: "admin-123",
-    emailAddresses: [{ emailAddress: "admin@example.com" }],
+    primaryEmailAddressId: "email-primary",
+    emailAddresses: [
+      {
+        id: "email-primary",
+        emailAddress: "admin@example.com",
+        verification: { status: "verified" },
+      },
+    ],
   }),
 );
 
@@ -81,6 +88,13 @@ mock.module("@/lib/db", () => ({
       delete: mock(() => Promise.resolve({})),
       deleteMany: mockGuestTableAssignmentDeleteMany,
     },
+    guest: {
+      // Echo the requested ids back as "owned by this wedding" so assignment
+      // tests exercise the happy path; the route filters guests by weddingId.
+      findMany: mock((args?: { where?: { id?: { in?: string[] } } }) =>
+        Promise.resolve((args?.where?.id?.in ?? []).map((id) => ({ id }))),
+      ),
+    },
     weddingAdmin: {
       findFirst: mock(() => Promise.resolve(null)),
     },
@@ -109,7 +123,14 @@ describe("Seating Charts API - Authentication", () => {
     it("should return 403 when user is not an admin", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "user-123",
-        emailAddresses: [{ emailAddress: "notadmin@example.com" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "notadmin@example.com",
+            verification: { status: "verified" },
+          },
+        ],
       });
 
       const { GET } = await import("@/app/api/admin/seating-charts/route");
@@ -126,7 +147,14 @@ describe("Seating Charts API - Authentication", () => {
     it("should allow access when user is an admin", async () => {
       mockCurrentUser.mockResolvedValue({
         id: "admin-123",
-        emailAddresses: [{ emailAddress: "admin@example.com" }],
+        primaryEmailAddressId: "email-primary",
+        emailAddresses: [
+          {
+            id: "email-primary",
+            emailAddress: "admin@example.com",
+            verification: { status: "verified" },
+          },
+        ],
       });
       mockSeatingChartFindMany.mockResolvedValue([]);
 
@@ -148,7 +176,14 @@ describe("Seating Charts API - CRUD Operations", () => {
     // Default to authenticated admin
     mockCurrentUser.mockResolvedValue({
       id: "admin-123",
-      emailAddresses: [{ emailAddress: "admin@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "admin@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     });
   });
 
@@ -243,7 +278,14 @@ describe("Seating Charts Assignments API", () => {
     // Default to authenticated admin
     mockCurrentUser.mockResolvedValue({
       id: "admin-123",
-      emailAddresses: [{ emailAddress: "admin@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "admin@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     });
   });
 

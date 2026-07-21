@@ -147,7 +147,7 @@ describe("renderEmailTemplate", () => {
     expect(result?.html).toBe("<p></p>");
   });
 
-  it("should pass through special characters in variable values", async () => {
+  it("passes the subject through literally but HTML-escapes body values", async () => {
     mockFindUnique.mockResolvedValueOnce({
       id: "tpl-1",
       weddingId: "w-1",
@@ -164,8 +164,31 @@ describe("renderEmailTemplate", () => {
       HTML: '<a href="test">link</a>',
     });
 
+    // Subject is plain text → unchanged.
     expect(result?.subject).toBe("Tom & Jerry's $100 gift");
-    expect(result?.html).toBe('<p><a href="test">link</a></p>');
+    // Body value is escaped so injected markup can't render.
+    expect(result?.html).toBe(
+      "<p>&lt;a href=&quot;test&quot;&gt;link&lt;/a&gt;</p>",
+    );
+  });
+
+  it("does not escape trusted pre-built HTML keys (admin summary rows)", async () => {
+    mockFindUnique.mockResolvedValueOnce({
+      id: "tpl-1",
+      weddingId: "w-1",
+      type: "admin_summary",
+      name: "Test",
+      subject: "Summary",
+      htmlBody: "<table>{{{UNINVITED_GUESTS}}}</table>",
+      isActive: true,
+      variables: [],
+    });
+
+    const result = await renderEmailTemplate("w-1", "admin_summary", {
+      UNINVITED_GUESTS: "<tr><td>Row</td></tr>",
+    });
+
+    expect(result?.html).toBe("<table><tr><td>Row</td></tr></table>");
   });
 
   it("should handle adjacent placeholders", async () => {

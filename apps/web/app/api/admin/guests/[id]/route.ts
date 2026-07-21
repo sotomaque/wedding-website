@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { db } from "@/lib/db";
 import { getWeddingId } from "@/lib/db/wedding-context";
 import { generateInviteCode } from "@/lib/utils/invite-code";
+import { parseDateOrNull } from "@/lib/utils/parse-date";
 
 /**
  * Helper function to delete a party if it has no guests remaining
@@ -174,6 +175,13 @@ export async function PATCH(
       }
     }
 
+    // One physical invite covers the whole household, so the value we set on the
+    // primary cascades to their plus-one below.
+    const effectivePhysicalInviteSent =
+      physicalInviteSent !== undefined
+        ? physicalInviteSent
+        : currentGuest.physicalInviteSent;
+
     // Update the primary guest
     const updatedGuest = await db.guest.update({
       where: { id },
@@ -189,10 +197,7 @@ export async function PATCH(
           mailingAddress !== undefined
             ? mailingAddress || null
             : currentGuest.mailingAddress,
-        physicalInviteSent:
-          physicalInviteSent !== undefined
-            ? physicalInviteSent
-            : currentGuest.physicalInviteSent,
+        physicalInviteSent: effectivePhysicalInviteSent,
         phoneNumber:
           phoneNumber !== undefined
             ? phoneNumber || null
@@ -219,7 +224,7 @@ export async function PATCH(
         inviteCode: newInviteCode,
         arrivalDate:
           arrivalDate !== undefined
-            ? arrivalDate || null
+            ? parseDateOrNull(arrivalDate)
             : currentGuest.arrivalDate,
         arrivalTransport:
           arrivalTransport !== undefined
@@ -227,7 +232,7 @@ export async function PATCH(
             : currentGuest.arrivalTransport,
         departureDate:
           departureDate !== undefined
-            ? departureDate || null
+            ? parseDateOrNull(departureDate)
             : currentGuest.departureDate,
         departureTransport:
           departureTransport !== undefined
@@ -274,6 +279,8 @@ export async function PATCH(
             side: side !== undefined ? side : currentGuest.side,
             partyId: newPartyId,
             inviteCode: newInviteCode,
+            // One physical invite covers the household → mirror the primary.
+            physicalInviteSent: effectivePhysicalInviteSent,
           },
         });
       } else {
@@ -294,7 +301,7 @@ export async function PATCH(
             primaryGuestId: id,
             rsvpStatus: "pending",
             numberOfResends: 0,
-            physicalInviteSent: false,
+            physicalInviteSent: effectivePhysicalInviteSent,
             family: family !== undefined ? family : currentGuest.family,
             under21: under21 !== undefined ? under21 : currentGuest.under21,
             threeAndUnder:

@@ -25,6 +25,7 @@ interface VisualEditorProps {
     fromTableId: string,
     toTableId: string,
   ) => Promise<void>;
+  onEditTable: (table: SeatingChartWithTables["tables"][number]) => void;
   onDeleteTable: (tableId: string) => Promise<void>;
 }
 
@@ -39,6 +40,7 @@ export function VisualEditor({
   onAssignGuest,
   onUnassignGuest,
   onMoveGuest,
+  onEditTable,
   onDeleteTable,
 }: VisualEditorProps) {
   const [activeGuest, setActiveGuest] = useState<DragData | null>(null);
@@ -101,7 +103,7 @@ export function VisualEditor({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[500px]">
+      <div className="flex flex-col gap-4 lg:flex-row lg:h-[calc(100vh-220px)] lg:min-h-[500px]">
         {/* Guest Pool - Unassigned guests */}
         <GuestPool guests={chart.unassignedGuests} />
 
@@ -112,6 +114,7 @@ export function VisualEditor({
               <DroppableTable
                 key={table.id}
                 table={table}
+                onEditTable={onEditTable}
                 onDeleteTable={onDeleteTable}
               />
             ))}

@@ -26,7 +26,14 @@ mock.module("@clerk/nextjs/server", () => ({
   currentUser: () =>
     Promise.resolve({
       id: "admin-123",
-      emailAddresses: [{ emailAddress: "admin@example.com" }],
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "admin@example.com",
+          verification: { status: "verified" },
+        },
+      ],
     }),
 }));
 

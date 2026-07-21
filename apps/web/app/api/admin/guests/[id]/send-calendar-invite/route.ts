@@ -109,6 +109,7 @@ export async function POST(
       eventsForIcs,
       guestName,
       settings.coupleName,
+      settings.timezone,
     );
 
     const primaryEvent = defaultEvents[0];

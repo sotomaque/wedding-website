@@ -4,13 +4,15 @@ import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { env } from "@/env";
+import { getVerifiedPrimaryEmail } from "@/lib/auth/clerk-user";
 import { db } from "@/lib/db";
 
 async function verifySuperAdmin() {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
 
-  const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase();
+  // Verified primary email only (auth bypass: emailAddresses[0] may be unverified).
+  const userEmail = getVerifiedPrimaryEmail(user);
   const superAdmins =
     env.ADMIN_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ?? [];
 

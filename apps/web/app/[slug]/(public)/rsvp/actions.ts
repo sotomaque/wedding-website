@@ -425,6 +425,7 @@ export async function submitRSVP(data: RSVPSubmitData): Promise<{
                     eventsForIcs,
                     guestName,
                     settings.coupleName,
+                    settings.timezone,
                   );
 
                   const firstEvent = eventsForIcs[0];
@@ -937,6 +938,7 @@ export async function submitMultiGuestRSVP(
                     eventsForIcs,
                     guestName,
                     settingsMulti.coupleName,
+                    settingsMulti.timezone,
                   );
 
                   const firstEvent = eventsForIcs[0];

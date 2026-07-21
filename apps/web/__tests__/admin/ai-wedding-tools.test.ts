@@ -38,6 +38,7 @@ const mockAggregate = mock(() =>
 const mockUpdate = mock(() => Promise.resolve({}));
 const mockCreate = mock(() => Promise.resolve({ id: "new-id" }));
 const mockDelete = mock(() => Promise.resolve({}));
+const mockDeleteMany = mock(() => Promise.resolve({ count: 1 }));
 const mockGuestCreate = mock(() =>
   Promise.resolve({
     id: "new-guest-id",
@@ -61,6 +62,7 @@ mock.module("@/lib/db", () => ({
       update: mockUpdate,
       create: mockGuestCreate,
       delete: mockDelete,
+      deleteMany: mockDeleteMany,
     },
     event: {
       findMany: mockFindMany,
@@ -134,6 +136,8 @@ describe("Wedding Tools", () => {
     mockUpdate.mockReset();
     mockCreate.mockReset().mockResolvedValue({ id: "new-party-id" });
     mockDelete.mockReset();
+    mockDeleteMany.mockReset();
+    mockDeleteMany.mockResolvedValue({ count: 1 });
     mockGuestCreate.mockReset().mockResolvedValue({
       id: "new-guest-id",
       firstName: "Test",
@@ -439,7 +443,9 @@ describe("Wedding Tools", () => {
       if (result.success) {
         expect(result.deleted).toBe("Jane Doe");
       }
-      expect(mockDelete).toHaveBeenCalledWith({ where: { id: "g-1" } });
+      expect(mockDeleteMany).toHaveBeenCalledWith({
+        where: { id: "g-1", weddingId: WEDDING_ID },
+      });
     });
 
     it("rejects deletion of non-existent guest", async () => {
@@ -454,7 +460,7 @@ describe("Wedding Tools", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("Guest not found");
-      expect(mockDelete).not.toHaveBeenCalled();
+      expect(mockDeleteMany).not.toHaveBeenCalled();
     });
 
     it("scopes findFirst by weddingId", async () => {

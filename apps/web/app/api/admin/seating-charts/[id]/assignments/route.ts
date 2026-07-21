@@ -71,21 +71,39 @@ export async function POST(
       },
     );
 
-    // Remove existing assignments for these guests (they may be moving tables)
-    const guestIds = uniqueAssignments.map(
+    // Only operate on guests that actually belong to this wedding, so foreign
+    // guest ids can't be seated here — and can't have their existing assignment
+    // in another wedding wiped by the deleteMany below.
+    const requestedGuestIds = uniqueAssignments.map(
       (a: { guestId: string }) => a.guestId,
     );
+    const ownedGuests = await db.guest.findMany({
+      where: { id: { in: requestedGuestIds }, weddingId },
+      select: { id: true },
+    });
+    const ownedGuestIds = new Set(ownedGuests.map((g) => g.id));
+    const scopedAssignments = uniqueAssignments.filter(
+      (a: { guestId: string }) => ownedGuestIds.has(a.guestId),
+    );
 
-    // Only delete if we have valid UUIDs
-    if (guestIds.length > 0) {
-      await db.guestTableAssignment.deleteMany({
-        where: { guestId: { in: guestIds } },
-      });
+    if (scopedAssignments.length === 0) {
+      return NextResponse.json(
+        { error: "No valid assignments for guests in this wedding" },
+        { status: 400 },
+      );
     }
+
+    // Remove existing assignments for these guests (scoped to this wedding).
+    const guestIds = scopedAssignments.map(
+      (a: { guestId: string }) => a.guestId,
+    );
+    await db.guestTableAssignment.deleteMany({
+      where: { guestId: { in: guestIds }, weddingId },
+    });
 
     // Insert new assignments
     await db.guestTableAssignment.createMany({
-      data: uniqueAssignments.map(
+      data: scopedAssignments.map(
         (a: { guestId: string; tableId: string; seatNumber?: number }) => ({
           guestId: a.guestId,
           seatingTableId: a.tableId,
@@ -97,7 +115,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      assignedCount: uniqueAssignments.length,
+      assignedCount: scopedAssignments.length,
     });
   } catch (error) {
     console.error(

@@ -103,6 +103,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       latitude,
       longitude,
       isDefault,
+      isPublic,
       displayOrder,
       capacity,
       publicRsvpEnabled,
@@ -142,6 +143,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (latitude !== undefined) updateData.latitude = latitude || null;
     if (longitude !== undefined) updateData.longitude = longitude || null;
     if (isDefault !== undefined) updateData.isDefault = isDefault;
+    if (isPublic !== undefined) updateData.isPublic = Boolean(isPublic);
     if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
     if (capacity !== undefined)
       updateData.capacity =

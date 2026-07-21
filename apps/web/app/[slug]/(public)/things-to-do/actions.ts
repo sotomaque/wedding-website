@@ -182,6 +182,16 @@ export async function setActivityInterest(params: {
       return { success: false, error: "Invalid invite code" };
     }
 
+    // Verify the activity belongs to this wedding — otherwise a code that
+    // collides across tenants could mutate another wedding's interest rows.
+    const activity = await db.activity.findFirst({
+      where: { id: activityId, weddingId },
+      select: { id: true },
+    });
+    if (!activity) {
+      return { success: false, error: "Activity not found" };
+    }
+
     const normalizedCode = inviteCode.toUpperCase();
 
     if (status === null) {
@@ -190,6 +200,7 @@ export async function setActivityInterest(params: {
         where: {
           activityId,
           inviteCode: normalizedCode,
+          weddingId,
         },
       });
     } else {
@@ -198,6 +209,7 @@ export async function setActivityInterest(params: {
         where: {
           activityId,
           inviteCode: normalizedCode,
+          weddingId,
         },
         select: { id: true },
       });
@@ -208,6 +220,7 @@ export async function setActivityInterest(params: {
           where: {
             activityId,
             inviteCode: normalizedCode,
+            weddingId,
           },
           data: {
             status,
@@ -356,10 +369,14 @@ export async function setInviteCodeCookie(
     }
 
     const cookieStore = await cookies();
+    // This cookie is effectively a party access credential, so harden it:
+    // secure (no plaintext transmission) and sameSite to limit cross-site use.
     cookieStore.set("invite_code", inviteCode.toUpperCase(), {
       path: "/",
       maxAge: 60 * 60 * 24 * 365,
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
     });
     revalidatePath("/things-to-do");
     return { success: true };

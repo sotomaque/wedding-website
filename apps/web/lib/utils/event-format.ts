@@ -79,12 +79,17 @@ export function formatEventTime(
   if (!startTime) return "";
 
   function to12Hour(time: Date | string): string {
-    const str = time instanceof Date ? time.toISOString() : String(time);
-    const [hours, minutes] = str.split(":");
+    // Prisma `@db.Time` columns come back as Date objects anchored to
+    // 1970-01-01 (e.g. 1970-01-01T18:00:00.000Z). Pull the wall-clock "HH:MM"
+    // out of the ISO string rather than splitting the whole timestamp — the
+    // latter would parse the date portion ("1970-01-01T18") as the hour.
+    const hhmm =
+      time instanceof Date ? time.toISOString().slice(11, 16) : String(time);
+    const [hours, minutes = "00"] = hhmm.split(":");
     const hour = Number.parseInt(hours || "0", 10);
     const ampm = hour >= 12 ? "PM" : "AM";
     const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
+    return `${hour12}:${minutes.slice(0, 2)} ${ampm}`;
   }
 
   let result = to12Hour(startTime);

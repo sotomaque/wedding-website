@@ -143,10 +143,15 @@ export async function updateRegistryItem(
         updateData.priceCents = data.priceCents ?? null;
     }
 
-    await db.registryItem.update({
-      where: { id },
+    // Scope by weddingId so an admin of one wedding can't edit another's item.
+    const result = await db.registryItem.updateMany({
+      where: { id, weddingId },
       data: updateData,
     });
+
+    if (result.count === 0) {
+      return { success: false, error: "Registry item not found" };
+    }
 
     revalidatePath(`/${slug}/admin/registry`);
     revalidatePath(`/${slug}/registry`);
@@ -167,7 +172,14 @@ export async function deleteRegistryItem(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db.registryItem.delete({ where: { id } });
+    // Scope by weddingId so an admin of one wedding can't delete another's item.
+    const result = await db.registryItem.deleteMany({
+      where: { id, weddingId },
+    });
+
+    if (result.count === 0) {
+      return { success: false, error: "Registry item not found" };
+    }
 
     revalidatePath(`/${slug}/admin/registry`);
     revalidatePath(`/${slug}/registry`);
@@ -188,10 +200,12 @@ export async function reorderRegistryItems(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await Promise.all(
+    // Atomic + wedding-scoped: each update only touches this wedding's items,
+    // and a partial failure rolls the whole reorder back.
+    await db.$transaction(
       orderedIds.map((id, index) =>
-        db.registryItem.update({
-          where: { id },
+        db.registryItem.updateMany({
+          where: { id, weddingId },
           data: { displayOrder: index + 1, updatedAt: new Date() },
         }),
       ),
@@ -217,10 +231,15 @@ export async function toggleRegistryItemActive(
     return { success: false, error: auth.error ?? "Unauthorized" };
 
   try {
-    await db.registryItem.update({
-      where: { id },
+    // Scope by weddingId so an admin of one wedding can't toggle another's item.
+    const result = await db.registryItem.updateMany({
+      where: { id, weddingId },
       data: { isActive, updatedAt: new Date() },
     });
+
+    if (result.count === 0) {
+      return { success: false, error: "Registry item not found" };
+    }
 
     revalidatePath(`/${slug}/admin/registry`);
     revalidatePath(`/${slug}/registry`);

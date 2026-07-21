@@ -50,6 +50,7 @@ import { AddGuestForm } from "./add-guest-form";
 import { createColumns } from "./columns";
 import { ExportWizard } from "./export-wizard";
 import { GuestsFilters } from "./guests-filters";
+import { buildGuestsUrl } from "./guests-url";
 import { MergeGuestDialog } from "./merge-guest-dialog";
 import { useBulkGuestActions } from "./use-bulk-guest-actions";
 
@@ -99,39 +100,30 @@ export function GuestsTable({
   const hasActiveColumnFilters = columnFilters.length > 0;
   const hasActiveFilters = hasActiveUrlFilters || hasActiveColumnFilters;
 
+  // NOTE: handleSort and handleEditGuest are passed into the memoized `columns`
+  // below, so they must NOT preserve filters from the captured `searchParams`
+  // snapshot (it goes stale between memo rebuilds). buildGuestsUrl reads the
+  // live URL instead — see guests-url.ts.
   function handleSort(column: SortableColumn) {
-    const params = new URLSearchParams(searchParams.toString());
-
-    // Determine new sort order: asc -> desc -> none
-    let newSortOrder: "asc" | "desc" | null = "asc";
-
-    if (currentSortBy === column) {
-      if (currentSortOrder === "asc") {
-        newSortOrder = "desc";
-      } else if (currentSortOrder === "desc") {
-        // Remove sorting
-        params.delete("sortBy");
-        params.delete("sortOrder");
-        router.push(`/${slug}/admin/guests?${params.toString()}`);
-        return;
-      }
+    // Cycle sort order: asc -> desc -> none
+    if (currentSortBy === column && currentSortOrder === "desc") {
+      router.push(buildGuestsUrl(slug, { sortBy: null, sortOrder: null }));
+      return;
     }
 
-    params.set("sortBy", column);
-    params.set("sortOrder", newSortOrder);
-    router.push(`/${slug}/admin/guests?${params.toString()}`);
+    const newSortOrder =
+      currentSortBy === column && currentSortOrder === "asc" ? "desc" : "asc";
+    router.push(
+      buildGuestsUrl(slug, { sortBy: column, sortOrder: newSortOrder }),
+    );
   }
 
   function handlePageChange(newPageIndex: number) {
-    const params = new URLSearchParams(searchParams.toString());
-
-    if (newPageIndex === 0) {
-      params.delete("page");
-    } else {
-      params.set("page", newPageIndex.toString());
-    }
-
-    router.push(`/${slug}/admin/guests?${params.toString()}`);
+    router.push(
+      buildGuestsUrl(slug, {
+        page: newPageIndex === 0 ? null : newPageIndex.toString(),
+      }),
+    );
   }
 
   function clearFilters() {
@@ -222,9 +214,7 @@ export function GuestsTable({
   }
 
   function handleEditGuest(guestId: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("edit", guestId);
-    router.push(`/${slug}/admin/guests?${params.toString()}`, {
+    router.push(buildGuestsUrl(slug, { edit: guestId }), {
       scroll: false,
     });
   }
@@ -250,6 +240,9 @@ export function GuestsTable({
   const table = useReactTable({
     data: initialGuests,
     columns,
+    // Key row selection by guest id (not row index) so a sort/filter/page
+    // re-fetch can't make bulk actions target the wrong guests.
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -397,15 +390,15 @@ export function GuestsTable({
       </div>
 
       {/* Filters */}
-      <div className="flex justify-between items-center gap-4 mb-4">
-        <div className="flex gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 w-full sm:w-auto">
           <Input
             placeholder="Filter by name..."
             value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
             onChange={(e) =>
               table.getColumn("name")?.setFilterValue(e.target.value)
             }
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
           <Input
             placeholder="Filter by email..."
@@ -413,7 +406,7 @@ export function GuestsTable({
             onChange={(e) =>
               table.getColumn("email")?.setFilterValue(e.target.value)
             }
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
           <Input
             placeholder="Filter by notes..."
@@ -421,7 +414,7 @@ export function GuestsTable({
             onChange={(e) =>
               table.getColumn("notes")?.setFilterValue(e.target.value)
             }
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
         </div>
 

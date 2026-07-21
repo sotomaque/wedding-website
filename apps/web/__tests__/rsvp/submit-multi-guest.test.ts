@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import * as nextServer from "next/server";
 
 // Mock email sending - must be a proper class
 const mockSendEmail = mock(() => Promise.resolve({ id: "email-123" }));
@@ -27,9 +28,13 @@ mock.module("next/cache", () => ({
   revalidatePath: () => {},
 }));
 
-// Mock next/server — track after() calls so we can assert notification was scheduled
+// Mock next/server — track after() calls so we can assert notification was
+// scheduled. Spread the real module so NextRequest/NextResponse stay exported:
+// `mock.module` is process-global under `bun test`, so a partial stub here would
+// bleed into sibling files that import NextRequest and break them on load.
 const mockAfter = mock((fn: () => unknown) => fn());
 mock.module("next/server", () => ({
+  ...nextServer,
   after: mockAfter,
 }));
 

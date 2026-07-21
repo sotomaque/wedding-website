@@ -9,13 +9,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
-import { Trash2, X } from "lucide-react";
-import type { SeatingChartWithTables } from "@/lib/types/seating";
+import { Pencil, Trash2, X } from "lucide-react";
+import type {
+  SeatingChartWithTables,
+  SeatingTableWithGuests,
+} from "@/lib/types/seating";
 
 interface TableViewProps {
   chart: SeatingChartWithTables;
   onAssignGuest: (guestId: string, tableId: string) => Promise<void>;
   onUnassignGuest: (guestId: string, tableId: string) => Promise<void>;
+  onEditTable: (table: SeatingTableWithGuests) => void;
   onDeleteTable: (tableId: string) => Promise<void>;
 }
 
@@ -23,6 +27,7 @@ export function TableView({
   chart,
   onAssignGuest,
   onUnassignGuest,
+  onEditTable,
   onDeleteTable,
 }: TableViewProps) {
   const handleAssign = async (guestId: string, tableId: string) => {
@@ -121,7 +126,17 @@ export function TableView({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
+                  onClick={() => onEditTable(table)}
+                  title="Edit table"
+                >
+                  <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
                   onClick={() => onDeleteTable(table.id)}
+                  title="Delete table"
                 >
                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                 </Button>

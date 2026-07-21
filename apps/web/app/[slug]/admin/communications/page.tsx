@@ -2,8 +2,10 @@ import { currentUser } from "@clerk/nextjs/server";
 import { format } from "date-fns";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
 import { getWeddingEmailLog } from "@/lib/db/admin/email-log-list";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { TwoWeekReminderCard } from "./two-week-reminder-card";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,8 @@ const TYPE_LABELS: Record<string, string> = {
   admin_summary: "Admin Summary",
   welcome: "Welcome",
   guest_export: "Guest Export",
+  two_week_reminder: "Two-Week Reminder",
+  two_week_reminder_preview: "Two-Week Reminder (Preview)",
   custom: "Custom Email",
 };
 
@@ -52,6 +56,19 @@ export default async function CommunicationsPage({
     type,
   });
 
+  // Confirmed guests who can receive the two-week reminder (RSVP'd yes + email).
+  const confirmedCount = await db.guest.count({
+    where: { weddingId, rsvpStatus: "yes", email: { not: null } },
+  });
+
+  // Events for the reminder audience toggle (e.g. Ceremony vs Reception). The
+  // card resolves per-event confirmed counts on demand as the scope changes.
+  const events = await db.event.findMany({
+    where: { weddingId },
+    orderBy: { displayOrder: "asc" },
+    select: { id: true, name: true },
+  });
+
   return (
     <div className="max-w-screen-xl mx-auto px-4 md:px-6 lg:px-8 py-8">
       <div className="mb-6">
@@ -60,6 +77,8 @@ export default async function CommunicationsPage({
           Every email sent for this wedding — {total.toLocaleString()} total.
         </p>
       </div>
+
+      <TwoWeekReminderCard confirmedCount={confirmedCount} events={events} />
 
       {/* Type filter chips */}
       <div className="flex flex-wrap gap-2 mb-6">

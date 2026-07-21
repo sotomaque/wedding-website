@@ -13,6 +13,7 @@ import {
   Redo,
   Undo,
 } from "lucide-react";
+import { useEffect } from "react";
 
 interface RichTextEditorProps {
   content: string;
@@ -43,6 +44,15 @@ export function RichTextEditor({
       },
     },
   });
+
+  // TipTap only reads `content` on first render, so AI-generated/streamed text
+  // passed via the prop would never appear (and would be overwritten by the
+  // editor's stale content on the next keystroke). Sync external changes in.
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content, { emitUpdate: false });
+    }
+  }, [content, editor]);
 
   if (!editor) return null;
 
