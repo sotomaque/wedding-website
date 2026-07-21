@@ -13,6 +13,7 @@ const FEATURE_LABELS: Record<string, string> = {
   hotels: "Hotels",
   vendors: "Vendors",
   itinerary: "Itinerary",
+  game: "Wedding Game",
   thingsToDo: "Things to Do",
   tripPlanner: "Trip Planner",
   registry: "Registry",
