@@ -462,6 +462,99 @@ model WeddingTodo {
   @@map("wedding_todos")
 }
 
+// --- Newlywed guessing game (see supabase/migrations/075_add_wedding_game.sql) ---
+
+model Game {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  weddingId   String         @map("wedding_id") @db.Uuid
+  title       String
+  description String?
+  /** draft | open | closed (TEXT CHECK in SQL). */
+  status      String         @default("draft")
+  publicToken String?        @unique @map("public_token")
+  createdAt   DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime?      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  wedding     Wedding        @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  questions   GameQuestion[]
+  players     GamePlayer[]
+
+  @@index([weddingId], map: "idx_games_wedding_id")
+  @@map("games")
+}
+
+model GameQuestion {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gameId          String       @map("game_id") @db.Uuid
+  weddingId       String       @map("wedding_id") @db.Uuid
+  prompt          String
+  displayOrder    Int          @default(0) @map("display_order")
+  correctOptionId String?      @map("correct_option_id") @db.Uuid
+  createdAt       DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
+  game            Game         @relation(fields: [gameId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding         Wedding      @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  options         GameOption[] @relation("QuestionOptions")
+  correctOption   GameOption?  @relation("CorrectOption", fields: [correctOptionId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  answers         GameAnswer[]
+
+  @@index([gameId], map: "idx_game_questions_game_id")
+  @@index([weddingId], map: "idx_game_questions_wedding_id")
+  @@map("game_questions")
+}
+
+model GameOption {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionId          String         @map("question_id") @db.Uuid
+  weddingId           String         @map("wedding_id") @db.Uuid
+  label               String
+  displayOrder        Int            @default(0) @map("display_order")
+  createdAt           DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
+  question            GameQuestion   @relation("QuestionOptions", fields: [questionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding             Wedding        @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  correctForQuestions GameQuestion[] @relation("CorrectOption")
+  answers             GameAnswer[]
+
+  @@index([questionId], map: "idx_game_options_question_id")
+  @@index([weddingId], map: "idx_game_options_wedding_id")
+  @@map("game_options")
+}
+
+model GamePlayer {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gameId      String       @map("game_id") @db.Uuid
+  weddingId   String       @map("wedding_id") @db.Uuid
+  name        String
+  token       String
+  createdAt   DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
+  submittedAt DateTime?    @map("submitted_at") @db.Timestamptz(6)
+  game        Game         @relation(fields: [gameId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding     Wedding      @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  answers     GameAnswer[]
+
+  @@unique([gameId, token])
+  @@index([gameId], map: "idx_game_players_game_id")
+  @@index([weddingId], map: "idx_game_players_wedding_id")
+  @@map("game_players")
+}
+
+model GameAnswer {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  playerId   String       @map("player_id") @db.Uuid
+  questionId String       @map("question_id") @db.Uuid
+  optionId   String       @map("option_id") @db.Uuid
+  weddingId  String       @map("wedding_id") @db.Uuid
+  createdAt  DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
+  player     GamePlayer   @relation(fields: [playerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  question   GameQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  option     GameOption   @relation(fields: [optionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wedding    Wedding      @relation(fields: [weddingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([playerId, questionId])
+  @@index([playerId], map: "idx_game_answers_player_id")
+  @@index([questionId], map: "idx_game_answers_question_id")
+  @@index([weddingId], map: "idx_game_answers_wedding_id")
+  @@map("game_answers")
+}
+
 model Wedding {
   id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   slug                  String                 @unique
@@ -530,6 +623,11 @@ model Wedding {
   emailLogs             EmailLog[]
   emailTemplates        EmailTemplate[]
   events                Event[]
+  games                 Game[]
+  gameQuestions         GameQuestion[]
+  gameOptions           GameOption[]
+  gamePlayers           GamePlayer[]
+  gameAnswers           GameAnswer[]
   gifts                 Gift[]
   guestActivityInterests GuestActivityInterest[]
   guestEventInvites     GuestEventInvite[]

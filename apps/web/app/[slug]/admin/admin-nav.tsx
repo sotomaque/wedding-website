@@ -58,6 +58,7 @@ function getNavItems(slug: string, isSuperAdmin: boolean): NavItem[] {
         { href: `${base}/admin/content`, label: "Page Content" },
         { href: `${base}/admin/photos`, label: "Photos" },
         { href: `${base}/admin/photos/guest`, label: "Guest Photos" },
+        { href: `${base}/admin/game`, label: "Game" },
         { href: `${base}/slideshow`, label: "Slideshow ↗", external: true },
       ],
     },
