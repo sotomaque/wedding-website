@@ -13,6 +13,10 @@
 --     and are intentionally left untouched; they render on the same itinerary.
 --   * Idempotent: each row is skipped if an event of the same name already
 --     exists for this wedding, so re-running is safe.
+--   * public_rsvp_token is generated per row in the SELECT list. It must NOT
+--     live in an uncorrelated FROM/LATERAL subquery — Postgres evaluates such a
+--     subquery once and reuses the single value for every row, which makes all
+--     tokens identical and trips the unique index on the second insert.
 --   * Times/locations reflect the couple's planning sheet and can be edited in
 --     the admin Events UI.
 
@@ -31,8 +35,10 @@ BEGIN
   SELECT
     v.name, v.description, v.event_date, v.end_date, v.start_time, v.end_time,
     v.location_name, v.location_address,
-    c.is_default, c.is_public, c.public_rsvp_enabled, c.public_rsvp_token,
-    v.display_order, c.wedding_id
+    false, true, true,
+    -- Per-row token: evaluated once per output row here (unlike a FROM subquery).
+    replace(gen_random_uuid()::text, '-', ''),
+    v.display_order, w_id
   FROM (VALUES
     ('Sunday Mass',
      'Sunday mass to start the wedding week.',
@@ -79,10 +85,6 @@ BEGIN
      DATE '2026-08-01', NULL::date, NULL::time, NULL::time,
      'La Jolla Cove', 'La Jolla, CA', 20)
   ) AS v(name, description, event_date, end_date, start_time, end_time, location_name, location_address, display_order)
-  CROSS JOIN LATERAL (
-    SELECT false AS is_default, true AS is_public, true AS public_rsvp_enabled,
-           replace(gen_random_uuid()::text, '-', '') AS public_rsvp_token, w_id AS wedding_id
-  ) AS c
   WHERE NOT EXISTS (
     SELECT 1 FROM events e WHERE e.wedding_id = w_id AND e.name = v.name
   );
