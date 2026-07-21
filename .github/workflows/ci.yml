@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel superseded runs on PR pushes so only the latest commit's CI finishes.
+# main builds are never cancelled — every merge leaves a complete run record.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   NEXT_TELEMETRY_DISABLED: 1
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -21,7 +27,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version-file: package.json
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -39,7 +45,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version-file: package.json
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -57,7 +63,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version-file: package.json
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -76,7 +82,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version-file: package.json
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -84,6 +90,53 @@ jobs:
       - name: Run tests
         run: bun run test
         working-directory: apps/web
+
+  migrations-apply-check:
+    name: Migrations Apply Check
+    runs-on: ubuntu-latest
+    # Apply every supabase/migrations/*.sql to a throwaway Postgres in filename
+    # order and fail fast on the first runtime SQL error. Catches the class of
+    # bug that parses fine but fails at APPLY time — a duplicate-key seed, a
+    # column that doesn't exist, an FK to a missing table, an incompatible
+    # ALTER. Those otherwise surface only as an opaque Supabase-branch failure
+    # (or, when that check is skipped/cancelled, straight in production — see
+    # the 074 itinerary-seed incident).
+    #
+    # scripts/supabase-compat-shim.sql runs first to create the Supabase-managed
+    # roles + auth.role() our RLS policies reference. Plain postgres:17 (NOT the
+    # ~3GB supabase/postgres image) keeps the pull small; the apply path
+    # (scripts/migrations-apply-scratch.ts) uses only Node builtins + psql, so
+    # the job needs no `bun install`.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Verify psql is available
+        run: psql --version
+
+      - name: Apply migrations to scratch Postgres
+        env:
+          POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: bun run migrations:apply-scratch
 
   e2e:
     name: E2E Tests
@@ -115,7 +168,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version-file: package.json
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

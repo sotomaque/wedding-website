@@ -29,7 +29,8 @@
     "prepare": "lefthook install",
     "test": "bun --filter=web test __tests__",
     "test:e2e": "bun --filter=web test:e2e",
-    "knip": "knip"
+    "knip": "knip",
+    "migrations:apply-scratch": "bun scripts/migrations-apply-scratch.ts"
   },
   "workspaces": [
     "apps/*",
