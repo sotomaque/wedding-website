@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
-import { Check, Trash2 } from "lucide-react";
+import { Check, Trash2, Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -38,6 +38,14 @@ interface GameView {
   playerCount: number;
 }
 
+export interface LeaderboardRow {
+  id: string;
+  name: string;
+  correct: number;
+  rank: number;
+  isWinner: boolean;
+}
+
 const STATUS_LABELS: Record<GameView["status"], string> = {
   draft: "Draft",
   open: "Open",
@@ -47,9 +55,13 @@ const STATUS_LABELS: Record<GameView["status"], string> = {
 export function GameAdmin({
   game,
   publicUrl,
+  leaderboard,
+  revealedCount,
 }: {
   game: GameView;
   publicUrl: string | null;
+  leaderboard: LeaderboardRow[];
+  revealedCount: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -104,8 +116,38 @@ export function GameAdmin({
           />
         </div>
 
+        {/* Primary lifecycle action — start / end the game */}
+        <div className="flex flex-wrap items-center gap-3 border-t pt-4">
+          {game.status === "open" ? (
+            <ConfirmDialog
+              trigger={
+                <Button disabled={pending}>End game &amp; reveal</Button>
+              }
+              title="End the game and reveal results?"
+              description="Guests will see everyone's answers, any correct answers you've marked, and the winner. You can re-open it afterward if you need to."
+              confirmLabel="End &amp; reveal"
+              variant="default"
+              onConfirm={() => run(() => setGameStatus(game.id, "closed"))}
+            />
+          ) : (
+            <Button
+              disabled={pending || game.questions.length === 0}
+              onClick={() => run(() => setGameStatus(game.id, "open"))}
+            >
+              {game.status === "closed" ? "Re-open game" : "Start game"}
+            </Button>
+          )}
+          <span className="text-sm text-muted-foreground">
+            {game.status === "draft" &&
+              "Draft — not shared yet. Start it when your questions are ready."}
+            {game.status === "open" && "Live — guests can play via the link."}
+            {game.status === "closed" &&
+              "Closed — results and the winner are shown to guests."}
+          </span>
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium mr-1">Status:</span>
+          <span className="text-sm font-medium mr-1">Set status:</span>
           {(["draft", "open", "closed"] as const).map((s) => (
             <button
               key={s}
@@ -121,11 +163,6 @@ export function GameAdmin({
               {STATUS_LABELS[s]}
             </button>
           ))}
-          <span className="text-xs text-muted-foreground ml-1">
-            {game.status === "draft" && "Not visible to guests yet."}
-            {game.status === "open" && "Guests can play via the link."}
-            {game.status === "closed" && "Results + winner are revealed."}
-          </span>
         </div>
 
         {publicUrl && (
@@ -196,6 +233,41 @@ export function GameAdmin({
           </Button>
         </div>
       </div>
+
+      {/* In-admin responses / leaderboard */}
+      {leaderboard.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+            Responses ({game.playerCount})
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            {revealedCount === 0
+              ? "No answers revealed yet — mark correct answers above to score guesses."
+              : `Scored on ${revealedCount} revealed answer${
+                  revealedCount === 1 ? "" : "s"
+                }.`}
+          </p>
+          <div className="border rounded-xl bg-card divide-y">
+            {leaderboard.map((r) => (
+              <div
+                key={r.id}
+                className="flex items-center justify-between px-4 py-2.5"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-muted-foreground tabular-nums w-6">
+                    #{r.rank}
+                  </span>
+                  <span className={r.isWinner ? "font-semibold" : ""}>
+                    {r.name}
+                  </span>
+                  {r.isWinner && <Trophy className="w-4 h-4 text-amber-500" />}
+                </span>
+                <span className="text-sm tabular-nums">{r.correct}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

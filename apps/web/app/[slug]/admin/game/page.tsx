@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { getAdminGame } from "@/lib/db/game";
+import { getAdminGame, getGameResponses } from "@/lib/db/game";
+import { rankPlayers, revealedCount } from "@/lib/game/scoring";
 import { weddingUrl } from "@/lib/url";
 import { CreateGameButton } from "./create-game-button";
 import { GameAdmin } from "./game-admin";
@@ -17,6 +18,22 @@ export default async function AdminGamePage({
 
   const { slug } = await params;
   const game = await getAdminGame();
+
+  // Leaderboard for the in-admin responses panel (scored on revealed answers).
+  const responses =
+    game && game._count.players > 0 ? await getGameResponses(game.id) : null;
+  const leaderboard =
+    game && responses
+      ? rankPlayers(responses.players, game.questions, responses.answers).map(
+          (r) => ({
+            id: r.id,
+            name: r.name,
+            correct: r.correct,
+            rank: r.rank,
+            isWinner: r.isWinner,
+          }),
+        )
+      : [];
 
   return (
     <div className="max-w-screen-md mx-auto px-4 md:px-6 py-8">
@@ -50,6 +67,8 @@ export default async function AdminGamePage({
               ? weddingUrl(slug, `/game/${game.publicToken}`)
               : null
           }
+          leaderboard={leaderboard}
+          revealedCount={revealedCount(game.questions)}
         />
       ) : (
         <CreateGameButton />
