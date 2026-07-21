@@ -6,6 +6,7 @@ interface NavLabels {
   details: string;
   schedule: string;
   planning: string;
+  itinerary: string;
   thingsToDo: string;
   hotels: string;
   tripPlanner: string;
@@ -18,6 +19,7 @@ const defaultLabels: NavLabels = {
   details: "Details",
   schedule: "Schedule",
   planning: "Planning",
+  itinerary: "Itinerary",
   thingsToDo: "Things To Do",
   hotels: "Hotels",
   tripPlanner: "Trip Planner",
@@ -37,8 +39,14 @@ export function getNavigationConfig(
   const toggles = options?.featureToggles;
   const labels = options?.labels ?? defaultLabels;
 
-  // Build "Planning" group (Things To Do + Hotels)
+  // Build "Planning" group (Itinerary + Things To Do + Hotels)
   const planningLinks: { href: string; label: string }[] = [];
+  if (toggles?.itinerary !== false) {
+    planningLinks.push({
+      href: `${base}/itinerary`,
+      label: labels.itinerary,
+    });
+  }
   if (toggles?.thingsToDo !== false) {
     planningLinks.push({
       href: `${base}/things-to-do`,
