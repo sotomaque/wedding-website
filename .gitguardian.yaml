@@ -1,0 +1,21 @@
+# GitGuardian configuration — https://docs.gitguardian.com
+#
+# The only hardcoded "credentials" in our CI workflow are ephemeral, throwaway
+# values for a scratch Postgres *service container* that exists solely for the
+# duration of a job and is never network-exposed — see the
+# `migrations-apply-check` job in .github/workflows/ci.yml
+# (POSTGRES_PASSWORD: postgres, and the matching postgres://postgres:postgres@…
+# apply URL). Standard GitHub Actions service-container convention.
+#
+# Real credentials are ALWAYS injected via ${{ secrets.* }} and are never
+# committed. Ignore the scratch DB password so it stops flagging every PR that
+# touches or merges that workflow file.
+version: 2
+secret:
+  ignored-matches:
+    - name: CI scratch Postgres password (ephemeral service container — not a real credential)
+      match: postgres
+  # Belt-and-suspenders: scope-limit the ignore to the CI workflow, which by
+  # convention only ever holds ${{ secrets.* }} references + throwaway CI values.
+  ignored-paths:
+    - .github/workflows/ci.yml
