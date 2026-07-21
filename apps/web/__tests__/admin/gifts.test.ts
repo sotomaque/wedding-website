@@ -7,6 +7,27 @@ mock.module("@/env", () => ({
   },
 }));
 
+// Mock the Clerk user so requireAdmin authorizes via the ADMIN_EMAILS
+// superadmin path. Without this, these tests silently depended on a leaked
+// currentUser mock from whichever file ran earlier under `bun test` — so a new
+// or reordered test file could (and did) leave currentUser resolving to null
+// and break every gift test's authorizeWedding().
+mock.module("@clerk/nextjs/server", () => ({
+  currentUser: mock(() =>
+    Promise.resolve({
+      id: "admin-1",
+      primaryEmailAddressId: "email-primary",
+      emailAddresses: [
+        {
+          id: "email-primary",
+          emailAddress: "admin@example.com",
+          verification: { status: "verified" },
+        },
+      ],
+    }),
+  ),
+}));
+
 // Mock wedding context (must be before @/lib/db mock)
 mock.module("@/lib/db/wedding-context", () => ({
   getWeddingId: mock(() => Promise.resolve("test-wedding-id")),
