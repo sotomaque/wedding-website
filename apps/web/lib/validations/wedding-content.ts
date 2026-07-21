@@ -115,6 +115,7 @@ export const featureTogglesSchema = z.object({
   hotels: z.boolean().default(true),
   vendors: z.boolean().default(true),
   thingsToDo: z.boolean().default(true),
+  itinerary: z.boolean().default(true),
   tripPlanner: z.boolean().default(true),
   registry: z.boolean().default(true),
   guestPhotos: z.boolean().default(true),
