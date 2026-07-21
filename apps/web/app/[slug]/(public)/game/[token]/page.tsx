@@ -1,8 +1,11 @@
 import { Footer } from "@workspace/ui/components/footer";
 import { Check, Trophy } from "lucide-react";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { WeddingNavigation } from "@/components/wedding-navigation";
+import { db } from "@/lib/db";
 import {
   getGameByToken,
   getGameResponses,
@@ -13,6 +16,47 @@ import { rankPlayers, tallyQuestion } from "@/lib/game/scoring";
 import { GamePlay } from "./game-play";
 
 export const dynamic = "force-dynamic";
+
+/** Minimal game + couple lookup for the rich link preview (cached per request). */
+const getGameMeta = cache(async (token: string) => {
+  return db.game.findFirst({
+    where: { publicToken: token },
+    select: {
+      title: true,
+      description: true,
+      status: true,
+      wedding: { select: { coupleName: true } },
+    },
+  });
+});
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; token: string }>;
+}): Promise<Metadata> {
+  const { token } = await params;
+  const game = await getGameMeta(token);
+  // Draft/unknown links get a neutral title (the page itself 404s).
+  if (!game || game.status === "draft") return { title: "Wedding Game" };
+
+  const couple = game.wedding.coupleName;
+  const title = game.title;
+  const description =
+    game.status === "closed"
+      ? `See the results — did you guess ${couple} right?`
+      : game.description?.trim() ||
+        `Guess who's most likely to… Play ${couple}'s wedding game!`;
+  const siteName = `${couple}'s Wedding`;
+
+  return {
+    title,
+    description,
+    // The opengraph-image.tsx in this segment supplies og:image automatically.
+    openGraph: { title, description, siteName, type: "website" },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
 
 export default async function GamePage({
   params,
