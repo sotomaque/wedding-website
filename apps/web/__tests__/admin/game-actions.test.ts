@@ -151,7 +151,10 @@ describe("admin game actions — lifecycle", () => {
   });
 
   it("refuses to act when not an admin", async () => {
-    mockCurrentUser.mockResolvedValue(null);
+    // mockResolvedValueOnce (not …Value) so this file never leaves the
+    // process-global @clerk mock resolving to null — sibling admin tests
+    // (e.g. gifts) inherit currentUser and would fail auth otherwise.
+    mockCurrentUser.mockResolvedValueOnce(null);
     const res = await actions.setGameStatus("g1", "open");
     expect(res.success).toBe(false);
     expect(gameUpdateMany).not.toHaveBeenCalled();
