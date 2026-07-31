@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { gameSubmitSchema } from "@/lib/validations/game";
+import { featureTogglesSchema } from "@/lib/validations/wedding-content";
 
 /** Cookie key for a guest's per-game player token (one game per cookie). */
 function playerCookieName(gameId: string): string {
@@ -25,9 +26,22 @@ export async function POST(
 
     const game = await db.game.findFirst({
       where: { publicToken: token },
-      select: { id: true, weddingId: true, status: true },
+      select: {
+        id: true,
+        weddingId: true,
+        status: true,
+        wedding: { select: { featureToggles: true } },
+      },
     });
     if (!game) {
+      return NextResponse.json({ error: "Game not found" }, { status: 404 });
+    }
+    // Honor the wedding's `game` feature toggle (the public page 404s when it's
+    // off; the write endpoint must not stay open behind it).
+    const toggles = featureTogglesSchema.parse(
+      game.wedding.featureToggles ?? {},
+    );
+    if (!toggles.game) {
       return NextResponse.json({ error: "Game not found" }, { status: 404 });
     }
     if (game.status !== "open") {
@@ -58,41 +72,48 @@ export async function POST(
     const cleaned = answers.filter(
       (a) => optionQuestion.get(a.optionId) === a.questionId,
     );
+    // One answer per question (last wins). The DB has UNIQUE(player_id,
+    // question_id), so a duplicate questionId in the payload would otherwise
+    // 500 the request mid-write.
+    const deduped = [
+      ...new Map(cleaned.map((a) => [a.questionId, a])).values(),
+    ];
 
     // Identify the guest by their existing cookie, or mint a new token.
     const cookieName = playerCookieName(game.id);
     const existingToken = request.cookies.get(cookieName)?.value;
     const playerToken = existingToken || randomUUID();
 
-    const player = await db.gamePlayer.upsert({
-      where: { gameId_token: { gameId: game.id, token: playerToken } },
-      create: {
-        gameId: game.id,
-        weddingId: game.weddingId,
-        name,
-        token: playerToken,
-        submittedAt: new Date(),
-      },
-      update: { name, submittedAt: new Date() },
-      select: { id: true },
-    });
-
-    // Replace this player's answers wholesale.
-    await db.$transaction([
-      db.gameAnswer.deleteMany({ where: { playerId: player.id } }),
-      db.gameAnswer.createMany({
-        data: cleaned.map((a) => ({
+    // Upsert the player and replace their answers atomically, so a failed
+    // answer write can't leave the tiebreaker submittedAt bumped without the
+    // matching answers, and concurrent submits can't interleave.
+    await db.$transaction(async (tx) => {
+      const player = await tx.gamePlayer.upsert({
+        where: { gameId_token: { gameId: game.id, token: playerToken } },
+        create: {
+          gameId: game.id,
+          weddingId: game.weddingId,
+          name,
+          token: playerToken,
+          submittedAt: new Date(),
+        },
+        update: { name, submittedAt: new Date() },
+        select: { id: true },
+      });
+      await tx.gameAnswer.deleteMany({ where: { playerId: player.id } });
+      await tx.gameAnswer.createMany({
+        data: deduped.map((a) => ({
           playerId: player.id,
           questionId: a.questionId,
           optionId: a.optionId,
           weddingId: game.weddingId,
         })),
-      }),
-    ]);
+      });
+    });
 
     const response = NextResponse.json({
       success: true,
-      answered: cleaned.length,
+      answered: deduped.length,
     });
     response.cookies.set(cookieName, playerToken, {
       httpOnly: true,

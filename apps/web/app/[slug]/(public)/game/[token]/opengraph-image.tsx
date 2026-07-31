@@ -148,8 +148,10 @@ function toTagline(description: string | null): string {
 export default async function OpengraphImage({ params }: ImageProps) {
   try {
     const { token } = await params;
+    // Don't render a preview for a draft game — the page 404s it, and the OG
+    // card would otherwise leak an unpublished game's title/description/photo.
     const game = await db.game.findFirst({
-      where: { publicToken: token },
+      where: { publicToken: token, status: { not: "draft" } },
       select: {
         title: true,
         description: true,

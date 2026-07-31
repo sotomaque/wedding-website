@@ -2,12 +2,24 @@
 
 import { Check } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { GameQuestionView } from "@/lib/db/game";
+
+/**
+ * Play-time question shape — deliberately WITHOUT correctOptionId. This is a
+ * client component, so its props are serialized into the page's RSC payload;
+ * shipping the revealed answers here would let any open-game player read them
+ * from the page source and cheat. The results view resolves correctness
+ * server-side instead.
+ */
+interface PlayQuestion {
+  id: string;
+  prompt: string;
+  options: { id: string; label: string }[];
+}
 
 interface GamePlayProps {
   token: string;
   coupleName: string;
-  questions: GameQuestionView[];
+  questions: PlayQuestion[];
   initialName: string;
   initialAnswers: { questionId: string; optionId: string }[];
   /** True if this device already has a saved submission. */
