@@ -48,4 +48,13 @@ describe("renderThankYouPhotosEmail", () => {
     // Subject is plain text (not HTML), so it carries the raw couple name.
     expect(subject).toContain("<script>alert(1)</script>");
   });
+
+  it("collapses CR/LF in the subject (header-split guard)", () => {
+    const { subject } = renderThankYouPhotosEmail({
+      ...base,
+      coupleName: "Helen\r\nBcc: evil@x.com",
+    });
+    expect(subject).not.toMatch(/[\r\n]/);
+    expect(subject).toContain("Helen Bcc: evil@x.com");
+  });
 });

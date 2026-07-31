@@ -36,7 +36,14 @@ const GUEST_SELECT = {
 function withUsableEmail<T extends { email: string | null }>(
   guest: T,
 ): guest is T & { email: string } {
-  return typeof guest.email === "string" && guest.email.includes("@");
+  // Require a single "@"-bearing address with no whitespace/comma/semicolon —
+  // a stored value like "a@b.com, evil@x.com" (guest email is only loosely
+  // validated on create) must not become a multi-recipient `to`.
+  return (
+    typeof guest.email === "string" &&
+    guest.email.includes("@") &&
+    !/[\s,;]/.test(guest.email)
+  );
 }
 
 async function fetchAllConfirmed(

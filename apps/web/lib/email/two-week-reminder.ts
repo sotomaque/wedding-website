@@ -159,7 +159,11 @@ export function renderTwoWeekReminderEmail(
 </html>`;
 
   return {
-    subject: `Two weeks to go — ${data.coupleName}'s wedding!`,
+    // Collapse newlines so a CR/LF in coupleName can't split the subject header.
+    subject: `Two weeks to go — ${data.coupleName}'s wedding!`.replace(
+      /\s*[\r\n]+\s*/g,
+      " ",
+    ),
     html,
   };
 }

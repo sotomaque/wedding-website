@@ -93,7 +93,11 @@ export function renderThankYouPhotosEmail(
 </html>`;
 
   return {
-    subject: `Thank you for celebrating with us — ${data.coupleName}`,
+    // Collapse newlines so a CR/LF in coupleName can't split the subject header.
+    subject: `Thank you for celebrating with us — ${data.coupleName}`.replace(
+      /\s*[\r\n]+\s*/g,
+      " ",
+    ),
     html,
   };
 }
