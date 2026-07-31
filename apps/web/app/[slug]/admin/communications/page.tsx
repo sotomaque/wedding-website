@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getWeddingEmailLog } from "@/lib/db/admin/email-log-list";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { ThankYouPhotosCard } from "./thank-you-photos-card";
 import { TwoWeekReminderCard } from "./two-week-reminder-card";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,8 @@ const TYPE_LABELS: Record<string, string> = {
   admin_summary: "Admin Summary",
   welcome: "Welcome",
   guest_export: "Guest Export",
+  thank_you_photos: "Thank You + Photos",
+  thank_you_photos_preview: "Thank You + Photos (Preview)",
   two_week_reminder: "Two-Week Reminder",
   two_week_reminder_preview: "Two-Week Reminder (Preview)",
   custom: "Custom Email",
@@ -79,6 +82,8 @@ export default async function CommunicationsPage({
       </div>
 
       <TwoWeekReminderCard confirmedCount={confirmedCount} events={events} />
+
+      <ThankYouPhotosCard confirmedCount={confirmedCount} />
 
       {/* Type filter chips */}
       <div className="flex flex-wrap gap-2 mb-6">
