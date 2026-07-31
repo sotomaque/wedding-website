@@ -3,11 +3,16 @@ import { buildSystemPrompt } from "@/lib/ai/prompts/base";
 import { type ChatStats, systemPrompt } from "@/lib/ai/prompts/chat";
 import type { WeddingContext } from "@/lib/db/wedding-context";
 
+// A wedding date relative to "now" so the "days from now" assertion never
+// expires — a hardcoded date turned into a time bomb the day after the real
+// wedding passed (the prompt switched to "date has passed" and the test broke).
+const FUTURE_WEDDING = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
 const baseCtx: WeddingContext = {
   weddingId: "w-1",
   slug: "alice-and-bob",
   coupleName: "Alice & Bob",
-  weddingDate: new Date("2026-07-30"),
+  weddingDate: FUTURE_WEDDING,
   rsvpDeadline: "2026-06-15",
   timezone: "America/New_York",
   status: "published",
