@@ -73,7 +73,7 @@ describe("saveGuestPhoto server action", () => {
     );
   });
 
-  it("always inserts with isVisible: true", async () => {
+  it("inserts hidden (isVisible: false) for the moderation queue", async () => {
     const { saveGuestPhoto } = await import(
       "@/app/[slug]/(public)/photos/actions"
     );
@@ -81,7 +81,7 @@ describe("saveGuestPhoto server action", () => {
 
     expect(mockGuestPhotoCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ isVisible: true }),
+        data: expect.objectContaining({ isVisible: false }),
       }),
     );
   });

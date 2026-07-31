@@ -89,7 +89,9 @@ export function GuestPhotosClient({
           <h2 className="font-semibold text-base">Guest Upload QR Code</h2>
           <p className="text-sm text-muted-foreground">
             Display this at the reception so guests can scan and upload their
-            photos directly to the live slideshow.
+            photos. Uploads start hidden for your review — use the{" "}
+            <span className="font-medium">Hidden</span> filter below and “Make
+            visible” to publish them to the slideshow.
           </p>
           <p className="text-xs font-mono text-muted-foreground break-all">
             {uploadUrl}
