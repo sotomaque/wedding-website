@@ -64,11 +64,15 @@ export const ourFileRouter: FileRouter = {
       };
     }),
 
-  // Guest photo uploader — no auth required, open to anyone with the link
+  // Guest photo uploader — no auth required, open to anyone with the link.
+  // Limits are intentionally generous ("bring us your whole camera roll"):
+  // 32MB covers iPhone HEIC/ProRAW originals, 100/batch is effectively
+  // unlimited since guests can upload repeatedly. The real ceiling is the
+  // UploadThing plan's storage cap, not these numbers.
   guestPhotoUploader: f({
     image: {
-      maxFileSize: "8MB",
-      maxFileCount: 5,
+      maxFileSize: "32MB",
+      maxFileCount: 100,
     },
   })
     .middleware(async () => {
