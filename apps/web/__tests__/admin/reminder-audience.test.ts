@@ -46,6 +46,21 @@ describe("resolveReminderAudience", () => {
     });
   });
 
+  it("drops emails with whitespace/comma (multi-recipient injection guard)", async () => {
+    mockGuestFindMany.mockResolvedValue([
+      { id: "ok", firstName: "A", lastName: null, email: "a@b.com" },
+      {
+        id: "inject",
+        firstName: "B",
+        lastName: null,
+        email: "a@b.com, evil@x.com",
+      },
+      { id: "space", firstName: "C", lastName: null, email: "c @b.com" },
+    ]);
+    const audience = await resolveReminderAudience("w1", { type: "all" });
+    expect(audience?.map((g) => g.id)).toEqual(["ok"]);
+  });
+
   it("returns null when the event does not belong to the wedding", async () => {
     mockEventFindFirst.mockResolvedValue(null);
     const audience = await resolveReminderAudience("w1", {

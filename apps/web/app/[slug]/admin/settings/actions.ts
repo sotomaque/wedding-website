@@ -14,6 +14,7 @@ import { isValidTemplateId } from "@/lib/templates";
 import {
   type DesignConfig,
   designConfigSchema,
+  featureTogglesSchema,
   headcountConfigSchema,
 } from "@/lib/validations/wedding-content";
 
@@ -251,11 +252,20 @@ export async function updateFeatureToggles(data: Record<string, boolean>) {
   if (!auth.authorized)
     return { success: false, error: auth.error ?? "Unauthorized" };
 
+  // Server actions don't enforce the TS parameter type at runtime, so validate
+  // against the schema before writing — a non-boolean/unknown value would make
+  // getWeddingSettings().featureTogglesSchema.parse() throw on every public
+  // page load (self-inflicted tenant outage).
+  const parsed = featureTogglesSchema.partial().safeParse(data);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid feature toggles" };
+  }
+
   try {
     await db.wedding.update({
       where: { id: weddingId },
       data: {
-        featureToggles: data,
+        featureToggles: parsed.data,
       },
     });
 
