@@ -1,13 +1,14 @@
 /**
  * Wedding Context Resolution
  *
- * Resolves the current wedding from request headers (set by middleware)
- * or falls back to DEFAULT_WEDDING_SLUG for backward compatibility.
+ * Resolves the current wedding from request headers (set by middleware).
+ * Fails closed when the tenant is unknown — never guesses a default wedding.
  */
 
 import { headers } from "next/headers";
 import { cache } from "react";
 import { db } from "./index";
+import { resolveWeddingContext } from "./wedding-resolver";
 
 export interface WeddingContext {
   weddingId: string;
@@ -97,37 +98,27 @@ const getWeddingById = cache(
  * Resolution order:
  * 1. x-wedding-id header (set by middleware)
  * 2. x-wedding-slug header (set by middleware)
- * 3. DEFAULT_WEDDING_SLUG env var (backward compat for single-tenant mode)
  *
- * Throws if no wedding context can be resolved.
+ * FAIL CLOSED: if neither header resolves to a real wedding, this throws
+ * rather than guessing a tenant. It used to fall back to DEFAULT_WEDDING_SLUG
+ * ("helen-and-enrique"), which in a multi-tenant deployment silently served
+ * one couple's data to any request whose tenant couldn't be determined — e.g.
+ * an /api/* call whose Referer was stripped would read/write the default
+ * wedding instead of the intended one. Middleware is the single source of
+ * tenant truth: it resolves the slug from the URL path (or, for /api/*, the
+ * Referer), redirects bare legacy paths so they always carry a slug, and sets
+ * the header here. A request that reaches this point with no header is one
+ * whose tenant is genuinely unknown, and serving *any* wedding's data for it
+ * is never correct.
  */
 export const getWeddingContext = cache(async (): Promise<WeddingContext> => {
   const headerStore = await headers();
-  const weddingId = headerStore.get("x-wedding-id");
-  const weddingSlug = headerStore.get("x-wedding-slug");
-
-  // Try by ID first (most efficient, set by middleware)
-  if (weddingId) {
-    const ctx = await getWeddingById(weddingId);
-    if (ctx) return ctx;
-  }
-
-  // Try by slug from header
-  if (weddingSlug) {
-    const ctx = await getWeddingBySlug(weddingSlug);
-    if (ctx) return ctx;
-  }
-
-  // Fall back to DEFAULT_WEDDING_SLUG for backward compat
-  const defaultSlug = process.env.DEFAULT_WEDDING_SLUG || "helen-and-enrique";
-  if (defaultSlug) {
-    const ctx = await getWeddingBySlug(defaultSlug);
-    if (ctx) return ctx;
-  }
-
-  throw new Error(
-    "Could not resolve wedding context. Ensure middleware is setting x-wedding-id/x-wedding-slug headers, or set DEFAULT_WEDDING_SLUG env var.",
-  );
+  return resolveWeddingContext({
+    weddingId: headerStore.get("x-wedding-id"),
+    weddingSlug: headerStore.get("x-wedding-slug"),
+    getById: getWeddingById,
+    getBySlug: getWeddingBySlug,
+  });
 });
 
 /**
