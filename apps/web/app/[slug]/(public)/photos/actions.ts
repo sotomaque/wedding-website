@@ -24,7 +24,11 @@ export async function saveGuestPhoto(
       data: {
         url,
         uploaderName: cleanName,
-        isVisible: true,
+        // Moderation queue: guest uploads start hidden and only reach the
+        // public gallery/slideshow once the couple approves them in
+        // Admin → Photos → Guest Photos. This is the sole gate protecting a
+        // no-auth, no-rate-limit upload endpoint from spamming the live site.
+        isVisible: false,
         weddingId,
       },
     });

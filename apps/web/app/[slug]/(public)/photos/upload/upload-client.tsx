@@ -15,7 +15,8 @@ export function UploadClient() {
         <div className="text-5xl">📸</div>
         <h2 className="text-2xl font-serif">Thanks for sharing!</h2>
         <p className="text-muted-foreground">
-          Your photo is live on the slideshow.
+          Your photos have been sent to the couple and will appear on the
+          slideshow once they've had a chance to look through them.
         </p>
         <button
           type="button"
