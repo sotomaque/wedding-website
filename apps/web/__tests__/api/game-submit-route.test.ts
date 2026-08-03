@@ -13,17 +13,23 @@ const mockPlayerUpsert = mock(
 const mockAnswerDeleteMany = mock(() => Promise.resolve({ count: 0 }));
 const mockAnswerCreateMany = mock(() => Promise.resolve({ count: 0 }));
 
+// Interactive transaction: the route calls db.$transaction(async (tx) => …);
+// hand the callback a tx client backed by the same mocks.
+const txClient = {
+  gamePlayer: { upsert: mockPlayerUpsert },
+  gameAnswer: {
+    deleteMany: mockAnswerDeleteMany,
+    createMany: mockAnswerCreateMany,
+  },
+};
+
 mock.module("@/lib/db", () => ({
   db: {
     game: { findFirst: mockGameFindFirst },
     gameOption: { findMany: mockOptionFindMany },
-    gamePlayer: { upsert: mockPlayerUpsert },
-    gameAnswer: {
-      deleteMany: mockAnswerDeleteMany,
-      createMany: mockAnswerCreateMany,
-    },
-    // The route wraps delete+create in a $transaction([...]) array.
-    $transaction: mock((ops: Promise<unknown>[]) => Promise.all(ops)),
+    $transaction: mock((fn: (tx: typeof txClient) => Promise<unknown>) =>
+      fn(txClient),
+    ),
   },
 }));
 
@@ -36,7 +42,12 @@ function req(body: unknown) {
 }
 const ctx = { params: Promise.resolve({ token: "tok" }) };
 
-const OPEN_GAME = { id: "g1", weddingId: "w1", status: "open" };
+const OPEN_GAME = {
+  id: "g1",
+  weddingId: "w1",
+  status: "open",
+  wedding: { featureToggles: { game: true } },
+};
 
 describe("POST /api/game/[token]/submit", () => {
   beforeEach(() => {
@@ -68,6 +79,45 @@ describe("POST /api/game/[token]/submit", () => {
     const { POST } = await import("@/app/api/game/[token]/submit/route");
     const res = await POST(req({ answers: [] }), ctx);
     expect(res.status).toBe(400);
+  });
+
+  it("returns 404 when the game feature toggle is off", async () => {
+    mockGameFindFirst.mockResolvedValue({
+      ...OPEN_GAME,
+      wedding: { featureToggles: { game: false } },
+    });
+    const { POST } = await import("@/app/api/game/[token]/submit/route");
+    const res = await POST(req({ name: "Ada", answers: [] }), ctx);
+    expect(res.status).toBe(404);
+    expect(mockAnswerCreateMany).not.toHaveBeenCalled();
+  });
+
+  it("dedupes duplicate questionIds (last wins) instead of 500ing", async () => {
+    mockGameFindFirst.mockResolvedValue(OPEN_GAME);
+    mockOptionFindMany.mockResolvedValue([
+      { id: "o1", questionId: "q1" },
+      { id: "o2", questionId: "q1" },
+    ]);
+    const { POST } = await import("@/app/api/game/[token]/submit/route");
+    const res = await POST(
+      req({
+        name: "Ada",
+        answers: [
+          { questionId: "q1", optionId: "o1" },
+          { questionId: "q1", optionId: "o2" }, // dup question — last wins
+        ],
+      }),
+      ctx,
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { answered: number };
+    expect(data.answered).toBe(1);
+    const created = mockAnswerCreateMany.mock.calls[0]?.[0] as {
+      data: { optionId: string }[];
+    };
+    expect(created.data).toEqual([
+      { playerId: "p1", questionId: "q1", optionId: "o2", weddingId: "w1" },
+    ]);
   });
 
   it("saves only answers whose option belongs to its question, and sets a cookie", async () => {

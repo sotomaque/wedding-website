@@ -15,11 +15,15 @@ export async function saveGuestPhoto(
       return { success: false, error: "Invalid photo URL" };
     }
 
+    // Cap the (public, unauthenticated) uploader name so a caller can't store
+    // an arbitrarily large string per row.
+    const cleanName = uploaderName?.trim().slice(0, 100) || null;
+
     const weddingId = await getWeddingId();
     await db.guestPhoto.create({
       data: {
         url,
-        uploaderName: uploaderName || null,
+        uploaderName: cleanName,
         // Moderation queue: guest uploads start hidden and only reach the
         // public gallery/slideshow once the couple approves them in
         // Admin → Photos → Guest Photos. This is the sole gate protecting a

@@ -12,6 +12,7 @@ import {
   getPlayerByToken,
 } from "@/lib/db/game";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
+import { getWeddingId } from "@/lib/db/wedding-context";
 import { rankPlayers, tallyQuestion } from "@/lib/game/scoring";
 import { GamePlay } from "./game-play";
 
@@ -68,6 +69,12 @@ export default async function GamePage({
   // Draft games aren't shareable yet; unknown tokens 404.
   if (!game || game.status === "draft") notFound();
 
+  // The token is globally unique, but tie the game to THIS wedding's URL so one
+  // wedding's token can't render another's game under this slug — which would
+  // also bypass that wedding's `game` toggle (checked next against this slug).
+  const weddingId = await getWeddingId();
+  if (game.weddingId !== weddingId) notFound();
+
   const settings = await getWeddingSettings();
   if (!settings.featureToggles.game) notFound();
 
@@ -95,7 +102,13 @@ export default async function GamePage({
           <GamePlay
             token={token}
             coupleName={settings.coupleName}
-            questions={game.questions}
+            // Drop correctOptionId — this crosses into a client component and
+            // would otherwise leak the revealed answers in the page payload.
+            questions={game.questions.map((q) => ({
+              id: q.id,
+              prompt: q.prompt,
+              options: q.options,
+            }))}
             initialName={player?.name ?? ""}
             initialAnswers={player?.answers ?? []}
             alreadyPlayed={Boolean(player)}
