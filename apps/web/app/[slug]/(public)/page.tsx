@@ -33,6 +33,12 @@ import {
 import { selectPublicEvents } from "@/lib/events-visibility";
 import { getLayoutPreset, type SectionKey } from "@/lib/layouts";
 import { getPhotosBySection } from "@/lib/photos";
+import {
+  getTemplateContentDefaults,
+  resolveHeroContent,
+  resolveStoryContent,
+  resolveWelcomeContent,
+} from "@/lib/template-content-defaults";
 import { getTemplatePreset } from "@/lib/templates";
 import type {
   DetailsContent,
@@ -117,6 +123,26 @@ export default async function Page() {
   // (templates supersede independent layout/motif picks). Null templateId
   // falls back to the "classic" preset so existing weddings render unchanged.
   const template = getTemplatePreset(settings.templateId);
+  const contentDefaults = getTemplateContentDefaults(template.seedFlavor);
+  const isDraft = settings.status === "draft";
+  const heroContent = resolveHeroContent(
+    content.hero as HeroContent | undefined,
+    contentDefaults,
+    isDraft,
+  );
+  const storyContent = resolveStoryContent(
+    content.story as StoryContent | undefined,
+    contentDefaults,
+    isDraft,
+  );
+  const welcomeContent = resolveWelcomeContent(
+    content.welcome as WelcomeContent | undefined,
+    contentDefaults,
+    isDraft,
+  );
+  const storyHasText = Boolean(
+    storyContent?.bodyHtml || (storyContent?.paragraphs?.length ?? 0) > 0,
+  );
   const layout = getLayoutPreset(template.layoutId);
   const motifId = template.motifId;
 
@@ -157,26 +183,22 @@ export default async function Page() {
               year: "numeric",
             })
             .replace(/\//g, " | ")}
-          location={(content.hero as HeroContent)?.location}
+          location={heroContent?.location}
         />
       ) : heroPhotos.length === 0 ? (
-        <HeroSectionEmpty title={(content.hero as HeroContent)?.title} />
+        <HeroSectionEmpty title={heroContent?.title} />
       ) : (
-        <HeroSection
-          photos={heroPhotos}
-          title={(content.hero as HeroContent)?.title}
-        />
+        <HeroSection photos={heroPhotos} title={heroContent?.title} />
       ),
     // Server Components - static content
     story:
       template.storyStyle === "prose-only" ? (
-        <ElegantStorySection content={content.story as StoryContent} />
-      ) : (
-        <StorySection
-          photos={storyPhotos}
-          content={content.story as StoryContent}
-        />
-      ),
+        storyHasText ? (
+          <ElegantStorySection content={storyContent} />
+        ) : null
+      ) : storyHasText || storyPhotos.length > 0 ? (
+        <StorySection photos={storyPhotos} content={storyContent} />
+      ) : null,
     details: <DetailsSection content={detailsContentWithEvents} />,
     schedule:
       template.scheduleStyle === "events-card" ? (
@@ -204,9 +226,9 @@ export default async function Page() {
     // they don't (welcome + wedding-party + faqs ship Phase 3). null = "no
     // data, skip this slot entirely" — the layout iteration filters them
     // out so we don't leave stray motif dividers between empty rows.
-    welcome: (
-      <WelcomeSection content={content.welcome as WelcomeContent | undefined} />
-    ),
+    welcome: welcomeContent?.message?.trim() ? (
+      <WelcomeSection content={welcomeContent} />
+    ) : null,
     "wedding-party":
       weddingPartyContent && weddingPartyContent.members.length > 0 ? (
         <WeddingPartySection content={weddingPartyContent} />

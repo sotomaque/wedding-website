@@ -5,7 +5,11 @@ import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingBySlug } from "@/lib/db/wedding-context";
 import { generateFontCss, getFontPairing } from "@/lib/fonts";
-import { getTemplatePreset } from "@/lib/templates";
+import {
+  getEffectiveFontId,
+  getEffectiveThemeId,
+  getTemplatePreset,
+} from "@/lib/templates";
 import { generateThemeCss, getThemePreset } from "@/lib/themes";
 
 /**
@@ -38,9 +42,11 @@ export default async function PublicLayout({
   const settings = await getWeddingSettings();
   const template = getTemplatePreset(settings.templateId);
 
-  const effectiveThemeId = settings.themeId ?? template.defaultThemeId;
-  const effectiveFontId =
-    settings.designConfig.fontId ?? template.defaultFontId;
+  const effectiveThemeId = getEffectiveThemeId(template, settings.themeId);
+  const effectiveFontId = getEffectiveFontId(
+    template,
+    settings.designConfig.fontId,
+  );
 
   const themeCss = generateThemeCss(getThemePreset(effectiveThemeId));
   const fontCss = generateFontCss(getFontPairing(effectiveFontId));

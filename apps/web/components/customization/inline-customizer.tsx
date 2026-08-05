@@ -14,6 +14,7 @@ import { ExternalLink, Palette } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { getLayoutPreset, type SectionKey } from "@/lib/layouts";
+import { getTemplateContentDefaults } from "@/lib/template-content-defaults";
 import { getTemplatePreset, type TemplatePreset } from "@/lib/templates";
 import type {
   DetailsContent,
@@ -296,6 +297,7 @@ function ContentTabBody({
   if (config.kind === "crossLink") {
     return <SectionLink slug={wedding.slug} {...config} />;
   }
+  const defaults = getTemplateContentDefaults(template.seedFlavor);
   switch (sectionKey) {
     case "hero":
       return (
@@ -303,11 +305,15 @@ function ContentTabBody({
           initial={content.hero as HeroContent | undefined}
           initialCoupleName={wedding.coupleName}
           currentDisplay={template.heroDisplay}
+          locationPlaceholder={defaults.hero?.location}
         />
       );
     case "story":
       return (
-        <StoryEditor initial={content.story as StoryContent | undefined} />
+        <StoryEditor
+          initial={content.story as StoryContent | undefined}
+          bodyPlaceholder={defaults.story?.paragraphs?.join("\n\n")}
+        />
       );
     case "details":
       return (
@@ -327,6 +333,7 @@ function ContentTabBody({
       return (
         <WelcomeEditor
           initial={content.welcome as WelcomeContent | undefined}
+          messagePlaceholder={defaults.welcome?.message}
         />
       );
     case "wedding-party":

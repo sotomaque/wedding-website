@@ -65,7 +65,7 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
   {
     id: "elegant",
     name: "Elegant",
-    description: "Full ten-section flow for the Elegant template",
+    description: "Full eleven-section flow for the Elegant template",
     sections: [
       "hero",
       "welcome",
@@ -77,6 +77,7 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
       "gallery",
       "registry-teaser",
       "faqs",
+      "rsvp",
     ],
     navVariant: "centered",
   },

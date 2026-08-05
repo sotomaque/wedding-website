@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getWeddingSettings } from "@/lib/db/wedding-content-data";
 import { getWeddingId } from "@/lib/db/wedding-context";
+import { getTemplateContentDefaults } from "@/lib/template-content-defaults";
 import { getTemplatePreset } from "@/lib/templates";
 import { ContentEditorClient } from "./content-editor-client";
 
@@ -22,7 +23,9 @@ export default async function ContentEditorPage() {
   );
   // The hero headline is edited as the couple name for couple-names templates
   // (Elegant) — the same data the inline customizer threads into HeroEditor.
-  const heroDisplay = getTemplatePreset(settings.templateId).heroDisplay;
+  const preset = getTemplatePreset(settings.templateId);
+  const heroDisplay = preset.heroDisplay;
+  const contentDefaults = getTemplateContentDefaults(preset.seedFlavor);
 
   return (
     <div className="min-h-screen bg-background px-2 py-4 sm:px-4 md:px-8 md:py-8">
@@ -31,6 +34,7 @@ export default async function ContentEditorPage() {
           content={contentMap}
           coupleName={settings.coupleName}
           heroDisplay={heroDisplay}
+          defaults={contentDefaults}
         />
       </div>
     </div>
